@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { FileSpreadsheet, Eye, Pencil, Trash2, ArrowUpDown, Plus, X, ChevronDown, Settings } from 'lucide-react';
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
-const API_BASE_URL = "http://192.168.1.9:8082/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://192.168.1.9:8082/api";
 
 // ─── STYLING CONFIGURATIONS ───────────────────────────────────────────────────
 const STATUS_STYLES = {
