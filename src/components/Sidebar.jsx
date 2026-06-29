@@ -59,7 +59,7 @@ const Sidebar = () => {
         // If it's a standard agent worker, immediately remove them from the active dashboard terminal pool
         if (empId && empRole !== 'admin' && String(empId).toLowerCase() !== 'admin') {
             try {
-                await fetch('http://localhost:8089/api/members/logout-drop', {
+                await fetch('https://crm-backend-2-qlza.onrender.com:8089/api/members/logout-drop', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ employeeId: String(empId) })
