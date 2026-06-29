@@ -6,8 +6,7 @@ import {
 } from 'lucide-react';
 import TripClosureForm from '../components/TripClosureForm';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://192.168.1.9:8082/api";
-
+const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
 // ─── INDIA DESTINATION MATCHER ────────────────────────────────────────────────
 const INDIA_KEYWORDS = [
     'india', 'chennai', 'bangalore', 'bengaluru', 'mumbai', 'delhi', 'new delhi',

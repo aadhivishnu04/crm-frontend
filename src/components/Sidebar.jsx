@@ -34,7 +34,7 @@ const Sidebar = () => {
         if (!empId) return;
 
         const sendHeartbeatPing = () => {
-            fetch('http://192.168.1.9:8082/api/members/ping', {
+            fetch('https://crm-backend-2-qlza.onrender.com:8082/api/members/ping', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
