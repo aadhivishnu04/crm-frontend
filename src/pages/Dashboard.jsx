@@ -38,7 +38,7 @@ import { getCurrentUser } from '../utils/auth';
 import { ROLES } from '../utils/permissions';
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://192.168.1.9:8082/api";
+const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
 
 // ─── INDIA DESTINATION MATCHER ───────────────────────────────────────────────
 const INDIA_KEYWORDS = [
