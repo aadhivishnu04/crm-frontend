@@ -31,7 +31,8 @@ const Login = () => {
         const id = employeeId.trim();
         try {
             // 1. Authenticate with the unified backend endpoint
-            const response = await fetch(`${API_BASE_URL}/api/login`, {
+            // FIX: Removed the extra /api here to prevent 404 Not Found
+            const response = await fetch(`${API_BASE_URL}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ employeeId: id, password: password })
@@ -52,7 +53,8 @@ const Login = () => {
 
             // 3. ULTRA SPEED TRACKER: Register heartbeat instantly for immediate panel visibility
             if (id.toLowerCase() !== 'admin') {
-                await fetch(`${API_BASE_URL}/api/members/ping`, {
+                // FIX: Removed the extra /api here as well
+                await fetch(`${API_BASE_URL}/members/ping`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
