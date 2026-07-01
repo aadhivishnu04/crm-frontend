@@ -34,7 +34,8 @@ const Sidebar = () => {
         if (!empId) return;
 
         const sendHeartbeatPing = () => {
-            fetch('https://crm-backend-2-qlza.onrender.com:8082/api/members/ping', {
+            // Removed :8082 as Render routes HTTPS traffic automatically
+            fetch('https://crm-backend-2-qlza.onrender.com/api/members/ping', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -51,25 +52,28 @@ const Sidebar = () => {
         return () => clearInterval(loopId);
     }, [user]);
 
-    // ─── UNIFIED ULTRA-SPEED LOGOUT DISCONNECT BEACON (PORT 8080) ────────────
-    const handleLogout = async () => {
+    // ─── UNIFIED ULTRA-SPEED LOGOUT DISCONNECT BEACON ────────────
+    const handleLogout = () => {
         const empId = user?.employeeId || user?.id || user?.username;
         const empRole = String(user?.role || user?.designation || '').toLowerCase();
         
-        // If it's a standard agent worker, immediately remove them from the active dashboard terminal pool
+        // 1. Force view closures immediately
+        setIsMobileOpen(false);
+        setIsSettingsOpen(false);
+
+        // 2. Fire backend drop request WITHOUT awaiting (Fire and Forget)
         if (empId && empRole !== 'admin' && String(empId).toLowerCase() !== 'admin') {
-            try {
-                await fetch('https://crm-backend-2-qlza.onrender.com:8089/api/members/logout-drop', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ employeeId: String(empId) })
-                });
-            } catch (err) {
+            // Removed :8089 to prevent fetch connection hangs on Render
+            fetch('https://crm-backend-2-qlza.onrender.com/api/members/logout-drop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ employeeId: String(empId) })
+            }).catch((err) => {
                 console.error("Presence engine drop context exception:", err);
-            }
+            });
         }
 
-        // Wipe persistent auth storage states safely
+        // 3. Wipe persistent auth storage states safely
         try {
             logoutUser();
         } catch (authErr) {
@@ -77,9 +81,7 @@ const Sidebar = () => {
             localStorage.clear(); 
         }
         
-        // Force view closures and immediate interface redirection
-        setIsMobileOpen(false);
-        setIsSettingsOpen(false);
+        // 4. Immediate interface redirection
         navigate('/login');
     };
 
