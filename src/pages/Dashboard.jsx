@@ -519,13 +519,49 @@ const Dashboard = () => {
     const [topDestinations, setTopDestinations] = useState([]);
     const [topDestinationsModalOpen, setTopDestinationsModalOpen] = useState(false);
 
+    // Live Heartbeat Sync
+    useEffect(() => {
+        const pingActiveStatus = async () => {
+            if (!currentUserIdentifier || currentUserIdentifier === 'unknown') return;
+            try {
+                await fetch(`${API_BASE_URL}/members/ping`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        employeeId: currentUserIdentifier,
+                        name: user?.name || displayHeaderName || 'Agent',
+                        designation: user?.role || user?.designation || 'Sales',
+                        status: 'online'
+                    })
+                });
+            } catch (e) {}
+        };
+        pingActiveStatus();
+        const pingInterval = setInterval(pingActiveStatus, 10000); 
+
+        const handleBeforeUnload = () => {
+            fetch(`${API_BASE_URL}/members/logout-drop`, {
+                method: 'POST',
+                keepalive: true,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ employeeId: currentUserIdentifier })
+            });
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            clearInterval(pingInterval);
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [currentUserIdentifier, user, displayHeaderName]);
+
     // Sync loop tracking real databases
     useEffect(() => {
         const timer = setInterval(() => setTime(new Date()), 1000);
 
         const fetchDashboardData = async () => {
             try {
-                const [statsRes, tasksRes, membersRes, targetsRes, eventsRes, topDestRes, jobsRes, leadsRes, campaignsRes] = await Promise.all([
+                const [statsRes, tasksRes, membersRes, targetsRes, eventsRes, topDestRes, jobsRes, leadsRes] = await Promise.all([
                     fetch(`${API_BASE_URL}/stats`),
                     fetch(`${API_BASE_URL}/tasks?employeeId=${currentUserIdentifier}`),
                     fetch(`${API_BASE_URL}/members`),
@@ -533,8 +569,7 @@ const Dashboard = () => {
                     fetch(`${API_BASE_URL}/events?employeeId=${currentUserIdentifier}`), 
                     fetch(`${API_BASE_URL}/top-destinations`),
                     fetch(`${API_BASE_URL}/jobs`),  
-                    fetch(`${API_BASE_URL}/leads`), 
-                    fetch(`${API_BASE_URL}/campaigns`),
+                    fetch(`${API_BASE_URL}/leads`)
                 ]);
 
                 if (statsRes.ok) setStats(await statsRes.json());
@@ -660,7 +695,7 @@ const Dashboard = () => {
         fetchDashboardData();
         const intervalId = setInterval(fetchDashboardData, 2000); 
         return () => { clearInterval(intervalId); clearInterval(timer); };
-    }, [allLeads.length]);
+    }, [allLeads.length, currentUserIdentifier]);
 
     // Copilot AI Assistant Engine
     const [isChatOpen, setIsChatOpen] = useState(false);
@@ -1392,123 +1427,6 @@ const Dashboard = () => {
                 </div>
             </Modal>
 
-            {/* ── TOP DESTINATIONS MODAL ── */}
-            <Modal open={topDestinationsModalOpen} onClose={() => setTopDestinationsModalOpen(false)} title="Top Destinations Breakdown" maxWidth="max-w-2xl">
-                <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                    {topDestinations.map((dest, idx) => (
-                        <div 
-                            key={idx} 
-                            onClick={() => {
-                                setTopDestinationsModalOpen(false);
-                                handleDestinationClick(dest.name);
-                            }}
-                            className="flex items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-700/30 p-3.5 bg-slate-50 dark:bg-[#0d1526] cursor-pointer hover:border-amber-500/30 hover:bg-amber-50/50 dark:hover:bg-slate-800/60 transition-all"
-                        >
-                            <div className="flex items-center gap-3 min-w-0 pr-3">
-                                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold flex-shrink-0 text-xs border border-amber-500/15">{idx + 1}</div>
-                                <span className="font-bold text-slate-700 dark:text-slate-200 text-sm truncate">{dest.name}</span>
-                            </div>
-                            <span className="font-bold font-mono text-slate-800 dark:text-white flex-shrink-0 text-sm">{dest.count} <span className="text-slate-400 text-xs font-normal">leads</span></span>
-                        </div>
-                    ))}
-                </div>
-            </Modal>
-
-            {/* ── REGIONAL TRIP BREAKDOWN POPUP MODAL ── */}
-            <Modal 
-                open={regionModal.open} onClose={() => setRegionModal(prev => ({ ...prev, open: false }))} 
-                title={regionModal.regionName} maxWidth="max-w-2xl"
-            >
-                <div className="space-y-2.5 overflow-y-auto max-h-[55vh] pr-1 custom-scrollbar">
-                    {regionModal.tripsList.length === 0 ? (
-                        <p className="text-slate-500 text-center py-10 text-sm">No metrics available for this category right now.</p>
-                    ) : (
-                        regionModal.tripsList.map((trip, idx) => (
-                            <div key={idx} onClick={() => setSelectedLeadDetails(trip)} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-700/30 bg-slate-50 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer hover:border-violet-500/20">
-                                <div className="min-w-0 flex-1">
-                                    <div className="flex items-center gap-2.5">
-                                        <span className="bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold text-violet-400 whitespace-nowrap">{trip.jobId || `LMN${trip.id}`}</span>
-                                        <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">{trip.customerName || trip.profileName || 'Unknown'}</h4>
-                                    </div>
-                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1.5">
-                                        {isIndiaDestination(trip.destination) ? <MapPin size={11} className="text-orange-400" /> : <Globe size={11} className="text-cyan-400" />}
-                                        <span className="font-semibold text-slate-600 dark:text-slate-300">{trip.destination || 'N/A'}</span>
-                                    </p>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-                <button 
-                    onClick={() => setRegionModal(prev => ({ ...prev, open: false }))} 
-                    className="w-full mt-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 font-semibold text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
-                >
-                    Dismiss Window
-                </button>
-            </Modal>
-
-            {/* ── PAYMENT HISTORY DOSSIER MODAL ── */}
-            <Modal open={!!selectedPaymentLead} onClose={() => setSelectedPaymentLead(null)} title={`Payment History: ${selectedPaymentLead?.customerName || selectedPaymentLead?.profileName || 'Details'}`} maxWidth="max-w-3xl">
-                {selectedPaymentLead && (() => {
-                    let historyList = [];
-                    try {
-                        historyList = typeof selectedPaymentLead.paymentHistoryDetails === 'string' 
-                            ? JSON.parse(selectedPaymentLead.paymentHistoryDetails) 
-                            : (selectedPaymentLead.paymentHistoryList || []);
-                    } catch(e) {}
-                    
-                    return (
-                        <div className="flex flex-col h-full space-y-4">
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700/30">
-                                <div>
-                                    <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wide mb-1">Total Package</p>
-                                    <p className="text-sm font-bold text-slate-800 dark:text-white">₹{(selectedPaymentLead.totalPackageCost || selectedPaymentLead.packageCost || 0).toLocaleString('en-IN')}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wide mb-1">Total Received</p>
-                                    <p className="text-sm font-bold text-emerald-500">₹{(selectedPaymentLead.amountReceived || 0).toLocaleString('en-IN')}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wide mb-1">Pending Balance</p>
-                                    <p className="text-sm font-bold text-amber-500">₹{(selectedPaymentLead.balancePending || Math.max(0, (selectedPaymentLead.totalPackageCost || selectedPaymentLead.packageCost || 0) - (selectedPaymentLead.amountReceived || 0))).toLocaleString('en-IN')}</p>
-                                </div>
-                                <div>
-                                    <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wide mb-1">Status</p>
-                                    <p className="text-sm font-bold text-cyan-500">{selectedPaymentLead.paymentStatus || 'Pending'}</p>
-                                </div>
-                            </div>
-
-                            <div className="space-y-3">
-                                <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700/40 pb-2 uppercase tracking-widest">Transaction Ledger</h4>
-                                <div className="max-h-[40vh] overflow-y-auto custom-scrollbar pr-2 space-y-2">
-                                    {historyList.length === 0 ? (
-                                        <p className="text-sm text-slate-500 text-center py-6">No individual payment transactions recorded yet.</p>
-                                    ) : (
-                                        historyList.map((txn, idx) => (
-                                            <div key={idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 rounded-xl bg-white dark:bg-[#0d1526] border border-slate-100 dark:border-slate-700/30 gap-3">
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-sm text-slate-800 dark:text-white">₹{Number(txn.amount || 0).toLocaleString('en-IN')}</span>
-                                                        <span className="text-[9px] px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 font-mono font-bold">{txn.mode || 'N/A'}</span>
-                                                    </div>
-                                                    <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-wide">For: {txn.service || 'Package'} · Txn: {txn.txnId || 'N/A'}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{txn.date}</p>
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-                                </div>
-                            </div>
-                            <div className="mt-4 flex justify-end">
-                                <button onClick={() => setSelectedPaymentLead(null)} className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors">Close</button>
-                            </div>
-                        </div>
-                    );
-                })()}
-            </Modal>
-
             {/* ── MEMBER PROFILE MODAL ── */}
             <Modal open={!!selectedMember} onClose={() => setSelectedMember(null)} title="Team Member Profile" maxWidth="max-w-sm">
                 {selectedMember && (
@@ -1531,7 +1449,9 @@ const Dashboard = () => {
                             </div>
                             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30">
                                 <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-widest mb-1">Last Active</span>
-                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{selectedMember.lastActive ? new Date(selectedMember.lastActive).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'Unknown'}</span>
+                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                                    {(selectedMember.updatedAt || selectedMember.lastActive) ? new Date(selectedMember.updatedAt || selectedMember.lastActive).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'Unknown'}
+                                </span>
                             </div>
                         </div>
                         <div className="w-full mt-2">
