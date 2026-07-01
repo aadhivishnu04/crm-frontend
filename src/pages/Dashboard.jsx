@@ -794,6 +794,12 @@ const Dashboard = () => {
                                 <Field label="No. of Children"><Select options={CHILDREN_OPTIONS} value={leadForm.childrenPax} onChange={v => setLeadForm({ ...leadForm, childrenPax: v })} placeholder="Select Children" /></Field>
                             </div>
                         </div>
+                           <div>
+                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700/50 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
+                                <MessageSquare size={14} className="text-pink-400" /> Additional Information
+                            </h4>
+                            <Field label="Message from Lead"><TextArea rows="3" value={leadForm.leadMessage} onChange={e => setLeadForm({ ...leadForm, leadMessage: e.target.value })} /></Field>
+                        </div>
                         <div>
                             <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700/50 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
                                 <Target size={14} className="text-blue-400" /> Marketing Preferences
@@ -805,16 +811,11 @@ const Dashboard = () => {
                                 <Field label="Estimated Budget"><Select options={BUDGET_OPTIONS} value={leadForm.budget} onChange={v => setLeadForm({ ...leadForm, budget: v })} placeholder="Select Budget" allowCustom={true} /></Field>
                             </div>
                         </div>
-                        <div>
-                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700/50 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
-                                <MessageSquare size={14} className="text-pink-400" /> Additional Information
-                            </h4>
-                            <Field label="Message from Lead"><TextArea rows="3" value={leadForm.leadMessage} onChange={e => setLeadForm({ ...leadForm, leadMessage: e.target.value })} /></Field>
-                        </div>
+                     
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100 dark:border-slate-700/40 mt-5 sticky bottom-0 bg-white dark:bg-[#141b2d] pb-1 z-20">
                         <button onClick={() => setLeadModalOpen(false)} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
-                        <button onClick={saveLead} disabled={!leadForm.customerName.trim()} className="w-full sm:flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 order-1 sm:order-2">
+                        <button onClick={saveLead} disabled={!leadForm.customerName.trim()} className="w-full sm:flex-1 py-2.5 rounded-xl bg-[#06BC7D] hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 order-1 sm:order-2">
                             <Save size={16} /> Save New Lead
                         </button>
                     </div>

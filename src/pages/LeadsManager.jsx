@@ -550,6 +550,18 @@ const LeadsManager = () => {
                             </Field>
                         </div>
                     </div>
+                     {/* Section 4: Additional Info */}
+                    <div>
+                        <h4 className="text-sm sm:text-base font-bold text-slate-300 border-b border-slate-700/50 pb-2 mb-3 sm:mb-4 flex items-center gap-2">
+                            <MessageSquare size={16} className="text-pink-400" /> Additional Information
+                        </h4>
+                        <div className="grid grid-cols-1 gap-3 sm:gap-4">
+                            <Field label="Message from Lead">
+                                <TextArea rows="2" value={leadForm.leadMessage} onChange={e => setLeadForm({ ...leadForm, leadMessage: e.target.value })} />
+                            </Field>
+                           
+                        </div>
+                    </div>
 
                     {/* Section 3: Marketing & Package */}
                     <div>
@@ -572,20 +584,7 @@ const LeadsManager = () => {
                         </div>
                     </div>
 
-                    {/* Section 4: Additional Info */}
-                    <div>
-                        <h4 className="text-sm sm:text-base font-bold text-slate-300 border-b border-slate-700/50 pb-2 mb-3 sm:mb-4 flex items-center gap-2">
-                            <MessageSquare size={16} className="text-pink-400" /> Additional Information
-                        </h4>
-                        <div className="grid grid-cols-1 gap-3 sm:gap-4">
-                            <Field label="Message from Lead">
-                                <TextArea rows="2" value={leadForm.leadMessage} onChange={e => setLeadForm({ ...leadForm, leadMessage: e.target.value })} />
-                            </Field>
-                            <Field label="Internal Notes">
-                                <TextArea rows="2" value={leadForm.notes} onChange={e => setLeadForm({ ...leadForm, notes: e.target.value })} />
-                            </Field>
-                        </div>
-                    </div>
+                   
                 </div>
 
                 {/* Sticky Footer */}

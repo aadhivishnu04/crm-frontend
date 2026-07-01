@@ -16,7 +16,7 @@ const initialNewLeadState = {
     email: '',
     destination: '',
     travelDates: '',
-    pax: '',
+    pax: '',        
     childrenPax: '0',
     packageType: 'Custom / Flexible',
     budget: '',
@@ -34,7 +34,30 @@ const BUDGET_OPTIONS = ['Under ₹30,000', '₹30,000 - ₹60,000', '₹60,000 -
 const PAX_OPTIONS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'];
 const CHILDREN_OPTIONS = ['0', '1', '2', '3', '4', '5+'];
 const DESTINATION_OPTIONS = ['Singapore', 'Dubai', 'Thailand', 'Malaysia', 'Japan', 'UK', 'Bali', 'Maldives', 'Europe', 'Sri Lanka', 'Vietnam', 'Nepal', 'Kashmir', 'Goa', 'Kerala', 'Rajasthan'];
-const TYPE_OPTIONS = ['B2C Enquiry', 'B2B Partner', 'Corporate / MICE', 'Walk-in'];
+
+// Utility to format ISO strings to highly readable strings
+const formatDateTime = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+        const dateObj = new Date(dateStr);
+        if (isNaN(dateObj.getTime())) return dateStr;
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = months[dateObj.getMonth()];
+        const year = dateObj.getFullYear();
+        
+        let hours = dateObj.getHours();
+        const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12; 
+        const strHours = String(hours).padStart(2, '0');
+
+        return `${day} ${month} ${year}, ${strHours}:${minutes} ${ampm}`;
+    } catch (e) {
+        return dateStr;
+    }
+};
 
 const SalesDashboard = () => {
     // Shared Input / UI Classes
@@ -50,8 +73,10 @@ const SalesDashboard = () => {
     const [activeTab, setActiveTab] = useState('Jobs');
 
     // --- SEARCH & FILTER STATES ---
-    const [searchQuery, setSearchQuery] = useState('');
-    const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [searchName, setSearchName] = useState('');
+    const [searchId, setSearchId] = useState('');
+    const [searchPhone, setSearchPhone] = useState('');
+    const [searchDestination, setSearchDestination] = useState('');
     const [selectedPlatform, setSelectedPlatform] = useState('All');
 
     // --- SCROLL TO TOP STATE ---
@@ -83,10 +108,10 @@ const SalesDashboard = () => {
     const [operationsStaff, setOperationsStaff] = useState([]);
     const [salesStaff, setSalesStaff] = useState([]);
 
-    // --- EDIT MODAL & ACCORDION STATES ---
+    // --- EDIT MODAL & ACCORDION STATES (salesActivity Default True) ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [expandedSections, setExpandedSections] = useState({
-        leadInfo: true, salesActivity: false, leadQualification: false, travelDetails: false, customisation: false, operationResponse: false, bookingConfirmation: false, paymentInfo: false
+        leadInfo: true, salesActivity: true, travelDetails: false, customisation: false, operationResponse: false, bookingConfirmation: false, paymentInfo: false
     });
 
     const toggleSection = (section) => {
@@ -100,9 +125,9 @@ const SalesDashboard = () => {
         noOfChildren: '', offers: '', departureCity: '',
         firstAttempt: '', leadResponse: '', interactionType: '', actionTaken: '', 
         leadStatusField: '', salesNotes: '', followupDate: '',
-        leadTemperature: '', objectionTracking: '',
+        leadTemperature: '', objectionTracking: '', bookingProbability: '0%', customerResponse: '', noResponseLogs: [],
         customisationRequests: [],
-        opsPreparedBy: '', opsCompletedOn: '', opsRemarks: '',
+        opsPreparedBy: '', opsCompletedOn: '', opsRemarks: '', opsActionTaken: '',
         opsVerificationStatus: 'Pending Verified', opsSharedWithClient: 'No', 
         billingName: '', bookingDate: '', operationExecutive: '',
         confirmedTripType: '', confirmedDestination: '', confirmedDuration: '', noOfPax: '', confirmedNoOfChildren: '',
@@ -111,7 +136,7 @@ const SalesDashboard = () => {
         paymentDueDate: '', transactionId: '', amountReceived: '', paymentMode: '', 
         nextPaymentDate: '', paymentStatus: 'Pending Initial Deposit', paymentHistoryDetails: '', voiceRecordings: [], 
         leadStatus: 'Jobs', gstInclusion: '', tcsInclusion: '', paymentService: '', paymentHistoryList: [],
-        followUpCount: 0, followUpType: '', followupAction: ''
+        followUpCount: 0, followUpType: '', followupAction: '', history: []
     });
 
     // --- AUTO CALCULATION FOR PAYMENT DUE DATE ---
@@ -126,6 +151,29 @@ const SalesDashboard = () => {
         }
     }, [editFormData.departureDate, isEditModalOpen]);
 
+    // --- AUTO CALCULATION FOR BOOKING PROBABILITY & TEMPERATURE ---
+    useEffect(() => {
+        let prob = '0%'; 
+        let temp = 'Cold';
+        const { leadResponse, leadStatusField, customerResponse, actionTaken } = editFormData;
+
+        if (leadStatusField === 'Booking Confirmed') {
+            prob = '100%'; temp = 'Hot';
+        } else if (leadStatusField === 'Negotiation') {
+            prob = '90%'; temp = 'Hot';
+        } else if (customerResponse === 'Needs Revision') {
+            prob = '75%'; temp = 'Hot';
+        } else if (actionTaken === 'Customisation Required') {
+            prob = '50%'; temp = 'Warm';
+        } else if (leadResponse === 'Requirement Collected') {
+            prob = '25%'; temp = 'Cold';
+        } else if (leadResponse === 'No Response') {
+            prob = '0%'; temp = 'Cold';
+        }
+
+        setEditFormData(prev => ({ ...prev, bookingProbability: prob, leadTemperature: temp }));
+    }, [editFormData.leadResponse, editFormData.leadStatusField, editFormData.customerResponse, editFormData.actionTaken]);
+
     // --- VOICE RECORDER STATES ---
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
@@ -136,14 +184,12 @@ const SalesDashboard = () => {
     const timerRef = useRef(null);
     const audioPlayersRef = useRef({});
 
-    // --- PREVENT ENTER FROM SUBMITTING FORM ---
     const handlePreventEnterSubmit = (e) => {
         if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.tagName !== 'BUTTON') {
             e.preventDefault();
         }
     };
 
-    // ─── HISTORY TRACKING HELPER ─────────────────────────────────────────────
     const appendHistory = (existingHistory, action, note) => {
         const timestamp = new Date().toLocaleString('en-IN', { 
             month: 'short', day: 'numeric', year: 'numeric', 
@@ -160,7 +206,6 @@ const SalesDashboard = () => {
         return [{ date: timestamp, action, note }, ...currentHistory];
     };
 
-    // --- CUSTOMISATION ARRAY MANAGERS ---
     const handleCustomisationChange = (index, field, value) => {
         const newRequests = [...editFormData.customisationRequests];
         newRequests[index] = { ...newRequests[index], [field]: value };
@@ -188,35 +233,61 @@ const SalesDashboard = () => {
         }));
     };
 
-    // --- ADD PAYMENT TO LEDGER ---
-    const handleAddPayment = () => {
-        if (!editFormData.amountReceived) {
-            alert('Please enter an amount to record.');
+    // --- LOG SUBMISSION HANDLER WITH AUTO-SAVE & PERFECT SYNC ---
+    const handleLogNoResponse = async () => {
+        if (!editFormData.salesNotes && !editFormData.interactionType && !editFormData.actionTaken) {
+            alert("Please enter notes, interaction type, or action first.");
             return;
         }
         
-        const newPayment = {
-            date: new Date().toLocaleDateString('en-GB'),
-            service: editFormData.paymentService || 'Package',
-            amount: editFormData.amountReceived,
-            mode: editFormData.paymentMode || 'N/A',
-            txnId: editFormData.transactionId || 'N/A'
+        const newEntry = {
+            timestamp: formatDateTime(new Date().toISOString()),
+            interaction: editFormData.interactionType,
+            action: editFormData.actionTaken,
+            notes: editFormData.salesNotes
         };
+    
+        const updatedLogs = [...(editFormData.noResponseLogs || []), newEntry];
+        const updatedCount = updatedLogs.length; // Strict Sync with array length
+        const updatedHistory = appendHistory(editFormData.history, `Follow-up: ${editFormData.interactionType || 'Logged'}`, editFormData.salesNotes || editFormData.actionTaken);
+
+        let newStatus = selectedLead?.status || editFormData.leadStatus;
+        if (updatedCount >= 10) {
+            newStatus = 'Recycle Bin';
+        }
 
         setEditFormData(prev => ({
             ...prev,
-            paymentHistoryList: [newPayment, ...(prev.paymentHistoryList || [])],
-            amountReceived: '', paymentService: '', paymentMode: '', transactionId: ''
+            noResponseLogs: updatedLogs,
+            followUpCount: updatedCount,
+            history: updatedHistory,
+            salesNotes: '', 
+            leadStatus: newStatus
         }));
+
+        // Auto-save instantly to DB
+        try {
+            await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    noResponseLogs: JSON.stringify(updatedLogs),
+                    followupCount: updatedCount,
+                    history: JSON.stringify(updatedHistory),
+                    status: newStatus
+                })
+            });
+            fetchJobs(true);
+        } catch (e) {
+            console.error("Auto-save log failed", e);
+        }
     };
 
-    // --- FETCH DATA ---
     useEffect(() => {
         fetchJobs();
         return () => clearInterval(timerRef.current);
     }, [activeTab]);
 
-    // Fetch dynamic staff listings
     useEffect(() => {
         const fetchStaffDirectory = async () => {
             try {
@@ -235,7 +306,6 @@ const SalesDashboard = () => {
         fetchStaffDirectory();
     }, []);
 
-    // Fetch campaigns for new lead form
     useEffect(() => {
         const fetchCampaigns = async () => {
             try {
@@ -290,7 +360,6 @@ const SalesDashboard = () => {
     const scrollToTop = () => window.scrollTo({ top: 0, behavior: "smooth" });
     const scrollTabs = (dir) => tabScrollRef.current?.scrollBy({ left: dir * 160, behavior: 'smooth' });
 
-    // ─── NEW LEAD HANDLERS ────────────────────────────────────────────────────
     const handleOpenNewLeadModal = () => {
         setNewLeadForm(initialNewLeadState);
         setNewLeadManualStates({});
@@ -334,8 +403,8 @@ const SalesDashboard = () => {
                 notes: newLeadForm.notes,
                 type: newLeadForm.type,
                 status: 'Jobs',
-                history: initialHistory,
-                dateAdded: new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }),
+                history: JSON.stringify(initialHistory),
+                dateAdded: new Date().toISOString(),
             };
 
             const response = await fetch(`${API_BASE_URL}/leads`, {
@@ -345,7 +414,6 @@ const SalesDashboard = () => {
             });
 
             if (response.ok) {
-                // Trigger email notification silently
                 const saved = await response.json();
                 fetch(`${API_BASE_URL}/notifications/new-lead`, {
                     method: 'POST',
@@ -373,7 +441,6 @@ const SalesDashboard = () => {
         }
     };
 
-    // --- NEW LEAD DROPDOWN HELPER ---
     const renderNewLeadDropdown = (name, value, placeholder, options) => {
         const isCustomValue = value && value !== '' && !options.includes(value);
 
@@ -424,7 +491,6 @@ const SalesDashboard = () => {
         );
     };
 
-    // --- VOICE RECORDER FUNCTIONS ---
     const startRecording = async () => {
         audioChunksRef.current = [];
         setRecordingTime(0);
@@ -472,7 +538,6 @@ const SalesDashboard = () => {
 
     const formatTimer = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-    // --- REASSIGN ---
     const handleOpenReassignModal = (lead) => {
         setSelectedLead(lead);
         setReassignOption('pool');
@@ -491,8 +556,8 @@ const SalesDashboard = () => {
             const noteText = reassignOption === 'pool' ? 'Released from sales assignment.' : `Reason: ${reassignReason || 'No reason provided.'}`;
             const updatedHistory = appendHistory(selectedLead.history, actionText, noteText);
             const payload = reassignOption === 'pool'
-                ? { assignedTo: '', status: 'Jobs', history: updatedHistory }
-                : { assignedTo: reassignTargetEmployee, status: 'Sales Assigned', reassignmentReason: reassignReason, history: updatedHistory };
+                ? { assignedTo: '', status: 'Jobs', history: JSON.stringify(updatedHistory) }
+                : { assignedTo: reassignTargetEmployee, status: 'Sales Assigned', reassignmentReason: reassignReason, history: JSON.stringify(updatedHistory) };
 
             const response = await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
                 method: 'PUT',
@@ -507,7 +572,6 @@ const SalesDashboard = () => {
         }
     };
 
-    // --- OPEN EDIT MODAL ---
     const handleOpenEditModal = (lead) => {
         setSelectedLead(lead);
         setRecordingTime(0);
@@ -515,8 +579,51 @@ const SalesDashboard = () => {
         setPlayingIndex(null);
 
         setExpandedSections({
-            leadInfo: true, salesActivity: false, leadQualification: false, travelDetails: false, customisation: false, operationResponse: false, bookingConfirmation: false, paymentInfo: false
+            leadInfo: true, salesActivity: true, travelDetails: false, customisation: false, operationResponse: false, bookingConfirmation: false, paymentInfo: false
         });
+
+        // --- Safe JSON Parsing for Previous Attempts ---
+        let parsedNoResponseLogs = [];
+        try {
+            if (lead.noResponseLogs && lead.noResponseLogs !== '[object Object]') {
+                parsedNoResponseLogs = typeof lead.noResponseLogs === 'string' ? JSON.parse(lead.noResponseLogs) : lead.noResponseLogs;
+                if (!Array.isArray(parsedNoResponseLogs)) {
+                    parsedNoResponseLogs = [];
+                }
+            }
+        } catch (e) {
+            console.error("Error securely parsing noResponseLogs", e);
+            parsedNoResponseLogs = [];
+        }
+
+        // --- Self Healing & Strict Legacy Sync ---
+        let pHistory = [];
+        try { pHistory = typeof lead.history === 'string' ? JSON.parse(lead.history) : (lead.history || []); } catch(e){}
+
+        if (parsedNoResponseLogs.length === 0 && (lead.followupCount > 0 || lead.followUpCount > 0)) {
+            const recoveredLogs = pHistory.filter(h => 
+                h.action && (h.action.toLowerCase().includes('follow') || h.action.toLowerCase().includes('response') || h.action.toLowerCase().includes('log') || h.action.toLowerCase().includes('attempt'))
+            ).map(h => ({
+                timestamp: formatDateTime(h.date),
+                interaction: 'Legacy Record',
+                action: h.action,
+                notes: h.note || 'Historical entry'
+            }));
+            
+            if (recoveredLogs.length > 0) {
+                parsedNoResponseLogs = recoveredLogs;
+            } else {
+                const dummyCount = lead.followupCount || lead.followUpCount || 1;
+                for (let i=0; i<dummyCount; i++) {
+                    parsedNoResponseLogs.push({
+                        timestamp: formatDateTime(lead.createdAt || lead.dateAdded) || 'Legacy Date',
+                        interaction: 'Legacy Record',
+                        action: 'Previous Activity',
+                        notes: 'Migrated from legacy system'
+                    });
+                }
+            }
+        }
 
         let initialRecordings = [];
         if (lead.voiceBinaryFile) {
@@ -556,7 +663,7 @@ const SalesDashboard = () => {
         setEditFormData({
             leadName: lead.customerName || lead.profileName || '',
             leadSource: lead.platform || 'Website',
-            leadDate: lead.dateAdded || '',
+            leadDate: formatDateTime(lead.createdAt || lead.dateAdded) || '',
             mobileNumber: lead.phone || lead.mobileNo || '',
             emailAddress: lead.email || '',
             assignedTo: lead.assignedTo || 'Unassigned',
@@ -583,12 +690,19 @@ const SalesDashboard = () => {
             followupDate: lead.nextFollowUp || lead.followupDate || '',
             leadTemperature: lead.leadTemperature || '',
             objectionTracking: lead.objectionTracking || '',
+            customerResponse: lead.customerResponse || '',
+            bookingProbability: lead.bookingProbability || '0%',
+            
+            noResponseLogs: parsedNoResponseLogs,
+            history: pHistory,
+
             customisationRequests: parsedCustomisationRequests,
             opsPreparedBy: lead.opsPreparedBy || '',
             opsCompletedOn: lead.opsCompletedOn || '',
             opsRemarks: lead.opsRemarks || '',
+            opsActionTaken: lead.opsActionTaken || '',
             opsVerificationStatus: lead.opsVerificationStatus || 'Pending Verified',
-            opsSharedWithClient: lead.opsSharedWithClient || 'No',
+            opsSharedWithClient: lead.opsSharedWithClient || 'No', 
             billingName: lead.billingName || '',
             bookingDate: lead.bookingDate || '',
             operationExecutive: lead.operationExecutive || '',
@@ -607,21 +721,23 @@ const SalesDashboard = () => {
             arrivalDate: lead.arrivalDate || '',
             flightStatus: lead.flightStatus || '',
             visaStatus: lead.visaStatus || '',
-            insuranceStatus: lead.insuranceStatus || '',
+            insuranceStatus: lead.insuranceStatus || '', 
             paymentDueDate: lead.paymentDueDate || '',
             transactionId: lead.transactionId || '',
             amountReceived: lead.amountReceived || '',
-            paymentMode: lead.paymentMode || '',
+            paymentMode: lead.paymentMode || '', 
             nextPaymentDate: lead.nextPaymentDate || '',
             paymentStatus: lead.paymentStatus || 'Pending Initial Deposit',
             paymentHistoryDetails: lead.paymentHistoryDetails || '',
-            voiceRecordings: initialRecordings,
+            voiceRecordings: initialRecordings, 
             leadStatus: lead.status || 'Jobs',
             gstInclusion: lead.gstInclusion || '',
             tcsInclusion: lead.tcsInclusion || '',
             paymentService: lead.paymentService || '',
             paymentHistoryList: parsedPaymentHistory,
-            followUpCount: lead.followUpCount || 0,
+            
+            // STRICTLY TIE FOLLOW UP COUNT TO THE ARRAY LENGTH
+            followUpCount: parsedNoResponseLogs.length, 
             followUpType: lead.followUpType || '',
             followupAction: lead.followupAction || ''
         });
@@ -631,10 +747,15 @@ const SalesDashboard = () => {
     const handleSubmitEdit = async (e) => {
         e.preventDefault();
         try {
+            let finalStatus = editFormData.leadStatus;
+            if (editFormData.followUpCount >= 10) {
+                finalStatus = 'Recycle Bin';
+            }
+
             const updatedHistory = appendHistory(
-                selectedLead.history,
+                editFormData.history,
                 `Lead Profile Updated`,
-                `Status: ${editFormData.leadStatusField || editFormData.leadStatus} | Stage: ${editFormData.leadResponse || 'N/A'}`
+                `Status: ${editFormData.leadStatusField || finalStatus} | Stage: ${editFormData.leadResponse || 'N/A'}`
             );
 
             const payload = {
@@ -642,8 +763,13 @@ const SalesDashboard = () => {
                 packageCost: editFormData.totalPackageCost,
                 offers: editFormData.specialOffers, 
                 noOfChildren: editFormData.confirmedNoOfChildren || editFormData.noOfChildren,
+                noResponseLogs: editFormData.noResponseLogs?.length ? JSON.stringify(editFormData.noResponseLogs) : null,
+                followupCount: editFormData.followUpCount,
                 voiceBinaryFile: editFormData.voiceRecordings?.length ? JSON.stringify(editFormData.voiceRecordings) : null,
                 paymentHistoryDetails: editFormData.paymentHistoryList?.length ? JSON.stringify(editFormData.paymentHistoryList) : null,
+                
+                // --- UNIFIED PIPELINE ARRAYS ---
+                customisationRequests: editFormData.customisationRequests?.length ? JSON.stringify(editFormData.customisationRequests) : null,
                 customisationDestination: editFormData.customisationRequests[0]?.destination || '',
                 customisationType: editFormData.customisationRequests[0]?.customisationType || '',
                 requirements: editFormData.customisationRequests[0]?.requirements || '',
@@ -653,8 +779,9 @@ const SalesDashboard = () => {
                 readymadePackageDetails: editFormData.customisationRequests[0]?.readymadePackageDetails || '',
                 turnaroundTime: editFormData.customisationRequests[0]?.turnaroundTime || '',
                 customisationStatus: editFormData.customisationRequests[0]?.status || 'Pending',
-                status: editFormData.leadStatus,
-                history: updatedHistory
+                
+                status: finalStatus,
+                history: JSON.stringify(updatedHistory)
             };
             
             const response = await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
@@ -692,7 +819,7 @@ const SalesDashboard = () => {
             const response = await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ assignedTo: assignTo, status: 'Sales Assigned', history: updatedHistory })
+                body: JSON.stringify({ assignedTo: assignTo, status: 'Sales Assigned', history: JSON.stringify(updatedHistory) })
             });
             if (response.ok) { setIsAssignModalOpen(false); fetchJobs(); }
             else alert('Failed to assign.');
@@ -710,7 +837,7 @@ const SalesDashboard = () => {
             const response = await fetch(`${API_BASE_URL}/leads/${leadId}/assign`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'Move To Operation', history: updatedHistory })
+                body: JSON.stringify({ status: 'Move To Operation', history: JSON.stringify(updatedHistory) })
             });
             if (response.ok) fetchJobs();
             else alert('Failed to move to operations.');
@@ -725,23 +852,33 @@ const SalesDashboard = () => {
         { id: 'Itinerary Shared', label: 'Itinerary Shared', icon: Target },
         { id: 'Follow-Up Required', label: 'Followup Required', icon: Target },
         { id: 'Move To Operation', label: 'Operations Desk', icon: Target },
+        { id: 'Recycle Bin', label: 'Recycle Bin', icon: Trash2 },
     ];
 
     const filteredData = jobs.filter(item => {
-        const q = searchQuery.toLowerCase();
         const displayId = `LMN${item.id || ''}`.toLowerCase();
         const name = (item.customerName || item.profileName || '').toLowerCase();
         const dest = (item.destination || '').toLowerCase();
-        const dates = (item.dates || item.travelDates || '').toLowerCase();
-        const amt = String(item.budget || item.amount || '').toLowerCase();
+        const phoneStr = (item.phone || item.mobileNo || '').toLowerCase();
 
-        const matchSearch = displayId.includes(q) || name.includes(q) || dest.includes(q) || dates.includes(q) || amt.includes(q);
+        const matchName = name.includes(searchName.toLowerCase());
+        const matchId = displayId.includes(searchId.toLowerCase());
+        const matchPhone = phoneStr.includes(searchPhone.toLowerCase());
+        const matchDest = dest.includes(searchDestination.toLowerCase());
+        const matchSearch = matchName && matchId && matchPhone && matchDest;
+
         const matchPlatform = selectedPlatform === 'All' || (item.platform || 'Website') === selectedPlatform;
         
         const itemStatus = item.status || 'Jobs';
         let matchTab = false;
         
-        if (activeTab === 'Sales Assigned') {
+        const isRecycleBin = (item.followupCount >= 10 || item.followUpCount >= 10 || itemStatus === 'Recycle Bin');
+
+        if (activeTab === 'Recycle Bin') {
+            matchTab = isRecycleBin;
+        } else if (isRecycleBin) {
+            matchTab = false;
+        } else if (activeTab === 'Sales Assigned') {
             matchTab = ['Sales Assigned', 'Itinerary Shared', 'Follow-Up Required', 'Move To Operation', 'Shared to Sales'].includes(itemStatus);
         } else if (activeTab === 'Move To Operation') {
             matchTab = ['Move To Operation', 'Shared to Sales'].includes(itemStatus);
@@ -752,7 +889,6 @@ const SalesDashboard = () => {
         return matchSearch && matchPlatform && matchTab;
     });
 
-    // --- FULLY CLICKABLE DATE PICKER HELPER ---
     const renderDatePicker = (name, value, label, onChangeHandler, placeholderText = '') => {
         return (
             <div className="w-full">
@@ -772,7 +908,6 @@ const SalesDashboard = () => {
         );
     };
 
-    // --- ARRAY DROPDOWN HELPER ---
     const renderArrayDropdown = (field, value, index, defaultOption, optionsList) => {
         const optionValues = optionsList.map(opt => typeof opt === 'object' ? opt.value : opt);
         const isCustomValue = value && value !== "" && !optionValues.includes(value);
@@ -825,7 +960,6 @@ const SalesDashboard = () => {
         );
     };
 
-    // --- MANUAL ENTRY DROPDOWN HELPER ---
     const renderDropdown = (name, value, defaultOption, optionsList, onChangeHandler, customClass = selectCls) => {
         const optionValues = optionsList.map(opt => typeof opt === 'object' ? opt.value : opt);
         const isCustomValue = value && value !== "" && !optionValues.includes(value);
@@ -881,6 +1015,11 @@ const SalesDashboard = () => {
         );
     };
 
+    const probValue = parseInt(editFormData.bookingProbability) || 0;
+    const circleRadius = 20;
+    const circleCircumference = 2 * Math.PI * circleRadius; // ~125.66
+    const circleOffset = circleCircumference - (probValue / 100) * circleCircumference;
+
     return (
         <div className="p-1 sm:p-4 lg:p-6 pt-20 sm:pt-24 lg:pt-24 w-full bg-[#0f172a] min-h-screen font-sans relative text-white">
 
@@ -890,7 +1029,6 @@ const SalesDashboard = () => {
                     <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Sales Dashboard</h1>
                     <p className="text-slate-400 text-sm sm:text-base mt-1">Manage and track your sales pipeline efficiently.</p>
                 </div>
-                {/* NEW LEAD BUTTON */}
                 <button
                     type="button"
                     onClick={handleOpenNewLeadModal}
@@ -902,12 +1040,16 @@ const SalesDashboard = () => {
             </div>
 
             {/* ── MOBILE-OPTIMIZED CATEGORY TABS ───────────────────────────────── */}
-            <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+            <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
                 {categories.map((cat) => {
                     const Icon = cat.icon;
                     const isActive = activeTab === cat.id;
                     const count = jobs.filter(d => {
                         const itemStatus = d.status || 'Jobs';
+                        const isRecycleBin = (d.followupCount >= 10 || d.followUpCount >= 10 || itemStatus === 'Recycle Bin');
+                        if (cat.id === 'Recycle Bin') return isRecycleBin;
+                        if (isRecycleBin) return false;
+
                         if (cat.id === 'Sales Assigned') {
                             return ['Sales Assigned', 'Itinerary Shared', 'Follow-Up Required', 'Move To Operation', 'Shared to Sales'].includes(itemStatus);
                         }
@@ -951,6 +1093,10 @@ const SalesDashboard = () => {
                         const isActive = activeTab === cat.id;
                         const count = jobs.filter(d => {
                             const itemStatus = d.status || 'Jobs';
+                            const isRecycleBin = (d.followupCount >= 10 || d.followUpCount >= 10 || itemStatus === 'Recycle Bin');
+                            if (cat.id === 'Recycle Bin') return isRecycleBin;
+                            if (isRecycleBin) return false;
+
                             if (cat.id === 'Sales Assigned') {
                                 return ['Sales Assigned', 'Itinerary Shared', 'Follow-Up Required', 'Move To Operation', 'Shared to Sales'].includes(itemStatus);
                             }
@@ -988,6 +1134,34 @@ const SalesDashboard = () => {
                 </button>
             </div>
 
+            {/* SEPARATE FILTER SECTION */}
+            <div className="flex flex-col gap-3 w-full mb-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                        <input type="text" placeholder="Search Name..." value={searchName} onChange={(e) => setSearchName(e.target.value)} className={`${inputCls} pl-8`} />
+                    </div>
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                        <input type="text" placeholder="Search ID..." value={searchId} onChange={(e) => setSearchId(e.target.value)} className={`${inputCls} pl-8`} />
+                    </div>
+                    <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                        <input type="text" placeholder="Search Phone..." value={searchPhone} onChange={(e) => setSearchPhone(e.target.value)} className={`${inputCls} pl-8`} />
+                    </div>
+                   
+                    <div className="relative">
+                        <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                        <select value={selectedPlatform} onChange={(e) => setSelectedPlatform(e.target.value)} className={`${selectCls} pl-8`}>
+                            <option value="All">All Platforms</option>
+                            {PLATFORM_OPTIONS.map(p => (
+                                <option key={p} value={p}>{p}</option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             {/* Data Table Wrapper */}
             <div className="bg-transparent sm:bg-slate-900/30 border-none sm:border border-slate-700/30 rounded-xl shadow-sm overflow-hidden flex flex-col">
                 
@@ -997,38 +1171,6 @@ const SalesDashboard = () => {
                         <span className="truncate pr-2">{categories.find(c => c.id === activeTab)?.label || activeTab}</span>
                         <span className="text-slate-400 font-normal text-sm sm:text-base whitespace-nowrap bg-slate-800/50 sm:bg-transparent px-2 py-0.5 rounded-full sm:px-0 sm:ml-2">({filteredData.length} records)</span>
                     </h2>
-
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto relative">
-                        <div className="relative w-full sm:w-64">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                            <input
-                                type="text"
-                                placeholder="Search Name, ID, or Date..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-9 pr-4 py-2.5 sm:py-2 text-sm sm:text-base bg-[#1e293b] sm:bg-transparent border border-slate-700 sm:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all text-slate-100 placeholder-slate-500"
-                            />
-                        </div>
-                        <button
-                            onClick={() => setIsFilterOpen(!isFilterOpen)}
-                            className={`flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 text-sm sm:text-base font-medium rounded-lg transition-colors border ${isFilterOpen || selectedPlatform !== 'All' ? 'bg-slate-700/50 text-white border-slate-500' : 'text-slate-300 bg-[#1e293b] sm:bg-transparent border-slate-700 hover:bg-slate-800/50'}`}
-                        >
-                            <Filter size={16} />
-                            <span className="truncate max-w-[100px]">{selectedPlatform !== 'All' ? selectedPlatform : 'Filter'}</span>
-                        </button>
-                        
-                        {isFilterOpen && (
-                            <div className="absolute top-[calc(100%+8px)] right-0 w-full sm:w-48 bg-[#0f172a] sm:bg-[#07202a] border border-slate-700 rounded-lg shadow-xl z-10 p-2">
-                                <p className="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2 px-2">Filter by Platform</p>
-                                {['All', 'Website', 'Instagram', 'Facebook', 'Referral'].map(p => (
-                                    <button key={p} onClick={() => { setSelectedPlatform(p); setIsFilterOpen(false); }}
-                                        className={`w-full text-left px-3 py-2.5 sm:py-2 text-sm sm:text-base rounded-md transition-colors ${selectedPlatform === p ? 'bg-slate-800 text-white font-medium' : 'text-slate-300 hover:bg-slate-800/50'}`}>
-                                        {p}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
                 </div>
 
                 {/* Main Data View */}
@@ -1036,7 +1178,7 @@ const SalesDashboard = () => {
                     <table className="w-full text-left text-sm sm:text-base text-slate-200 block md:table">
                         
                         <thead className="bg-slate-900/80 border-b border-slate-700/50 text-xs uppercase tracking-wider text-slate-400 font-semibold hidden md:table-header-group">
-                            {activeTab === 'Jobs' && (
+                            {(activeTab === 'Jobs' || activeTab === 'Recycle Bin') && (
                                 <tr>
                                     <th className="px-4 py-4">Job Id</th>
                                     <th className="px-4 py-4">Lead Info</th>
@@ -1109,7 +1251,7 @@ const SalesDashboard = () => {
                             ) : filteredData.length > 0 ? filteredData.map(row => (
                                 <tr key={row.id} className="block md:table-row bg-[#1e293b] md:bg-transparent border border-slate-700 md:border-none rounded-xl mb-4 md:mb-0 p-3 sm:p-4 md:p-0 hover:bg-slate-800/40 transition-colors shadow-sm md:shadow-none group relative">
 
-                                    {activeTab === 'Jobs' && (
+                                    {(activeTab === 'Jobs' || activeTab === 'Recycle Bin') && (
                                         <>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none font-semibold text-slate-300">
                                                 <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Job Id</span>
@@ -1148,7 +1290,7 @@ const SalesDashboard = () => {
                                             </td>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none">
                                                 <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Lead Date</span>
-                                                <span className="text-sm text-slate-400 whitespace-nowrap">{row.dateAdded || 'Jun 4, 2026'}</span>
+                                                <span className="text-sm text-slate-400 whitespace-nowrap">{formatDateTime(row.createdAt || row.dateAdded)}</span>
                                             </td>
                                         </>
                                     )}
@@ -1194,7 +1336,7 @@ const SalesDashboard = () => {
                                             </td>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none">
                                                 <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Lead Date</span>
-                                                <span className="text-sm text-slate-400">{row.dateAdded || 'Jun 4, 2026'}</span>
+                                                <span className="text-sm text-slate-400">{formatDateTime(row.createdAt || row.dateAdded)}</span>
                                             </td>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none w-full md:w-auto">
                                                 <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Lead Status</span>
@@ -1355,7 +1497,7 @@ const SalesDashboard = () => {
                                             </td>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none">
                                                 <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Added</span>
-                                                <span className="text-sm text-slate-400 font-medium whitespace-nowrap">{row.dateAdded || 'Jun 4, 2026'}</span>
+                                                <span className="text-sm text-slate-400 font-medium whitespace-nowrap">{formatDateTime(row.createdAt || row.dateAdded)}</span>
                                             </td>
                                         </>
                                     )}
@@ -1372,7 +1514,7 @@ const SalesDashboard = () => {
                                                 className="p-2 md:p-1.5 text-blue-400 md:text-slate-400 hover:text-blue-300 bg-blue-500/10 md:bg-transparent hover:bg-blue-900/30 rounded-lg transition-colors" title="View Details">
                                                 <Eye size={18} />
                                             </button>
-                                            {activeTab !== 'Jobs' && (
+                                            {activeTab !== 'Jobs' && activeTab !== 'Recycle Bin' && (
                                                 <button type="button" onClick={() => handleOpenEditModal(row)}
                                                     className="p-2 md:p-1.5 text-yellow-400 md:text-slate-400 hover:text-yellow-400 bg-yellow-500/10 md:bg-transparent hover:bg-yellow-900/30 rounded-lg transition-colors" title="Edit Details">
                                                     <Pencil size={18} />
@@ -1389,12 +1531,12 @@ const SalesDashboard = () => {
                                                     className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 text-[11px] sm:text-xs font-bold md:font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 rounded-lg md:rounded-md transition-colors whitespace-nowrap" title="Send to Operations">
                                                     <Send size={14} className="hidden md:block"/> Send to Ops
                                                 </button>
-                                            ) : (
+                                            ) : (activeTab === 'Jobs' || activeTab === 'Recycle Bin') ? (
                                                 <button type="button" onClick={() => handleOpenAssignModal(row)}
                                                     className="p-2 md:p-1.5 text-orange-400 md:text-slate-400 hover:text-orange-400 bg-orange-500/10 md:bg-transparent hover:bg-orange-900/30 rounded-lg transition-colors" title="Assign">
                                                     <CheckSquare size={18} />
                                                 </button>
-                                            )}
+                                            ) : null}
                                         </div>
                                     </td>
                                 </tr>
@@ -1413,9 +1555,7 @@ const SalesDashboard = () => {
                 </div>
             </div>
 
-            {/* ═══════════════════════════════════════════════════════════════════
-                NEW LEAD MODAL
-            ═══════════════════════════════════════════════════════════════════ */}
+            {/* NEW LEAD MODAL */}
             {isNewLeadModalOpen && (
                 <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-3 sm:p-4 md:p-6 backdrop-blur-sm">
                     <div className="bg-[#0f172a] border border-slate-700/80 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[calc(100vh-24px)] sm:max-h-[92vh] flex flex-col relative text-slate-100 overflow-hidden">
@@ -1445,7 +1585,6 @@ const SalesDashboard = () => {
                                     <Users size={14} /> Customer Details
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                                    {/* Customer Name — required */}
                                     <div className="sm:col-span-2 md:col-span-1">
                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">
                                             Customer Name <span className="text-red-400">*</span>
@@ -1455,12 +1594,10 @@ const SalesDashboard = () => {
                                             name="customerName"
                                             value={newLeadForm.customerName}
                                             onChange={handleNewLeadInputChange}
-                                            placeholder=""
                                             required
                                             className={inputCls}
                                         />
                                     </div>
-                                    {/* Phone — required */}
                                     <div>
                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">
                                             Phone <span className="text-red-400">*</span>
@@ -1472,13 +1609,11 @@ const SalesDashboard = () => {
                                                 name="phone"
                                                 value={newLeadForm.phone}
                                                 onChange={handleNewLeadInputChange}
-                                                placeholder=" "
                                                 required
                                                 className={`${inputCls} pl-8`}
                                             />
                                         </div>
                                     </div>
-                                    {/* Email */}
                                     <div>
                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Email Address</label>
                                         <div className="relative">
@@ -1488,12 +1623,10 @@ const SalesDashboard = () => {
                                                 name="email"
                                                 value={newLeadForm.email}
                                                 onChange={handleNewLeadInputChange}
-                                                placeholder=" "
                                                 className={`${inputCls} pl-8`}
                                             />
                                         </div>
                                     </div>
-                                    
                                 </div>
                             </div>
 
@@ -1503,22 +1636,18 @@ const SalesDashboard = () => {
                                     <MapPin size={14} /> Trip Requirements
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                                    {/* Destination */}
                                     <div>
                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
                                         {renderNewLeadDropdown('destination', newLeadForm.destination, '-- Select Destination --', DESTINATION_OPTIONS)}
                                     </div>
-                                    {/* Package Type */}
                                     <div>
                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Type</label>
                                         {renderNewLeadDropdown('packageType', newLeadForm.packageType, '-- Select Type --', PACKAGE_TYPES)}
                                     </div>
-                                    {/* Budget */}
                                     <div>
                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Budget Range</label>
                                         {renderNewLeadDropdown('budget', newLeadForm.budget, '-- Select Budget --', BUDGET_OPTIONS)}
                                     </div>
-                                    {/* Travel Dates */}
                                     <div>
                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Travel Dates</label>
                                         <div className="relative">
@@ -1528,17 +1657,14 @@ const SalesDashboard = () => {
                                                 name="travelDates"
                                                 value={newLeadForm.travelDates}
                                                 onChange={handleNewLeadInputChange}
-                                                placeholder=" "
                                                 className={`${inputCls} pl-8`}
                                             />
                                         </div>
                                     </div>
-                                    {/* Adults */}
                                     <div>
                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. of Adults</label>
                                         {renderNewLeadDropdown('pax', newLeadForm.pax, '-- Select --', PAX_OPTIONS)}
                                     </div>
-                                    {/* Children */}
                                     <div>
                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. of Children</label>
                                         {renderNewLeadDropdown('childrenPax', newLeadForm.childrenPax, null, CHILDREN_OPTIONS)}
@@ -1552,12 +1678,10 @@ const SalesDashboard = () => {
                                     <Globe size={14} /> Lead Source
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                    {/* Platform */}
                                     <div>
                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Platform / Source</label>
                                         {renderNewLeadDropdown('platform', newLeadForm.platform, '-- Select Platform --', PLATFORM_OPTIONS)}
                                     </div>
-                                    {/* Campaign */}
                                     <div>
                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Campaign</label>
                                         {campaignOptions.length > 0
@@ -1588,7 +1712,6 @@ const SalesDashboard = () => {
                                             value={newLeadForm.leadMessage}
                                             onChange={handleNewLeadInputChange}
                                             rows={3}
-                                            placeholder=" "
                                             className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 outline-none resize-none custom-scrollbar transition-all placeholder-slate-600"
                                         />
                                     </div>
@@ -1599,14 +1722,12 @@ const SalesDashboard = () => {
                                             value={newLeadForm.notes}
                                             onChange={handleNewLeadInputChange}
                                             rows={3}
-                                            placeholder=" "
                                             className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-emerald-400 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 outline-none resize-none custom-scrollbar transition-all placeholder-slate-600"
                                         />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Pipeline notice */}
                             <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-700/50 bg-slate-800/20">
                                 <div className="w-2 h-2 rounded-full bg-cyan-400 flex-shrink-0 animate-pulse" />
                                 <p className="text-[11px] sm:text-xs text-slate-400">
@@ -1649,20 +1770,43 @@ const SalesDashboard = () => {
                 </div>
             )}
 
-            {/* ===== EDIT MODAL ===== */}
+            {/* EDIT MODAL */}
             {isEditModalOpen && selectedLead && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-3 sm:p-4 md:p-6 backdrop-blur-sm">
                     <div className="bg-[#0f172a] border border-slate-700/80 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[calc(100vh-24px)] sm:max-h-[90vh] flex flex-col relative text-slate-100 overflow-hidden">
 
                         <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] z-20 flex-shrink-0">
-                            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2 truncate pr-4">
-                                <Pencil size={20} className="text-orange-400 flex-shrink-0" />
-                                <span className="truncate">Edit Lead</span>
-                                <span className="text-sm font-mono font-semibold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 flex-shrink-0">
-                                    LMN{String(selectedLead?.id || '').padStart(4, '0')}
-                                </span>
-                            </h2>
-                            <button type="button" onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-800 flex-shrink-0">
+                            <div className="flex items-center gap-4">
+                                <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2 truncate pr-4">
+                                    <Pencil size={20} className="text-orange-400 flex-shrink-0" />
+                                    <span className="truncate hidden sm:inline">Edit Lead</span>
+                                    <span className="text-sm font-mono font-semibold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 flex-shrink-0">
+                                        LMN{String(selectedLead?.id || '').padStart(4, '0')}
+                                    </span>
+                                </h2>
+                                
+                                <div className="flex items-center gap-3 pl-4 sm:ml-4 border-l border-slate-700">
+                                    <div className="relative w-11 h-11 flex items-center justify-center bg-[#0f172a] rounded-xl shadow-inner border border-slate-700/50">
+                                        <svg className="w-9 h-9 transform -rotate-90">
+                                            <circle cx="18" cy="18" r="14" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-slate-800" />
+                                            <circle cx="18" cy="18" r="14" stroke="currentColor" strokeWidth="4" fill="transparent" strokeDasharray={87.96} strokeDashoffset={87.96 - (probValue / 100) * 87.96} className="text-cyan-400 transition-all duration-1000 ease-out" strokeLinecap="round" />
+                                        </svg>
+                                        <span className="absolute text-[10px] font-extrabold text-cyan-400">{probValue}%</span>
+                                    </div>
+                                    <div className="flex flex-col justify-center">
+                                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">Booking Probability</span>
+                                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider w-max ${
+                                            editFormData.leadTemperature === 'Hot' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 
+                                            editFormData.leadTemperature === 'Warm' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 
+                                            'bg-blue-600/30 text-blue-300 border border-blue-500/40'
+                                        }`}>
+                                            {editFormData.leadTemperature || 'Cold'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <button type="button" onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-800 flex-shrink-0 ml-auto">
                                 <X size={20} />
                             </button>
                         </div>
@@ -1716,7 +1860,7 @@ const SalesDashboard = () => {
                                         <div className="flex items-center gap-1.5 text-[11px] sm:text-xs">
                                             <span className="text-slate-500">Follow-Up Count:</span>
                                             <span className="font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-900/50 px-2 py-0.5 rounded-full min-w-[22px] text-center">
-                                                {editFormData.followUpCount || 0}
+                                                {editFormData.noResponseLogs?.length || 0}
                                             </span>
                                         </div>
                                     </div>
@@ -1725,16 +1869,14 @@ const SalesDashboard = () => {
                                 {expandedSections.salesActivity && (
                                     <div className="mt-4 space-y-4">
 
-                                        {/* BLOCK I — No Response */}
                                         <div className="relative">
                                             <div className="flex items-center gap-2 mb-3">
-                                                {/* <span className="text-[10px] font-bold text-slate-500 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5">I</span> */}
                                                 <span className="text-xs font-semibold text-white tracking-wide">No Response</span>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 items-end">
                                                 <div>
                                                     <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Lead Response</label>
-                                                    {renderDropdown('leadResponse', editFormData.leadResponse, '-- Select --', ['No Response', 'Requirement Collected', 'Callback Later', 'Not Interested'], handleInputChange)}
+                                                    {renderDropdown('leadResponse', editFormData.leadResponse, '-- Select --', ['No Response', 'Requirement Collected'], handleInputChange)}
                                                 </div>
                                                 <div className="flex items-end gap-1.5">
                                                     <div className="flex-1">
@@ -1749,7 +1891,7 @@ const SalesDashboard = () => {
                                                 </div>
                                                 <div>
                                                     <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Action Taken</label>
-                                                    {renderDropdown('actionTaken', editFormData.actionTaken, '-- Select --', ['Itinerary Shared', 'Follow Up Scheduled', 'Customisation Required', 'Closed'], handleInputChange)}
+                                                    {renderDropdown('actionTaken', editFormData.actionTaken, '-- Select --', ['Sample Itinerary Shared', 'Follow-up Scheduled', 'Requirement Message Sent', 'Voice Note Sent','Promotional Offer Sent'], handleInputChange)}
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-3">
@@ -1760,118 +1902,59 @@ const SalesDashboard = () => {
                                                 </div>
                                                 <div>
                                                     <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Notes</label>
-                                                    <textarea name="salesNotes" value={editFormData.salesNotes} onChange={handleInputChange} rows="1"
-                                                        className="w-full px-3 py-2 sm:py-1.5 bg-slate-900 border border-slate-700 rounded-lg sm:rounded text-white text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 outline-none resize-none custom-scrollbar transition-all"
-                                                        placeholder="Notes..." />
+                                                    <div className="flex gap-2">
+                                                        <textarea name="salesNotes" value={editFormData.salesNotes} onChange={handleInputChange} rows="1"
+                                                            className="w-full px-3 py-2 sm:py-1.5 bg-slate-900 border border-slate-700 rounded-lg sm:rounded text-white text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 outline-none resize-none custom-scrollbar transition-all placeholder-slate-500"
+                                                            placeholder="Notes..." />
+                                                        <button type="button" onClick={handleLogNoResponse} className="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap cursor-pointer">
+                                                            Save Log
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        {/* BLOCK II — Requirement Collected (shown when leadResponse is set) */}
-                                        {(editFormData.leadResponse === 'Requirement Collected' || editFormData.leadResponse === 'Callback Later' || editFormData.leadResponse === 'Not Interested') && (
-                                            <div className="relative">
-                                                <div className="flex items-center gap-2 mb-3">
-                                                    {/* <span className="text-[10px] font-bold text-slate-500 bg-slate-800 border border-slate-700 rounded px-1.5 py-0.5">II</span> */}
-                                                    <span className="text-xs font-semibold text-white tracking-wide">Requirement Collected</span>
-                                                </div>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                                    <div>
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-400 mb-1">Lead Response</label>
-                                                        <select name="leadResponse" value={editFormData.leadResponse || ''} onChange={handleInputChange} className={selectCls}>
-                                                            <option value="No Response">No Response</option>
-                                                            <option value="Requirement Collected">Requirement Collected</option>
-                                                            <option value="Callback Later">Callback Later</option>
-                                                            <option value="Not Interested">Not Interested</option>
-                                                        </select>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-400 mb-1">Interaction Type</label>
-                                                        {renderDropdown('interactionType', editFormData.interactionType, '-- Select --', ['WhatsApp', 'Call', 'Email'], handleInputChange)}
-                                                    </div>
-                                                </div>
-                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-3">
-                                                    <div>
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-400 mb-1">Next Follow-Up</label>
-                                                        <input type="date" name="followupDate" value={editFormData.followupDate || ''} onChange={handleInputChange}
-                                                            className={`${inputCls} [color-scheme:dark]`} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-400 mb-1">Follow-Up Type</label>
-                                                        {renderDropdown('followUpType', editFormData.followUpType || '', '-- Select --', ['Call', 'WhatsApp', 'Email', 'Site Visit'], (e) => setEditFormData(prev => ({ ...prev, followUpType: e.target.value })))}
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-400 mb-1">Action</label>
-                                                        <input type="text" name="followupAction" value={editFormData.followupAction || ''} onChange={handleInputChange} className={inputCls} />
-                                                    </div>
-                                                </div>
+                                        <div className="mt-5 p-4 bg-[#091124] border border-slate-700/60 rounded-xl">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                                                    Previous Attempts ({editFormData.noResponseLogs?.length || 0})
+                                                </p>
                                             </div>
-                                        )}
-
-                                        {/* Lead Status + First Attempt row */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 pt-1 border-t border-slate-800/60">
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">First Attempt</label>
-                                                {renderDropdown('firstAttempt', editFormData.firstAttempt, '-- Select --', ['First Contact Made', 'Attempted to Contact'], handleInputChange)}
-                                            </div>
-                                            <div />
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-bold text-orange-400 mb-1">Lead Status</label>
-                                                {renderDropdown('leadStatusField', editFormData.leadStatusField, '-- Select Lead Status --', ['Yet to Connect', 'Requirement Collected', 'Itinerary Shared', 'Follow-Up', 'Negotiation', 'Booking Confirmed', 'Future Inquiry', 'Dropped'], handleInputChange, "w-full px-3 py-2 sm:py-1.5 bg-slate-900 border border-orange-500/50 rounded-lg sm:rounded text-white font-medium text-sm focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50 outline-none cursor-pointer transition-all")}
+                                            
+                                            <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                                                {editFormData.noResponseLogs && editFormData.noResponseLogs.length > 0 ? (
+                                                    [...editFormData.noResponseLogs].reverse().map((log, idx) => (
+                                                        <div key={idx} className="flex flex-col text-xs bg-[#0f172a] p-3 rounded-lg border border-slate-700/60 shadow-sm transition-all hover:bg-slate-800/80">
+                                                            <div className="flex justify-between items-start mb-2">
+                                                                <span className="text-cyan-400 font-bold tracking-wide">{log.timestamp}</span>
+                                                                <span className="text-slate-300 px-2 py-0.5 bg-slate-900 rounded border border-slate-600 text-[10px] font-medium uppercase">
+                                                                    {log.interaction || 'N/A'}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-slate-300 mt-0.5 space-y-1.5">
+                                                                <div><span className="text-slate-500 font-medium">Action Taken:</span> <span className="text-slate-200">{log.action || 'None'}</span></div>
+                                                                {log.notes && <div><span className="text-slate-500 font-medium">Notes:</span> <span className="text-slate-200">{log.notes}</span></div>}
+                                                            </div>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="text-center py-4 text-xs text-slate-500 italic border border-dashed border-slate-700/50 rounded-lg">
+                                                        No detailed logs recorded yet. Add notes and save to see history here.
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
 
+                                        
                                     </div>
                                 )}
                             </div>
-
-                            {/* SECTION 3: LEAD QUALIFICATION */}
-                            {/* <div className={sectionCls}>
-                                <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('leadQualification')}>
-                                    <h3 className={`${sectionHeadCls} m-0`}>Lead Qualification</h3>
-                                    {expandedSections.leadQualification ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
-                                </div>
-                                {expandedSections.leadQualification && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4"> */}
-                                        {/* Empty left cell per design */}
-                                        {/* <div className="hidden sm:block" />
-                                        <div>
-                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Lead Temperature</label>
-                                            <select name="leadTemperature" value={editFormData.leadTemperature || ''} onChange={handleInputChange} className={selectCls}>
-                                                <option value="">-- Select Temperature --</option>
-                                                <option value="Hot">75% - 100% - Hot</option>
-                                                <option value="Warm">26% - 74% - Warm</option>
-                                                <option value="Cold">10% - 25% - Cold</option>
-                                            </select>
-                                            <p className="text-[9px] text-slate-500 mt-1">
-                                                10–25% Cold · 26–74% Warm · 75–100% Hot · Automatic Calculation
-                                            </p>
-                                        </div>
-                                        <div>
-                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Objection Tracking</label>
-                                            <select name="objectionTracking" value={editFormData.objectionTracking || ''} onChange={handleInputChange} className={selectCls}>
-                                                <option value="">-- Select Objection Reason --</option>
-                                                <option value="Price High">Price High</option>
-                                                <option value="Comparing Other Agents">Comparing Other Agents</option>
-                                                <option value="Flight Cost">Flight Cost</option>
-                                                <option value="Hotel Cost">Hotel Cost</option>
-                                                <option value="VISA Concerns">VISA Concerns</option>
-                                                <option value="Travel Date Issue">Travel Date Issue</option>
-                                                <option value="Family Approval Pending">Family Approval Pending</option>
-                                                <option value="Need Leave Approval">Need Leave Approval</option>
-                                                <option value="Unexpected Situations">Unexpected Situations</option>
-                                                <option value="Safety Concerns">Safety Concerns</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                )}
-                            </div> */}
 
                             {/* SECTION 4: TRAVEL DETAILS */}
                             <div className={sectionCls}>
                                 <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('travelDetails')}>
                                     <div className="flex flex-col gap-0.5">
                                         <h3 className={`${sectionHeadCls} m-0`}>Travel Details</h3>
-                                       
                                     </div>
                                     {expandedSections.travelDetails ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
                                 </div>
@@ -1879,14 +1962,13 @@ const SalesDashboard = () => {
                                     editFormData.leadResponse === 'Requirement Collected' ? (
                                         <>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-4">
-                                            {/* Destination — fetched from Leads Manager, also edit-enabled */}
                                             <div>
                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
                                                 {renderDropdown('destination', editFormData.destination, '-- Select Destination --', DESTINATION_OPTIONS, handleInputChange)}
                                             </div>
                                             <div>
                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Type</label>
-                                                {renderDropdown('tourType', editFormData.tourType, '-- Select Tour Type --', ['Custom / Flexible', 'Corporate', 'Honeymoon', 'Family Tour', 'Group Tour', 'Solo Backpacking', 'Friends Trip', 'Adventure / Trekking'], handleInputChange)}
+                                                {renderDropdown('tourType', editFormData.tourType, '-- Select Tour Type --', ['Honeymoon', 'Family', 'Solo', 'Friends', 'Corporate', 'Group Tour', 'MICE'], handleInputChange)}
                                             </div>
                                             <div>
                                                 <label className="block text-[11px] sm:text-xs font-medium text-white mb-1">Travel Date</label>
@@ -1897,7 +1979,6 @@ const SalesDashboard = () => {
                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
                                                 {renderDropdown('duration', editFormData.duration, '-- Select Duration --', ['2 Nights / 3 Days', '3 Nights / 4 Days', '4 Nights / 5 Days', '5 Nights / 6 Days', '6 Nights / 7 Days', '7 Nights+'], handleInputChange)}
                                             </div>
-                                            {/* Budget — fetched from Leads Manager, also edit-enabled */}
                                             <div>
                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Budget</label>
                                                 {renderDropdown('travelBudget', editFormData.travelBudget, '-- Select Budget Tier --', BUDGET_OPTIONS, handleInputChange)}
@@ -1922,17 +2003,15 @@ const SalesDashboard = () => {
                                             </div>
                                             <div>
                                                 <label className="block text-[11px] sm:text-xs font-medium text-white mb-1">Offers</label>
-                                                {renderDropdown('offers', editFormData.offers, '-- Drop down --', [{value: 'None', label: 'No Promo Applied'}, 'Early Bird 10% Discount', 'Free Airport Transfer Upgrade', {value: 'Complimentary Honeymoon Cake & Decor', label: 'Complimentary Honeymoon Cake & Decor'}], handleInputChange)}
+                                                {renderDropdown('offers', editFormData.offers, '', [{value: 'None', label: 'No Promo Applied'}, 'Early Bird 10% Discount', 'Free Airport Transfer Upgrade', {value: 'Complimentary Honeymoon Cake & Decor', label: 'Complimentary Honeymoon Cake & Decor'}], handleInputChange)}
                                             </div>
-                                            {/* Action Taken — inside Travel Details */}
                                             <div>
                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Action Taken</label>
-                                                {renderDropdown('actionTaken', editFormData.actionTaken, '-- Select --', ['Itinerary Shared', 'Follow Up Scheduled', 'Customisation Required', 'Closed'], handleInputChange)}
+                                                {renderDropdown('actionTaken', editFormData.actionTaken, '-- Select --', [ 'Customisation Required', 'Readymade Required'], handleInputChange)}
                                             </div>
                                         </div>
 
-                                        {/* CUSTOMISATION — inline, appears when Action Taken = Customisation Required */}
-                                        {editFormData.actionTaken === 'Customisation Required' && (
+                                        {(editFormData.actionTaken === 'Customisation Required' || editFormData.customerResponse === 'Needs Revision') && (
                                             <div className="mt-5 pt-4 border-t border-slate-800/60">
                                                 <h4 className={`${sectionHeadCls} mb-4`}>Customisation</h4>
                                                 <div className="space-y-4">
@@ -1950,10 +2029,9 @@ const SalesDashboard = () => {
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Customisation Type</label>
-                                                                    {renderArrayDropdown('customisationType', req.customisationType, index, '-- Select Type --', ['New Itinerary', 'Existing Itinerary Modification', 'Hotel Change', 'Sightseeing Change', 'Budget Optimisation', 'Flight & VISA Assistance'])}
+                                                                    {renderArrayDropdown('customisationType', req.customisationType, index, '-- Select Type --', ['New Itinerary', 'Existing Itinerary Modification', 'Hotel Change', 'Sightseeing Change', 'Budget Optimisation', 'Flight & VISA Assistance','Readymade Validation','Revising Again'])}
                                                                 </div>
                                                                 <div>
-                                                                    {/* <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Turn Over Time</label> */}
                                                                     {renderDatePicker(`turnoverTime_${index}`, req.turnaroundTime, 'Turn Over Time', (e) => handleCustomisationChange(index, 'turnaroundTime', e.target.value), 'Calendar')}
                                                                 </div>
                                                                 <div className="md:col-span-3">
@@ -2007,35 +2085,37 @@ const SalesDashboard = () => {
                                 )}
                             </div>
 
-                            {/* SECTION 6: OPERATION RESPONSE */}
+                            {/* SECTION 5: OPERATION RESPONSE */}
                             <div className={sectionCls}>
                                 <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('operationResponse')}>
-                                    <h3 className={`${sectionHeadCls} m-0`}>Operation Response</h3>
+                                    <h3 className={`${sectionHeadCls} m-0`}>OPERATION RESPONSE</h3>
                                     {expandedSections.operationResponse ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
                                 </div>
                                 {expandedSections.operationResponse && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4">
                                         <div>
-                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
-                                            <input type="text" name="customisationDestination" value={editFormData.customisationRequests[0]?.destination || ''} readOnly className={readonlyCls} placeholder="Name of Destination" />
+                                            <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Received Date & Time</label>
+                                            <input type="text" readOnly value={editFormData.opsCompletedOn || formatDateTime(new Date().toISOString())} className={`${readonlyCls} text-red-400 font-bold`} placeholder="Date & Time - Auto" />
                                         </div>
                                         <div>
-                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Prepared By</label>
-                                            {renderDropdown('opsPreparedBy', editFormData.opsPreparedBy, '-- Choose Operator --', [...operationsStaff, 'Fulfillment Desk Direct'], handleInputChange)}
-                                        </div>
-                                        {renderDatePicker('opsCompletedOn', editFormData.opsCompletedOn, 'Completed On', handleInputChange)}
-                                        <div>
-                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Operation Remarks</label>
-                                            <input type="text" name="opsRemarks" value={editFormData.opsRemarks} onChange={handleInputChange} className={inputCls} placeholder="Any Remarks given by ops" />
+                                            <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Prepared By</label>
+                                            <input type="text" readOnly value={editFormData.opsPreparedBy || editFormData.assignedTo || ''} className={`${readonlyCls} text-red-400 text-[10px] sm:text-xs font-bold`} placeholder="Operations Executive name automatically appear" />
                                         </div>
                                         <div>
-                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Verification Status</label>
-                                            {renderDropdown('opsVerificationStatus', editFormData.opsVerificationStatus, null, ['Pending Verified', 'Yes', 'Documents Authenticated', 'Rejected / Discrepancy Found'], handleInputChange)}
+                                            <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Ops Review</label>
+                                            <textarea name="opsRemarks" value={editFormData.opsRemarks || 'No review notes.'} readOnly className={`${readonlyCls} min-h-[38px] italic`} rows={1} />
                                         </div>
                                         <div>
-                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Shared To Client</label>
-                                            {renderDropdown('opsSharedWithClient', editFormData.opsSharedWithClient, null, ['Yes', 'No'], handleInputChange)}
-                                            {/* <p className="text-[9px] text-slate-500 mt-1">if the response "Yes", it will be connected to Operation Deck to give clarity about client journey</p> */}
+                                            <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Action Taken</label>
+                                            {renderDropdown('opsActionTaken', editFormData.opsActionTaken, '-- Select --', ['Shared Customized Itinerary', 'Explained Over Call', 'Explained via WhatsApp'], handleInputChange)}
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Customer Response</label>
+                                            {renderDropdown('customerResponse', editFormData.customerResponse, '-- Select --', ['Yet to Respond', 'Needs Revision', 'Negotiation' ,'Client Follow-Up','Not Interested','Booking Confirmed','Lead Lost'], handleInputChange)}
+                                        </div>
+                                         <div>
+                                            <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Objection Tracking</label>
+                                            {renderDropdown('objectionTracking', editFormData.objectionTracking, '-- Select --', ['Price High', 'Comparing Other Agents', 'Flight Cost', 'Hotel Cost', 'VISA Concerns', 'Travel Date Issue', 'Family Approval Pending', 'Need Leave Approval', 'Unexpected Situations', 'Safety Concerns'], handleInputChange)}
                                         </div>
                                     </div>
                                 )}
@@ -2049,7 +2129,6 @@ const SalesDashboard = () => {
                                             {editFormData.leadStatusField === 'Booking Confirmed' && <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />}
                                             Booking Confirmation
                                         </h3>
-                                        
                                     </div>
                                     {expandedSections.bookingConfirmation ? <ChevronDown size={18} className={editFormData.leadStatusField === 'Booking Confirmed' ? "text-emerald-400" : "text-slate-500"}/> : <ChevronRight size={18} className="text-slate-500"/>}
                                 </div>
@@ -2183,25 +2262,11 @@ const SalesDashboard = () => {
                                 )}
                             </div>
 
-                            {/* Pipeline Status Redirect */}
-                            <div className="px-4 py-4 sm:py-5 rounded-xl border border-slate-800 bg-[#071126]/40 flex flex-col md:grid md:grid-cols-2 gap-4 items-center hidden">
-                                <div className="text-center md:text-left">
-                                    <label className="block text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-wide mb-1">Active Pipeline Tab Placement</label>
-                                </div>
-                                {renderDropdown('leadStatus', editFormData.leadStatus, null, [
-                                    {value: 'Jobs', label: 'Global Pool — "Jobs"'},
-                                    {value: 'Sales Assigned', label: 'My Workspace — "Sales Assigned"'},
-                                    {value: 'Itinerary Shared', label: 'Shared Documents — "Itinerary Shared"'},
-                                    {value: 'Follow-Up Required', label: 'Action Pending — "Follow-Up Required"'},
-                                    {value: 'Move To Operation', label: 'Operations Desk — "Move To Operation"'}
-                                ], handleInputChange, "w-full px-3 py-2.5 sm:py-2 bg-slate-950 border border-slate-700 rounded-lg sm:rounded text-white font-medium text-sm sm:text-base focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 outline-none cursor-pointer transition-all")}
-                            </div>
-
                         </form>
 
                         {/* Edit Modal Sticky Footer */}
                         <div className="px-4 sm:px-6 py-4 border-t border-slate-800 bg-[#0b1329] z-20 flex flex-col sm:flex-row items-center gap-3 flex-shrink-0">
-                            <button type="submit" form="edit-lead-form" className="w-full sm:w-auto flex-1 px-6 py-3 sm:py-2.5 bg-[#d02525] hover:bg-[#d02525] active:bg-[#d02525] border-none cursor-pointer text-[#0f172a] text-sm sm:text-base font-bold rounded-lg sm:rounded shadow transition-colors uppercase tracking-wider order-1 sm:order-2">
+                            <button type="submit" form="edit-lead-form" className="w-full sm:w-auto flex-1 px-6 py-3 sm:py-2.5 bg-[#16D3F2] hover:bg-[#16D3F2] active:bg-[#16D3F2] border-none cursor-pointer text-[#0f172a] text-sm sm:text-base font-bold rounded-lg sm:rounded shadow transition-colors uppercase tracking-wider order-1 sm:order-2">
                                 SUBMIT
                             </button>
                             <button type="button" onClick={() => setIsEditModalOpen(false)}
@@ -2213,7 +2278,7 @@ const SalesDashboard = () => {
                 </div>
             )}
 
-            {/* ===== ASSIGN MODAL ===== */}
+            {/* ASSIGN MODAL */}
             {isAssignModalOpen && selectedLead && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="bg-[#1e293b] border border-slate-700/60 rounded-xl shadow-2xl w-full max-w-md relative flex flex-col max-h-[90vh]">
@@ -2252,7 +2317,7 @@ const SalesDashboard = () => {
                 </div>
             )}
 
-            {/* ===== REASSIGN MODAL ===== */}
+            {/* REASSIGN MODAL */}
             {isReassignModalOpen && selectedLead && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
                     <div className="bg-[#1e293b] border border-slate-700/90 rounded-xl shadow-2xl w-full max-w-md relative flex flex-col max-h-[90vh]">
@@ -2314,7 +2379,7 @@ const SalesDashboard = () => {
                 </div>
             )}
 
-            {/* ===== VIEW MODAL ===== */}
+            {/* VIEW MODAL */}
             {isViewModalOpen && selectedLead && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="bg-[#0f172a] border border-slate-700/50 rounded-xl shadow-2xl w-full max-w-md relative flex flex-col max-h-[90vh]">
@@ -2357,7 +2422,7 @@ const SalesDashboard = () => {
                 </div>
             )}
 
-            {/* ===== HISTORY MODAL ===== */}
+            {/* HISTORY MODAL */}
             {isHistoryModalOpen && selectedLead && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="bg-[#0f172a] border border-slate-700/50 rounded-xl shadow-2xl w-full max-w-lg relative flex flex-col max-h-[90vh]">
@@ -2382,7 +2447,7 @@ const SalesDashboard = () => {
                                     if (selectedLead.assignedTo && selectedLead.assignedTo !== 'Unassigned') {
                                         displayHistory.push({ date: 'Previously', action: `Assigned to ${selectedLead.assignedTo}`, note: `Current Status: ${selectedLead.status}` });
                                     }
-                                    displayHistory.push({ date: selectedLead.dateAdded || 'Initial', action: 'Lead Captured', note: `Source: ${selectedLead.platform || 'Website'} | Campaign: ${selectedLead.campaign || 'N/A'}` });
+                                    displayHistory.push({ date: formatDateTime(selectedLead.createdAt || selectedLead.dateAdded) || 'Initial', action: 'Lead Captured', note: `Source: ${selectedLead.platform || 'Website'} | Campaign: ${selectedLead.campaign || 'N/A'}` });
                                 }
                                 return (
                                     <div className="relative border-l border-slate-700 ml-3 space-y-6">
@@ -2402,7 +2467,7 @@ const SalesDashboard = () => {
                 </div>
             )}
     
-            {/* ── SCROLL TO TOP BUTTON ── */}
+            {/* SCROLL TO TOP BUTTON */}
             <button
                 type="button"
                 onClick={scrollToTop}
