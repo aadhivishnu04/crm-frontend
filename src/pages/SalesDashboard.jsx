@@ -60,6 +60,10 @@ const formatDateTime = (dateStr) => {
 };
 
 const SalesDashboard = () => {
+    // --- USER IDENTIFICATION (ADDED) ---
+    // Retrieves the current logged in user to filter "My Jobs"
+    const loggedInUserName = localStorage.getItem('userName') || 'Admin';
+
     // Shared Input / UI Classes
     const inputCls = "w-full px-3 py-2 sm:py-1.5 bg-slate-900 border border-slate-700 rounded-lg sm:rounded text-white text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 outline-none transition-all";
     const selectCls = "w-full px-3 py-2 sm:py-1.5 bg-slate-900 border border-slate-700 rounded-lg sm:rounded text-white text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 outline-none cursor-pointer transition-all";
@@ -814,12 +818,14 @@ const SalesDashboard = () => {
     const handleAssignSubmit = async () => {
         if (!assignTo) { alert('Please select a team or choose self assignment.'); return; }
         try {
-            const updatedHistory = appendHistory(selectedLead.history, `Assigned to ${assignTo}`, 'Lead claimed/assigned from global pool.');
+            // UPDATED: Properly save the logged in user's name if they choose Self Assignment
+            const finalAssignee = assignTo === 'Self Assigned' ? loggedInUserName : assignTo;
+            const updatedHistory = appendHistory(selectedLead.history, `Assigned to ${finalAssignee}`, 'Lead claimed/assigned from global pool.');
 
             const response = await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ assignedTo: assignTo, status: 'Sales Assigned', history: JSON.stringify(updatedHistory) })
+                body: JSON.stringify({ assignedTo: finalAssignee, status: 'Sales Assigned', history: JSON.stringify(updatedHistory) })
             });
             if (response.ok) { setIsAssignModalOpen(false); fetchJobs(); }
             else alert('Failed to assign.');
@@ -879,7 +885,9 @@ const SalesDashboard = () => {
         } else if (isRecycleBin) {
             matchTab = false;
         } else if (activeTab === 'Sales Assigned') {
-            matchTab = ['Sales Assigned', 'Itinerary Shared', 'Follow-Up Required', 'Move To Operation', 'Shared to Sales'].includes(itemStatus);
+            // UPDATED: Now only matches if assigned to current user (or Admin)
+            const isCorrectStatus = ['Sales Assigned', 'Itinerary Shared', 'Follow-Up Required', 'Move To Operation', 'Shared to Sales'].includes(itemStatus);
+            matchTab = isCorrectStatus && (item.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
         } else if (activeTab === 'Move To Operation') {
             matchTab = ['Move To Operation', 'Shared to Sales'].includes(itemStatus);
         } else {
@@ -1051,7 +1059,9 @@ const SalesDashboard = () => {
                         if (isRecycleBin) return false;
 
                         if (cat.id === 'Sales Assigned') {
-                            return ['Sales Assigned', 'Itinerary Shared', 'Follow-Up Required', 'Move To Operation', 'Shared to Sales'].includes(itemStatus);
+                            // UPDATED: Category card count filtered by logged-in user
+                            const isCorrectStatus = ['Sales Assigned', 'Itinerary Shared', 'Follow-Up Required', 'Move To Operation', 'Shared to Sales'].includes(itemStatus);
+                            return isCorrectStatus && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
                         }
                         if (cat.id === 'Move To Operation') {
                             return ['Move To Operation', 'Shared to Sales'].includes(itemStatus);
@@ -1098,7 +1108,9 @@ const SalesDashboard = () => {
                             if (isRecycleBin) return false;
 
                             if (cat.id === 'Sales Assigned') {
-                                return ['Sales Assigned', 'Itinerary Shared', 'Follow-Up Required', 'Move To Operation', 'Shared to Sales'].includes(itemStatus);
+                                // UPDATED: Category card count filtered by logged-in user
+                                const isCorrectStatus = ['Sales Assigned', 'Itinerary Shared', 'Follow-Up Required', 'Move To Operation', 'Shared to Sales'].includes(itemStatus);
+                                return isCorrectStatus && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
                             }
                             if (cat.id === 'Move To Operation') {
                                 return ['Move To Operation', 'Shared to Sales'].includes(itemStatus);
