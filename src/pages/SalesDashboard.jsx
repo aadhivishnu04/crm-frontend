@@ -3,7 +3,8 @@ import {
     ShoppingCart, Target, Search, Filter, Eye, Calendar, MapPin, 
     CheckSquare, X, Send, Pencil, Mic, Square, Trash2, Play, 
     RefreshCw, Users, ArrowUp, ChevronLeft, ChevronRight, ChevronDown, History,
-    Plus, UserPlus, Phone, Mail, Globe, MessageSquare
+    Plus, UserPlus, Phone, Mail, Globe, MessageSquare, CreditCard,
+    Flame, Sun, Snowflake
 } from 'lucide-react';
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
@@ -60,8 +61,7 @@ const formatDateTime = (dateStr) => {
 };
 
 const SalesDashboard = () => {
-    // --- USER IDENTIFICATION (ADDED) ---
-    // Retrieves the current logged in user to filter "My Jobs"
+    // --- USER IDENTIFICATION ---
     const loggedInUserName = localStorage.getItem('userName') || 'Admin';
 
     // Shared Input / UI Classes
@@ -100,13 +100,16 @@ const SalesDashboard = () => {
     const [reassignReason, setReassignReason] = useState('');
 
     const [manualEntryStates, setManualEntryStates] = useState({});
+    
+    // --- PREVIOUS ATTEMPTS LOG CRUD STATES ---
+    const [editingLogIndex, setEditingLogIndex] = useState(null);
+    const [editingLogData, setEditingLogData] = useState({ interaction: '', action: '', notes: '' });
 
     // --- NEW LEAD MODAL STATES ---
     const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
     const [newLeadForm, setNewLeadForm] = useState(initialNewLeadState);
     const [isSubmittingNewLead, setIsSubmittingNewLead] = useState(false);
     const [campaignOptions, setCampaignOptions] = useState([]);
-    const [newLeadManualStates, setNewLeadManualStates] = useState({});
 
     // --- DYNAMIC DATA STATES ---
     const [operationsStaff, setOperationsStaff] = useState([]);
@@ -123,23 +126,39 @@ const SalesDashboard = () => {
     };
 
     const [editFormData, setEditFormData] = useState({
+        // Lead Info
         leadName: '', leadSource: '', leadDate: '', mobileNumber: '', emailAddress: '', assignedTo: '',
         campaign: '', packageType: '', budget: '', messageFromLead: '', tourType: '', destination: '',
         travelDate: '', duration: '', travelBudget: '', hotelCategory: '', noOfAdults: '',
         noOfChildren: '', offers: '', departureCity: '',
+        
+        // Sales Track
         firstAttempt: '', leadResponse: '', interactionType: '', actionTaken: '', 
-        leadStatusField: '', salesNotes: '', followupDate: '',
+        leadStatusField: '', salesNotes: '', outcomeNotes: '', followupDate: '',
         leadTemperature: '', objectionTracking: '', bookingProbability: '0%', customerResponse: '', noResponseLogs: [],
+        closureReason: '', nextFollowUpDatePostponed: '',
+        
+        // Travel Details additions
+        services: '', remarks: '',
         customisationRequests: [],
+        
+        // Operation Response
         opsPreparedBy: '', opsCompletedOn: '', opsRemarks: '', opsActionTaken: '',
         opsVerificationStatus: 'Pending Verified', opsSharedWithClient: 'No', 
+        packagePreparedFor: '', packageCost: '', operationNotes: '', salesReviewStatus: '',
+
+        // Booking Confirmation
         billingName: '', bookingDate: '', operationExecutive: '',
         confirmedTripType: '', confirmedDestination: '', confirmedDuration: '', noOfPax: '', confirmedNoOfChildren: '',
-        transportMode: '', departureDate: '', tourStartDate: '', returnDate: '', travelEndDate: '', totalPackageCost: '', specialOffers: '',
+        transportMode: '', departureDate: '', tourStartDate: '', returnDate: '', travelEndDate: '', tourEndDate: '', totalPackageCost: '', specialOffers: '',
         arrivalDate: '', flightStatus: '', visaStatus: '', insuranceStatus: '', 
+        confirmedMethod: '', confirmedDate: '', confirmedServices: '', discount: '', finalPackageValue: '', serviceCost: '',
+
+        // Payments
         paymentDueDate: '', transactionId: '', amountReceived: '', paymentMode: '', 
         nextPaymentDate: '', paymentStatus: 'Pending Initial Deposit', paymentHistoryDetails: '', voiceRecordings: [], 
         leadStatus: 'Jobs', gstInclusion: '', tcsInclusion: '', paymentService: '', paymentHistoryList: [],
+        
         followUpCount: 0, followUpType: '', followupAction: '', history: []
     });
 
@@ -157,26 +176,41 @@ const SalesDashboard = () => {
 
     // --- AUTO CALCULATION FOR BOOKING PROBABILITY & TEMPERATURE ---
     useEffect(() => {
-        let prob = '0%'; 
-        let temp = 'Cold';
-        const { leadResponse, leadStatusField, customerResponse, actionTaken } = editFormData;
+        let probVal = 0; 
+        const { leadResponse, actionTaken, customerResponse } = editFormData;
 
-        if (leadStatusField === 'Booking Confirmed') {
-            prob = '100%'; temp = 'Hot';
-        } else if (leadStatusField === 'Negotiation') {
-            prob = '90%'; temp = 'Hot';
+        if (customerResponse === 'Booking Confirmed') {
+            probVal = 100;
+        } else if (customerResponse === 'Negotiation') {
+            probVal = 90;
         } else if (customerResponse === 'Needs Revision') {
-            prob = '75%'; temp = 'Hot';
+            probVal = 75;
         } else if (actionTaken === 'Customisation Required') {
-            prob = '50%'; temp = 'Warm';
+            probVal = 50;
         } else if (leadResponse === 'Requirement Collected') {
-            prob = '25%'; temp = 'Cold';
+            probVal = 25;
         } else if (leadResponse === 'No Response') {
-            prob = '0%'; temp = 'Cold';
+            probVal = 0;
         }
 
-        setEditFormData(prev => ({ ...prev, bookingProbability: prob, leadTemperature: temp }));
-    }, [editFormData.leadResponse, editFormData.leadStatusField, editFormData.customerResponse, editFormData.actionTaken]);
+        let temp = 'Cold';
+        if (probVal >= 75) {
+            temp = 'Hot';
+        } else if (probVal >= 26 && probVal <= 74) {
+            temp = 'Warm';
+        } else {
+            temp = 'Cold';
+        }
+
+        setEditFormData(prev => ({ ...prev, bookingProbability: `${probVal}%`, leadTemperature: temp }));
+    }, [editFormData.leadResponse, editFormData.customerResponse, editFormData.actionTaken]);
+
+    // --- AUTO CALCULATION FOR CONFIRMED DATE ---
+    useEffect(() => {
+        if (isEditModalOpen && editFormData.customerResponse === 'Booking Confirmed' && !editFormData.confirmedDate) {
+            setEditFormData(prev => ({ ...prev, confirmedDate: new Date().toISOString().split('T')[0] }));
+        }
+    }, [editFormData.customerResponse, isEditModalOpen]);
 
     // --- VOICE RECORDER STATES ---
     const [isRecording, setIsRecording] = useState(false);
@@ -237,23 +271,52 @@ const SalesDashboard = () => {
         }));
     };
 
+    // --- MULTI-SELECT HANDLER UI ---
+    const renderMultiSelect = (name, value, options) => {
+        const selected = value ? value.split(', ') : [];
+        const toggle = (opt) => {
+            let newSelected;
+            if (selected.includes(opt)) {
+                newSelected = selected.filter(o => o !== opt);
+            } else {
+                newSelected = [...selected, opt];
+            }
+            handleInputChange({ target: { name, value: newSelected.join(', '), type: 'text' } });
+        };
+        return (
+            <div className="flex flex-wrap gap-2 mt-1">
+                {options.map(opt => (
+                    <div key={opt} onClick={() => toggle(opt)} 
+                         className={`px-2.5 py-1 text-[11px] sm:text-xs rounded border cursor-pointer transition-all ${selected.includes(opt) ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400 font-medium' : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500'}`}>
+                        {opt}
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
     // --- LOG SUBMISSION HANDLER WITH AUTO-SAVE & PERFECT SYNC ---
-    const handleLogNoResponse = async () => {
-        if (!editFormData.salesNotes && !editFormData.interactionType && !editFormData.actionTaken) {
+    const handleLogNoResponse = async (logType = 'interaction') => {
+        const isOutcome = logType === 'outcome';
+        const currentNotes = isOutcome ? editFormData.outcomeNotes : editFormData.salesNotes;
+        const currentInteraction = isOutcome ? 'Sales Track Update' : editFormData.interactionType;
+        const currentAction = isOutcome ? editFormData.customerResponse : editFormData.actionTaken;
+
+        if (!currentNotes && !currentInteraction && !currentAction) {
             alert("Please enter notes, interaction type, or action first.");
             return;
         }
         
         const newEntry = {
             timestamp: formatDateTime(new Date().toISOString()),
-            interaction: editFormData.interactionType,
-            action: editFormData.actionTaken,
-            notes: editFormData.salesNotes
+            interaction: currentInteraction,
+            action: currentAction,
+            notes: currentNotes
         };
     
         const updatedLogs = [...(editFormData.noResponseLogs || []), newEntry];
-        const updatedCount = updatedLogs.length; // Strict Sync with array length
-        const updatedHistory = appendHistory(editFormData.history, `Follow-up: ${editFormData.interactionType || 'Logged'}`, editFormData.salesNotes || editFormData.actionTaken);
+        const updatedCount = updatedLogs.length; 
+        const updatedHistory = appendHistory(editFormData.history, `${isOutcome ? 'Outcome Update' : 'Follow-up'}: ${currentInteraction || 'Logged'}`, currentNotes || currentAction);
 
         let newStatus = selectedLead?.status || editFormData.leadStatus;
         if (updatedCount >= 10) {
@@ -265,7 +328,7 @@ const SalesDashboard = () => {
             noResponseLogs: updatedLogs,
             followUpCount: updatedCount,
             history: updatedHistory,
-            salesNotes: '', 
+            ...(isOutcome ? { outcomeNotes: '' } : { salesNotes: '' }), 
             leadStatus: newStatus
         }));
 
@@ -285,6 +348,67 @@ const SalesDashboard = () => {
         } catch (e) {
             console.error("Auto-save log failed", e);
         }
+    };
+
+    // --- PREVIOUS ATTEMPTS LOG CRUD HANDLERS ---
+    const handleDeleteLog = async (indexToDelete) => {
+        if (!window.confirm('Are you sure you want to delete this log?')) return;
+        
+        const updatedLogs = editFormData.noResponseLogs.filter((_, idx) => idx !== indexToDelete);
+        const updatedCount = updatedLogs.length;
+        
+        let newStatus = selectedLead?.status || editFormData.leadStatus;
+        if (updatedCount < 10 && newStatus === 'Recycle Bin') {
+            newStatus = 'Jobs'; // Fallback to Jobs if under threshold
+        }
+
+        setEditFormData(prev => ({ ...prev, noResponseLogs: updatedLogs, followUpCount: updatedCount, leadStatus: newStatus }));
+
+        try {
+            await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    noResponseLogs: JSON.stringify(updatedLogs),
+                    followupCount: updatedCount,
+                    status: newStatus
+                })
+            });
+            fetchJobs(true);
+        } catch (e) { console.error("Auto-save log delete failed", e); }
+    };
+
+    const handleEditLogStart = (index, log) => {
+        setEditingLogIndex(index);
+        setEditingLogData({ interaction: log.interaction || '', action: log.action || '', notes: log.notes || '' });
+    };
+
+    const handleEditLogCancel = () => {
+        setEditingLogIndex(null);
+    };
+
+    const handleEditLogSave = async (indexToSave) => {
+        const updatedLogs = [...editFormData.noResponseLogs];
+        updatedLogs[indexToSave] = {
+            ...updatedLogs[indexToSave],
+            interaction: editingLogData.interaction,
+            action: editingLogData.action,
+            notes: editingLogData.notes,
+        };
+
+        setEditFormData(prev => ({ ...prev, noResponseLogs: updatedLogs }));
+        setEditingLogIndex(null);
+
+        try {
+            await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    noResponseLogs: JSON.stringify(updatedLogs)
+                })
+            });
+            fetchJobs(true);
+        } catch (e) { console.error("Auto-save log edit failed", e); }
     };
 
     useEffect(() => {
@@ -366,7 +490,6 @@ const SalesDashboard = () => {
 
     const handleOpenNewLeadModal = () => {
         setNewLeadForm(initialNewLeadState);
-        setNewLeadManualStates({});
         setIsNewLeadModalOpen(true);
     };
 
@@ -446,43 +569,9 @@ const SalesDashboard = () => {
     };
 
     const renderNewLeadDropdown = (name, value, placeholder, options) => {
-        const isCustomValue = value && value !== '' && !options.includes(value);
-
         const handleSelect = (e) => {
-            if (e.target.value === '__MANUAL__') {
-                setNewLeadManualStates(prev => ({ ...prev, [name]: true }));
-                setNewLeadForm(prev => ({ ...prev, [name]: '' }));
-            } else {
-                setNewLeadForm(prev => ({ ...prev, [name]: e.target.value }));
-            }
+            setNewLeadForm(prev => ({ ...prev, [name]: e.target.value }));
         };
-
-        if (newLeadManualStates[name] || isCustomValue) {
-            return (
-                <div className="flex items-center gap-1.5 w-full">
-                    <input
-                        type="text"
-                        name={name}
-                        value={value || ''}
-                        onChange={handleNewLeadInputChange}
-                        placeholder="Type manually..."
-                        className={`${inputCls} flex-1`}
-                        autoFocus={newLeadManualStates[name] && !isCustomValue}
-                    />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setNewLeadManualStates(prev => ({ ...prev, [name]: false }));
-                            setNewLeadForm(prev => ({ ...prev, [name]: '' }));
-                        }}
-                        className="flex items-center justify-center bg-slate-800 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded border border-slate-600 transition-colors flex-shrink-0 p-1.5"
-                        title="Cancel"
-                    >
-                        <X size={16} />
-                    </button>
-                </div>
-            );
-        }
 
         return (
             <select name={name} value={value || ''} onChange={handleSelect} className={selectCls}>
@@ -490,7 +579,6 @@ const SalesDashboard = () => {
                 {options.map((opt, i) => (
                     <option key={i} value={opt}>{opt}</option>
                 ))}
-                <option value="__MANUAL__" className="font-bold text-orange-400 bg-slate-800">+ Add Manual / Other</option>
             </select>
         );
     };
@@ -581,6 +669,7 @@ const SalesDashboard = () => {
         setRecordingTime(0);
         setIsRecording(false);
         setPlayingIndex(null);
+        setEditingLogIndex(null); // Reset CRUD state
 
         setExpandedSections({
             leadInfo: true, salesActivity: true, travelDetails: false, customisation: false, operationResponse: false, bookingConfirmation: false, paymentInfo: false
@@ -685,20 +774,28 @@ const SalesDashboard = () => {
             noOfChildren: lead.noOfChildren || '0',
             offers: lead.offers || '',
             departureCity: lead.departureCity || '',
+            
+            // Sales Tracking Update Mappings
             firstAttempt: lead.firstAttempt || '',
             leadResponse: lead.leadResponse || '',
             interactionType: lead.interactionType || '',
             actionTaken: lead.actionTaken || '',
             leadStatusField: lead.leadStatusField || '',
-            salesNotes: lead.salesNotes || '',
+            salesNotes: '', // Reset staging note on open
+            outcomeNotes: '', // Reset staging note on open
             followupDate: lead.nextFollowUp || lead.followupDate || '',
             leadTemperature: lead.leadTemperature || '',
             objectionTracking: lead.objectionTracking || '',
             customerResponse: lead.customerResponse || '',
             bookingProbability: lead.bookingProbability || '0%',
+            closureReason: lead.closureReason || '',
+            nextFollowUpDatePostponed: lead.nextFollowUpDatePostponed || '',
             
             noResponseLogs: parsedNoResponseLogs,
             history: pHistory,
+
+            services: lead.services || '',
+            remarks: lead.remarks || '',
 
             customisationRequests: parsedCustomisationRequests,
             opsPreparedBy: lead.opsPreparedBy || '',
@@ -707,6 +804,11 @@ const SalesDashboard = () => {
             opsActionTaken: lead.opsActionTaken || '',
             opsVerificationStatus: lead.opsVerificationStatus || 'Pending Verified',
             opsSharedWithClient: lead.opsSharedWithClient || 'No', 
+            packagePreparedFor: lead.packagePreparedFor || '',
+            packageCost: lead.packageCost || '',
+            operationNotes: lead.operationNotes || '',
+            salesReviewStatus: lead.salesReviewStatus || '',
+
             billingName: lead.billingName || '',
             bookingDate: lead.bookingDate || '',
             operationExecutive: lead.operationExecutive || '',
@@ -720,12 +822,20 @@ const SalesDashboard = () => {
             tourStartDate: lead.tourStartDate || '',
             returnDate: lead.returnDate || '',
             travelEndDate: lead.travelEndDate || '',
+            tourEndDate: lead.tourEndDate || lead.travelEndDate || '',
             totalPackageCost: lead.totalPackageCost || lead.amount || lead.budget || '',
             specialOffers: lead.specialOffers || '',
             arrivalDate: lead.arrivalDate || '',
             flightStatus: lead.flightStatus || '',
             visaStatus: lead.visaStatus || '',
             insuranceStatus: lead.insuranceStatus || '', 
+            confirmedMethod: lead.confirmedMethod || '',
+            confirmedDate: lead.confirmedDate || '',
+            confirmedServices: lead.confirmedServices || '',
+            discount: lead.discount || '',
+            finalPackageValue: lead.finalPackageValue || '',
+            serviceCost: lead.serviceCost || '',
+
             paymentDueDate: lead.paymentDueDate || '',
             transactionId: lead.transactionId || '',
             amountReceived: lead.amountReceived || '',
@@ -740,7 +850,6 @@ const SalesDashboard = () => {
             paymentService: lead.paymentService || '',
             paymentHistoryList: parsedPaymentHistory,
             
-            // STRICTLY TIE FOLLOW UP COUNT TO THE ARRAY LENGTH
             followUpCount: parsedNoResponseLogs.length, 
             followUpType: lead.followUpType || '',
             followupAction: lead.followupAction || ''
@@ -764,7 +873,7 @@ const SalesDashboard = () => {
 
             const payload = {
                 ...editFormData,
-                packageCost: editFormData.totalPackageCost,
+                packageCost: editFormData.totalPackageCost || editFormData.packageCost,
                 offers: editFormData.specialOffers, 
                 noOfChildren: editFormData.confirmedNoOfChildren || editFormData.noOfChildren,
                 noResponseLogs: editFormData.noResponseLogs?.length ? JSON.stringify(editFormData.noResponseLogs) : null,
@@ -818,9 +927,8 @@ const SalesDashboard = () => {
     const handleAssignSubmit = async () => {
         if (!assignTo) { alert('Please select a team or choose self assignment.'); return; }
         try {
-            // UPDATED: Properly save the logged in user's name if they choose Self Assignment
             const finalAssignee = assignTo === 'Self Assigned' ? loggedInUserName : assignTo;
-            const updatedHistory = appendHistory(selectedLead.history, `Assigned to ${finalAssignee}`, 'Lead claimed/assigned from global pool.');
+            const updatedHistory = appendHistory(selectedLead.history, `Assigned to ${finalAssignee}`, 'Lead claimed/assigned from pool.');
 
             const response = await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
                 method: 'PUT',
@@ -853,12 +961,11 @@ const SalesDashboard = () => {
     };
 
     const categories = [
-        { id: 'Jobs', label: 'Jobs', icon: ShoppingCart },
-        { id: 'Sales Assigned', label: 'My Jobs', icon: Target },
-        { id: 'Itinerary Shared', label: 'Itinerary Shared', icon: Target },
-        { id: 'Follow-Up Required', label: 'Followup Required', icon: Target },
-        { id: 'Move To Operation', label: 'Operations Desk', icon: Target },
-        { id: 'Recycle Bin', label: 'Recycle Bin', icon: Trash2 },
+        { id: 'Jobs', label: 'JOBS', icon: ShoppingCart },
+        { id: 'My Jobs', label: 'MY JOBS', icon: Target },
+        { id: 'Returned', label: 'RETURNED FROM OPERATIONS', icon: RefreshCw },
+        { id: 'Follow-Up', label: 'FOLLOW-UP QUEUE', icon: History },
+        { id: 'Recycle', label: 'RECYCLE LEADS', icon: Trash2 },
     ];
 
     const filteredData = jobs.filter(item => {
@@ -880,18 +987,19 @@ const SalesDashboard = () => {
         
         const isRecycleBin = (item.followupCount >= 10 || item.followUpCount >= 10 || itemStatus === 'Recycle Bin');
 
-        if (activeTab === 'Recycle Bin') {
+        if (activeTab === 'Recycle') {
             matchTab = isRecycleBin;
         } else if (isRecycleBin) {
-            matchTab = false;
-        } else if (activeTab === 'Sales Assigned') {
-            // UPDATED: Now only matches if assigned to current user (or Admin)
-            const isCorrectStatus = ['Sales Assigned', 'Itinerary Shared', 'Follow-Up Required', 'Move To Operation', 'Shared to Sales'].includes(itemStatus);
-            matchTab = isCorrectStatus && (item.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
-        } else if (activeTab === 'Move To Operation') {
-            matchTab = ['Move To Operation', 'Shared to Sales'].includes(itemStatus);
-        } else {
-            matchTab = itemStatus === activeTab;
+            matchTab = false; 
+        } else if (activeTab === 'My Jobs') {
+            const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation']; 
+            matchTab = validActiveStatuses.includes(itemStatus) && (item.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
+        } else if (activeTab === 'Returned') {
+            matchTab = itemStatus === 'Shared to Sales';
+        } else if (activeTab === 'Follow-Up') {
+            matchTab = itemStatus === 'Follow-Up Required' && (item.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
+        } else if (activeTab === 'Jobs') {
+            matchTab = itemStatus === 'Jobs';
         }
 
         return matchSearch && matchPlatform && matchTab;
@@ -917,43 +1025,9 @@ const SalesDashboard = () => {
     };
 
     const renderArrayDropdown = (field, value, index, defaultOption, optionsList) => {
-        const optionValues = optionsList.map(opt => typeof opt === 'object' ? opt.value : opt);
-        const isCustomValue = value && value !== "" && !optionValues.includes(value);
-
         const handleSelect = (e) => {
-            if (e.target.value === '__MANUAL__') {
-                setManualEntryStates(prev => ({ ...prev, [`customisation_${index}_${field}`]: true }));
-                handleCustomisationChange(index, field, '');
-            } else {
-                handleCustomisationChange(index, field, e.target.value);
-            }
+            handleCustomisationChange(index, field, e.target.value);
         };
-
-        if (manualEntryStates[`customisation_${index}_${field}`] || isCustomValue) {
-            return (
-                <div className="flex items-center gap-1.5 w-full transition-all">
-                    <input
-                        type="text"
-                        value={value || ''}
-                        onChange={(e) => handleCustomisationChange(index, field, e.target.value)}
-                        placeholder="Manual entry..."
-                        className={`${inputCls} flex-1 min-w-[80px]`}
-                        autoFocus={manualEntryStates[`customisation_${index}_${field}`] && !isCustomValue}
-                    />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setManualEntryStates(prev => ({ ...prev, [`customisation_${index}_${field}`]: false }));
-                            handleCustomisationChange(index, field, '');
-                        }}
-                        className="flex items-center justify-center bg-slate-800 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded border border-slate-600 transition-colors flex-shrink-0 p-1.5 sm:p-2"
-                        title="Cancel manual entry"
-                    >
-                        <X size={16} />
-                    </button>
-                </div>
-            );
-        }
 
         return (
             <select value={value || ''} onChange={handleSelect} className={selectCls}>
@@ -963,52 +1037,14 @@ const SalesDashboard = () => {
                     const optLabel = typeof opt === 'object' ? opt.label : opt;
                     return <option key={idx} value={optVal}>{optLabel}</option>;
                 })}
-                <option value="__MANUAL__" className="font-bold text-orange-400 bg-slate-800">+ Add Manual / Other</option>
             </select>
         );
     };
 
     const renderDropdown = (name, value, defaultOption, optionsList, onChangeHandler, customClass = selectCls) => {
-        const optionValues = optionsList.map(opt => typeof opt === 'object' ? opt.value : opt);
-        const isCustomValue = value && value !== "" && !optionValues.includes(value);
-        const useInlineStyles = customClass.includes('bg-[#091124]') || customClass.includes('inline'); 
-        const inputClassName = useInlineStyles ? `${inlineInputCls} w-32 md:w-full` : inputCls;
-
         const handleSelect = (e) => {
-            if (e.target.value === '__MANUAL__') {
-                setManualEntryStates(prev => ({ ...prev, [name]: true }));
-                onChangeHandler({ target: { name, value: '', type: 'text' } });
-            } else {
-                onChangeHandler(e);
-            }
+            onChangeHandler(e);
         };
-
-        if (manualEntryStates[name] || isCustomValue) {
-            return (
-                <div className="flex items-center gap-1.5 w-full transition-all">
-                    <input
-                        type="text"
-                        name={name}
-                        value={value || ''}
-                        onChange={onChangeHandler}
-                        placeholder="Manual entry..."
-                        className={`${inputClassName} flex-1 min-w-[80px]`}
-                        autoFocus={manualEntryStates[name] && !isCustomValue}
-                    />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setManualEntryStates(prev => ({ ...prev, [name]: false }));
-                            onChangeHandler({ target: { name, value: '', type: 'text' } });
-                        }}
-                        className={`flex items-center justify-center bg-slate-800 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded border border-slate-600 transition-colors flex-shrink-0 ${useInlineStyles ? 'p-1' : 'p-1.5 sm:p-2'}`}
-                        title="Cancel manual entry"
-                    >
-                        <X size={useInlineStyles ? 14 : 16} />
-                    </button>
-                </div>
-            );
-        }
 
         return (
             <select name={name} value={value || ''} onChange={handleSelect} className={customClass}>
@@ -1018,70 +1054,83 @@ const SalesDashboard = () => {
                     const optLabel = typeof opt === 'object' ? opt.label : opt;
                     return <option key={idx} value={optVal}>{optLabel}</option>;
                 })}
-                <option value="__MANUAL__" className="font-bold text-orange-400 bg-slate-800">+ Add Manual / Other</option>
             </select>
         );
     };
 
     const probValue = parseInt(editFormData.bookingProbability) || 0;
     const circleRadius = 20;
-    const circleCircumference = 2 * Math.PI * circleRadius; // ~125.66
+    const circleCircumference = 2 * Math.PI * circleRadius; 
     const circleOffset = circleCircumference - (probValue / 100) * circleCircumference;
 
     return (
         <div className="p-1 sm:p-4 lg:p-6 pt-20 sm:pt-24 lg:pt-24 w-full bg-[#0f172a] min-h-screen font-sans relative text-white">
 
-            {/* Header */}
-            <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            {/* Header with New Button additions */}
+            <div className="mb-6 sm:mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="text-center sm:text-left">
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Sales Dashboard</h1>
-                    <p className="text-slate-400 text-sm sm:text-base mt-1">Manage and track your sales pipeline efficiently.</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight uppercase">SALES DASHBOARD</h1>
                 </div>
-                <button
-                    type="button"
-                    onClick={handleOpenNewLeadModal}
-                    className="flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-[#0f172a] font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-cyan-500/20 transition-all duration-200 flex-shrink-0 self-center sm:self-auto"
-                >
-                    <Plus size={18} strokeWidth={2.5} />
-                    <span>Add New Lead</span>
-                </button>
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full md:w-auto">
+                    <button
+                        type="button"
+                        onClick={handleOpenNewLeadModal}
+                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-[#0f172a] font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-cyan-500/20 transition-all duration-200"
+                    >
+                        <Plus size={18} strokeWidth={2.5} />
+                        <span>Add New Lead</span>
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => alert("Add Payment Interface Pending")}
+                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-[#0f172a] font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-emerald-500/20 transition-all duration-200"
+                    >
+                        <Plus size={18} strokeWidth={2.5} />
+                        <span>Add New Payment</span>
+                    </button>
+                </div>
             </div>
 
             {/* ── MOBILE-OPTIMIZED CATEGORY TABS ───────────────────────────────── */}
-            <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+            <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
                 {categories.map((cat) => {
                     const Icon = cat.icon;
                     const isActive = activeTab === cat.id;
                     const count = jobs.filter(d => {
                         const itemStatus = d.status || 'Jobs';
                         const isRecycleBin = (d.followupCount >= 10 || d.followUpCount >= 10 || itemStatus === 'Recycle Bin');
-                        if (cat.id === 'Recycle Bin') return isRecycleBin;
+                        if (cat.id === 'Recycle') return isRecycleBin;
                         if (isRecycleBin) return false;
 
-                        if (cat.id === 'Sales Assigned') {
-                            // UPDATED: Category card count filtered by logged-in user
-                            const isCorrectStatus = ['Sales Assigned', 'Itinerary Shared', 'Follow-Up Required', 'Move To Operation', 'Shared to Sales'].includes(itemStatus);
-                            return isCorrectStatus && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
+                        if (cat.id === 'My Jobs') {
+                            return ['Sales Assigned', 'Itinerary Shared', 'Negotiation'].includes(itemStatus) && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
                         }
-                        if (cat.id === 'Move To Operation') {
-                            return ['Move To Operation', 'Shared to Sales'].includes(itemStatus);
+                        if (cat.id === 'Returned') {
+                            return itemStatus === 'Shared to Sales';
                         }
-                        return itemStatus === cat.id;
+                        if (cat.id === 'Follow-Up') {
+                            return itemStatus === 'Follow-Up Required' && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
+                        }
+                        return itemStatus === cat.id; // For 'Jobs'
                     }).length;
                     
                     return (
                         <div
                             key={cat.id}
                             onClick={() => setActiveTab(cat.id)}
-                            className={`relative p-5 rounded-xl cursor-pointer transition-all duration-200 border shadow-sm hover:shadow-md ${isActive ? 'ring-2 ring-offset-2 border-slate-500 bg-[#07202a] text-white' : 'bg-transparent border-slate-700/20 text-slate-200'}`}
+                            className={`relative p-5 rounded-xl cursor-pointer transition-all duration-200 border shadow-sm hover:shadow-md flex flex-col justify-between h-full min-h-[130px] ${isActive ? 'ring-2 ring-offset-2 border-slate-500 bg-[#07202a] text-white' : 'bg-transparent border-slate-700/20 text-slate-200'}`}
                         >
-                            <div className="flex justify-between items-start mb-2">
-                                <div className={`p-3 rounded-lg ${isActive ? 'bg-slate-700 text-white' : 'bg-slate-800/20 text-slate-300'}`}>
+                            <div className="flex justify-between items-start w-full">
+                                <div className={`p-3 rounded-xl ${isActive ? 'bg-slate-700 text-white' : 'bg-slate-800/40 text-slate-300'}`}>
                                     <Icon size={24} strokeWidth={2} />
                                 </div>
-                                <span className={`text-xl font-bold ${isActive ? 'text-white' : 'text-slate-200'}`}>{count}</span>
+                                <span className={`text-2xl font-bold ${isActive ? 'text-white' : 'text-slate-200'}`}>{count}</span>
                             </div>
-                            <h3 className={`font-semibold text-base ${isActive ? 'text-white' : 'text-slate-200'}`}>{cat.label}</h3>
+                            
+                            <h3 className={`font-semibold text-sm text-left mt-auto pt-4 capitalize ${isActive ? 'text-cyan-400' : 'text-slate-300'}`}>
+                                {cat.label.toLowerCase()}
+                            </h3>
+                            
                             {isActive && <div className="absolute bottom-0 left-0 w-full h-1 rounded-b-xl bg-slate-700" />}
                         </div>
                     );
@@ -1097,23 +1146,24 @@ const SalesDashboard = () => {
                 >
                     <ChevronLeft size={16} />
                 </button>
-                <div ref={tabScrollRef} className="flex gap-2 overflow-x-auto flex-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                <div ref={tabScrollRef} className="flex gap-2 overflow-x-auto flex-1 items-stretch" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
                     {categories.map((cat) => {
                         const Icon = cat.icon;
                         const isActive = activeTab === cat.id;
                         const count = jobs.filter(d => {
                             const itemStatus = d.status || 'Jobs';
                             const isRecycleBin = (d.followupCount >= 10 || d.followUpCount >= 10 || itemStatus === 'Recycle Bin');
-                            if (cat.id === 'Recycle Bin') return isRecycleBin;
+                            if (cat.id === 'Recycle') return isRecycleBin;
                             if (isRecycleBin) return false;
 
-                            if (cat.id === 'Sales Assigned') {
-                                // UPDATED: Category card count filtered by logged-in user
-                                const isCorrectStatus = ['Sales Assigned', 'Itinerary Shared', 'Follow-Up Required', 'Move To Operation', 'Shared to Sales'].includes(itemStatus);
-                                return isCorrectStatus && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
+                            if (cat.id === 'My Jobs') {
+                                return ['Sales Assigned', 'Itinerary Shared', 'Negotiation'].includes(itemStatus) && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
                             }
-                            if (cat.id === 'Move To Operation') {
-                                return ['Move To Operation', 'Shared to Sales'].includes(itemStatus);
+                            if (cat.id === 'Returned') {
+                                return itemStatus === 'Shared to Sales';
+                            }
+                            if (cat.id === 'Follow-Up') {
+                                return itemStatus === 'Follow-Up Required' && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
                             }
                             return itemStatus === cat.id;
                         }).length;
@@ -1122,16 +1172,20 @@ const SalesDashboard = () => {
                             <div
                                 key={cat.id}
                                 onClick={() => setActiveTab(cat.id)}
-                                className={`relative flex-shrink-0 flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 border ${isActive ? 'ring-1 ring-cyan-500 border-cyan-700 bg-[#07202a] text-white' : 'bg-slate-800/30 border-slate-700/30 text-slate-300'}`}
-                                style={{ minWidth: '148px' }}
+                                className={`relative flex-shrink-0 flex flex-col justify-between p-3.5 rounded-xl cursor-pointer transition-all duration-200 border ${isActive ? 'ring-1 ring-cyan-500 border-cyan-700 bg-[#07202a] text-white' : 'bg-slate-800/30 border-slate-700/30 text-slate-300'}`}
+                                style={{ minWidth: '140px', minHeight: '105px' }}
                             >
-                                <div className={`p-1.5 rounded-md flex-shrink-0 ${isActive ? 'bg-slate-700 text-cyan-400' : 'bg-slate-800 text-slate-400'}`}>
-                                    <Icon size={16} strokeWidth={2} />
+                                <div className="flex justify-between items-start w-full">
+                                    <div className={`p-2 rounded-lg flex-shrink-0 ${isActive ? 'bg-slate-700 text-cyan-400' : 'bg-slate-800/80 text-slate-400'}`}>
+                                        <Icon size={18} strokeWidth={2} />
+                                    </div>
+                                    <span className={`text-xl font-bold leading-none ${isActive ? 'text-cyan-400' : 'text-slate-400'}`}>{count}</span>
                                 </div>
-                                <div className="flex flex-col min-w-0">
-                                    <span className={`text-xs font-semibold leading-tight truncate ${isActive ? 'text-white' : 'text-slate-300'}`}>{cat.label}</span>
-                                    <span className={`text-base font-bold leading-tight ${isActive ? 'text-cyan-400' : 'text-slate-400'}`}>{count}</span>
-                                </div>
+                                
+                                <span className={`text-sm font-semibold text-left mt-auto pt-3 break-words capitalize ${isActive ? 'text-white' : 'text-slate-300'}`}>
+                                    {cat.label.toLowerCase()}
+                                </span>
+                                
                                 {isActive && <div className="absolute bottom-0 left-0 w-full h-0.5 rounded-b-xl bg-cyan-500" />}
                             </div>
                         );
@@ -1161,7 +1215,7 @@ const SalesDashboard = () => {
                         <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
                         <input type="text" placeholder="Search Phone..." value={searchPhone} onChange={(e) => setSearchPhone(e.target.value)} className={`${inputCls} pl-8`} />
                     </div>
-                   
+                    
                     <div className="relative">
                         <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
                         <select value={selectedPlatform} onChange={(e) => setSelectedPlatform(e.target.value)} className={`${selectCls} pl-8`}>
@@ -1190,7 +1244,7 @@ const SalesDashboard = () => {
                     <table className="w-full text-left text-sm sm:text-base text-slate-200 block md:table">
                         
                         <thead className="bg-slate-900/80 border-b border-slate-700/50 text-xs uppercase tracking-wider text-slate-400 font-semibold hidden md:table-header-group">
-                            {(activeTab === 'Jobs' || activeTab === 'Recycle Bin') && (
+                            {(activeTab === 'Jobs' || activeTab === 'Recycle') && (
                                 <tr>
                                     <th className="px-4 py-4">Job Id</th>
                                     <th className="px-4 py-4">Lead Info</th>
@@ -1202,7 +1256,7 @@ const SalesDashboard = () => {
                                     <th className="px-4 py-4 text-center">Action</th>
                                 </tr>
                             )}
-                            {activeTab === 'Sales Assigned' && (
+                            {activeTab === 'My Jobs' && (
                                 <tr>
                                     <th className="px-4 py-4">Job Id</th>
                                     <th className="px-4 py-4">Lead Info</th>
@@ -1215,7 +1269,7 @@ const SalesDashboard = () => {
                                     <th className="px-4 py-4 text-center">Action</th>
                                 </tr>
                             )}
-                            {activeTab === 'Itinerary Shared' && (
+                            {activeTab === 'Returned' && (
                                 <tr>
                                     <th className="px-4 py-4">Job Id</th>
                                     <th className="px-4 py-4">Lead Info</th>
@@ -1228,7 +1282,7 @@ const SalesDashboard = () => {
                                     <th className="px-4 py-4 text-center">Action</th>
                                 </tr>
                             )}
-                            {activeTab === 'Follow-Up Required' && (
+                            {activeTab === 'Follow-Up' && (
                                 <tr>
                                     <th className="px-4 py-4">Job Id</th>
                                     <th className="px-4 py-4">Lead Info</th>
@@ -1238,18 +1292,6 @@ const SalesDashboard = () => {
                                     <th className="px-4 py-4">Next Follow-Up</th>
                                     <th className="px-4 py-4">Priority</th>
                                     <th className="px-4 py-4">Status</th>
-                                    <th className="px-4 py-4 text-center">Action</th>
-                                </tr>
-                            )}
-                            {activeTab === 'Move To Operation' && (
-                                <tr>
-                                    <th className="px-4 py-4">Job ID</th>
-                                    <th className="px-4 py-4">Customer Info</th>
-                                    <th className="px-4 py-4">Trip Details</th>
-                                    <th className="px-4 py-4">Package / Budget</th>
-                                    <th className="px-4 py-4">Message / Notes</th>
-                                    <th className="px-4 py-4">Source</th>
-                                    <th className="px-4 py-4">Date Added</th>
                                     <th className="px-4 py-4 text-center">Action</th>
                                 </tr>
                             )}
@@ -1263,7 +1305,7 @@ const SalesDashboard = () => {
                             ) : filteredData.length > 0 ? filteredData.map(row => (
                                 <tr key={row.id} className="block md:table-row bg-[#1e293b] md:bg-transparent border border-slate-700 md:border-none rounded-xl mb-4 md:mb-0 p-3 sm:p-4 md:p-0 hover:bg-slate-800/40 transition-colors shadow-sm md:shadow-none group relative">
 
-                                    {(activeTab === 'Jobs' || activeTab === 'Recycle Bin') && (
+                                    {(activeTab === 'Jobs' || activeTab === 'Recycle') && (
                                         <>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none font-semibold text-slate-300">
                                                 <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Job Id</span>
@@ -1307,7 +1349,7 @@ const SalesDashboard = () => {
                                         </>
                                     )}
 
-                                    {activeTab === 'Sales Assigned' && (
+                                    {activeTab === 'My Jobs' && (
                                         <>
                                             <td className="flex justify-between items-start md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none font-semibold text-slate-300 align-top">
                                                 <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase mt-0.5">Job Id</span>
@@ -1369,7 +1411,7 @@ const SalesDashboard = () => {
                                         </>
                                     )}
 
-                                    {activeTab === 'Itinerary Shared' && (
+                                    {activeTab === 'Returned' && (
                                         <>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none font-semibold text-slate-300">
                                                 <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Job Id</span>
@@ -1418,7 +1460,7 @@ const SalesDashboard = () => {
                                         </>
                                     )}
 
-                                    {activeTab === 'Follow-Up Required' && (
+                                    {activeTab === 'Follow-Up' && (
                                         <>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none font-semibold text-slate-300">
                                                 <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Job Id</span>
@@ -1465,55 +1507,6 @@ const SalesDashboard = () => {
                                         </>
                                     )}
 
-                                    {activeTab === 'Move To Operation' && (
-                                        <>
-                                            <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none font-semibold text-slate-300">
-                                                <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Job Id</span>
-                                                <span className="text-right md:text-left bg-slate-800 md:bg-transparent px-2 py-0.5 rounded md:px-0 md:py-0">LMN{row.id}</span>
-                                            </td>
-                                            <td className="flex justify-between items-start md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none">
-                                                <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase mt-0.5">Lead Info</span>
-                                                <div className="flex flex-col items-end md:items-start text-right md:text-left">
-                                                    <span className="text-white font-bold text-sm sm:text-base leading-none mb-1.5">{row.customerName || row.profileName || 'N/A'}</span>
-                                                    <div className="text-xs text-slate-400 flex flex-col gap-0.5">
-                                                        <span>📞 {row.phone || row.mobileNo || 'N/A'}</span>
-                                                        <span className="text-[10px] sm:text-xs text-slate-500">{row.email || 'N/A'}</span>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="flex justify-between items-start md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none">
-                                                <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase mt-0.5">Trip Details</span>
-                                                <div className="flex flex-col items-end md:items-start gap-1">
-                                                    <div className="flex items-center gap-1.5 text-emerald-400 font-medium text-sm"><MapPin size={14} className="flex-shrink-0"/><span className="capitalize">{row.destination || 'Bali'}</span></div>
-                                                    <div className="flex items-center gap-1.5 text-xs text-slate-400"><Calendar size={12} className="flex-shrink-0"/>{row.travelDates || row.travelDate || 'TBD'}</div>
-                                                    <div className="text-[11px] sm:text-xs text-slate-500 md:pl-5">{row.noOfPax || row.travellerCount || '2'} pax</div>
-                                                </div>
-                                            </td>
-                                            <td className="flex justify-between items-start md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none">
-                                                <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase mt-0.5">Pkg / Budget</span>
-                                                <div className="flex flex-col gap-1.5 items-end md:items-start">
-                                                    <span className="px-2 py-0.5 text-[10px] sm:text-xs font-medium rounded bg-purple-950/40 text-purple-300 border border-purple-900/40 whitespace-nowrap">{row.typeOfTour || row.packageType || 'Family Tour'}</span>
-                                                    <span className="font-semibold text-slate-200 text-sm">{row.budgetRange || row.budget || row.amount || '—'}</span>
-                                                </div>
-                                            </td>
-                                            <td className="flex flex-col md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none text-xs sm:text-sm text-slate-500">
-                                                <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase mb-1">Message / Notes</span>
-                                                <div className="flex flex-col gap-1 max-w-full md:max-w-[200px]">
-                                                    <div className="truncate italic" title={row.leadMessage}>{row.leadMessage ? `"${row.leadMessage}"` : '—'}</div>
-                                                    <div className="truncate text-[10px] sm:text-xs text-emerald-500/80" title={row.opsRemarks}>{row.opsRemarks ? `Ops Note: ${row.opsRemarks}` : ''}</div>
-                                                </div>
-                                            </td>
-                                            <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none">
-                                                <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Source</span>
-                                                <span className="px-2 py-0.5 text-[10px] sm:text-xs font-semibold rounded bg-pink-950/30 text-pink-400 border border-pink-900/30 whitespace-nowrap">{row.platform || 'Instagram'}</span>
-                                            </td>
-                                            <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none">
-                                                <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Added</span>
-                                                <span className="text-sm text-slate-400 font-medium whitespace-nowrap">{formatDateTime(row.createdAt || row.dateAdded)}</span>
-                                            </td>
-                                        </>
-                                    )}
-
                                     {/* Action Buttons */}
                                     <td className="flex justify-between items-center md:table-cell py-3 md:py-4 px-2 md:px-4 mt-1 md:mt-0 md:text-center whitespace-nowrap">
                                         <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Actions</span>
@@ -1526,24 +1519,24 @@ const SalesDashboard = () => {
                                                 className="p-2 md:p-1.5 text-blue-400 md:text-slate-400 hover:text-blue-300 bg-blue-500/10 md:bg-transparent hover:bg-blue-900/30 rounded-lg transition-colors" title="View Details">
                                                 <Eye size={18} />
                                             </button>
-                                            {activeTab !== 'Jobs' && activeTab !== 'Recycle Bin' && (
+                                            {activeTab !== 'Jobs' && activeTab !== 'Recycle' && (
                                                 <button type="button" onClick={() => handleOpenEditModal(row)}
                                                     className="p-2 md:p-1.5 text-yellow-400 md:text-slate-400 hover:text-yellow-400 bg-yellow-500/10 md:bg-transparent hover:bg-yellow-900/30 rounded-lg transition-colors" title="Edit Details">
                                                     <Pencil size={18} />
                                                 </button>
                                             )}
-                                            {activeTab === 'Sales Assigned' && (
+                                            {activeTab === 'My Jobs' && (
                                                 <button type="button" onClick={() => handleOpenReassignModal(row)}
                                                     className="p-2 md:p-1.5 text-orange-400 md:text-slate-400 hover:text-orange-400 bg-orange-500/10 md:bg-transparent hover:bg-yellow-900/30 rounded-lg transition-colors" title="Reassign">
                                                     <RefreshCw size={18} />
                                                 </button>
                                             )}
-                                            {(row.status === 'Sales Assigned' || activeTab === 'Itinerary Shared' || activeTab === 'Follow-Up Required') ? (
+                                            {(row.status === 'Sales Assigned' || activeTab === 'My Jobs' || activeTab === 'Follow-Up') ? (
                                                 <button type="button" onClick={() => handleMoveToOps(row.id)}
                                                     className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 text-[11px] sm:text-xs font-bold md:font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 rounded-lg md:rounded-md transition-colors whitespace-nowrap" title="Send to Operations">
                                                     <Send size={14} className="hidden md:block"/> Send to Ops
                                                 </button>
-                                            ) : (activeTab === 'Jobs' || activeTab === 'Recycle Bin') ? (
+                                            ) : (activeTab === 'Jobs' || activeTab === 'Recycle' || activeTab === 'Returned') ? (
                                                 <button type="button" onClick={() => handleOpenAssignModal(row)}
                                                     className="p-2 md:p-1.5 text-orange-400 md:text-slate-400 hover:text-orange-400 bg-orange-500/10 md:bg-transparent hover:bg-orange-900/30 rounded-lg transition-colors" title="Assign">
                                                     <CheckSquare size={18} />
@@ -1782,150 +1775,157 @@ const SalesDashboard = () => {
                 </div>
             )}
 
-            {/* EDIT MODAL */}
+            {/* FULL-SCREEN EDIT MODAL */}
             {isEditModalOpen && selectedLead && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-3 sm:p-4 md:p-6 backdrop-blur-sm">
-                    <div className="bg-[#0f172a] border border-slate-700/80 rounded-2xl shadow-2xl w-full max-w-6xl max-h-[calc(100vh-24px)] sm:max-h-[90vh] flex flex-col relative text-slate-100 overflow-hidden">
+                <div className="absolute inset-0 bg-[#0f172a] z-50 overflow-hidden flex flex-col w-full h-full text-slate-100">
+                    <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] z-20 flex-shrink-0 shadow-md">
+                        <div className="flex items-center gap-4">
+                            <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2 truncate pr-4">
+                                <Pencil size={20} className="text-orange-400 flex-shrink-0" />
+                                <span className="truncate hidden sm:inline">Edit Lead</span>
+                                <span className="text-sm font-mono font-semibold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 flex-shrink-0">
+                                    LMN{String(selectedLead?.id || '').padStart(4, '0')}
+                                </span>
+                            </h2>
+                            
+                           {(() => {
+    const temp = editFormData.leadTemperature || 'Cold';
+    const tempStyles = {
+        Hot: { ring: '#f87171', badgeBg: 'from-red-500/15 to-transparent', badgeBorder: 'border-red-500/30', wrapBg: 'from-red-500/15 to-red-500/5', wrapBorder: 'border-red-500/30', pillBg: 'bg-red-500/15', pillBorder: 'border-red-500/35', pillText: 'text-red-300', glow: 'drop-shadow(0 0 5px rgba(248,113,113,0.55))', Icon: Flame },
+        Warm: { ring: '#fb923c', badgeBg: 'from-orange-500/15 to-transparent', badgeBorder: 'border-orange-500/30', wrapBg: 'from-orange-500/15 to-orange-500/5', wrapBorder: 'border-orange-500/30', pillBg: 'bg-orange-500/15', pillBorder: 'border-orange-500/35', pillText: 'text-orange-300', glow: 'drop-shadow(0 0 5px rgba(251,146,60,0.55))', Icon: Sun },
+        Cold: { ring: '#22d3ee', badgeBg: 'from-cyan-500/15 to-transparent', badgeBorder: 'border-cyan-500/30', wrapBg: 'from-cyan-500/15 to-cyan-500/5', wrapBorder: 'border-cyan-500/30', pillBg: 'bg-cyan-500/15', pillBorder: 'border-cyan-500/35', pillText: 'text-cyan-300', glow: 'drop-shadow(0 0 5px rgba(34,211,238,0.55))', Icon: Snowflake },
+    };
+    const s = tempStyles[temp] || tempStyles.Cold;
+    const circ = 2 * Math.PI * 18;
 
-                        <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] z-20 flex-shrink-0">
-                            <div className="flex items-center gap-4">
-                                <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2 truncate pr-4">
-                                    <Pencil size={20} className="text-orange-400 flex-shrink-0" />
-                                    <span className="truncate hidden sm:inline">Edit Lead</span>
-                                    <span className="text-sm font-mono font-semibold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 flex-shrink-0">
-                                        LMN{String(selectedLead?.id || '').padStart(4, '0')}
-                                    </span>
-                                </h2>
-                                
-                                <div className="flex items-center gap-3 pl-4 sm:ml-4 border-l border-slate-700">
-                                    <div className="relative w-11 h-11 flex items-center justify-center bg-[#0f172a] rounded-xl shadow-inner border border-slate-700/50">
-                                        <svg className="w-9 h-9 transform -rotate-90">
-                                            <circle cx="18" cy="18" r="14" stroke="currentColor" strokeWidth="4" fill="transparent" className="text-slate-800" />
-                                            <circle cx="18" cy="18" r="14" stroke="currentColor" strokeWidth="4" fill="transparent" strokeDasharray={87.96} strokeDashoffset={87.96 - (probValue / 100) * 87.96} className="text-cyan-400 transition-all duration-1000 ease-out" strokeLinecap="round" />
-                                        </svg>
-                                        <span className="absolute text-[10px] font-extrabold text-cyan-400">{probValue}%</span>
-                                    </div>
-                                    <div className="flex flex-col justify-center">
-                                        <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-0.5">Booking Probability</span>
-                                        <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider w-max ${
-                                            editFormData.leadTemperature === 'Hot' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 
-                                            editFormData.leadTemperature === 'Warm' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' : 
-                                            'bg-blue-600/30 text-blue-300 border border-blue-500/40'
-                                        }`}>
-                                            {editFormData.leadTemperature || 'Cold'}
+    return (
+        <div className={`flex items-center gap-3 pl-4 sm:ml-4 pr-4 py-1.5 rounded-2xl border-l sm:border sm:border-l-4 border-slate-700 ${temp !== 'Cold' || true ? `sm:bg-gradient-to-br sm:${s.badgeBg} sm:${s.badgeBorder}` : ''} transition-all duration-500`}>
+            <div className={`relative w-13 h-13 flex items-center justify-center rounded-2xl bg-gradient-to-br ${s.wrapBg} border ${s.wrapBorder} transition-all duration-500`} style={{ width: 52, height: 52 }}>
+                <svg width="44" height="44" viewBox="0 0 44 44" className="-rotate-90">
+                    <circle cx="22" cy="22" r="18" stroke="#1e293b" strokeWidth="3.5" fill="none" />
+                    <circle
+                        cx="22" cy="22" r="18"
+                        stroke={s.ring}
+                        strokeWidth="3.5"
+                        fill="none"
+                        strokeLinecap="round"
+                        strokeDasharray={circ}
+                        strokeDashoffset={circ - (probValue / 100) * circ}
+                        className="transition-all duration-1000 ease-out"
+                        style={{ filter: s.glow }}
+                    />
+                </svg>
+                <span className="absolute text-[11px] font-black font-mono" style={{ color: s.ring }}>{probValue}%</span>
+            </div>
+            <div className="flex flex-col justify-center gap-1">
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Booking Probability</span>
+                <span className={`inline-flex items-center gap-1 text-[10px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider w-max border ${s.pillBg} ${s.pillBorder} ${s.pillText}`}>
+                    <s.Icon size={11} strokeWidth={2.5} />
+                    {temp}
+                </span>
+            </div>
+        </div>
+    );
+})()}
+                        </div>
+                        
+                        <button type="button" onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-800 flex-shrink-0 ml-auto">
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <form id="edit-lead-form" onSubmit={handleSubmitEdit} onKeyDown={handlePreventEnterSubmit} className="px-4 sm:px-8 lg:px-12 py-6 overflow-y-auto space-y-6 flex-1 custom-scrollbar w-full max-w-7xl mx-auto">
+
+                        {/* SECTION 1: LEAD INFO */}
+                        <div className={sectionCls} style={{ borderColor: 'rgba(51,65,85,0.8)' }}>
+                            <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('leadInfo')}>
+                                <div className="flex flex-col gap-0.5">
+                                    <div className="flex items-center gap-2">
+                                        <h3 className={`${sectionHeadCls} m-0`}>Lead Info</h3>
+                                        <span className="text-[11px] sm:text-xs font-mono font-bold text-slate-300 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 flex items-center gap-1">
+                                            LMN{String(selectedLead?.id || '').padStart(4, '0')}
+                                            <Pencil size={11} className="text-slate-400" />
                                         </span>
                                     </div>
                                 </div>
+                                <div className="flex items-center gap-3">
+                                    <span className="text-[10px] sm:text-xs font-semibold text-slate-400 bg-slate-800/60 border border-slate-700 px-2 py-0.5 rounded tracking-wider">Read-Only</span>
+                                    {expandedSections.leadInfo ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
+                                </div>
                             </div>
-                            
-                            <button type="button" onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-800 flex-shrink-0 ml-auto">
-                                <X size={20} />
-                            </button>
+                            {expandedSections.leadInfo && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-4">
+                                    {[
+                                        { label: 'Lead Date', name: 'leadDate' },
+                                        { label: 'Lead Source', name: 'leadSource' },
+                                        { label: 'Campaign', name: 'campaign' },
+                                        { label: 'Lead Name', name: 'leadName' },
+                                        { label: 'Mobile Number', name: 'mobileNumber' },
+                                        { label: 'Email Address', name: 'emailAddress' },
+                                        { label: 'Package Type', name: 'packageType' },
+                                        { label: 'Budget', name: 'budget' },
+                                        { label: 'Message From Lead', name: 'messageFromLead' },
+                                    ].map(f => (
+                                        <div key={f.name}>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-400 mb-1">{f.label}</label>
+                                            <input type="text" name={f.name} value={editFormData[f.name] || ''} readOnly className={readonlyCls} />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
-                        <form id="edit-lead-form" onSubmit={handleSubmitEdit} onKeyDown={handlePreventEnterSubmit} className="px-3 sm:px-5 md:px-6 py-4 sm:py-5 overflow-y-auto space-y-4 sm:space-y-5 flex-1 custom-scrollbar">
-
-                            {/* SECTION 1: LEAD INFO */}
-                            <div className={sectionCls} style={{ borderColor: 'rgba(51,65,85,0.8)' }}>
-                                <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('leadInfo')}>
-                                    <div className="flex flex-col gap-0.5">
-                                        <div className="flex items-center gap-2">
-                                            <h3 className={`${sectionHeadCls} m-0`}>Lead Info</h3>
-                                            <span className="text-[11px] sm:text-xs font-mono font-bold text-slate-300 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 flex items-center gap-1">
-                                                LMN{String(selectedLead?.id || '').padStart(4, '0')}
-                                                <Pencil size={11} className="text-slate-400" />
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-[10px] sm:text-xs font-semibold text-slate-400 bg-slate-800/60 border border-slate-700 px-2 py-0.5 rounded tracking-wider">Read-Only</span>
-                                        {expandedSections.leadInfo ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
+                        {/* SECTION 2: SALES ACTIVITY */}
+                        <div className={sectionCls}>
+                            <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('salesActivity')}>
+                                <div className="flex items-center gap-3">
+                                    <h3 className={`${sectionHeadCls} m-0`}>Sales Activity</h3>
+                                    <div className="flex items-center gap-1.5 text-[11px] sm:text-xs">
+                                        <span className="text-slate-500">Follow-Up Count:</span>
+                                        <span className="font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-900/50 px-2 py-0.5 rounded-full min-w-[22px] text-center">
+                                            {editFormData.noResponseLogs?.length || 0}
+                                        </span>
                                     </div>
                                 </div>
-                                {expandedSections.leadInfo && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-4">
-                                        {[
-                                            { label: 'Lead Date', name: 'leadDate' },
-                                            { label: 'Lead Source', name: 'leadSource' },
-                                            { label: 'Campaign', name: 'campaign' },
-                                            { label: 'Lead Name', name: 'leadName' },
-                                            { label: 'Mobile Number', name: 'mobileNumber' },
-                                            { label: 'Email Address', name: 'emailAddress' },
-                                            { label: 'Package Type', name: 'packageType' },
-                                            { label: 'Budget', name: 'budget' },
-                                            { label: 'Message From Lead', name: 'messageFromLead' },
-                                        ].map(f => (
-                                            <div key={f.name}>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-400 mb-1">{f.label}</label>
-                                                <input type="text" name={f.name} value={editFormData[f.name] || ''} readOnly className={readonlyCls} />
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
+                                {expandedSections.salesActivity ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
                             </div>
+                            {expandedSections.salesActivity && (
+                                <div className="mt-4 space-y-4">
 
-                            {/* SECTION 2: SALES ACTIVITY */}
-                            <div className={sectionCls}>
-                                <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('salesActivity')}>
-                                    <div className="flex items-center gap-3">
-                                        <h3 className={`${sectionHeadCls} m-0`}>Sales Activity</h3>
-                                        <div className="flex items-center gap-1.5 text-[11px] sm:text-xs">
-                                            <span className="text-slate-500">Follow-Up Count:</span>
-                                            <span className="font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-900/50 px-2 py-0.5 rounded-full min-w-[22px] text-center">
-                                                {editFormData.noResponseLogs?.length || 0}
-                                            </span>
+                                    {/* NO RESPONSE / INTERACTION RECORD */}
+                                    <div className="relative">
+                                    
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 items-start">
+                                            <div>
+                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Lead Response</label>
+                                                {renderDropdown('leadResponse', editFormData.leadResponse, '', ['No Response', 'Requirement Collected'], handleInputChange)}
+                                            </div>
+                                            <div>
+                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Interaction Type</label>
+                                                {renderDropdown('interactionType', editFormData.interactionType, '', ['WhatsApp', 'Call', 'Email'], handleInputChange)}
+                                            </div>
+                                            <div>
+                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Action Taken</label>
+                                                {renderDropdown('actionTaken', editFormData.actionTaken, '', ['Sample Itinerary Shared', 'Follow-up Scheduled', 'Requirement Message Sent', 'Voice Note Sent','Promotional Offer Sent', 'Invalid Lead','Wrong Number','Others'], handleInputChange)}
+                                            </div>
                                         </div>
-                                    </div>
-                                    {expandedSections.salesActivity ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
-                                </div>
-                                {expandedSections.salesActivity && (
-                                    <div className="mt-4 space-y-4">
-
-                                        <div className="relative">
-                                            <div className="flex items-center gap-2 mb-3">
-                                                <span className="text-xs font-semibold text-white tracking-wide">No Response</span>
-                                            </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 items-end">
-                                                <div>
-                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Lead Response</label>
-                                                    {renderDropdown('leadResponse', editFormData.leadResponse, '-- Select --', ['No Response', 'Requirement Collected'], handleInputChange)}
-                                                </div>
-                                                <div className="flex items-end gap-1.5">
-                                                    <div className="flex-1">
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Interaction Type</label>
-                                                        {renderDropdown('interactionType', editFormData.interactionType, '-- Select --', ['WhatsApp', 'Call', 'Email'], handleInputChange)}
-                                                    </div>
-                                                    <div className="flex-shrink-0 pb-[3px]">
-                                                        <div className="w-7 h-[34px] sm:h-[30px] rounded bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400">
-                                                            <ChevronRight size={14} />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Action Taken</label>
-                                                    {renderDropdown('actionTaken', editFormData.actionTaken, '-- Select --', ['Sample Itinerary Shared', 'Follow-up Scheduled', 'Requirement Message Sent', 'Voice Note Sent','Promotional Offer Sent'], handleInputChange)}
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mt-3">
-                                                <div>
-                                                    <label className="block text-[11px] sm:text-xs font-medium text-white mb-1">Next Follow-Up</label>
-                                                    <input type="date" name="followupDate" value={editFormData.followupDate || ''} onChange={handleInputChange}
-                                                        className={`${inputCls} [color-scheme:dark]`} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Notes</label>
-                                                    <div className="flex gap-2">
-                                                        <textarea name="salesNotes" value={editFormData.salesNotes} onChange={handleInputChange} rows="1"
-                                                            className="w-full px-3 py-2 sm:py-1.5 bg-slate-900 border border-slate-700 rounded-lg sm:rounded text-white text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 outline-none resize-none custom-scrollbar transition-all placeholder-slate-500"
-                                                            placeholder="Notes..." />
-                                                        <button type="button" onClick={handleLogNoResponse} className="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap cursor-pointer">
-                                                            Save Log
-                                                        </button>
-                                                    </div>
+                                        
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4">
+                                            {renderDatePicker('followupDate', editFormData.followupDate, 'Next Follow-Up', handleInputChange)}
+                                            <div className="sm:col-span-2">
+                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Notes</label>
+                                                <div className="flex gap-2">
+                                                    <input type="text" name="salesNotes" value={editFormData.salesNotes} onChange={handleInputChange} className={inputCls} placeholder="Notes..." />
+                                                    <button type="button" onClick={() => handleLogNoResponse('interaction')} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap cursor-pointer">
+                                                        Save Log
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
 
+                                    {/* PREVIOUS ATTEMPTS (Only visible if 'No Response') */}
+                                    {editFormData.leadResponse === 'No Response' && (
                                         <div className="mt-5 p-4 bg-[#091124] border border-slate-700/60 rounded-xl">
                                             <div className="flex justify-between items-center mb-4">
                                                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
@@ -1935,18 +1935,47 @@ const SalesDashboard = () => {
                                             
                                             <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-1">
                                                 {editFormData.noResponseLogs && editFormData.noResponseLogs.length > 0 ? (
-                                                    [...editFormData.noResponseLogs].reverse().map((log, idx) => (
-                                                        <div key={idx} className="flex flex-col text-xs bg-[#0f172a] p-3 rounded-lg border border-slate-700/60 shadow-sm transition-all hover:bg-slate-800/80">
-                                                            <div className="flex justify-between items-start mb-2">
-                                                                <span className="text-cyan-400 font-bold tracking-wide">{log.timestamp}</span>
-                                                                <span className="text-slate-300 px-2 py-0.5 bg-slate-900 rounded border border-slate-600 text-[10px] font-medium uppercase">
-                                                                    {log.interaction || 'N/A'}
-                                                                </span>
-                                                            </div>
-                                                            <div className="text-slate-300 mt-0.5 space-y-1.5">
-                                                                <div><span className="text-slate-500 font-medium">Action Taken:</span> <span className="text-slate-200">{log.action || 'None'}</span></div>
-                                                                {log.notes && <div><span className="text-slate-500 font-medium">Notes:</span> <span className="text-slate-200">{log.notes}</span></div>}
-                                                            </div>
+                                                    editFormData.noResponseLogs.map((log, origIdx) => ({ log, origIdx })).reverse().map(({ log, origIdx }) => (
+                                                        <div key={origIdx} className="flex flex-col text-xs bg-[#0f172a] p-3 rounded-lg border border-slate-700/60 shadow-sm transition-all hover:bg-slate-800/80 group">
+                                                            {editingLogIndex === origIdx ? (
+                                                                <div className="space-y-2">
+                                                                    <div className="flex justify-between items-center mb-1">
+                                                                        <span className="text-cyan-400 font-bold tracking-wide">{log.timestamp}</span>
+                                                                        <div className="flex gap-2">
+                                                                            <button type="button" onClick={() => handleEditLogSave(origIdx)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded border-none cursor-pointer text-[10px] font-bold transition-colors">Save</button>
+                                                                            <button type="button" onClick={handleEditLogCancel} className="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded border-none cursor-pointer text-[10px] font-bold transition-colors">Cancel</button>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="grid grid-cols-2 gap-2">
+                                                                        <input type="text" value={editingLogData.interaction} onChange={e => setEditingLogData({...editingLogData, interaction: e.target.value})} className={inlineInputCls} placeholder="Interaction Type" />
+                                                                        <input type="text" value={editingLogData.action} onChange={e => setEditingLogData({...editingLogData, action: e.target.value})} className={inlineInputCls} placeholder="Action Taken" />
+                                                                    </div>
+                                                                    <textarea value={editingLogData.notes} onChange={e => setEditingLogData({...editingLogData, notes: e.target.value})} className={`${inlineInputCls} resize-none min-h-[40px]`} placeholder="Notes" />
+                                                                </div>
+                                                            ) : (
+                                                                <>
+                                                                    <div className="flex justify-between items-start mb-2">
+                                                                        <span className="text-cyan-400 font-bold tracking-wide">{log.timestamp}</span>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-slate-300 px-2 py-0.5 bg-slate-900 rounded border border-slate-600 text-[10px] font-medium uppercase">
+                                                                                {log.interaction || 'N/A'}
+                                                                            </span>
+                                                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 ml-1">
+                                                                                <button type="button" onClick={() => handleEditLogStart(origIdx, log)} className="text-blue-400 hover:text-blue-300 bg-transparent border-none cursor-pointer p-0 flex items-center" title="Edit Log">
+                                                                                    <Pencil size={13} />
+                                                                                </button>
+                                                                                <button type="button" onClick={() => handleDeleteLog(origIdx)} className="text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer p-0 flex items-center" title="Delete Log">
+                                                                                    <Trash2 size={13} />
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="text-slate-300 mt-0.5 space-y-1.5">
+                                                                        <div><span className="text-slate-500 font-medium">Action Taken:</span> <span className="text-slate-200">{log.action || 'None'}</span></div>
+                                                                        {log.notes && <div><span className="text-slate-500 font-medium">Notes:</span> <span className="text-slate-200">{log.notes}</span></div>}
+                                                                    </div>
+                                                                </>
+                                                            )}
                                                         </div>
                                                     ))
                                                 ) : (
@@ -1956,336 +1985,394 @@ const SalesDashboard = () => {
                                                 )}
                                             </div>
                                         </div>
+                                    )}
 
-                                        
-                                    </div>
-                                )}
-                            </div>
+                                    {/* SALES TRACK / LEAD OUTCOME */}
+                                    {editFormData.leadResponse === 'Requirement Collected' && (
+                                        <div className="mt-6 pt-5 border-t border-slate-700/50">
+                                            <h4 className="text-sm font-bold text-cyan-400 mb-4 tracking-wider uppercase">SALES TRACK/ LEAD OUTCOME</h4>
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                {renderDatePicker('followupDate', editFormData.followupDate, 'Next Follow-Up', handleInputChange)}
+                                                <div>
+                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Customer Response</label>
+                                                    {renderDropdown('customerResponse', editFormData.customerResponse, ' ', ['Booking Confirmed', 'Not Interested', 'Lead Lost', 'Negotiation', 'Client Follow-Up', 'Trip Postponed', 'Needs Revision' ], handleInputChange)}
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Notes</label>
+                                                    <div className="flex gap-2">
+                                                        <input type="text" name="outcomeNotes" value={editFormData.outcomeNotes} onChange={handleInputChange} className={inputCls} placeholder="Notes..." />
+                                                        <button type="button" onClick={() => handleLogNoResponse('outcome')} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap cursor-pointer">
+                                                            Save Log
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                
+                                                {/* Conditional Rows based on Customer Response */}
+                                                {(editFormData.customerResponse === 'Not Interested' || editFormData.customerResponse === 'Lead Lost') && (
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-orange-400 mb-1">Closure Reason</label>
+                                                        {renderDropdown('closureReason', editFormData.closureReason, ' ', ['Budget Issue', 'Competitor', 'No Response', 'VISA Rejected','Medical Emergency','Natural Disaster','Flight Unavailable','Internal Decision'], handleInputChange)}
+                                                    </div>
+                                                )}
 
-                            {/* SECTION 4: TRAVEL DETAILS */}
-                            <div className={sectionCls}>
-                                <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('travelDetails')}>
-                                    <div className="flex flex-col gap-0.5">
-                                        <h3 className={`${sectionHeadCls} m-0`}>Travel Details</h3>
-                                    </div>
-                                    {expandedSections.travelDetails ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
-                                </div>
-                                {expandedSections.travelDetails && (
-                                    editFormData.leadResponse === 'Requirement Collected' ? (
-                                        <>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-4">
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
-                                                {renderDropdown('destination', editFormData.destination, '-- Select Destination --', DESTINATION_OPTIONS, handleInputChange)}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Type</label>
-                                                {renderDropdown('tourType', editFormData.tourType, '-- Select Tour Type --', ['Honeymoon', 'Family', 'Solo', 'Friends', 'Corporate', 'Group Tour', 'MICE'], handleInputChange)}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-white mb-1">Travel Date</label>
-                                                <input type="date" name="travelDate" value={editFormData.travelDate || ''} onChange={handleInputChange}
-                                                    className={`${inputCls} [color-scheme:dark]`} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
-                                                {renderDropdown('duration', editFormData.duration, '-- Select Duration --', ['2 Nights / 3 Days', '3 Nights / 4 Days', '4 Nights / 5 Days', '5 Nights / 6 Days', '6 Nights / 7 Days', '7 Nights+'], handleInputChange)}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Budget</label>
-                                                {renderDropdown('travelBudget', editFormData.travelBudget, '-- Select Budget Tier --', BUDGET_OPTIONS, handleInputChange)}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Hotel Category</label>
-                                                {renderDropdown('hotelCategory', editFormData.hotelCategory, '-- Select Hotel Tier --', ['Budget / 2-Star', 'Standard / 3-Star', 'Premium / 4-Star', 'Luxury / 5-Star', {value: 'Resort / Villa', label: 'Resort / Luxury Villa'}], handleInputChange)}
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <div className="w-1/2">
-                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Adults)</label>
-                                                    <input type="number" name="noOfAdults" value={editFormData.noOfAdults} onChange={handleInputChange} className={inputCls} min="1" />
-                                                </div>
-                                                <div className="w-1/2">
-                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Children)</label>
-                                                    <input type="number" name="noOfChildren" value={editFormData.noOfChildren} onChange={handleInputChange} className={inputCls} min="0" />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Departure City</label>
-                                                <input type="text" name="departureCity" value={editFormData.departureCity} onChange={handleInputChange} className={inputCls} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-white mb-1">Offers</label>
-                                                {renderDropdown('offers', editFormData.offers, '', [{value: 'None', label: 'No Promo Applied'}, 'Early Bird 10% Discount', 'Free Airport Transfer Upgrade', {value: 'Complimentary Honeymoon Cake & Decor', label: 'Complimentary Honeymoon Cake & Decor'}], handleInputChange)}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Action Taken</label>
-                                                {renderDropdown('actionTaken', editFormData.actionTaken, '-- Select --', [ 'Customisation Required', 'Readymade Required'], handleInputChange)}
+                                                {(editFormData.customerResponse === 'Negotiation' || editFormData.customerResponse === 'Client Follow-Up') && (
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-orange-400 mb-1">Objection Tracking</label>
+                                                        {renderDropdown('objectionTracking', editFormData.objectionTracking, ' ', ['Price High', 'Comparing Other Agents', 'Flight Cost', 'Hotel Cost','VISA Concerns','Travel Date Issue','Family Approval Pending','Need Leave Approval','Unexpected Situations','Safety Concerns'], handleInputChange)}
+                                                    </div>
+                                                )}
+
+                                                {editFormData.customerResponse === 'Trip Postponed' && (
+                                                    renderDatePicker('nextFollowUpDatePostponed', editFormData.nextFollowUpDatePostponed, 'Next Follow-Up Date', handleInputChange)
+                                                )}
                                             </div>
                                         </div>
+                                    )}
+                                    
+                                </div>
+                            )}
+                        </div>
 
-                                        {(editFormData.actionTaken === 'Customisation Required' || editFormData.customerResponse === 'Needs Revision') && (
-                                            <div className="mt-5 pt-4 border-t border-slate-800/60">
-                                                <h4 className={`${sectionHeadCls} mb-4`}>Customisation</h4>
-                                                <div className="space-y-4">
-                                                    {editFormData.customisationRequests.map((req, index) => (
-                                                        <div key={index} className="relative p-4 rounded-xl border border-slate-700/50 bg-slate-800/20">
-                                                            {editFormData.customisationRequests.length > 1 && (
-                                                                <button type="button" onClick={() => removeCustomisationRequest(index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 p-1 bg-transparent border-none cursor-pointer">
-                                                                    <X size={16} />
-                                                                </button>
-                                                            )}
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                                                                <div>
-                                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
-                                                                    <input type="text" value={req.destination || ''} onChange={(e) => handleCustomisationChange(index, 'destination', e.target.value)} className={inputCls} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Customisation Type</label>
-                                                                    {renderArrayDropdown('customisationType', req.customisationType, index, '-- Select Type --', ['New Itinerary', 'Existing Itinerary Modification', 'Hotel Change', 'Sightseeing Change', 'Budget Optimisation', 'Flight & VISA Assistance','Readymade Validation','Revising Again'])}
-                                                                </div>
-                                                                <div>
-                                                                    {renderDatePicker(`turnoverTime_${index}`, req.turnaroundTime, 'Turn Over Time', (e) => handleCustomisationChange(index, 'turnaroundTime', e.target.value), 'Calendar')}
-                                                                </div>
-                                                                <div className="md:col-span-3">
-                                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Requirements</label>
-                                                                    <div className="flex items-center gap-1.5 w-full">
-                                                                        <input type="text" value={req.requirements || ''} onChange={(e) => handleCustomisationChange(index, 'requirements', e.target.value)} className={`${inputCls} flex-1`} placeholder="Type..." />
-                                                                        <button type="button" onClick={isRecording ? stopRecording : startRecording}
-                                                                            className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded whitespace-nowrap flex-shrink-0 transition-colors border-none cursor-pointer h-[38px] sm:h-[34px] ${isRecording ? 'bg-red-500 animate-pulse text-white' : 'bg-slate-800 text-cyan-400 hover:bg-slate-700'}`}>
-                                                                            {isRecording ? <><Square size={12} fill="currentColor" /> ({formatTimer(recordingTime)})</> : <><Mic size={14} /> Voice</>}
-                                                                        </button>
-                                                                    </div>
+                        {/* SECTION 4: TRAVEL DETAILS */}
+                        <div className={sectionCls}>
+                            <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('travelDetails')}>
+                                <div className="flex flex-col gap-0.5">
+                                    <h3 className={`${sectionHeadCls} m-0`}>Travel Details</h3>
+                                </div>
+                                {expandedSections.travelDetails ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
+                            </div>
+                            {expandedSections.travelDetails && (
+                                editFormData.leadResponse === 'Requirement Collected' ? (
+                                    <>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-4">
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
+                                            <input type="text" name="destination" value={editFormData.destination} onChange={handleInputChange} className={inputCls} placeholder=" " />
+                                        </div>
+                                        {renderDatePicker('travelDate', editFormData.travelDate, 'Travel Date', handleInputChange)}
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
+                                            <input type="text" name="duration" value={editFormData.duration} onChange={handleInputChange} className={inputCls} />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <div className="w-1/2">
+                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Adults)</label>
+                                                <input type="number" name="noOfAdults" value={editFormData.noOfAdults} onChange={handleInputChange} className={inputCls} min="1" />
+                                            </div>
+                                            <div className="w-1/2">
+                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Children)</label>
+                                                <input type="number" name="noOfChildren" value={editFormData.noOfChildren} onChange={handleInputChange} className={inputCls} min="0" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Departure City</label>
+                                            <input type="text" name="departureCity" value={editFormData.departureCity} onChange={handleInputChange} className={inputCls} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Budget</label>
+                                            <input type="text" name="travelBudget" value={editFormData.travelBudget} onChange={handleInputChange} className={inputCls} placeholder=" " />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Type</label>
+                                            {renderDropdown('tourType', editFormData.tourType, ' ', ['Honeymoon', 'Family', 'Solo', 'Friends', 'Corporate', 'Group Tour', 'MICE'], handleInputChange)}
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Service </label>
+                                            {renderMultiSelect('services', editFormData.services, ['Tour Package', 'Flight Booking', 'VISA Booking', 'Hotel Booking Only', 'Local Transport', 'Travel Insurance', 'Other'])}
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Hotel Category</label>
+                                            {renderDropdown('hotelCategory', editFormData.hotelCategory, ' ', [  ' 3-Star', ' 4-Star', ' 5-Star','Luxury','Boutique','Villa','Others'], handleInputChange)}
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Offers</label>
+                                            {renderDropdown('offers', editFormData.offers, ' ', [{value: 'None', label: 'No Promo Applied'}, 'Early Bird 10% Discount', 'Free Airport Transfer Upgrade', {value: 'Complimentary Honeymoon Cake & Decor', label: 'Complimentary Honeymoon Cake & Decor'}], handleInputChange)}
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Action Taken</label>
+                                            {renderDropdown('actionTaken', editFormData.actionTaken, ' ', [ 'Customisation Required', 'Readymade Required'], handleInputChange)}
+                                        </div>
+                                        <div className="md:col-span-3">
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Remarks</label>
+                                            <input type="text" name="remarks" value={editFormData.remarks} onChange={handleInputChange} className={inputCls} />
+                                        </div>
+                                    </div>
+
+                                    {(editFormData.actionTaken === 'Customisation Required' || editFormData.customerResponse === 'Needs Revision') && (
+                                        <div className="mt-5 pt-4 border-t border-slate-800/60">
+                                            <h4 className={`${sectionHeadCls} mb-4`}>Customisation</h4>
+                                            <div className="space-y-4">
+                                                {editFormData.customisationRequests.map((req, index) => (
+                                                    <div key={index} className="relative p-4 rounded-xl border border-slate-700/50 bg-slate-800/20">
+                                                        {editFormData.customisationRequests.length > 1 && (
+                                                            <button type="button" onClick={() => removeCustomisationRequest(index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 p-1 bg-transparent border-none cursor-pointer">
+                                                                <X size={16} />
+                                                            </button>
+                                                        )}
+                                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
+                                                                <input type="text" value={req.destination || ''} onChange={(e) => handleCustomisationChange(index, 'destination', e.target.value)} className={inputCls} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Customisation Type</label>
+                                                                {renderArrayDropdown('customisationType', req.customisationType, index, ' ', ['Complete Custom package', 'Existing Itinerary Modification', 'Hotel Change',   'Budget Optimisation', 'Add Activities','Remove Activities','Route Modification','Readymade Validation','Honeymoon Customisation','Family Customisation','Corporate Customisation','Revising Again','Other'])}
+                                                            </div>
+                                                            <div>
+                                                                {renderDatePicker(`turnoverTime_${index}`, req.turnaroundTime, 'Required By', (e) => handleCustomisationChange(index, 'turnaroundTime', e.target.value), '')}
+                                                            </div>
+                                                            <div className="md:col-span-3">
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Requirements</label>
+                                                                <div className="flex items-center gap-1.5 w-full">
+                                                                    <input type="text" value={req.requirements || ''} onChange={(e) => handleCustomisationChange(index, 'requirements', e.target.value)} className={`${inputCls} flex-1`} placeholder="" />
+                                                                    <button type="button" onClick={isRecording ? stopRecording : startRecording}
+                                                                        className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded whitespace-nowrap flex-shrink-0 transition-colors border-none cursor-pointer h-[38px] sm:h-[34px] ${isRecording ? 'bg-red-500 animate-pulse text-white' : 'bg-slate-800 text-cyan-400 hover:bg-slate-700'}`}>
+                                                                        {isRecording ? <><Square size={12} fill="currentColor" /> ({formatTimer(recordingTime)})</> : <><Mic size={14} /> Voice</>}
+                                                                    </button>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                                <div className="mt-3 flex justify-start">
-                                                    <button type="button" onClick={addCustomisationRequest} className="text-xs sm:text-sm font-bold text-cyan-400 bg-transparent border-none hover:text-cyan-300 flex items-center gap-1 transition-colors px-2 py-1.5 rounded hover:bg-cyan-950/30 cursor-pointer">
-                                                        <Plus size={14} /> Add Destination
-                                                    </button>
-                                                </div>
-                                                {editFormData.voiceRecordings?.length > 0 && (
-                                                    <div className="mt-4 p-3 bg-slate-900/60 border border-slate-800/60 rounded-lg space-y-2">
-                                                        <p className="text-[10px] sm:text-[11px] font-bold uppercase text-slate-400 tracking-wider">Audio Feeds Attached ({editFormData.voiceRecordings.length})</p>
-                                                        <div className="flex flex-col sm:grid sm:grid-cols-2 md:grid-cols-3 gap-2">
-                                                            {editFormData.voiceRecordings.map((audio, index) => (
-                                                                <div key={index} className="flex items-center justify-between p-2.5 sm:p-2 rounded-lg bg-slate-800/40 border border-slate-700/50">
-                                                                    <span className="text-xs sm:text-sm text-slate-300">Voice Capture #{index + 1}</span>
-                                                                    <div className="flex items-center gap-2 sm:gap-1.5">
-                                                                        <button type="button" onClick={() => togglePlayback(index)} className="p-1.5 sm:p-1 rounded-md bg-slate-800 border-none cursor-pointer text-emerald-400 hover:bg-slate-700">
-                                                                            {playingIndex === index ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
-                                                                        </button>
-                                                                        <button type="button" onClick={() => deleteRecording(index)} className="p-1.5 sm:p-1 rounded-md bg-slate-800 border-none cursor-pointer text-red-400 hover:bg-red-950">
-                                                                            <Trash2 size={14} />
-                                                                        </button>
-                                                                        <audio ref={el => audioPlayersRef.current[index] = el} src={audio.url} onEnded={() => setPlayingIndex(null)} className="hidden" />
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
                                                     </div>
-                                                )}
+                                                ))}
                                             </div>
-                                        )}
-                                        </>
-                                    ) : (
-                                        <div className="mt-4 px-4 py-5 text-xs sm:text-sm text-slate-500 border border-dashed border-slate-800 rounded-xl text-center">
-                                            This section appears when Lead Response is "Requirement Collected".
+                                            <div className="mt-3 flex justify-start">
+                                                <button type="button" onClick={addCustomisationRequest} className="text-xs sm:text-sm font-bold text-cyan-400 bg-transparent border-none hover:text-cyan-300 flex items-center gap-1 transition-colors px-2 py-1.5 rounded hover:bg-cyan-950/30 cursor-pointer">
+                                                    <Plus size={14} /> Add Destination
+                                                </button>
+                                            </div>
+                                            {editFormData.voiceRecordings?.length > 0 && (
+                                                <div className="mt-4 p-3 bg-slate-900/60 border border-slate-800/60 rounded-lg space-y-2">
+                                                    <p className="text-[10px] sm:text-[11px] font-bold uppercase text-slate-400 tracking-wider">Audio Feeds Attached ({editFormData.voiceRecordings.length})</p>
+                                                    <div className="flex flex-col sm:grid sm:grid-cols-2 md:grid-cols-3 gap-2">
+                                                        {editFormData.voiceRecordings.map((audio, index) => (
+                                                            <div key={index} className="flex items-center justify-between p-2.5 sm:p-2 rounded-lg bg-slate-800/40 border border-slate-700/50">
+                                                                <span className="text-xs sm:text-sm text-slate-300">Voice Capture #{index + 1}</span>
+                                                                <div className="flex items-center gap-2 sm:gap-1.5">
+                                                                    <button type="button" onClick={() => togglePlayback(index)} className="p-1.5 sm:p-1 rounded-md bg-slate-800 border-none cursor-pointer text-emerald-400 hover:bg-slate-700">
+                                                                        {playingIndex === index ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+                                                                    </button>
+                                                                    <button type="button" onClick={() => deleteRecording(index)} className="p-1.5 sm:p-1 rounded-md bg-slate-800 border-none cursor-pointer text-red-400 hover:bg-red-950">
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                    <audio ref={el => audioPlayersRef.current[index] = el} src={audio.url} onEnded={() => setPlayingIndex(null)} className="hidden" />
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
-                                    )
-                                )}
-                            </div>
-
-                            {/* SECTION 5: OPERATION RESPONSE */}
-                            <div className={sectionCls}>
-                                <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('operationResponse')}>
-                                    <h3 className={`${sectionHeadCls} m-0`}>OPERATION RESPONSE</h3>
-                                    {expandedSections.operationResponse ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
-                                </div>
-                                {expandedSections.operationResponse && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4">
-                                        <div>
-                                            <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Received Date & Time</label>
-                                            <input type="text" readOnly value={editFormData.opsCompletedOn || formatDateTime(new Date().toISOString())} className={`${readonlyCls} text-red-400 font-bold`} placeholder="Date & Time - Auto" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Prepared By</label>
-                                            <input type="text" readOnly value={editFormData.opsPreparedBy || editFormData.assignedTo || ''} className={`${readonlyCls} text-red-400 text-[10px] sm:text-xs font-bold`} placeholder="Operations Executive name automatically appear" />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Ops Review</label>
-                                            <textarea name="opsRemarks" value={editFormData.opsRemarks || 'No review notes.'} readOnly className={`${readonlyCls} min-h-[38px] italic`} rows={1} />
-                                        </div>
-                                        <div>
-                                            <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Action Taken</label>
-                                            {renderDropdown('opsActionTaken', editFormData.opsActionTaken, '-- Select --', ['Shared Customized Itinerary', 'Explained Over Call', 'Explained via WhatsApp'], handleInputChange)}
-                                        </div>
-                                        <div>
-                                            <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Customer Response</label>
-                                            {renderDropdown('customerResponse', editFormData.customerResponse, '-- Select --', ['Yet to Respond', 'Needs Revision', 'Negotiation' ,'Client Follow-Up','Not Interested','Booking Confirmed','Lead Lost'], handleInputChange)}
-                                        </div>
-                                         <div>
-                                            <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Objection Tracking</label>
-                                            {renderDropdown('objectionTracking', editFormData.objectionTracking, '-- Select --', ['Price High', 'Comparing Other Agents', 'Flight Cost', 'Hotel Cost', 'VISA Concerns', 'Travel Date Issue', 'Family Approval Pending', 'Need Leave Approval', 'Unexpected Situations', 'Safety Concerns'], handleInputChange)}
-                                        </div>
+                                    )}
+                                    </>
+                                ) : (
+                                    <div className="mt-4 px-4 py-5 text-xs sm:text-sm text-slate-500 border border-dashed border-slate-800 rounded-xl text-center">
+                                        This section appears when Lead Response is "Requirement Collected".
                                     </div>
-                                )}
-                            </div>
-
-                            {/* SECTION 7: BOOKING CONFIRMATION */}
-                            <div className={`p-4 sm:p-5 rounded-xl border transition-all duration-300 ${editFormData.leadStatusField === 'Booking Confirmed' ? 'border-emerald-500/30 bg-emerald-950/10' : 'border-slate-800 bg-slate-900/10'}`}>
-                                <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('bookingConfirmation')}>
-                                    <div className="flex flex-col gap-0.5">
-                                        <h3 className={`text-sm sm:text-base font-bold tracking-wider uppercase m-0 flex items-center gap-2 ${editFormData.leadStatusField === 'Booking Confirmed' ? 'text-emerald-400' : 'text-slate-500'}`}>
-                                            {editFormData.leadStatusField === 'Booking Confirmed' && <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />}
-                                            Booking Confirmation
-                                        </h3>
-                                    </div>
-                                    {expandedSections.bookingConfirmation ? <ChevronDown size={18} className={editFormData.leadStatusField === 'Booking Confirmed' ? "text-emerald-400" : "text-slate-500"}/> : <ChevronRight size={18} className="text-slate-500"/>}
-                                </div>
-                                {expandedSections.bookingConfirmation && (
-                                    editFormData.leadStatusField === 'Booking Confirmed' ? (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-4">
-                                            {renderDatePicker('bookingDate', editFormData.bookingDate, 'Booking Date', handleInputChange)}
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Billing Name</label>
-                                                <select name="billingName" value={editFormData.billingName || ''} onChange={handleInputChange} className={selectCls}>
-                                                    <option value="">-- Select --</option>
-                                                    <option value={editFormData.leadName}>{editFormData.leadName || 'Lead Name (default)'}</option>
-                                                    <option value="Direct Customer">Direct Customer</option>
-                                                    <option value="B2B Partner">B2B Partner</option>
-                                                    <option value="Corporate Client">Corporate Client</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Operations Executive</label>
-                                                <input type="text" name="operationExecutive" value={editFormData.operationExecutive} onChange={handleInputChange} className={inputCls} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Travel Type</label>
-                                                {renderDropdown('confirmedTripType', editFormData.confirmedTripType, '-- Select --', ['International', 'Domestic'], handleInputChange)}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Confirmed Destination</label>
-                                                <input type="text" name="confirmedDestination" value={editFormData.confirmedDestination} onChange={handleInputChange} className={inputCls} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
-                                                <input type="text" name="confirmedDuration" value={editFormData.confirmedDuration} onChange={handleInputChange} className={inputCls} />
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <div className="w-1/2">
-                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Adults)</label>
-                                                    <input type="number" name="noOfPax" value={editFormData.noOfPax} onChange={handleInputChange} className={inputCls} min="1" />
-                                                </div>
-                                                <div className="w-1/2">
-                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Children)</label>
-                                                    <input type="number" name="confirmedNoOfChildren" value={editFormData.confirmedNoOfChildren} onChange={handleInputChange} className={inputCls} min="0" />
-                                                </div>
-                                            </div>
-                                            {renderDatePicker('tourStartDate', editFormData.tourStartDate, 'Travel Start Date', handleInputChange)}
-                                            {renderDatePicker('travelEndDate', editFormData.travelEndDate, 'Travel End Date', handleInputChange)}
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Special Offers</label>
-                                                <textarea name="specialOffers" value={editFormData.specialOffers} onChange={handleInputChange} className={inputCls} rows={1} />
-                                            </div>
-                                            {renderDatePicker('departureDate', editFormData.departureDate, 'Departure Date', handleInputChange)}
-                                            {renderDatePicker('arrivalDate', editFormData.arrivalDate, 'Arrival Date', handleInputChange)}
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Flight Status</label>
-                                                {renderDropdown('flightStatus', editFormData.flightStatus, '-- Select --', ['Booked', 'Pending', 'Not Required'], handleInputChange)}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">VISA Status</label>
-                                                {renderDropdown('visaStatus', editFormData.visaStatus, '-- Select --', ['Approved', 'In Process', 'Not Required'], handleInputChange)}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Insurance Status</label>
-                                                {renderDropdown('insuranceStatus', editFormData.insuranceStatus, '-- Select --', ['Issued', 'Pending', 'Not Required'], handleInputChange)}
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="mt-4 px-4 py-5 text-xs sm:text-sm text-slate-500 border border-dashed border-slate-800 rounded-xl text-center">
-                                            This section appears when Lead Status is "Booking Confirmed".
-                                        </div>
-                                    )
-                                )}
-                            </div>
-
-                            {/* SECTION 8: PAYMENT INFORMATION */}
-                            <div className="p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-900/10 transition-all duration-300">
-                                <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('paymentInfo')}>
-                                    <h3 className="text-sm sm:text-base font-bold tracking-wider uppercase m-0 text-cyan-400">
-                                        Payment Information
-                                    </h3>
-                                    {expandedSections.paymentInfo ? <ChevronDown size={18} className="text-cyan-400" /> : <ChevronRight size={18} className="text-slate-500"/>}
-                                </div>
-                                {expandedSections.paymentInfo && (
-                                    <div className="mt-4">
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 border-slate-700/50">
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Cost</label>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
-                                                    <input type="text" name="totalPackageCost" value={editFormData.totalPackageCost} onChange={handleInputChange} className={`${inputCls} pl-7`} />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">GST Inclusion</label>
-                                                {renderDropdown('gstInclusion', editFormData.gstInclusion, '-- Select --', ['Included', 'Excluded'], handleInputChange)}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">TCS Inclusion</label>
-                                                {renderDropdown('tcsInclusion', editFormData.tcsInclusion, '-- Select --', ['Included', 'Excluded', 'Not Applicable'], handleInputChange)}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Service</label>
-                                                {renderDropdown('paymentService', editFormData.paymentService, '-- Select Service --', ['Flight', 'Hotel', 'Package', 'Visa', 'Transport'], handleInputChange)}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Amount Received</label>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
-                                                    <input type="text" name="amountReceived" value={editFormData.amountReceived} onChange={handleInputChange} className={`${inputCls} pl-7`} />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Transaction ID</label>
-                                                <input type="text" name="transactionId" value={editFormData.transactionId} onChange={handleInputChange} className={inputCls} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Payment Mode</label>
-                                                {renderDropdown('paymentMode', editFormData.paymentMode, '-- Choose Mode --', [{value: 'UPI / QR', label: 'UPI / QR Transfer'}, {value: 'Net Banking', label: 'Net Banking (NEFT/IMPS)'}, {value: 'Credit Card', label: 'Credit Card Portal'}, {value: 'Cash', label: 'Cash Deposit'}], handleInputChange)}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Status</label>
-                                                <select name="paymentStatus" value={editFormData.paymentStatus || 'First Payment'} onChange={handleInputChange} className={selectCls}>
-                                                    <option value="First Payment">First Payment</option>
-                                                    <option value="Pending Initial Deposit">Pending Initial Deposit</option>
-                                                    <option value="Partially Paid Tokens">Partially Paid Tokens</option>
-                                                    <option value="Fully Settled Clearance">Fully Settled Clearance</option>
-                                                    <option value="Payment Overdue / Declined">Payment Overdue / Declined</option>
-                                                </select>
-                                            </div>
-                                            {renderDatePicker('nextPaymentDate', editFormData.nextPaymentDate, 'Next Payment Date', handleInputChange)}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                        </form>
-
-                        {/* Edit Modal Sticky Footer */}
-                        <div className="px-4 sm:px-6 py-4 border-t border-slate-800 bg-[#0b1329] z-20 flex flex-col sm:flex-row items-center gap-3 flex-shrink-0">
-                            <button type="submit" form="edit-lead-form" className="w-full sm:w-auto flex-1 px-6 py-3 sm:py-2.5 bg-[#16D3F2] hover:bg-[#16D3F2] active:bg-[#16D3F2] border-none cursor-pointer text-[#0f172a] text-sm sm:text-base font-bold rounded-lg sm:rounded shadow transition-colors uppercase tracking-wider order-1 sm:order-2">
-                                SUBMIT
-                            </button>
-                            <button type="button" onClick={() => setIsEditModalOpen(false)}
-                                className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-transparent border border-cyan-500 hover:bg-slate-800 cursor-pointer text-cyan-400 text-sm sm:text-base font-semibold rounded-lg sm:rounded transition-colors uppercase tracking-wider order-2 sm:order-1">
-                                CANCEL
-                            </button>
+                                )
+                            )}
                         </div>
+
+                        {/* SECTION 5: OPERATION RESPONSE */}
+                        <div className={sectionCls}>
+                            <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('operationResponse')}>
+                                <h3 className={`${sectionHeadCls} m-0`}>OPERATION RESPONSE</h3>
+                                {expandedSections.operationResponse ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
+                            </div>
+                            {expandedSections.operationResponse && (
+                                <>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4">
+                                    <div>
+                                        <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Received Date & Time</label>
+                                        <input type="text" readOnly value={editFormData.opsCompletedOn || formatDateTime(new Date().toISOString())} className={`${readonlyCls} text-red-400 font-bold`} placeholder="Date & Time - Auto" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Prepared For</label>
+                                        <input type="text" name="packagePreparedFor" value={editFormData.packagePreparedFor || ''} readOnly className={readonlyCls} placeholder=" " />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Prepared By</label>
+                                        <input type="text" readOnly value={editFormData.opsPreparedBy || editFormData.assignedTo || ''} className={`${readonlyCls} text-red-400 text-[10px] sm:text-xs font-bold`} placeholder="Operations Executive name" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Cost</label>
+                                        <input type="text" name="packageCost" value={editFormData.packageCost || ''} readOnly className={readonlyCls} />
+                                    </div>
+                                    <div className="sm:col-span-2">
+                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Operation Notes</label>
+                                        <input type="text" name="operationNotes" value={editFormData.operationNotes || ''} readOnly className={readonlyCls} />
+                                    </div>
+                                </div>
+                                <div className="mt-5 pt-4 border-t border-slate-700/50">
+                                    <h4 className="text-sm font-bold text-cyan-400 tracking-wider uppercase mb-3">SALES REVIEW</h4>
+                                    <div className="w-full sm:w-1/3">
+                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Review Status</label>
+                                        {renderDropdown('salesReviewStatus', editFormData.salesReviewStatus, ' ', ['Verified & Shared', ' Clarification / Changes Needed', 'Rejected'], handleInputChange)}
+                                    </div>
+                                </div>
+                                </>
+                            )}
+                        </div>
+
+                        {/* SECTION 7: BOOKING CONFIRMATION */}
+                        <div className={`p-4 sm:p-5 rounded-xl border transition-all duration-300 ${editFormData.customerResponse === 'Booking Confirmed' ? 'border-emerald-500/30 bg-emerald-950/10' : 'border-slate-800 bg-slate-900/10'}`}>
+                            <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('bookingConfirmation')}>
+                                <div className="flex flex-col gap-0.5">
+                                    <h3 className={`text-sm sm:text-base font-bold tracking-wider uppercase m-0 flex items-center gap-2 ${editFormData.customerResponse === 'Booking Confirmed' ? 'text-emerald-400' : 'text-slate-500'}`}>
+                                        {editFormData.customerResponse === 'Booking Confirmed' && <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />}
+                                        Booking Confirmation
+                                    </h3>
+                                </div>
+                                {expandedSections.bookingConfirmation ? <ChevronDown size={18} className={editFormData.customerResponse === 'Booking Confirmed' ? "text-emerald-400" : "text-slate-500"}/> : <ChevronRight size={18} className="text-slate-500"/>}
+                            </div>
+                            {expandedSections.bookingConfirmation && (
+                                editFormData.customerResponse === 'Booking Confirmed' ? (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-4">
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Confirmed Method</label>
+                                            {renderDropdown('confirmedMethod', editFormData.confirmedMethod, ' ', ['Phone Call', 'WhatsApp', 'Office Visit' ], handleInputChange)}
+                                        </div>
+                                        {renderDatePicker('confirmedDate', editFormData.confirmedDate, 'Confirmed Date', handleInputChange)}
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Operations Executive</label>
+                                            <input type="text" name="operationExecutive" value={editFormData.operationExecutive} onChange={handleInputChange} className={inputCls} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Travel Type</label>
+                                            {renderDropdown('confirmedTripType', editFormData.confirmedTripType, ' ', ['Domestic', 'International'], handleInputChange)}
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
+                                            <input type="text" name="confirmedDestination" value={editFormData.confirmedDestination} onChange={handleInputChange} className={inputCls} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
+                                            <input type="text" name="confirmedDuration" value={editFormData.confirmedDuration} onChange={handleInputChange} className={inputCls} />
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <div className="w-1/2">
+                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Adults)</label>
+                                                <input type="number" name="noOfPax" value={editFormData.noOfPax} onChange={handleInputChange} className={inputCls} min="1" />
+                                            </div>
+                                            <div className="w-1/2">
+                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Children)</label>
+                                                <input type="number" name="confirmedNoOfChildren" value={editFormData.confirmedNoOfChildren} onChange={handleInputChange} className={inputCls} min="0" />
+                                            </div>
+                                        </div>
+                                        {renderDatePicker('departureDate', editFormData.departureDate, 'Departure Date', handleInputChange)}
+                                        {renderDatePicker('returnDate', editFormData.returnDate, 'Return Date', handleInputChange)}
+                                        {renderDatePicker('tourStartDate', editFormData.tourStartDate, 'Tour Start Date', handleInputChange)}
+                                        {renderDatePicker('tourEndDate', editFormData.tourEndDate, 'Tour End Date', handleInputChange)}
+                                        <div className="md:col-span-2">
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Services </label>
+                                            {renderMultiSelect('confirmedServices', editFormData.confirmedServices, ['Flight Booking', 'Train Booking', 'Bus Booking','VISA Apply','Travel Insurance' ])}
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Discount</label>
+                                            <input type="text" name="discount" value={editFormData.discount} onChange={handleInputChange} className={inputCls} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Final Package Value</label>
+                                            <input type="text" name="finalPackageValue" value={editFormData.finalPackageValue} onChange={handleInputChange} className={inputCls} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">{`{Service} Cost`}</label>
+                                            <input type="text" name="serviceCost" value={editFormData.serviceCost} onChange={handleInputChange} className={inputCls} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">GST</label>
+                                            {renderDropdown('gstInclusion', editFormData.gstInclusion, ' ', ['YES', 'NO' ], handleInputChange)}
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">TCS</label>
+                                            <select name="tcsInclusion" value={editFormData.tcsInclusion} onChange={handleInputChange} disabled={editFormData.confirmedTripType === 'Domestic'} className={`${selectCls} ${editFormData.confirmedTripType === 'Domestic' ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                                                <option value=""></option>
+                                                <option value="Included">YES</option>
+                                                <option value="Excluded">NO</option>
+                                            </select>
+                                            {editFormData.confirmedTripType === 'Domestic' && <span className="block text-[9px] text-red-400 mt-1">Disabled if travel type is Domestic</span>}
+                                        </div>
+                                        {renderDatePicker('paymentDueDate', editFormData.paymentDueDate, 'Payment Due Date', handleInputChange)}
+                                    </div>
+                                ) : (
+                                    <div className="mt-4 px-4 py-5 text-xs sm:text-sm text-slate-500 border border-dashed border-slate-800 rounded-xl text-center">
+                                        This section appears when Customer Response is "Booking Confirmed".
+                                    </div>
+                                )
+                            )}
+                        </div>
+
+                        {/* SECTION 8: PAYMENT INFORMATION */}
+                        <div className="p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-900/10 transition-all duration-300">
+                            <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('paymentInfo')}>
+                                <h3 className="text-sm sm:text-base font-bold tracking-wider uppercase m-0 text-cyan-400">
+                                    Payment Information
+                                </h3>
+                                {expandedSections.paymentInfo ? <ChevronDown size={18} className="text-cyan-400" /> : <ChevronRight size={18} className="text-slate-500"/>}
+                            </div>
+                            {expandedSections.paymentInfo && (
+                                <div className="mt-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 border-slate-700/50">
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Cost</label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+                                                <input type="text" name="totalPackageCost" value={editFormData.totalPackageCost} onChange={handleInputChange} className={`${inputCls} pl-7`} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">GST Inclusion</label>
+                                            {renderDropdown('gstInclusion', editFormData.gstInclusion, '-- Select --', ['Included', 'Excluded'], handleInputChange)}
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">TCS Inclusion</label>
+                                            {renderDropdown('tcsInclusion', editFormData.tcsInclusion, '-- Select --', ['Included', 'Excluded', 'Not Applicable'], handleInputChange)}
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Service</label>
+                                            {renderDropdown('paymentService', editFormData.paymentService, '-- Select Service --', ['Flight', 'Hotel', 'Package', 'Visa', 'Transport'], handleInputChange)}
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Amount Received</label>
+                                            <div className="relative">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+                                                <input type="text" name="amountReceived" value={editFormData.amountReceived} onChange={handleInputChange} className={`${inputCls} pl-7`} />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Transaction ID</label>
+                                            <input type="text" name="transactionId" value={editFormData.transactionId} onChange={handleInputChange} className={inputCls} />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Payment Mode</label>
+                                            {renderDropdown('paymentMode', editFormData.paymentMode, '-- Choose Mode --', [{value: 'UPI / QR', label: 'UPI / QR Transfer'}, {value: 'Net Banking', label: 'Net Banking (NEFT/IMPS)'}, {value: 'Credit Card', label: 'Credit Card Portal'}, {value: 'Cash', label: 'Cash Deposit'}], handleInputChange)}
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Status</label>
+                                            <select name="paymentStatus" value={editFormData.paymentStatus || 'First Payment'} onChange={handleInputChange} className={selectCls}>
+                                                <option value="First Payment">First Payment</option>
+                                                <option value="Pending Initial Deposit">Pending Initial Deposit</option>
+                                                <option value="Partially Paid Tokens">Partially Paid Tokens</option>
+                                                <option value="Fully Settled Clearance">Fully Settled Clearance</option>
+                                                <option value="Payment Overdue / Declined">Payment Overdue / Declined</option>
+                                            </select>
+                                        </div>
+                                        {renderDatePicker('nextPaymentDate', editFormData.nextPaymentDate, 'Next Payment Date', handleInputChange)}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                    </form>
+
+                    {/* Edit Modal Sticky Footer */}
+                    <div className="px-4 sm:px-6 py-4 border-t border-slate-800 bg-[#0b1329] z-20 flex justify-end gap-3 flex-shrink-0">
+                        <button type="button" onClick={() => setIsEditModalOpen(false)}
+                            className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-transparent border border-cyan-500 hover:bg-slate-800 cursor-pointer text-cyan-400 text-sm sm:text-base font-semibold rounded-lg sm:rounded transition-colors uppercase tracking-wider order-2 sm:order-1">
+                            CANCEL
+                        </button>
+                        <button type="submit" form="edit-lead-form" className="w-full sm:w-auto px-10 py-3 sm:py-2.5 bg-[#16D3F2] hover:bg-cyan-400 active:bg-cyan-600 border-none cursor-pointer text-[#0f172a] text-sm sm:text-base font-bold rounded-lg sm:rounded shadow transition-colors uppercase tracking-wider order-1 sm:order-2">
+                            SUBMIT
+                        </button>
                     </div>
                 </div>
             )}

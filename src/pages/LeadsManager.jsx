@@ -509,19 +509,19 @@ const LeadsManager = () => {
             </div>
 
             {/* ── ADD/EDIT LEAD MODAL ── */}
-            <Modal open={leadModalOpen} onClose={closeModal} title={editingId ? `Edit Travel Lead (LMN${editingId})` : "Add New Travel Lead"} maxWidth="max-w-4xl">
+            <Modal open={leadModalOpen} onClose={closeModal} title={editingId ? `Edit Travel Lead (LMN${editingId})` : "Add New Lead"} maxWidth="max-w-4xl">
                 {/* Scrollable Form Body */}
                 <div className="space-y-6">
                     {/* Section 1: Customer Details */}
                     <div>
                         <h4 className="text-sm sm:text-base font-bold text-slate-300 border-b border-slate-700/50 pb-2 mb-3 sm:mb-4 flex items-center gap-2">
-                            <Users size={16} className="text-violet-400" /> Customer Contact Information
+                            <Users size={16} className="text-violet-400" /> Customer Information
                         </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                            <Field label="Full Name">
+                            <Field label="Customer Name">
                                 <Input value={leadForm.customerName} onChange={e => setLeadForm({ ...leadForm, customerName: e.target.value })} autoFocus />
                             </Field>
-                            <Field label="Phone / WhatsApp">
+                            <Field label="Mobile Number">
                                 <Input type="tel" value={leadForm.phone} onChange={e => setLeadForm({ ...leadForm, phone: e.target.value })} />
                             </Field>
                             <Field label="Email Address">
@@ -533,35 +533,34 @@ const LeadsManager = () => {
                     {/* Section 2: Trip Logistics */}
                     <div>
                         <h4 className="text-sm sm:text-base font-bold text-slate-300 border-b border-slate-700/50 pb-2 mb-3 sm:mb-4 flex items-center gap-2">
-                            <PlaneTakeoff size={16} className="text-emerald-400" /> Trip Logistics
+                            <PlaneTakeoff size={16} className="text-emerald-400" /> TRAVEL REQUIREMENT	
                         </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                             <Field label="Destination">
                                 <Input value={leadForm.destination} onChange={e => setLeadForm({ ...leadForm, destination: e.target.value })} />
                             </Field>
-                            <Field label="Travel Dates">
+                            <Field label="Tentative Travel Date">
                                 <Input value={leadForm.travelDates} onChange={e => setLeadForm({ ...leadForm, travelDates: e.target.value })} />
                             </Field>
-                            <Field label="No. of Adults (Pax)">
+                            <Field label="Number of Adults">
                                 <Select options={PAX_OPTIONS} value={leadForm.pax} onChange={v => setLeadForm({ ...leadForm, pax: v })} placeholder="Select Adults" />
                             </Field>
-                            <Field label="No. of Children">
+                            <Field label="Number of Children">
                                 <Select options={CHILDREN_OPTIONS} value={leadForm.childrenPax} onChange={v => setLeadForm({ ...leadForm, childrenPax: v })} placeholder="Select Children" />
                             </Field>
-                        </div>
-                    </div>
-                     {/* Section 4: Additional Info */}
-                    <div>
-                        <h4 className="text-sm sm:text-base font-bold text-slate-300 border-b border-slate-700/50 pb-2 mb-3 sm:mb-4 flex items-center gap-2">
-                            <MessageSquare size={16} className="text-pink-400" /> Additional Information
-                        </h4>
-                        <div className="grid grid-cols-1 gap-3 sm:gap-4">
-                            <Field label="Message from Lead">
+                            <Field label="Budget">
+                                <Select options={BUDGET_OPTIONS} value={leadForm.budget} onChange={v => setLeadForm({ ...leadForm, budget: v })} placeholder="Select Budget" />
+                            </Field>
+                                <Field label="Package Type">
+                                <Select options={PACKAGE_TYPES} value={leadForm.packageType} onChange={v => setLeadForm({ ...leadForm, packageType: v })} placeholder="Select Type" />
+                            </Field>
+                              <Field label="Message from Lead">
                                 <TextArea rows="2" value={leadForm.leadMessage} onChange={e => setLeadForm({ ...leadForm, leadMessage: e.target.value })} />
                             </Field>
-                           
                         </div>
                     </div>
+                     
+                  
 
                     {/* Section 3: Marketing & Package */}
                     <div>
@@ -575,12 +574,8 @@ const LeadsManager = () => {
                             <Field label="Campaign Name">
                                 <Select options={campaignOptions} value={leadForm.campaign} onChange={v => setLeadForm({ ...leadForm, campaign: v })} placeholder="Select Campaign" />
                             </Field>
-                            <Field label="Package Type">
-                                <Select options={PACKAGE_TYPES} value={leadForm.packageType} onChange={v => setLeadForm({ ...leadForm, packageType: v })} placeholder="Select Type" />
-                            </Field>
-                            <Field label="Estimated Budget">
-                                <Select options={BUDGET_OPTIONS} value={leadForm.budget} onChange={v => setLeadForm({ ...leadForm, budget: v })} placeholder="Select Budget" />
-                            </Field>
+                        
+                            
                         </div>
                     </div>
 
@@ -675,10 +670,7 @@ const LeadsManager = () => {
                                     <p className="text-xs text-slate-500 uppercase font-semibold">Message from Lead</p>
                                     <p className="p-2 bg-[#0f172a] rounded border border-slate-700 text-sm">{viewingLead.leadMessage || 'No message provided.'}</p>
                                 </div>
-                                <div>
-                                    <p className="text-xs text-slate-500 uppercase font-semibold">Internal Notes</p>
-                                    <p className="p-2 bg-[#0f172a] rounded border border-slate-700 text-sm text-emerald-400">{viewingLead.notes || 'No internal notes.'}</p>
-                                </div>
+                               
                             </div>
                         </div>
 

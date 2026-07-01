@@ -775,40 +775,37 @@ const Dashboard = () => {
                     <div className="space-y-5 flex-1 px-1 py-1">
                         <div>
                             <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700/50 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
-                                <Users size={14} className="text-violet-400" /> Customer Details
+                                <Users size={14} className="text-violet-400" /> CUSTOMER INFORMATION	
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                                <Field label="Full Name"><Input value={leadForm.customerName} onChange={e => setLeadForm({ ...leadForm, customerName: e.target.value })} autoFocus /></Field>
-                                <Field label="Phone / WhatsApp"><Input type="tel" value={leadForm.phone} onChange={e => setLeadForm({ ...leadForm, phone: e.target.value })} /></Field>
+                                <Field label="Customer Name"><Input value={leadForm.customerName} onChange={e => setLeadForm({ ...leadForm, customerName: e.target.value })} autoFocus /></Field>
+                                <Field label="Mobile Number"><Input type="tel" value={leadForm.phone} onChange={e => setLeadForm({ ...leadForm, phone: e.target.value })} /></Field>
                                 <Field label="Email Address"><Input type="email" value={leadForm.email} onChange={e => setLeadForm({ ...leadForm, email: e.target.value })} /></Field>
                             </div>
                         </div>
                         <div>
                             <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700/50 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
-                                <MapPin size={14} className="text-emerald-400" /> Trip Logistics
+                                <MapPin size={14} className="text-emerald-400" /> TRAVEL REQUIREMENT	
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                                 <Field label="Destination"><Input value={leadForm.destination} onChange={e => setLeadForm({ ...leadForm, destination: e.target.value })} /></Field>
-                                <Field label="Travel Dates"><Input value={leadForm.travelDates} onChange={e => setLeadForm({ ...leadForm, travelDates: e.target.value })} /></Field>
-                                <Field label="No. of Adults (Pax)"><Select options={PAX_OPTIONS} value={leadForm.pax} onChange={v => setLeadForm({ ...leadForm, pax: v })} placeholder="Select Adults" /></Field>
-                                <Field label="No. of Children"><Select options={CHILDREN_OPTIONS} value={leadForm.childrenPax} onChange={v => setLeadForm({ ...leadForm, childrenPax: v })} placeholder="Select Children" /></Field>
+                                <Field label="Tentative Travel Date"><Input value={leadForm.travelDates} onChange={e => setLeadForm({ ...leadForm, travelDates: e.target.value })} /></Field>
+                                <Field label="Number of Adults"><Select options={PAX_OPTIONS} value={leadForm.pax} onChange={v => setLeadForm({ ...leadForm, pax: v })} placeholder="Select Adults" /></Field>
+                                <Field label="Number of Children"><Select options={CHILDREN_OPTIONS} value={leadForm.childrenPax} onChange={v => setLeadForm({ ...leadForm, childrenPax: v })} placeholder="Select Children" /></Field>
+                                <Field label="Budgett"><Select options={BUDGET_OPTIONS} value={leadForm.budget} onChange={v => setLeadForm({ ...leadForm, budget: v })} placeholder="Select Budget" allowCustom={true} /></Field>
+                                <Field label="Package Type"><Select options={PACKAGE_TYPES} value={leadForm.packageType} onChange={v => setLeadForm({ ...leadForm, packageType: v })} placeholder="Select Type" allowCustom={true} /></Field>
+                            <Field label="Message from Lead"><TextArea rows="3" value={leadForm.leadMessage} onChange={e => setLeadForm({ ...leadForm, leadMessage: e.target.value })} /></Field>
+                                
                             </div>
                         </div>
-                           <div>
-                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700/50 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
-                                <MessageSquare size={14} className="text-pink-400" /> Additional Information
-                            </h4>
-                            <Field label="Message from Lead"><TextArea rows="3" value={leadForm.leadMessage} onChange={e => setLeadForm({ ...leadForm, leadMessage: e.target.value })} /></Field>
-                        </div>
+                          
                         <div>
                             <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700/50 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
-                                <Target size={14} className="text-blue-400" /> Marketing Preferences
+                                <Target size={14} className="text-blue-400" /> LEAD SOURCE	
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                                 <Field label="Platform"><Select options={PLATFORM_OPTIONS} value={leadForm.platform} onChange={v => setLeadForm({ ...leadForm, platform: v })} placeholder="Select Platform" allowCustom={true} /></Field>
                                 <Field label="Campaign Name"><Select options={campaignOptions} value={leadForm.campaign} onChange={v => setLeadForm({ ...leadForm, campaign: v })} placeholder="Select Campaign" allowCustom={true} /></Field>
-                                <Field label="Package Type"><Select options={PACKAGE_TYPES} value={leadForm.packageType} onChange={v => setLeadForm({ ...leadForm, packageType: v })} placeholder="Select Type" allowCustom={true} /></Field>
-                                <Field label="Estimated Budget"><Select options={BUDGET_OPTIONS} value={leadForm.budget} onChange={v => setLeadForm({ ...leadForm, budget: v })} placeholder="Select Budget" allowCustom={true} /></Field>
                             </div>
                         </div>
                      
