@@ -4,7 +4,7 @@ import {
     CheckSquare, X, Send, Pencil, Mic, Square, Trash2, Play, 
     RefreshCw, Users, ArrowUp, ChevronLeft, ChevronRight, ChevronDown, History,
     Plus, UserPlus, Phone, Mail, Globe, MessageSquare, CreditCard,
-    Flame, Sun, Snowflake
+    Flame, Sun, Snowflake, Save
 } from 'lucide-react';
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
@@ -17,7 +17,7 @@ const initialNewLeadState = {
     email: '',
     destination: '',
     travelDates: '',
-    pax: '',        
+    pax: '1',        
     childrenPax: '0',
     packageType: 'Custom / Flexible',
     budget: '',
@@ -31,7 +31,7 @@ const initialNewLeadState = {
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const PACKAGE_TYPES = ['Custom / Flexible', 'Honeymoon', 'Family Tour', 'Group Tour', 'Corporate Trip', 'Solo Backpacking', 'Friends Trip', 'Adventure / Trekking'];
 const PLATFORM_OPTIONS = ['Website', 'Instagram', 'Facebook', 'Google Ads', 'Referral', 'Walk-in', 'WhatsApp', 'Other'];
-const BUDGET_OPTIONS = ['Under ₹30,000', '₹30,000 - ₹60,000', '₹60,000 - ₹1,00,000', '₹1,00,000 - ₹2,00,000', 'Above ₹2,00,000'];
+const BUDGET_OPTIONS = ['Under ₹25,000', '₹25,000 - ₹50,000', '₹50,000 - ₹1,00,000', '₹1,00,000 - ₹2,00,000', 'Above ₹2,00,000'];
 const PAX_OPTIONS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'];
 const CHILDREN_OPTIONS = ['0', '1', '2', '3', '4', '5+'];
 const DESTINATION_OPTIONS = ['Singapore', 'Dubai', 'Thailand', 'Malaysia', 'Japan', 'UK', 'Bali', 'Maldives', 'Europe', 'Sri Lanka', 'Vietnam', 'Nepal', 'Kashmir', 'Goa', 'Kerala', 'Rajasthan'];
@@ -1567,192 +1567,168 @@ const SalesDashboard = () => {
             {/* NEW LEAD MODAL */}
             {isNewLeadModalOpen && (
                 <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-3 sm:p-4 md:p-6 backdrop-blur-sm">
-                    <div className="bg-[#0f172a] border border-slate-700/80 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[calc(100vh-24px)] sm:max-h-[92vh] flex flex-col relative text-slate-100 overflow-hidden">
+                    <div className="bg-[#0b1220] border border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[calc(100vh-24px)] sm:max-h-[90vh] flex flex-col relative text-slate-100 overflow-hidden">
 
                         {/* Modal Header */}
-                        <div className="px-5 sm:px-6 py-4 sm:py-5 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] flex-shrink-0">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/20">
-                                    <UserPlus size={18} className="text-cyan-400" />
-                                </div>
-                                <div>
-                                    <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">Add New Lead</h2>
-                                    <p className="text-[11px] sm:text-xs text-slate-500 mt-0.5">Fill in customer details — lead goes to the Jobs pool on submit</p>
-                                </div>
-                            </div>
+                        <div className="px-6 py-5 border-b border-slate-800 flex justify-between items-center flex-shrink-0">
+                            <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">Add New Lead</h2>
                             <button type="button" onClick={() => setIsNewLeadModalOpen(false)} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-800 flex-shrink-0">
                                 <X size={20} />
                             </button>
                         </div>
 
                         {/* Scrollable Form */}
-                        <form id="new-lead-form" onSubmit={handleNewLeadSubmit} onKeyDown={handlePreventEnterSubmit} className="px-4 sm:px-6 py-5 overflow-y-auto flex-1 space-y-5 custom-scrollbar">
+                        <form id="new-lead-form" onSubmit={handleNewLeadSubmit} onKeyDown={handlePreventEnterSubmit} className="px-6 py-6 overflow-y-auto flex-1 space-y-7 custom-scrollbar">
 
-                            {/* SECTION A — CUSTOMER DETAILS */}
-                            <div className="p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-900/10">
-                                <h3 className="text-xs sm:text-sm font-bold text-cyan-400 tracking-wider uppercase mb-4 flex items-center gap-2">
-                                    <Users size={14} /> Customer Details
+                            {/* SECTION A — CUSTOMER INFORMATION */}
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-100 tracking-wide flex items-center gap-2 mb-3">
+                                    <Users size={16} className="text-violet-400" /> Customer Information
                                 </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                                    <div className="sm:col-span-2 md:col-span-1">
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">
-                                            Customer Name <span className="text-red-400">*</span>
-                                        </label>
-                                        <input
-                                            type="text"
-                                            name="customerName"
-                                            value={newLeadForm.customerName}
-                                            onChange={handleNewLeadInputChange}
-                                            required
-                                            className={inputCls}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">
-                                            Phone <span className="text-red-400">*</span>
-                                        </label>
-                                        <div className="relative">
-                                            <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                                <div className="border-t border-slate-800 pt-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Customer Name</label>
+                                            <input
+                                                type="text"
+                                                name="customerName"
+                                                value={newLeadForm.customerName}
+                                                onChange={handleNewLeadInputChange}
+                                                className={inputCls}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Mobile Number</label>
                                             <input
                                                 type="tel"
                                                 name="phone"
                                                 value={newLeadForm.phone}
                                                 onChange={handleNewLeadInputChange}
-                                                required
-                                                className={`${inputCls} pl-8`}
+                                                className={inputCls}
                                             />
                                         </div>
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Email Address</label>
-                                        <div className="relative">
-                                            <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Email Address</label>
                                             <input
                                                 type="email"
                                                 name="email"
                                                 value={newLeadForm.email}
                                                 onChange={handleNewLeadInputChange}
-                                                className={`${inputCls} pl-8`}
+                                                className={inputCls}
                                             />
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* SECTION B — TRIP REQUIREMENTS */}
-                            <div className="p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-900/10">
-                                <h3 className="text-xs sm:text-sm font-bold text-cyan-400 tracking-wider uppercase mb-4 flex items-center gap-2">
-                                    <MapPin size={14} /> Trip Requirements
+                            {/* SECTION B — TRAVEL REQUIREMENT */}
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-100 tracking-wide flex items-center gap-2 mb-3">
+                                    <MapPin size={16} className="text-emerald-400" /> Travel Requirement
                                 </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                                    <div>
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
-                                        {renderNewLeadDropdown('destination', newLeadForm.destination, '-- Select Destination --', DESTINATION_OPTIONS)}
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Type</label>
-                                        {renderNewLeadDropdown('packageType', newLeadForm.packageType, '-- Select Type --', PACKAGE_TYPES)}
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Budget Range</label>
-                                        {renderNewLeadDropdown('budget', newLeadForm.budget, '-- Select Budget --', BUDGET_OPTIONS)}
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Travel Dates</label>
-                                        <div className="relative">
-                                            <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none z-10" />
+                                <div className="border-t border-slate-800 pt-4 space-y-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Destination</label>
+                                            <input
+                                                type="text"
+                                                name="destination"
+                                                value={newLeadForm.destination}
+                                                onChange={handleNewLeadInputChange}
+                                                className={inputCls}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Tentative Travel Date</label>
                                             <input
                                                 type="text"
                                                 name="travelDates"
                                                 value={newLeadForm.travelDates}
                                                 onChange={handleNewLeadInputChange}
-                                                className={`${inputCls} pl-8`}
+                                                className={inputCls}
                                             />
                                         </div>
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Number of Adults</label>
+                                            {renderNewLeadDropdown('pax', newLeadForm.pax, null, PAX_OPTIONS)}
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Number of Children</label>
+                                            {renderNewLeadDropdown('childrenPax', newLeadForm.childrenPax, null, CHILDREN_OPTIONS)}
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. of Adults</label>
-                                        {renderNewLeadDropdown('pax', newLeadForm.pax, '-- Select --', PAX_OPTIONS)}
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. of Children</label>
-                                        {renderNewLeadDropdown('childrenPax', newLeadForm.childrenPax, null, CHILDREN_OPTIONS)}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Budget</label>
+                                            {renderNewLeadDropdown('budget', newLeadForm.budget, '-- Select Budget --', BUDGET_OPTIONS)}
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Package Type</label>
+                                            {renderNewLeadDropdown('packageType', newLeadForm.packageType, null, PACKAGE_TYPES)}
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Message from Lead</label>
+                                            <textarea
+                                                name="leadMessage"
+                                                value={newLeadForm.leadMessage}
+                                                onChange={handleNewLeadInputChange}
+                                                rows={2}
+                                                className="w-full px-3 py-2 sm:py-1.5 bg-slate-900 border border-slate-700 rounded-lg sm:rounded text-white text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 outline-none resize-none custom-scrollbar transition-all"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
 
                             {/* SECTION C — LEAD SOURCE */}
-                            <div className="p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-900/10">
-                                <h3 className="text-xs sm:text-sm font-bold text-cyan-400 tracking-wider uppercase mb-4 flex items-center gap-2">
-                                    <Globe size={14} /> Lead Source
+                            <div>
+                                <h3 className="text-sm font-bold text-slate-100 tracking-wide flex items-center gap-2 mb-3">
+                                    <Target size={16} className="text-blue-400" /> Lead Source
                                 </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                                    <div>
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Platform / Source</label>
-                                        {renderNewLeadDropdown('platform', newLeadForm.platform, '-- Select Platform --', PLATFORM_OPTIONS)}
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Campaign</label>
-                                        {campaignOptions.length > 0
-                                            ? renderNewLeadDropdown('campaign', newLeadForm.campaign, '-- Select Campaign --', campaignOptions)
-                                            : <input
-                                                type="text"
-                                                name="campaign"
-                                                value={newLeadForm.campaign}
-                                                onChange={handleNewLeadInputChange}
-                                                placeholder="Campaign name / Organic Search"
-                                                className={inputCls}
-                                            />
-                                        }
+                                <div className="border-t border-slate-800 pt-4">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Platform</label>
+                                            {renderNewLeadDropdown('platform', newLeadForm.platform, null, PLATFORM_OPTIONS)}
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1.5">Campaign Name</label>
+                                            {campaignOptions.length > 0
+                                                ? renderNewLeadDropdown('campaign', newLeadForm.campaign, '-- Select Campaign --', campaignOptions)
+                                                : <input
+                                                    type="text"
+                                                    name="campaign"
+                                                    value={newLeadForm.campaign}
+                                                    onChange={handleNewLeadInputChange}
+                                                    placeholder="Organic Search"
+                                                    className={inputCls}
+                                                />
+                                            }
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-
-                            {/* SECTION D — MESSAGE & NOTES */}
-                            <div className="p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-900/10">
-                                <h3 className="text-xs sm:text-sm font-bold text-cyan-400 tracking-wider uppercase mb-4 flex items-center gap-2">
-                                    <MessageSquare size={14} /> Message & Notes
-                                </h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                                    <div>
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Message from Lead</label>
-                                        <textarea
-                                            name="leadMessage"
-                                            value={newLeadForm.leadMessage}
-                                            onChange={handleNewLeadInputChange}
-                                            rows={3}
-                                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-white text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 outline-none resize-none custom-scrollbar transition-all placeholder-slate-600"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Internal Notes</label>
-                                        <textarea
-                                            name="notes"
-                                            value={newLeadForm.notes}
-                                            onChange={handleNewLeadInputChange}
-                                            rows={3}
-                                            className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-emerald-400 text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 outline-none resize-none custom-scrollbar transition-all placeholder-slate-600"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-slate-700/50 bg-slate-800/20">
-                                <div className="w-2 h-2 rounded-full bg-cyan-400 flex-shrink-0 animate-pulse" />
-                                <p className="text-[11px] sm:text-xs text-slate-400">
-                                    This lead will be created with status <span className="font-semibold text-white">"Jobs"</span> — visible in the global pool for assignment.
-                                </p>
                             </div>
 
                         </form>
 
                         {/* Sticky Footer */}
-                        <div className="px-5 sm:px-6 py-4 border-t border-slate-800 bg-[#0b1329] flex flex-col sm:flex-row items-center gap-3 flex-shrink-0">
+                        <div className="px-6 py-4 border-t border-slate-800 flex flex-col sm:flex-row items-center gap-3 flex-shrink-0">
+                            <button
+                                type="button"
+                                onClick={() => setIsNewLeadModalOpen(false)}
+                                className="w-full sm:w-auto sm:flex-1 px-6 py-2.5 bg-transparent border border-slate-700 hover:bg-slate-800 cursor-pointer text-slate-300 text-sm font-semibold rounded-lg transition-colors"
+                            >
+                                Cancel
+                            </button>
                             <button
                                 type="submit"
                                 form="new-lead-form"
-                                disabled={isSubmittingNewLead}
-                                className="w-full sm:w-auto sm:flex-1 px-6 py-3 sm:py-2.5 bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 disabled:bg-slate-700 disabled:text-slate-500 disabled:cursor-not-allowed border-none cursor-pointer text-[#0f172a] font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-cyan-500/20 transition-all uppercase tracking-wider order-1 sm:order-2 flex items-center justify-center gap-2"
+                                disabled={isSubmittingNewLead || !newLeadForm.customerName.trim() || !newLeadForm.phone.trim()}
+                                className={`w-full sm:w-auto sm:flex-1 px-6 py-2.5 font-bold text-sm rounded-lg shadow-lg transition-all flex items-center justify-center gap-2 border-none ${
+                                    isSubmittingNewLead || !newLeadForm.customerName.trim() || !newLeadForm.phone.trim()
+                                        ? 'bg-slate-700/60 text-slate-400 cursor-not-allowed shadow-none'
+                                        : 'bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-[#0f172a] shadow-cyan-500/20 cursor-pointer'
+                                }`}
                             >
                                 {isSubmittingNewLead ? (
                                     <>
@@ -1761,17 +1737,10 @@ const SalesDashboard = () => {
                                     </>
                                 ) : (
                                     <>
-                                        <Plus size={16} strokeWidth={2.5} />
-                                        Create Lead
+                                        <Save size={16} />
+                                        Save New Lead
                                     </>
                                 )}
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setIsNewLeadModalOpen(false)}
-                                className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-transparent border border-slate-700 hover:bg-slate-800 cursor-pointer text-slate-300 text-sm sm:text-base font-semibold rounded-xl transition-colors uppercase tracking-wider order-2 sm:order-1"
-                            >
-                                Cancel
                             </button>
                         </div>
 
