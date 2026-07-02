@@ -543,16 +543,16 @@ const LeadsManager = () => {
                                 <Input value={leadForm.travelDates} onChange={e => setLeadForm({ ...leadForm, travelDates: e.target.value })} />
                             </Field>
                             <Field label="Number of Adults">
-                                <Select options={PAX_OPTIONS} value={leadForm.pax} onChange={v => setLeadForm({ ...leadForm, pax: v })} placeholder="Select Adults" />
+                                <Select options={PAX_OPTIONS} value={leadForm.pax} onChange={v => setLeadForm({ ...leadForm, pax: v })} placeholder="" />
                             </Field>
                             <Field label="Number of Children">
-                                <Select options={CHILDREN_OPTIONS} value={leadForm.childrenPax} onChange={v => setLeadForm({ ...leadForm, childrenPax: v })} placeholder="Select Children" />
+                                <Select options={CHILDREN_OPTIONS} value={leadForm.childrenPax} onChange={v => setLeadForm({ ...leadForm, childrenPax: v })} placeholder="" />
                             </Field>
                             <Field label="Budget">
-                                <Select options={BUDGET_OPTIONS} value={leadForm.budget} onChange={v => setLeadForm({ ...leadForm, budget: v })} placeholder="Select Budget" />
+                                <Select options={BUDGET_OPTIONS} value={leadForm.budget} onChange={v => setLeadForm({ ...leadForm, budget: v })} placeholder="" />
                             </Field>
                                 <Field label="Package Type">
-                                <Select options={PACKAGE_TYPES} value={leadForm.packageType} onChange={v => setLeadForm({ ...leadForm, packageType: v })} placeholder="Select Type" />
+                                <Select options={PACKAGE_TYPES} value={leadForm.packageType} onChange={v => setLeadForm({ ...leadForm, packageType: v })} placeholder="" />
                             </Field>
                               <Field label="Message from Lead">
                                 <TextArea rows="2" value={leadForm.leadMessage} onChange={e => setLeadForm({ ...leadForm, leadMessage: e.target.value })} />
@@ -565,14 +565,14 @@ const LeadsManager = () => {
                     {/* Section 3: Marketing & Package */}
                     <div>
                         <h4 className="text-sm sm:text-base font-bold text-slate-300 border-b border-slate-700/50 pb-2 mb-3 sm:mb-4 flex items-center gap-2">
-                            <Target size={16} className="text-blue-400" /> Marketing & Package Preferences
+                            <Target size={16} className="text-blue-400" />  LEAD SOURCE	
                         </h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                             <Field label="Platform">
-                                <Select options={PLATFORM_OPTIONS} value={leadForm.platform} onChange={v => setLeadForm({ ...leadForm, platform: v })} placeholder="Select Platform" />
+                                <Select options={PLATFORM_OPTIONS} value={leadForm.platform} onChange={v => setLeadForm({ ...leadForm, platform: v })} placeholder="" />
                             </Field>
                             <Field label="Campaign Name">
-                                <Select options={campaignOptions} value={leadForm.campaign} onChange={v => setLeadForm({ ...leadForm, campaign: v })} placeholder="Select Campaign" />
+                                <Select options={campaignOptions} value={leadForm.campaign} onChange={v => setLeadForm({ ...leadForm, campaign: v })} placeholder="" />
                             </Field>
                         
                             

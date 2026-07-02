@@ -790,10 +790,10 @@ const Dashboard = () => {
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                                 <Field label="Destination"><Input value={leadForm.destination} onChange={e => setLeadForm({ ...leadForm, destination: e.target.value })} /></Field>
                                 <Field label="Tentative Travel Date"><Input value={leadForm.travelDates} onChange={e => setLeadForm({ ...leadForm, travelDates: e.target.value })} /></Field>
-                                <Field label="Number of Adults"><Select options={PAX_OPTIONS} value={leadForm.pax} onChange={v => setLeadForm({ ...leadForm, pax: v })} placeholder="Select Adults" /></Field>
-                                <Field label="Number of Children"><Select options={CHILDREN_OPTIONS} value={leadForm.childrenPax} onChange={v => setLeadForm({ ...leadForm, childrenPax: v })} placeholder="Select Children" /></Field>
-                                <Field label="Budgett"><Select options={BUDGET_OPTIONS} value={leadForm.budget} onChange={v => setLeadForm({ ...leadForm, budget: v })} placeholder="Select Budget" allowCustom={true} /></Field>
-                                <Field label="Package Type"><Select options={PACKAGE_TYPES} value={leadForm.packageType} onChange={v => setLeadForm({ ...leadForm, packageType: v })} placeholder="Select Type" allowCustom={true} /></Field>
+                                <Field label="Number of Adults"><Select options={PAX_OPTIONS} value={leadForm.pax} onChange={v => setLeadForm({ ...leadForm, pax: v })} placeholder="" /></Field>
+                                <Field label="Number of Children"><Select options={CHILDREN_OPTIONS} value={leadForm.childrenPax} onChange={v => setLeadForm({ ...leadForm, childrenPax: v })} placeholder="" /></Field>
+                                <Field label="Budgett"><Select options={BUDGET_OPTIONS} value={leadForm.budget} onChange={v => setLeadForm({ ...leadForm, budget: v })} placeholder="" allowCustom={true} /></Field>
+                                <Field label="Package Type"><Select options={PACKAGE_TYPES} value={leadForm.packageType} onChange={v => setLeadForm({ ...leadForm, packageType: v })} placeholder="" allowCustom={true} /></Field>
                             <Field label="Message from Lead"><TextArea rows="3" value={leadForm.leadMessage} onChange={e => setLeadForm({ ...leadForm, leadMessage: e.target.value })} /></Field>
                                 
                             </div>
@@ -804,8 +804,8 @@ const Dashboard = () => {
                                 <Target size={14} className="text-blue-400" /> LEAD SOURCE	
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                                <Field label="Platform"><Select options={PLATFORM_OPTIONS} value={leadForm.platform} onChange={v => setLeadForm({ ...leadForm, platform: v })} placeholder="Select Platform" allowCustom={true} /></Field>
-                                <Field label="Campaign Name"><Select options={campaignOptions} value={leadForm.campaign} onChange={v => setLeadForm({ ...leadForm, campaign: v })} placeholder="Select Campaign" allowCustom={true} /></Field>
+                                <Field label="Platform"><Select options={PLATFORM_OPTIONS} value={leadForm.platform} onChange={v => setLeadForm({ ...leadForm, platform: v })} placeholder="" allowCustom={true} /></Field>
+                                <Field label="Campaign Name"><Select options={campaignOptions} value={leadForm.campaign} onChange={v => setLeadForm({ ...leadForm, campaign: v })} placeholder="" allowCustom={true} /></Field>
                             </div>
                         </div>
                      

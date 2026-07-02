@@ -69,7 +69,7 @@ const SalesDashboard = () => {
     const selectCls = "w-full px-3 py-2 sm:py-1.5 bg-slate-900 border border-slate-700 rounded-lg sm:rounded text-white text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 outline-none cursor-pointer transition-all";
     const readonlyCls = "w-full px-3 py-2 sm:py-1.5 bg-slate-900/50 border border-slate-800 rounded-lg sm:rounded text-slate-400 text-sm cursor-not-allowed";
     const inlineInputCls = "bg-[#091124] text-slate-200 text-xs sm:text-sm border border-slate-700/60 rounded px-2.5 sm:px-2 py-1.5 sm:py-0.5 outline-none focus:border-cyan-500 w-full transition-all";
-    const sectionCls = "p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-900/10 transition-all duration-300";
+    const sectionCls = "py-4 sm:py-5 transition-all duration-300";
     const sectionHeadCls = "text-sm sm:text-base font-bold text-cyan-400 tracking-wider uppercase";
 
     const [jobs, setJobs] = useState([]);
@@ -117,8 +117,10 @@ const SalesDashboard = () => {
 
     // --- EDIT MODAL & ACCORDION STATES (salesActivity Default True) ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    // Initial state declaration
     const [expandedSections, setExpandedSections] = useState({
-        leadInfo: true, salesActivity: true, travelDetails: false, customisation: false, operationResponse: false, bookingConfirmation: false, paymentInfo: false
+        leadInfo: false, salesActivity: true, travelDetails: false, customisation: false,
+        operationResponse: false, bookingConfirmation: false, paymentInfo: false
     });
 
     const toggleSection = (section) => {
@@ -575,7 +577,7 @@ const SalesDashboard = () => {
 
         return (
             <select name={name} value={value || ''} onChange={handleSelect} className={selectCls}>
-                {placeholder && <option value="">{placeholder}</option>}
+                {placeholder && <option value="" disabled hidden>{placeholder}</option>}
                 {options.map((opt, i) => (
                     <option key={i} value={opt}>{opt}</option>
                 ))}
@@ -671,8 +673,10 @@ const SalesDashboard = () => {
         setPlayingIndex(null);
         setEditingLogIndex(null); // Reset CRUD state
 
+        // Inside handleOpenEditModal, where it resets on open
         setExpandedSections({
-            leadInfo: true, salesActivity: true, travelDetails: false, customisation: false, operationResponse: false, bookingConfirmation: false, paymentInfo: false
+            leadInfo: false, salesActivity: true, travelDetails: false, customisation: false,
+            operationResponse: false, bookingConfirmation: false, paymentInfo: false
         });
 
         // --- Safe JSON Parsing for Previous Attempts ---
@@ -1031,7 +1035,7 @@ const SalesDashboard = () => {
 
         return (
             <select value={value || ''} onChange={handleSelect} className={selectCls}>
-                {defaultOption !== null && <option value="">{defaultOption}</option>}
+                {defaultOption !== null && <option value="" disabled hidden>{defaultOption}</option>}
                 {optionsList.map((opt, idx) => {
                     const optVal = typeof opt === 'object' ? opt.value : opt;
                     const optLabel = typeof opt === 'object' ? opt.label : opt;
@@ -1048,7 +1052,7 @@ const SalesDashboard = () => {
 
         return (
             <select name={name} value={value || ''} onChange={handleSelect} className={customClass}>
-                {defaultOption !== null && <option value="">{defaultOption}</option>}
+                {defaultOption !== null && <option value="" disabled hidden>{defaultOption}</option>}
                 {optionsList.map((opt, idx) => {
                     const optVal = typeof opt === 'object' ? opt.value : opt;
                     const optLabel = typeof opt === 'object' ? opt.label : opt;
@@ -1834,7 +1838,13 @@ const SalesDashboard = () => {
                         </button>
                     </div>
 
-                    <form id="edit-lead-form" onSubmit={handleSubmitEdit} onKeyDown={handlePreventEnterSubmit} className="px-4 sm:px-8 lg:px-12 py-6 overflow-y-auto space-y-6 flex-1 custom-scrollbar w-full max-w-7xl mx-auto">
+                 <div className="overflow-y-auto flex-1 custom-scrollbar w-full">
+    <form
+        id="edit-lead-form"
+        onSubmit={handleSubmitEdit}
+        onKeyDown={handlePreventEnterSubmit}
+        className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 w-full"
+    >
 
                         {/* SECTION 1: LEAD INFO */}
                         <div className={sectionCls} style={{ borderColor: 'rgba(51,65,85,0.8)' }}>
@@ -2097,72 +2107,6 @@ const SalesDashboard = () => {
                                             <input type="text" name="remarks" value={editFormData.remarks} onChange={handleInputChange} className={inputCls} />
                                         </div>
                                     </div>
-
-                                    {(editFormData.actionTaken === 'Customisation Required' || editFormData.customerResponse === 'Needs Revision') && (
-                                        <div className="mt-5 pt-4 border-t border-slate-800/60">
-                                            <h4 className={`${sectionHeadCls} mb-4`}>Customisation</h4>
-                                            <div className="space-y-4">
-                                                {editFormData.customisationRequests.map((req, index) => (
-                                                    <div key={index} className="relative p-4 rounded-xl border border-slate-700/50 bg-slate-800/20">
-                                                        {editFormData.customisationRequests.length > 1 && (
-                                                            <button type="button" onClick={() => removeCustomisationRequest(index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 p-1 bg-transparent border-none cursor-pointer">
-                                                                <X size={16} />
-                                                            </button>
-                                                        )}
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                                                            <div>
-                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
-                                                                <input type="text" value={req.destination || ''} onChange={(e) => handleCustomisationChange(index, 'destination', e.target.value)} className={inputCls} />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Customisation Type</label>
-                                                                {renderArrayDropdown('customisationType', req.customisationType, index, ' ', ['Complete Custom package', 'Existing Itinerary Modification', 'Hotel Change',   'Budget Optimisation', 'Add Activities','Remove Activities','Route Modification','Readymade Validation','Honeymoon Customisation','Family Customisation','Corporate Customisation','Revising Again','Other'])}
-                                                            </div>
-                                                            <div>
-                                                                {renderDatePicker(`turnoverTime_${index}`, req.turnaroundTime, 'Required By', (e) => handleCustomisationChange(index, 'turnaroundTime', e.target.value), '')}
-                                                            </div>
-                                                            <div className="md:col-span-3">
-                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Requirements</label>
-                                                                <div className="flex items-center gap-1.5 w-full">
-                                                                    <input type="text" value={req.requirements || ''} onChange={(e) => handleCustomisationChange(index, 'requirements', e.target.value)} className={`${inputCls} flex-1`} placeholder="" />
-                                                                    <button type="button" onClick={isRecording ? stopRecording : startRecording}
-                                                                        className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded whitespace-nowrap flex-shrink-0 transition-colors border-none cursor-pointer h-[38px] sm:h-[34px] ${isRecording ? 'bg-red-500 animate-pulse text-white' : 'bg-slate-800 text-cyan-400 hover:bg-slate-700'}`}>
-                                                                        {isRecording ? <><Square size={12} fill="currentColor" /> ({formatTimer(recordingTime)})</> : <><Mic size={14} /> Voice</>}
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="mt-3 flex justify-start">
-                                                <button type="button" onClick={addCustomisationRequest} className="text-xs sm:text-sm font-bold text-cyan-400 bg-transparent border-none hover:text-cyan-300 flex items-center gap-1 transition-colors px-2 py-1.5 rounded hover:bg-cyan-950/30 cursor-pointer">
-                                                    <Plus size={14} /> Add Destination
-                                                </button>
-                                            </div>
-                                            {editFormData.voiceRecordings?.length > 0 && (
-                                                <div className="mt-4 p-3 bg-slate-900/60 border border-slate-800/60 rounded-lg space-y-2">
-                                                    <p className="text-[10px] sm:text-[11px] font-bold uppercase text-slate-400 tracking-wider">Audio Feeds Attached ({editFormData.voiceRecordings.length})</p>
-                                                    <div className="flex flex-col sm:grid sm:grid-cols-2 md:grid-cols-3 gap-2">
-                                                        {editFormData.voiceRecordings.map((audio, index) => (
-                                                            <div key={index} className="flex items-center justify-between p-2.5 sm:p-2 rounded-lg bg-slate-800/40 border border-slate-700/50">
-                                                                <span className="text-xs sm:text-sm text-slate-300">Voice Capture #{index + 1}</span>
-                                                                <div className="flex items-center gap-2 sm:gap-1.5">
-                                                                    <button type="button" onClick={() => togglePlayback(index)} className="p-1.5 sm:p-1 rounded-md bg-slate-800 border-none cursor-pointer text-emerald-400 hover:bg-slate-700">
-                                                                        {playingIndex === index ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
-                                                                    </button>
-                                                                    <button type="button" onClick={() => deleteRecording(index)} className="p-1.5 sm:p-1 rounded-md bg-slate-800 border-none cursor-pointer text-red-400 hover:bg-red-950">
-                                                                        <Trash2 size={14} />
-                                                                    </button>
-                                                                    <audio ref={el => audioPlayersRef.current[index] = el} src={audio.url} onEnded={() => setPlayingIndex(null)} className="hidden" />
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
                                     </>
                                 ) : (
                                     <div className="mt-4 px-4 py-5 text-xs sm:text-sm text-slate-500 border border-dashed border-slate-800 rounded-xl text-center">
@@ -2170,51 +2114,122 @@ const SalesDashboard = () => {
                                     </div>
                                 )
                             )}
+                            
                         </div>
 
-                        {/* SECTION 5: OPERATION RESPONSE */}
+                        {/* SECTION 5: CUSTOMISATION & OPERATIONS */}
                         <div className={sectionCls}>
-                            <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('operationResponse')}>
-                                <h3 className={`${sectionHeadCls} m-0`}>OPERATION RESPONSE</h3>
-                                {expandedSections.operationResponse ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
+                            <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('customisation')}>
+                                <h3 className={`${sectionHeadCls} m-0`}>CUSTOMISATION</h3>
+                                {expandedSections.customisation ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
                             </div>
-                            {expandedSections.operationResponse && (
-                                <>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4">
-                                    <div>
-                                        <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Received Date & Time</label>
-                                        <input type="text" readOnly value={editFormData.opsCompletedOn || formatDateTime(new Date().toISOString())} className={`${readonlyCls} text-red-400 font-bold`} placeholder="Date & Time - Auto" />
+                            {expandedSections.customisation && (
+                                (editFormData.actionTaken === 'Customisation Required' || editFormData.customerResponse === 'Needs Revision') ? (
+                                    <div className="mt-4">
+                                        <div className="space-y-4">
+                                            {editFormData.customisationRequests.map((req, index) => (
+                                                <div key={index} className="relative p-4 rounded-xl border border-slate-700/50 bg-slate-800/20">
+                                                    {editFormData.customisationRequests.length > 1 && (
+                                                        <button type="button" onClick={() => removeCustomisationRequest(index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 p-1 bg-transparent border-none cursor-pointer">
+                                                            <X size={16} />
+                                                        </button>
+                                                    )}
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                                                        <div>
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
+                                                            <input type="text" value={req.destination || ''} onChange={(e) => handleCustomisationChange(index, 'destination', e.target.value)} className={inputCls} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Customisation Type</label>
+                                                            {renderArrayDropdown('customisationType', req.customisationType, index, ' ', ['Complete Custom package', 'Existing Itinerary Modification', 'Hotel Change',   'Budget Optimisation', 'Add Activities','Remove Activities','Route Modification','Readymade Validation','Honeymoon Customisation','Family Customisation','Corporate Customisation','Revising Again','Other'])}
+                                                        </div>
+                                                        <div>
+                                                            {renderDatePicker(`turnoverTime_${index}`, req.turnaroundTime, 'Required By', (e) => handleCustomisationChange(index, 'turnaroundTime', e.target.value), '')}
+                                                        </div>
+                                                        <div className="md:col-span-3">
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Requirements</label>
+                                                            <div className="flex items-center gap-1.5 w-full">
+                                                                <input type="text" value={req.requirements || ''} onChange={(e) => handleCustomisationChange(index, 'requirements', e.target.value)} className={`${inputCls} flex-1`} placeholder="" />
+                                                                <button type="button" onClick={isRecording ? stopRecording : startRecording}
+                                                                    className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded whitespace-nowrap flex-shrink-0 transition-colors border-none cursor-pointer h-[38px] sm:h-[34px] ${isRecording ? 'bg-red-500 animate-pulse text-white' : 'bg-slate-800 text-cyan-400 hover:bg-slate-700'}`}>
+                                                                    {isRecording ? <><Square size={12} fill="currentColor" /> ({formatTimer(recordingTime)})</> : <><Mic size={14} /> Voice</>}
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="mt-3 flex justify-start">
+                                            <button type="button" onClick={addCustomisationRequest} className="text-xs sm:text-sm font-bold text-cyan-400 bg-transparent border-none hover:text-cyan-300 flex items-center gap-1 transition-colors px-2 py-1.5 rounded hover:bg-cyan-950/30 cursor-pointer">
+                                                <Plus size={14} /> Add Destination
+                                            </button>
+                                        </div>
+                                        {editFormData.voiceRecordings?.length > 0 && (
+                                            <div className="mt-4 p-3 bg-slate-900/60 border border-slate-800/60 rounded-lg space-y-2">
+                                                <p className="text-[10px] sm:text-[11px] font-bold uppercase text-slate-400 tracking-wider">Audio Feeds Attached ({editFormData.voiceRecordings.length})</p>
+                                                <div className="flex flex-col sm:grid sm:grid-cols-2 md:grid-cols-3 gap-2">
+                                                    {editFormData.voiceRecordings.map((audio, index) => (
+                                                        <div key={index} className="flex items-center justify-between p-2.5 sm:p-2 rounded-lg bg-slate-800/40 border border-slate-700/50">
+                                                            <span className="text-xs sm:text-sm text-slate-300">Voice Capture #{index + 1}</span>
+                                                            <div className="flex items-center gap-2 sm:gap-1.5">
+                                                                <button type="button" onClick={() => togglePlayback(index)} className="p-1.5 sm:p-1 rounded-md bg-slate-800 border-none cursor-pointer text-emerald-400 hover:bg-slate-700">
+                                                                    {playingIndex === index ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+                                                                </button>
+                                                                <button type="button" onClick={() => deleteRecording(index)} className="p-1.5 sm:p-1 rounded-md bg-slate-800 border-none cursor-pointer text-red-400 hover:bg-red-950">
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                                <audio ref={el => audioPlayersRef.current[index] = el} src={audio.url} onEnded={() => setPlayingIndex(null)} className="hidden" />
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        <div className="mt-6 pt-5 border-t border-slate-700/50">
+                                         <h4 className="text-sm font-bold text-cyan-400 tracking-wider uppercase mb-3">OPERATION RESPONSE</h4>
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                                                <div>
+                                                    <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Received Date & Time</label>
+                                                    <input type="text" readOnly value={editFormData.opsCompletedOn || formatDateTime(new Date().toISOString())} className={`${readonlyCls} text-red-400 font-bold`} placeholder="Date & Time - Auto" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Prepared For</label>
+                                                    <input type="text" name="packagePreparedFor" value={editFormData.packagePreparedFor || ''} readOnly className={readonlyCls} placeholder=" " />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Prepared By</label>
+                                                    <input type="text" readOnly value={editFormData.opsPreparedBy || editFormData.assignedTo || ''} className={`${readonlyCls} text-red-400 text-[10px] sm:text-xs font-bold`} placeholder="Operations Executive name" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Cost</label>
+                                                    <input type="text" name="packageCost" value={editFormData.packageCost || ''} readOnly className={readonlyCls} />
+                                                </div>
+                                                <div className="sm:col-span-2">
+                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Operation Notes</label>
+                                                    <input type="text" name="operationNotes" value={editFormData.operationNotes || ''} readOnly className={readonlyCls} />
+                                                </div>
+                                            </div>
+                                            <div className="mt-5 pt-4 border-t border-slate-700/50">
+                                                <h4 className="text-sm font-bold text-cyan-400 tracking-wider uppercase mb-3">SALES REVIEW</h4>
+                                                <div className="w-full sm:w-1/3">
+                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Review Status</label>
+                                                    {renderDropdown('salesReviewStatus', editFormData.salesReviewStatus, ' ', ['Verified & Shared', ' Clarification / Changes Needed', 'Rejected'], handleInputChange)}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Prepared For</label>
-                                        <input type="text" name="packagePreparedFor" value={editFormData.packagePreparedFor || ''} readOnly className={readonlyCls} placeholder=" " />
+                                ) : (
+                                    <div className="mt-4 px-4 py-5 text-xs sm:text-sm text-slate-500 border border-dashed border-slate-800 rounded-xl text-center">
+                                        This section appears when Action Taken is "Customisation Required" or Customer Response is "Needs Revision".
                                     </div>
-                                    <div>
-                                        <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Prepared By</label>
-                                        <input type="text" readOnly value={editFormData.opsPreparedBy || editFormData.assignedTo || ''} className={`${readonlyCls} text-red-400 text-[10px] sm:text-xs font-bold`} placeholder="Operations Executive name" />
-                                    </div>
-                                    <div>
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Cost</label>
-                                        <input type="text" name="packageCost" value={editFormData.packageCost || ''} readOnly className={readonlyCls} />
-                                    </div>
-                                    <div className="sm:col-span-2">
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Operation Notes</label>
-                                        <input type="text" name="operationNotes" value={editFormData.operationNotes || ''} readOnly className={readonlyCls} />
-                                    </div>
-                                </div>
-                                <div className="mt-5 pt-4 border-t border-slate-700/50">
-                                    <h4 className="text-sm font-bold text-cyan-400 tracking-wider uppercase mb-3">SALES REVIEW</h4>
-                                    <div className="w-full sm:w-1/3">
-                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Review Status</label>
-                                        {renderDropdown('salesReviewStatus', editFormData.salesReviewStatus, ' ', ['Verified & Shared', ' Clarification / Changes Needed', 'Rejected'], handleInputChange)}
-                                    </div>
-                                </div>
-                                </>
+                                )
                             )}
                         </div>
 
                         {/* SECTION 7: BOOKING CONFIRMATION */}
-                        <div className={`p-4 sm:p-5 rounded-xl border transition-all duration-300 ${editFormData.customerResponse === 'Booking Confirmed' ? 'border-emerald-500/30 bg-emerald-950/10' : 'border-slate-800 bg-slate-900/10'}`}>
+                      <div className={sectionCls}>
                             <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('bookingConfirmation')}>
                                 <div className="flex flex-col gap-0.5">
                                     <h3 className={`text-sm sm:text-base font-bold tracking-wider uppercase m-0 flex items-center gap-2 ${editFormData.customerResponse === 'Booking Confirmed' ? 'text-emerald-400' : 'text-slate-500'}`}>
@@ -2285,7 +2300,7 @@ const SalesDashboard = () => {
                                         <div>
                                             <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">TCS</label>
                                             <select name="tcsInclusion" value={editFormData.tcsInclusion} onChange={handleInputChange} disabled={editFormData.confirmedTripType === 'Domestic'} className={`${selectCls} ${editFormData.confirmedTripType === 'Domestic' ? 'opacity-50 cursor-not-allowed' : ''}`}>
-                                                <option value=""></option>
+                                                <option value="" disabled hidden></option>
                                                 <option value="Included">YES</option>
                                                 <option value="Excluded">NO</option>
                                             </select>
@@ -2302,7 +2317,7 @@ const SalesDashboard = () => {
                         </div>
 
                         {/* SECTION 8: PAYMENT INFORMATION */}
-                        <div className="p-4 sm:p-5 rounded-xl border border-slate-800 bg-slate-900/10 transition-all duration-300">
+                      <div className={sectionCls}>
                             <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('paymentInfo')}>
                                 <h3 className="text-sm sm:text-base font-bold tracking-wider uppercase m-0 text-cyan-400">
                                     Payment Information
@@ -2363,6 +2378,7 @@ const SalesDashboard = () => {
                         </div>
 
                     </form>
+                    </div>
 
                     {/* Edit Modal Sticky Footer */}
                     <div className="px-4 sm:px-6 py-4 border-t border-slate-800 bg-[#0b1329] z-20 flex justify-end gap-3 flex-shrink-0">
