@@ -729,7 +729,7 @@ const SalesDashboard = () => {
                 dates: editFormData.travelDate,
                 noOfPax: editFormData.noOfAdults,
                 travellerCount: editFormData.noOfAdults,
-                nextFollowUp: editFormData.followupDate, // CRITICAL FIX: Mapping next followup date
+                nextFollowUp: editFormData.followupDate, 
                 
                 packageCost: editFormData.totalPackageCost || editFormData.packageCost, 
                 offers: editFormData.specialOffers || editFormData.offers, 
@@ -810,8 +810,8 @@ const SalesDashboard = () => {
     const categories = [
         { id: 'Jobs', label: 'JOBS', icon: ShoppingCart },
         { id: 'My Jobs', label: 'MY JOBS', icon: Target },
-        { id: 'Returned', label: 'RETURNED FROM OPERATIONS', icon: RefreshCw },
-        { id: 'Follow-Up', label: 'FOLLOW-UP QUEUE', icon: History },
+        { id: 'Customisation Ready', label: 'CUSTOMISATION READY', icon: RefreshCw },
+        { id: 'My Confirmation', label: 'MY CONFIRMATION', icon: CheckSquare },
         { id: 'Recycle', label: 'RECYCLE LEADS', icon: Trash2 },
     ];
 
@@ -837,10 +837,10 @@ const SalesDashboard = () => {
         if (activeTab === 'Recycle') matchTab = isRecycleBin;
         else if (isRecycleBin) matchTab = false; 
         else if (activeTab === 'My Jobs') {
-            const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation']; 
+            const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required']; 
             matchTab = validActiveStatuses.includes(itemStatus) && (item.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
-        } else if (activeTab === 'Returned') { matchTab = itemStatus === 'Shared to Sales'; } 
-        else if (activeTab === 'Follow-Up') { matchTab = itemStatus === 'Follow-Up Required' && (item.assignedTo === loggedInUserName || loggedInUserName === 'Admin'); } 
+        } else if (activeTab === 'Customisation Ready') { matchTab = itemStatus === 'Shared to Sales'; } 
+        else if (activeTab === 'My Confirmation') { matchTab = item.customerResponse === 'Booking Confirmed' && (item.assignedTo === loggedInUserName || loggedInUserName === 'Admin'); } 
         else if (activeTab === 'Jobs') { matchTab = itemStatus === 'Jobs'; }
 
         return matchSearch && matchPlatform && matchTab;
@@ -930,9 +930,9 @@ const SalesDashboard = () => {
                         const isRecycleBin = (d.followupCount >= 10 || d.followUpCount >= 10 || itemStatus === 'Recycle Bin');
                         if (cat.id === 'Recycle') return isRecycleBin;
                         if (isRecycleBin) return false;
-                        if (cat.id === 'My Jobs') return ['Sales Assigned', 'Itinerary Shared', 'Negotiation'].includes(itemStatus) && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
-                        if (cat.id === 'Returned') return itemStatus === 'Shared to Sales';
-                        if (cat.id === 'Follow-Up') return itemStatus === 'Follow-Up Required' && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
+                        if (cat.id === 'My Jobs') return ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required'].includes(itemStatus) && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
+                        if (cat.id === 'Customisation Ready') return itemStatus === 'Shared to Sales';
+                        if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
                         return itemStatus === cat.id;
                     }).length;
                     
@@ -963,9 +963,9 @@ const SalesDashboard = () => {
                             const isRecycleBin = (d.followupCount >= 10 || d.followUpCount >= 10 || itemStatus === 'Recycle Bin');
                             if (cat.id === 'Recycle') return isRecycleBin;
                             if (isRecycleBin) return false;
-                            if (cat.id === 'My Jobs') return ['Sales Assigned', 'Itinerary Shared', 'Negotiation'].includes(itemStatus) && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
-                            if (cat.id === 'Returned') return itemStatus === 'Shared to Sales';
-                            if (cat.id === 'Follow-Up') return itemStatus === 'Follow-Up Required' && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
+                            if (cat.id === 'My Jobs') return ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required'].includes(itemStatus) && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
+                            if (cat.id === 'Customisation Ready') return itemStatus === 'Shared to Sales';
+                            if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
                             return itemStatus === cat.id;
                         }).length;
 
@@ -1039,18 +1039,18 @@ const SalesDashboard = () => {
                                     <th className="px-4 py-4">Next Followup</th><th className="px-4 py-4">Priority</th><th className="px-4 py-4 text-center">Action</th>
                                 </tr>
                             )}
-                            {activeTab === 'Returned' && (
+                            {activeTab === 'Customisation Ready' && (
                                 <tr>
                                     <th className="px-4 py-4">Job Id</th><th className="px-4 py-4">Lead Info</th><th className="px-4 py-4">Tour Details</th>
                                     <th className="px-4 py-4">Shared Date</th><th className="px-4 py-4">Sales Stage</th><th className="px-4 py-4">Response</th>
                                     <th className="px-4 py-4">Next Followup</th><th className="px-4 py-4">Priority</th><th className="px-4 py-4 text-center">Action</th>
                                 </tr>
                             )}
-                            {activeTab === 'Follow-Up' && (
+                            {activeTab === 'My Confirmation' && (
                                 <tr>
                                     <th className="px-4 py-4">Job Id</th><th className="px-4 py-4">Lead Info</th><th className="px-4 py-4">Tour Details</th>
-                                    <th className="px-4 py-4">Last Follow-up</th><th className="px-4 py-4">Count</th><th className="px-4 py-4">Next Follow-Up</th>
-                                    <th className="px-4 py-4">Priority</th><th className="px-4 py-4">Status</th><th className="px-4 py-4 text-center">Action</th>
+                                    <th className="px-4 py-4">Confirmed Date</th><th className="px-4 py-4">Confirmed Method</th><th className="px-4 py-4">Value</th>
+                                    <th className="px-4 py-4 text-center">Action</th>
                                 </tr>
                             )}
                         </thead>
@@ -1167,7 +1167,7 @@ const SalesDashboard = () => {
                                         </>
                                     )}
 
-                                    {activeTab === 'Returned' && (
+                                    {activeTab === 'Customisation Ready' && (
                                         <>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none font-semibold text-slate-300">
                                                 <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Job Id</span>
@@ -1216,7 +1216,7 @@ const SalesDashboard = () => {
                                         </>
                                     )}
 
-                                    {activeTab === 'Follow-Up' && (
+                                    {activeTab === 'My Confirmation' && (
                                         <>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none font-semibold text-slate-300">
                                                 <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Job Id</span>
@@ -1239,26 +1239,16 @@ const SalesDashboard = () => {
                                                 </div>
                                             </td>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none">
-                                                <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Last Followup</span>
-                                                <span className="text-sm text-slate-300">{row.lastFollowupDate || '—'}</span>
+                                                <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Confirmed Date</span>
+                                                <span className="text-sm text-slate-300">{row.confirmedDate || '—'}</span>
                                             </td>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none">
-                                                <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Count</span>
-                                                <span className="text-sm text-slate-300">{row.followupCount || 1}</span>
+                                                <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Method</span>
+                                                <span className="text-sm text-slate-300">{row.confirmedMethod || '—'}</span>
                                             </td>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none">
-                                                <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Next Followup</span>
-                                                <span className="text-sm text-slate-300">{row.followupDate || '—'}</span>
-                                            </td>
-                                            <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none">
-                                                <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Priority</span>
-                                                <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded font-medium whitespace-nowrap ${row.priorityTimeline === 'High' ? 'bg-red-950 text-red-400 border border-red-900/50' : 'bg-blue-950 text-blue-400 border border-blue-900/50'}`}>
-                                                    {row.priorityTimeline || 'Medium'}
-                                                </span>
-                                            </td>
-                                            <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none w-full md:w-auto">
-                                                <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Status</span>
-                                                <span className="px-2.5 py-1 bg-slate-800 border border-slate-700 rounded text-slate-300 text-[11px] sm:text-xs font-medium whitespace-nowrap">{row.followupStatus || 'Awaiting Response'}</span>
+                                                <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Value</span>
+                                                <span className="text-sm font-bold text-emerald-400">{row.finalPackageValue ? `₹${row.finalPackageValue}` : '—'}</span>
                                             </td>
                                         </>
                                     )}
@@ -1287,12 +1277,12 @@ const SalesDashboard = () => {
                                                     <RefreshCw size={18} />
                                                 </button>
                                             )}
-                                            {(row.status === 'Sales Assigned' || activeTab === 'My Jobs' || activeTab === 'Follow-Up') ? (
+                                            {(row.status === 'Sales Assigned' || activeTab === 'My Jobs' || activeTab === 'My Confirmation') ? (
                                                 <button type="button" onClick={() => handleMoveToOps(row.id)}
                                                     className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 text-[11px] sm:text-xs font-bold md:font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 rounded-lg md:rounded-md transition-colors whitespace-nowrap" title="Send to Operations">
                                                     <Send size={14} className="hidden md:block"/> Send to Ops
                                                 </button>
-                                            ) : (activeTab === 'Jobs' || activeTab === 'Recycle' || activeTab === 'Returned') ? (
+                                            ) : (activeTab === 'Jobs' || activeTab === 'Recycle' || activeTab === 'Customisation Ready') ? (
                                                 <button type="button" onClick={() => handleOpenAssignModal(row)}
                                                     className="p-2 md:p-1.5 text-orange-400 md:text-slate-400 hover:text-orange-400 bg-orange-500/10 md:bg-transparent hover:bg-orange-900/30 rounded-lg transition-colors" title="Assign">
                                                     <CheckSquare size={18} />
