@@ -199,6 +199,7 @@ function useLeads(triggerNotification) {
                 let currentStatus = lead.status || 'New Requests';
                 if (currentStatus === 'Move To Operation') currentStatus = 'New Requests';
                 if (currentStatus === 'Ops Assigned') currentStatus = 'Follow-Up';
+                if (lead.customerResponse === 'Booking Confirmed') currentStatus = 'Confirmed Bookings';
 
                 return {
                     ...lead,
@@ -495,7 +496,7 @@ export default function OperationsDashboard() {
 
         const passengers = Array.isArray(lead.passengers) && lead.passengers.length > 0
             ? lead.passengers
-            : [{ fullName: '', dob: '', gender: '', aadhar: '', pan: '', passportNumber: '', passportIssueDate: '', passportExpiry: '', passportPlaceOfIssue: '', otherId: '', mobile: '', emergencyContact: '' }];
+            : [{ fullName: '', dob: '', gender: '', aadharNumber: '', panNumber: '', passportNumber: '', passportIssueDate: '', passportExpiryDate: '', passportIssuePlace: '', mobileNumber: '', emergencyContact: '' }];
 
         const intTransports = Array.isArray(lead.intTransports) && lead.intTransports.length > 0
             ? lead.intTransports
@@ -607,8 +608,8 @@ export default function OperationsDashboard() {
             docPhoto: lead.docPhoto || '',
             docPassport: lead.docPassport || '',
             docDriveLink: lead.docDriveLink || '',
-            docStatus: lead.docStatus || '',
-            docNotes: lead.docNotes || '',
+            documentStatus: lead.documentStatus || '', 
+            docRemarks: lead.docRemarks || '',
 
             // Domestic/International General Single fields
             domTransportType: lead.domTransportType || lead.transportMode || '',
@@ -654,7 +655,31 @@ export default function OperationsDashboard() {
 
     const handleEditSubmit = (e) => {
         e.preventDefault();
-        updateLead(selectedLeadForEdit.id, selectedLeadForEdit);
+
+        // FORCE HISTORY LOGGING ON EVERY SAVE
+        const timestamp = new Date().toLocaleString('en-IN', { 
+            month: 'short', day: 'numeric', year: 'numeric', 
+            hour: '2-digit', minute: '2-digit', hour12: true 
+        });
+        
+        let currentHistory = [];
+        try { 
+            currentHistory = typeof selectedLeadForEdit.history === 'string' 
+                ? JSON.parse(selectedLeadForEdit.history) 
+                : (Array.isArray(selectedLeadForEdit.history) ? selectedLeadForEdit.history : []); 
+        } catch(err){}
+
+        const updatedHistory = [
+            { date: timestamp, action: 'Operations Profile Updated', note: 'Data synchronized and saved from Operations Dashboard.' }, 
+            ...currentHistory
+        ];
+
+        const payloadToSave = {
+            ...selectedLeadForEdit,
+            history: JSON.stringify(updatedHistory)
+        };
+
+        updateLead(selectedLeadForEdit.id, payloadToSave);
         setSelectedLeadForEdit(null);
     };
 
@@ -806,14 +831,26 @@ export default function OperationsDashboard() {
                         <table className="w-full text-left text-sm text-slate-200 min-w-[900px]">
                             <thead className="bg-transparent border-b border-slate-700/20 text-xs uppercase tracking-wider text-slate-400 font-semibold">
                                 <tr>
-                                    <th className="px-6 py-4">Job ID</th>
-                                    <th className="px-6 py-4">Client</th>
-                                    <th className="px-6 py-4">Destination</th>
-                                    <th className="px-6 py-4">Work / Priority</th>
-                                    {activeTab === 'Follow-Up' && <th className="px-6 py-4">Vendor</th>}
-                                    {activeTab === 'Shared to Sales' && <th className="px-6 py-4">Version</th>}
-                                    {activeTab === 'Confirmed Bookings' && <th className="px-6 py-4">Value</th>}
-                                    {activeTab === 'Upcoming Departure' && <th className="px-6 py-4">Status</th>}
+                                    {activeTab === 'Confirmed Bookings' ? (
+                                        <>
+                                            <th className="px-6 py-4">Job Id</th>
+                                            <th className="px-6 py-4">Lead Info</th>
+                                            <th className="px-6 py-4">Tour Details</th>
+                                            <th className="px-6 py-4">Confirmed Date</th>
+                                            <th className="px-6 py-4">Confirmed Method</th>
+                                            <th className="px-6 py-4">Value</th>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <th className="px-6 py-4">Job ID</th>
+                                            <th className="px-6 py-4">Client</th>
+                                            <th className="px-6 py-4">Destination</th>
+                                            <th className="px-6 py-4">Work / Priority</th>
+                                            {activeTab === 'Follow-Up' && <th className="px-6 py-4">Vendor</th>}
+                                            {activeTab === 'Shared to Sales' && <th className="px-6 py-4">Version</th>}
+                                            {activeTab === 'Upcoming Departure' && <th className="px-6 py-4">Status</th>}
+                                        </>
+                                    )}
                                     <th className="px-6 py-4 text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -822,47 +859,73 @@ export default function OperationsDashboard() {
                                     <tr><td colSpan="11" className="px-6 py-12 text-center text-slate-500">Querying database records...</td></tr>
                                 ) : paginated.length > 0 ? paginated.map(row => (
                                     <tr key={row.id} className="hover:bg-slate-800/30 transition-colors">
-                                        <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                                <span className="text-white font-bold">{row.customerName || row.profileName || 'N/A'}</span>
-                                                <span className="text-xs text-slate-400">📞 {row.phone || row.mobileNo || 'N/A'}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col text-sm">
-                                                <span className="text-emerald-400 font-medium flex items-center gap-1"><MapPin size={12} />{row.destination}</span>
-                                                <span className="text-xs text-slate-400">📅 {row.travelDates || row.date}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col text-sm items-start gap-1">
-                                                <span className="px-1.5 py-0.5 rounded bg-purple-950/40 text-purple-300 border border-purple-900/40 text-xs font-bold">{row.workType || 'FIT'}</span>
-                                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${row.priority === 'High' ? 'bg-red-950 text-red-400' : 'bg-blue-950 text-blue-400'}`}>{row.priority || 'Normal'}</span>
-                                            </div>
-                                        </td>
-                                        {activeTab === 'Follow-Up' && (
-                                            <td className="px-6 py-4">
-                                                <div className="flex flex-col text-xs gap-0.5 text-slate-400">
-                                                    <span>Vendor: <strong className="text-slate-200">{row.vendorName || 'Internal'}</strong></span>
-                                                    <span>Next: <strong className="text-amber-400">{row.nextFollowUp || 'TBD'}</strong></span>
-                                                </div>
-                                            </td>
-                                        )}
-                                        {activeTab === 'Shared to Sales' && (
-                                            <td className="px-6 py-4">
-                                                <span className="font-mono bg-[#1a3350] text-sky-300 px-2 py-0.5 rounded font-bold text-xs">v{row.itineraryVersion || '1.0.0'}</span>
-                                            </td>
-                                        )}
-                                        {activeTab === 'Confirmed Bookings' && (
-                                            <td className="px-6 py-4">
-                                                <span className="text-emerald-400 font-black font-mono">{row.amount || '₹2,50,000'}</span>
-                                            </td>
-                                        )}
-                                        {activeTab === 'Upcoming Departure' && (
-                                            <td className="px-6 py-4">
-                                                <span className="text-cyan-400 font-bold text-xs bg-cyan-950 border border-cyan-800 px-2 py-0.5 rounded">{row.voucherStatus || 'Vouchered'}</span>
-                                            </td>
+                                        {activeTab === 'Confirmed Bookings' ? (
+                                            <>
+                                                <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-white font-bold">{row.customerName || row.profileName || 'N/A'}</span>
+                                                        <span className="text-xs text-slate-400">📞 {row.phone || row.mobileNo || 'N/A'}</span>
+                                                        <span className="text-xs text-slate-500 truncate max-w-[150px]">{row.email || 'N/A'}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col text-sm">
+                                                        <span className="text-emerald-400 font-medium">{row.destination || 'Bali'}</span>
+                                                        <span className="text-xs text-slate-400">📅 {row.travelDates || row.travelDate || 'TBD'}</span>
+                                                        <span className="text-xs text-slate-500">{row.noOfPax || row.travellerCount || '0'} pax</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="text-sm text-slate-300">{row.confirmedDate || '—'}</span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="text-sm text-slate-300">{row.confirmedMethod || '—'}</span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className="text-sm font-bold text-emerald-400">{row.finalPackageValue ? `₹${row.finalPackageValue}` : '—'}</span>
+                                                </td>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col">
+                                                        <span className="text-white font-bold">{row.customerName || row.profileName || 'N/A'}</span>
+                                                        <span className="text-xs text-slate-400">📞 {row.phone || row.mobileNo || 'N/A'}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col text-sm">
+                                                        <span className="text-emerald-400 font-medium flex items-center gap-1"><MapPin size={12} />{row.destination}</span>
+                                                        <span className="text-xs text-slate-400">📅 {row.travelDates || row.date}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <div className="flex flex-col text-sm items-start gap-1">
+                                                        <span className="px-1.5 py-0.5 rounded bg-purple-950/40 text-purple-300 border border-purple-900/40 text-xs font-bold">{row.workType || 'FIT'}</span>
+                                                        <span className={`text-xs px-2 py-0.5 rounded font-medium ${row.priority === 'High' ? 'bg-red-950 text-red-400' : 'bg-blue-950 text-blue-400'}`}>{row.priority || 'Normal'}</span>
+                                                    </div>
+                                                </td>
+                                                {activeTab === 'Follow-Up' && (
+                                                    <td className="px-6 py-4">
+                                                        <div className="flex flex-col text-xs gap-0.5 text-slate-400">
+                                                            <span>Vendor: <strong className="text-slate-200">{row.vendorName || 'Internal'}</strong></span>
+                                                            <span>Next: <strong className="text-amber-400">{row.nextFollowUp || 'TBD'}</strong></span>
+                                                        </div>
+                                                    </td>
+                                                )}
+                                                {activeTab === 'Shared to Sales' && (
+                                                    <td className="px-6 py-4">
+                                                        <span className="font-mono bg-[#1a3350] text-sky-300 px-2 py-0.5 rounded font-bold text-xs">v{row.itineraryVersion || '1.0.0'}</span>
+                                                    </td>
+                                                )}
+                                                {activeTab === 'Upcoming Departure' && (
+                                                    <td className="px-6 py-4">
+                                                        <span className="text-cyan-400 font-bold text-xs bg-cyan-950 border border-cyan-800 px-2 py-0.5 rounded">{row.voucherStatus || 'Vouchered'}</span>
+                                                    </td>
+                                                )}
+                                            </>
                                         )}
                                         <td className="px-6 py-4 text-right whitespace-nowrap">
                                             <div className="flex items-center justify-end gap-2">
@@ -986,23 +1049,27 @@ export default function OperationsDashboard() {
 
             {/* ─── EDIT MODAL ─────────────────────────────────────────────────────── */}
             {selectedLeadForEdit && (
-                <div className="fixed inset-0 bg-black/70 flex items-start sm:items-center justify-center z-50 p-0 sm:p-4">
-                    <div className="bg-[#0f172a] border border-slate-700 rounded-none sm:rounded-xl shadow-2xl w-full sm:max-w-6xl h-full sm:h-[92vh] flex flex-col text-slate-100">
-                        <div className="px-4 sm:px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] flex-shrink-0 rounded-t-none sm:rounded-t-xl">
-                            <h2 className="text-base sm:text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                                <FileText size={18} className="text-cyan-400 flex-shrink-0" />
-                                <span className="truncate">
-                                    {activeTab === 'Confirmed Bookings'
-                                        ? `Confirmed Booking — ${selectedLeadForEdit.tourType === 'International Tour' ? 'Intl' : 'Dom'} (LMN${selectedLeadForEdit.id})`
-                                        : `CRM Handover Sheet (LMN${selectedLeadForEdit.id})`
-                                    }
-                                </span>
-                            </h2>
-                            <button type="button" onClick={() => setSelectedLeadForEdit(null)} className="text-slate-400 hover:text-white p-1 bg-transparent border-none cursor-pointer flex-shrink-0"><X size={22} /></button>
-                        </div>
+                <div className="absolute inset-0 bg-[#0f172a] z-50 overflow-hidden flex flex-col w-full h-full text-slate-100">
+                    <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] z-20 flex-shrink-0 shadow-md">
+                        <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2 truncate pr-4">
+                            <FileText size={20} className="text-cyan-400 flex-shrink-0" />
+                            <span className="truncate hidden sm:inline">
+                                {activeTab === 'Confirmed Bookings'
+                                    ? `Confirmed Booking — ${selectedLeadForEdit.tourType === 'International Tour' ? 'Intl' : 'Dom'}`
+                                    : 'CRM Handover Sheet'}
+                            </span>
+                            <span className="text-sm font-mono font-semibold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 flex-shrink-0">
+                                LMN{String(selectedLeadForEdit.id || '').padStart(4, '0')}
+                            </span>
+                        </h2>
+                        
+                        <button type="button" onClick={() => setSelectedLeadForEdit(null)} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-800 flex-shrink-0 ml-auto cursor-pointer">
+                            <X size={20} />
+                        </button>
+                    </div>
 
-                        <form onSubmit={handleEditSubmit} className="flex flex-col flex-1 overflow-hidden">
-                            <div className="px-4 sm:px-6 py-5 overflow-y-auto flex-1 bg-[#0f172a] custom-scrollbar">
+                    <div className="overflow-y-auto flex-1 custom-scrollbar w-full relative">
+                        <form id="edit-ops-form" onSubmit={handleEditSubmit} className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 w-full">
 
                                 {activeTab === 'Confirmed Bookings' ? (
                                     selectedLeadForEdit.tourType === 'International Tour' ? (
@@ -1039,44 +1106,38 @@ export default function OperationsDashboard() {
                                                 </div>
                                             </div>
 
-                                            {/* Passenger Details */}
+                                            {/* Passenger Details - STRICTLY READ ONLY */}
                                             <div className={sectionCls}>
                                                 <h3 className={`${sectionHeadCls} flex flex-wrap justify-between gap-1`}>
-                                                    <span>Passenger Details</span>
+                                                    <span>Passenger Details (Locked - Fetched from Sales)</span>
                                                 </h3>
                                                 <div className="space-y-4">
                                                     {selectedLeadForEdit.passengers?.map((pax, index) => (
-                                                        <div key={index} className="p-4 bg-slate-950 rounded-lg border border-slate-800 relative">
+                                                        <div key={index} className="p-4 bg-slate-950 rounded-lg border border-slate-800 relative opacity-80">
                                                             <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-slate-400 border border-slate-700 rounded">PAX {index + 1}</span>
-                                                            {index > 0 && (
-                                                                <button type="button" onClick={() => removeArrayItem('passengers', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>
-                                                            )}
+                                                            
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Full Name As Per Passport</label><input type="text" value={pax.fullName} onChange={(e) => handleArrayChange('passengers', index, 'fullName', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Date Of Birth</label><DatePickerField type="date" value={pax.dob} onChange={(e) => handleArrayChange('passengers', index, 'dob', e.target.value)} className={inputCls} /></div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Gender</label>
-                                                                    <CustomSelect value={pax.gender} onChange={(val) => handleArrayChange('passengers', index, 'gender', val)} className={selectCls} placeholder="Select Gender" options={['Male', 'Female', 'Other']} />
-                                                                </div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Full Name</label><input type="text" readOnly value={pax.fullName} className={readonlyCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Date Of Birth</label><input type="text" readOnly value={pax.dob} className={readonlyCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Gender</label><input type="text" readOnly value={pax.gender} className={readonlyCls} /></div>
                                                                 
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Aadhar Card Number</label><input type="text" value={pax.aadhar} onChange={(e) => handleArrayChange('passengers', index, 'aadhar', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">PAN Number</label><input type="text" value={pax.pan} onChange={(e) => handleArrayChange('passengers', index, 'pan', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Number</label><input type="text" value={pax.passportNumber} onChange={(e) => handleArrayChange('passengers', index, 'passportNumber', e.target.value)} className={inputCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Aadhar Card Number</label><input type="text" readOnly value={pax.aadharNumber} className={readonlyCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">PAN Number</label><input type="text" readOnly value={pax.panNumber} className={readonlyCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Number</label><input type="text" readOnly value={pax.passportNumber} className={readonlyCls} /></div>
 
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Issue Date</label><DatePickerField type="date" value={pax.passportIssueDate} onChange={(e) => handleArrayChange('passengers', index, 'passportIssueDate', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Expiry Date</label><DatePickerField type="date" value={pax.passportExpiry} onChange={(e) => handleArrayChange('passengers', index, 'passportExpiry', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Place of Issue</label><input type="text" value={pax.passportPlaceOfIssue} onChange={(e) => handleArrayChange('passengers', index, 'passportPlaceOfIssue', e.target.value)} className={inputCls} /></div>
+                                                                {selectedLeadForEdit.tourType === 'International Tour' && (
+                                                                    <>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Issue Date</label><input type="text" readOnly value={pax.passportIssueDate} className={readonlyCls} /></div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Expiry Date</label><input type="text" readOnly value={pax.passportExpiryDate} className={readonlyCls} /></div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Place of Issue</label><input type="text" readOnly value={pax.passportIssuePlace} className={readonlyCls} /></div>
+                                                                    </>
+                                                                )}
 
-                                                                <div className="sm:col-start-2"><label className="block text-xs font-medium text-slate-400 mb-1">Mobile Number</label><input type="text" value={pax.mobile} onChange={(e) => handleArrayChange('passengers', index, 'mobile', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Emergency Contact Number</label><input type="text" value={pax.emergencyContact || ''} onChange={(e) => handleArrayChange('passengers', index, 'emergencyContact', e.target.value)} className={inputCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Mobile Number</label><input type="text" readOnly value={pax.mobileNumber} className={readonlyCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Emergency Contact</label><input type="text" readOnly value={pax.emergencyContact || ''} className={readonlyCls} /></div>
                                                             </div>
                                                         </div>
                                                     ))}
-                                                    <div className="flex justify-between items-center bg-slate-900 border border-slate-700/50 p-2 rounded">
-                                                        <button type="button" onClick={() => addArrayItem('passengers', { fullName: '', dob: '', gender: '', aadhar: '', pan: '', passportNumber: '', passportIssueDate: '', passportExpiry: '', passportPlaceOfIssue: '', otherId: '', mobile: '', emergencyContact: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md transition-colors cursor-pointer">
-                                                            <Plus size={14} /> Add Passenger
-                                                        </button>
-                                                    </div>
                                                 </div>
                                             </div>
 
@@ -1412,7 +1473,7 @@ export default function OperationsDashboard() {
                                                                     <CustomSelect value={req.service} onChange={(v) => handleArrayChange('paymentRequests', index, 'service', v)} className={selectCls} placeholder="Select" options={['Transport', 'Hotel', 'Local Vehicle Operator']} />
                                                                 </div>
                                                                 <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Provider Name</label>
+                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Provider Name <span className="text-[10px] text-red-400 italic ml-1">(autofetch)</span></label>
                                                                     <input type="text" value={req.providerName} readOnly className={readonlyCls} placeholder="Auto-populated" />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={req.paymentDueDate} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
@@ -1475,67 +1536,68 @@ export default function OperationsDashboard() {
                                                 </div>
                                             </div>
 
-                                            {/* 2. Passenger Details */}
+                                            {/* 2. Passenger Details - STRICTLY READ ONLY */}
                                             <div className={sectionCls}>
                                                 <h3 className={`${sectionHeadCls} flex flex-wrap justify-between gap-1`}>
-                                                    <span>Passenger Details</span>
+                                                    <span>Passenger Details (Locked - Fetched from Sales)</span>
                                                 </h3>
                                                 <div className="space-y-4">
                                                     {selectedLeadForEdit.passengers?.map((pax, index) => (
-                                                        <div key={index} className="p-4 bg-slate-950 rounded-lg border border-slate-800 relative">
+                                                        <div key={index} className="p-4 bg-slate-950 rounded-lg border border-slate-800 relative opacity-80">
                                                             <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-slate-400 border border-slate-700 rounded">PAX {index + 1}</span>
-                                                            {index > 0 && (
-                                                                <button type="button" onClick={() => removeArrayItem('passengers', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>
-                                                            )}
+                                                            
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Full Name As Per Aadhar</label><input type="text" value={pax.fullName} onChange={(e) => handleArrayChange('passengers', index, 'fullName', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Date Of Birth</label><DatePickerField type="date" value={pax.dob} onChange={(e) => handleArrayChange('passengers', index, 'dob', e.target.value)} className={inputCls} /></div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Gender</label>
-                                                                    <CustomSelect value={pax.gender} onChange={(val) => handleArrayChange('passengers', index, 'gender', val)} className={selectCls} placeholder="Select Gender" options={['Male', 'Female', 'Other']} />
-                                                                </div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Aadhar Card Number</label><input type="text" value={pax.aadhar} onChange={(e) => handleArrayChange('passengers', index, 'aadhar', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">PAN Number</label><input type="text" value={pax.pan} onChange={(e) => handleArrayChange('passengers', index, 'pan', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Mobile Number</label><input type="text" value={pax.mobile} onChange={(e) => handleArrayChange('passengers', index, 'mobile', e.target.value)} className={inputCls} /></div>
-                                                                <div className="sm:col-start-3"><label className="block text-xs font-medium text-slate-400 mb-1">Emergency Contact Number</label><input type="text" value={pax.emergencyContact || ''} onChange={(e) => handleArrayChange('passengers', index, 'emergencyContact', e.target.value)} className={inputCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Full Name</label><input type="text" readOnly value={pax.fullName} className={readonlyCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Date Of Birth</label><input type="text" readOnly value={pax.dob} className={readonlyCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Gender</label><input type="text" readOnly value={pax.gender} className={readonlyCls} /></div>
+                                                                
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Aadhar Card Number</label><input type="text" readOnly value={pax.aadharNumber} className={readonlyCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">PAN Number</label><input type="text" readOnly value={pax.panNumber} className={readonlyCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Number</label><input type="text" readOnly value={pax.passportNumber} className={readonlyCls} /></div>
+
+                                                                {selectedLeadForEdit.tourType === 'International Tour' && (
+                                                                    <>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Issue Date</label><input type="text" readOnly value={pax.passportIssueDate} className={readonlyCls} /></div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Expiry Date</label><input type="text" readOnly value={pax.passportExpiryDate} className={readonlyCls} /></div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Place of Issue</label><input type="text" readOnly value={pax.passportIssuePlace} className={readonlyCls} /></div>
+                                                                    </>
+                                                                )}
+
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Mobile Number</label><input type="text" readOnly value={pax.mobileNumber} className={readonlyCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Emergency Contact</label><input type="text" readOnly value={pax.emergencyContact || ''} className={readonlyCls} /></div>
                                                             </div>
                                                         </div>
                                                     ))}
-                                                    <div className="flex justify-between items-center bg-slate-900 border border-slate-700/50 p-2 rounded">
-                                                        <button type="button" onClick={() => addArrayItem('passengers', { fullName: '', dob: '', gender: '', aadhar: '', pan: '', mobile: '', emergencyContact: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md transition-colors cursor-pointer">
-                                                            <Plus size={14} /> Add Passenger
-                                                        </button>
-                                                    </div>
                                                 </div>
                                             </div>
 
-                                            {/* 3. Document Collection */}
+                                            {/* 3. Document Collection - STRICTLY READ ONLY */}
                                             <div className={sectionCls}>
-                                                <h3 className={sectionHeadCls}>Document Collection</h3>
-                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                <h3 className={sectionHeadCls}>Document Collection (Locked - Fetched from Sales)</h3>
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 opacity-80">
                                                     <div>
                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Aadhar Copy</label>
-                                                        <CustomSelect value={selectedLeadForEdit.docAadhar} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, docAadhar: v })} className={selectCls} placeholder="Select Status" options={['Pending', 'Received', 'Verified']} />
+                                                        <input type="text" readOnly value={selectedLeadForEdit.docAadhar || 'Pending'} className={readonlyCls} />
                                                     </div>
                                                     <div>
                                                         <label className="block text-xs font-medium text-slate-400 mb-1">PAN Card</label>
-                                                        <CustomSelect value={selectedLeadForEdit.docPan} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, docPan: v })} className={selectCls} placeholder="Select Status" options={['Pending', 'Received', 'Verified']} />
+                                                        <input type="text" readOnly value={selectedLeadForEdit.docPan || 'Pending'} className={readonlyCls} />
                                                     </div>
                                                     <div>
                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Photograph</label>
-                                                        <CustomSelect value={selectedLeadForEdit.docPhoto} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, docPhoto: v })} className={selectCls} placeholder="Select Status" options={['Pending', 'Received', 'Verified']} />
+                                                        <input type="text" readOnly value={selectedLeadForEdit.docPhoto || 'Pending'} className={readonlyCls} />
                                                     </div>
                                                     <div>
                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Attach Drive Link</label>
-                                                        <input type="text" placeholder="https://drive.google.com/..." value={selectedLeadForEdit.docDriveLink} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, docDriveLink: e.target.value })} className={inputCls} />
+                                                        <input type="text" readOnly value={selectedLeadForEdit.docDriveLink || 'N/A'} className={readonlyCls} />
                                                     </div>
                                                     <div>
                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Document Status</label>
-                                                        <CustomSelect value={selectedLeadForEdit.docStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, docStatus: v })} className={selectCls} placeholder="Select Status" options={['Pending', 'Partial', 'Completed']} />
+                                                        <input type="text" readOnly value={selectedLeadForEdit.documentStatus || 'Pending'} className={readonlyCls} />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Notes</label>
-                                                        <input type="text" value={selectedLeadForEdit.docNotes || ''} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, docNotes: e.target.value })} className={inputCls} />
+                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Remarks</label>
+                                                        <input type="text" readOnly value={selectedLeadForEdit.docRemarks || 'None'} className={readonlyCls} />
                                                     </div>
                                                 </div>
                                             </div>
@@ -2196,13 +2258,19 @@ export default function OperationsDashboard() {
 
                                     </div>
                                 )}
-                            </div>
-
-                            <div className="flex items-center justify-end gap-2.5 border-t border-slate-800 px-4 sm:px-6 py-4 flex-shrink-0 bg-[#0b1329]">
-                                <button type="button" onClick={() => setSelectedLeadForEdit(null)} className="px-5 py-2 bg-transparent border border-slate-700 hover:bg-slate-800 text-slate-300 text-sm font-semibold rounded transition-colors uppercase tracking-wider cursor-pointer">CANCEL</button>
-                                <button type="submit" className="px-5 py-2 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 text-white text-sm font-bold rounded shadow transition-colors uppercase tracking-wider cursor-pointer">SUBMIT</button>
-                            </div>
                         </form>
+                    </div>
+
+                    {/* Sticky Footer matching Sales Dashboard */}
+                    <div className="px-4 sm:px-6 py-4 border-t border-slate-800 bg-[#0b1329] z-20 flex justify-end gap-3 flex-shrink-0">
+                        <button type="button" onClick={() => setSelectedLeadForEdit(null)}
+                            className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-transparent border border-cyan-500 hover:bg-slate-800 cursor-pointer text-cyan-400 text-sm sm:text-base font-semibold rounded-lg sm:rounded transition-colors uppercase tracking-wider order-2 sm:order-1">
+                            CANCEL
+                        </button>
+                        <button type="submit" form="edit-ops-form" 
+                            className="w-full sm:w-auto px-10 py-3 sm:py-2.5 bg-[#16D3F2] hover:bg-cyan-400 active:bg-cyan-600 border-none cursor-pointer text-[#0f172a] text-sm sm:text-base font-bold rounded-lg sm:rounded shadow transition-colors uppercase tracking-wider order-1 sm:order-2">
+                            SUBMIT
+                        </button>
                     </div>
                 </div>
             )}
@@ -2210,7 +2278,7 @@ export default function OperationsDashboard() {
             {/* ─── HISTORY & VIEW MODAL ────────────────────────────────────────────── */}
             {activeModal && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[100] p-4">
-                    <div className="bg-[#1e293b] border border-slate-700 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col">
+                    <div className="bg-[#1e293b] border-0 rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col">
                         <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-[#0f172a]">
                             <h3 className="text-white font-bold text-sm uppercase tracking-wider flex items-center gap-2">
                                 {activeModal.type === 'history' ? <History size={16} className="text-cyan-400" /> : <Eye size={16} className="text-cyan-400" />}
@@ -2335,7 +2403,7 @@ export default function OperationsDashboard() {
             {/* ─── ACKNOWLEDGE MODAL ──────────────────────────────────────────────── */}
             {leadToAcknowledge && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[150] p-4">
-                    <div className="bg-[#1e293b] border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm text-center p-6">
+                    <div className="bg-[#1e293b] border-0 rounded-xl shadow-2xl w-full max-w-sm text-center p-6">
                         <h3 className="text-base font-bold text-white uppercase tracking-wider mb-2">Acknowledge Pipeline Job</h3>
                         <p className="text-slate-400 mb-5 text-xs leading-relaxed">Acknowledge lead <strong>LMN{leadToAcknowledge.id}</strong>? Transitions to Follow-Up workspace.</p>
                         <div className="flex items-center justify-center gap-2">
@@ -2349,7 +2417,7 @@ export default function OperationsDashboard() {
             {/* ─── FULFILLMENT MODAL ──────────────────────────────────────────────── */}
             {leadToFulfill && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[150] p-4">
-                    <div className="bg-[#1e293b] border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm text-center p-6">
+                    <div className="bg-[#1e293b] border-0 rounded-xl shadow-2xl w-full max-w-sm text-center p-6">
                         <h3 className="text-sm font-bold text-white mb-2 uppercase tracking-wide">Send to Fulfillment?</h3>
                         <p className="text-slate-400 mb-5 text-xs">Confirm push for <strong>LMN{leadToFulfill.id}</strong>.</p>
                         <div className="flex justify-center gap-2">
@@ -2363,7 +2431,7 @@ export default function OperationsDashboard() {
             {/* ─── PROFILE VIEW MODAL ─────────────────────────────────────────────── */}
             {selectedLeadForView && (
                 <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[150] p-4">
-                    <div className="bg-[#0f172a] border border-slate-700/50 rounded-lg shadow-2xl w-full max-w-sm p-6">
+                    <div className="bg-[#0f172a] border-0 rounded-lg shadow-2xl w-full max-w-sm p-6">
                         <div className="flex justify-between items-center mb-4 border-b border-slate-700/50 pb-2">
                             <h2 className="text-sm font-bold text-white uppercase tracking-wider">Profile Inspector — LMN{selectedLeadForView.id}</h2>
                             <button type="button" onClick={() => setSelectedLeadForView(null)} className="text-slate-400 hover:text-white bg-transparent border-none cursor-pointer"><X size={20} /></button>
