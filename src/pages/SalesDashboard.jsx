@@ -127,6 +127,35 @@ const SalesDashboard = () => {
         setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
     };
 
+    // --- NEW PASSENGER STATE ---
+    const [currentPassenger, setCurrentPassenger] = useState({
+        fullName: '', dob: '', gender: '', aadharNumber: '', mobileNumber: '', emergencyContact: '',
+        panNumber: '', passportNumber: '', passportIssuePlace: '', passportIssueDate: '', passportExpiryDate: ''
+    });
+
+    const handleCurrentPassengerChange = (e) => {
+        const { name, value } = e.target;
+        setCurrentPassenger(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleAddPassenger = () => {
+        setEditFormData(prev => ({
+            ...prev,
+            passengers: [...(prev.passengers || []), currentPassenger]
+        }));
+        setCurrentPassenger({
+            fullName: '', dob: '', gender: '', aadharNumber: '', mobileNumber: '', emergencyContact: '',
+            panNumber: '', passportNumber: '', passportIssuePlace: '', passportIssueDate: '', passportExpiryDate: ''
+        });
+    };
+
+    const handleRemovePassenger = (index) => {
+        setEditFormData(prev => ({
+            ...prev,
+            passengers: prev.passengers.filter((_, i) => i !== index)
+        }));
+    };
+
     const [editFormData, setEditFormData] = useState({
         // Lead Info
         leadName: '', leadSource: '', leadDate: '', mobileNumber: '', emailAddress: '', assignedTo: '',
@@ -154,6 +183,10 @@ const SalesDashboard = () => {
         transportMode: '', departureDate: '', tourStartDate: '', returnDate: '', travelEndDate: '', tourEndDate: '', totalPackageCost: '', specialOffers: '',
         arrivalDate: '', flightStatus: '', visaStatus: '', insuranceStatus: '', 
         confirmedMethod: '', confirmedDate: '', confirmedServices: '', discount: '', finalPackageValue: '', serviceCost: '',
+
+        // Booking Confirmation - Dynamic Fields
+        service1Cost: '', service2Cost: '', service3Cost: '', gst: '', tcs: '', passengers: [],
+        aadharCopy: '', passportCopy: '', photograph: '', attachDriveLink: '', docRemarks: '',
 
         // Payments
         paymentDueDate: '', transactionId: '', amountReceived: '', paymentMode: '', customerPaymentDate: '',
@@ -254,10 +287,52 @@ const SalesDashboard = () => {
         setEditFormData(prev => ({ ...prev, customisationRequests: prev.customisationRequests.filter((_, i) => i !== index) }));
     };
 
-    // --- MULTI-SELECT HANDLER UI ---
-    const renderMultiSelect = (name, value, options) => {
-        const selected = value ? value.split(', ') : [];
+    // --- UPDATED RENDER HELPERS ---
+    const renderDatePicker = (name, value, label, onChangeHandler, placeholderText = '', disabled = false) => {
+        return (
+            <div className="w-full">
+                {label && <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">{label}</label>}
+                <div className={`relative bg-slate-900 border border-slate-700 rounded-lg sm:rounded focus-within:border-cyan-500 focus-within:ring-1 focus-within:ring-cyan-500/50 transition-all overflow-hidden group flex items-center ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-900/50' : ''}`}>
+                    <input type="date" name={name} value={value || ''} onChange={onChangeHandler} disabled={disabled} className={`w-full px-3 py-2 sm:py-1.5 bg-transparent text-white text-sm outline-none appearance-none relative z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:left-0 [&::-webkit-calendar-picker-indicator]:top-0 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer'}`} />
+                    <Calendar size={16} className="absolute right-3 text-slate-400 group-hover:text-cyan-400 z-0 transition-colors pointer-events-none" />
+                </div>
+                {placeholderText && <p className="text-[9px] text-slate-500 mt-0.5 italic">{placeholderText}</p>}
+            </div>
+        );
+    };
+
+    const renderArrayDropdown = (field, value, index, defaultOption, optionsList) => {
+        const handleSelect = (e) => handleCustomisationChange(index, field, e.target.value);
+        return (
+            <select value={value || ''} onChange={handleSelect} className={selectCls}>
+                {defaultOption !== null && <option value="" disabled hidden>{defaultOption}</option>}
+                {optionsList.map((opt, idx) => {
+                    const optVal = typeof opt === 'object' ? opt.value : opt;
+                    const optLabel = typeof opt === 'object' ? opt.label : opt;
+                    return <option key={idx} value={optVal}>{optLabel}</option>;
+                })}
+            </select>
+        );
+    };
+
+    const renderDropdown = (name, value, defaultOption, optionsList, onChangeHandler, customClass = selectCls, disabled = false) => {
+        const handleSelect = (e) => onChangeHandler(e);
+        return (
+            <select name={name} value={value || ''} onChange={handleSelect} disabled={disabled} className={`${customClass} ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-900/50' : ''}`}>
+                {defaultOption !== null && <option value="" disabled hidden>{defaultOption}</option>}
+                {optionsList.map((opt, idx) => {
+                    const optVal = typeof opt === 'object' ? opt.value : opt;
+                    const optLabel = typeof opt === 'object' ? opt.label : opt;
+                    return <option key={idx} value={optVal}>{optLabel}</option>;
+                })}
+            </select>
+        );
+    };
+
+    const renderMultiSelect = (name, value, options, disabled = false) => {
+        const selected = value ? value.split(', ').filter(Boolean) : [];
         const toggle = (opt) => {
+            if (disabled) return;
             let newSelected;
             if (selected.includes(opt)) {
                 newSelected = selected.filter(o => o !== opt);
@@ -270,7 +345,7 @@ const SalesDashboard = () => {
             <div className="flex flex-wrap gap-2 mt-1">
                 {options.map(opt => (
                     <div key={opt} onClick={() => toggle(opt)} 
-                         className={`px-2.5 py-1 text-[11px] sm:text-xs rounded border cursor-pointer transition-all ${selected.includes(opt) ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400 font-medium' : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500'}`}>
+                         className={`px-2.5 py-1 text-[11px] sm:text-xs rounded border transition-all ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${selected.includes(opt) ? 'bg-cyan-500/20 border-cyan-500 text-cyan-400 font-medium' : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-500'}`}>
                         {opt}
                     </div>
                 ))}
@@ -576,9 +651,15 @@ const SalesDashboard = () => {
         setPlayingIndex(null);
         setEditingLogIndex(null); 
 
+        // If we are in "My Confirmation" tab, ONLY show the Confirmation block expanded.
         setExpandedSections({
-            leadInfo: false, salesActivity: targetSection ? false : true, travelDetails: false, customisation: false,
-            operationResponse: false, bookingConfirmation: false, paymentInfo: targetSection === 'paymentInfo'
+            leadInfo: false, 
+            salesActivity: activeTab !== 'My Confirmation' && !targetSection, 
+            travelDetails: false, 
+            customisation: false,
+            operationResponse: false, 
+            bookingConfirmation: activeTab === 'My Confirmation', 
+            paymentInfo: targetSection === 'paymentInfo'
         });
 
         // Safe JSON Parsing for Previous Attempts
@@ -652,12 +733,17 @@ const SalesDashboard = () => {
             packagePreparedFor: lead.packagePreparedFor || '', packageCost: lead.packageCost || '', operationNotes: lead.operationNotes || '', salesReviewStatus: lead.salesReviewStatus || '',
 
             billingName: lead.billingName || '', bookingDate: lead.bookingDate || '', operationExecutive: lead.operationExecutive || '',
-            confirmedTripType: lead.tripCategory || lead.tourType || '', confirmedDestination: lead.confirmedDestination || lead.destination || '', confirmedDuration: lead.confirmedDuration || lead.duration || '',
+            confirmedTripType: lead.confirmedTripType || lead.tripCategory || lead.tourType || '', confirmedDestination: lead.confirmedDestination || lead.destination || '', confirmedDuration: lead.confirmedDuration || lead.duration || '',
             noOfPax: lead.noOfPax || lead.travellerCount || '', confirmedNoOfChildren: lead.confirmedNoOfChildren || lead.noOfChildren || '0', transportMode: lead.transportMode || '',
             departureDate: lead.departureDate || '', tourStartDate: lead.tourStartDate || '', returnDate: lead.returnDate || '', travelEndDate: lead.travelEndDate || '', tourEndDate: lead.tourEndDate || lead.travelEndDate || '',
             totalPackageCost: lead.totalPackageCost || lead.amount || lead.budget || '', specialOffers: lead.specialOffers || '', arrivalDate: lead.arrivalDate || '', flightStatus: lead.flightStatus || '',
             visaStatus: lead.visaStatus || '', insuranceStatus: lead.insuranceStatus || '', confirmedMethod: lead.confirmedMethod || '', confirmedDate: lead.confirmedDate || '',
             confirmedServices: lead.confirmedServices || '', discount: lead.discount || '', finalPackageValue: lead.finalPackageValue || '', serviceCost: lead.serviceCost || '',
+            
+            service1Cost: lead.service1Cost || '', service2Cost: lead.service2Cost || '', service3Cost: lead.service3Cost || '',
+            gst: lead.gstStatus || lead.gstInclusion || '', tcs: lead.tcsStatus || lead.tcsInclusion || '',
+            passengers: lead.passengers ? (typeof lead.passengers === 'string' ? JSON.parse(lead.passengers) : lead.passengers) : [],
+            aadharCopy: lead.docAadhar || '', passportCopy: lead.docPassport || '', photograph: lead.docPhoto || '', attachDriveLink: lead.docDriveLink || '', docRemarks: lead.docRemarks || '',
 
             paymentDueDate: lead.paymentDueDate || '', transactionId: lead.transactionId || '', amountReceived: lead.amountReceived || '', paymentMode: lead.paymentMode || '', customerPaymentDate: '',
             nextPaymentDate: lead.nextPaymentDate || '', paymentStatus: lead.paymentStatus || '', paymentHistoryDetails: lead.paymentHistoryDetails || '', voiceRecordings: initialRecordings, 
@@ -734,6 +820,19 @@ const SalesDashboard = () => {
                 packageCost: editFormData.totalPackageCost || editFormData.packageCost, 
                 offers: editFormData.specialOffers || editFormData.offers, 
                 noOfChildren: editFormData.confirmedNoOfChildren || editFormData.noOfChildren,
+
+                // --- MAPPED CRITICAL DYNAMIC FIELDS FOR BACKEND COMPATIBILITY ---
+                service1Cost: editFormData.service1Cost,
+                service2Cost: editFormData.service2Cost,
+                service3Cost: editFormData.service3Cost,
+                gstStatus: editFormData.gst,
+                tcsStatus: editFormData.tcs,
+                passengers: editFormData.passengers?.length ? JSON.stringify(editFormData.passengers) : null,
+                docAadhar: editFormData.aadharCopy,
+                docPassport: editFormData.passportCopy,
+                docPhoto: editFormData.photograph,
+                docDriveLink: editFormData.attachDriveLink,
+                docRemarks: editFormData.docRemarks,
                 
                 noResponseLogs: updatedLogs.length ? JSON.stringify(updatedLogs) : null,
                 followupCount: logsCount,
@@ -854,47 +953,6 @@ const SalesDashboard = () => {
         const phoneStr = (item.phone || item.mobileNo || '').toLowerCase();
         return name.includes(q) || displayId.includes(q) || phoneStr.includes(q);
     });
-
-    const renderDatePicker = (name, value, label, onChangeHandler, placeholderText = '') => {
-        return (
-            <div className="w-full">
-                {label && <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">{label}</label>}
-                <div className="relative bg-slate-900 border border-slate-700 rounded-lg sm:rounded focus-within:border-cyan-500 focus-within:ring-1 focus-within:ring-cyan-500/50 transition-all overflow-hidden group flex items-center">
-                    <input type="date" name={name} value={value || ''} onChange={onChangeHandler} className="w-full px-3 py-2 sm:py-1.5 bg-transparent text-white text-sm outline-none cursor-pointer appearance-none relative z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:left-0 [&::-webkit-calendar-picker-indicator]:top-0" />
-                    <Calendar size={16} className="absolute right-3 text-slate-400 group-hover:text-cyan-400 z-0 transition-colors pointer-events-none" />
-                </div>
-                {placeholderText && <p className="text-[9px] text-slate-500 mt-0.5 italic">{placeholderText}</p>}
-            </div>
-        );
-    };
-
-    const renderArrayDropdown = (field, value, index, defaultOption, optionsList) => {
-        const handleSelect = (e) => handleCustomisationChange(index, field, e.target.value);
-        return (
-            <select value={value || ''} onChange={handleSelect} className={selectCls}>
-                {defaultOption !== null && <option value="" disabled hidden>{defaultOption}</option>}
-                {optionsList.map((opt, idx) => {
-                    const optVal = typeof opt === 'object' ? opt.value : opt;
-                    const optLabel = typeof opt === 'object' ? opt.label : opt;
-                    return <option key={idx} value={optVal}>{optLabel}</option>;
-                })}
-            </select>
-        );
-    };
-
-    const renderDropdown = (name, value, defaultOption, optionsList, onChangeHandler, customClass = selectCls) => {
-        const handleSelect = (e) => onChangeHandler(e);
-        return (
-            <select name={name} value={value || ''} onChange={handleSelect} className={customClass}>
-                {defaultOption !== null && <option value="" disabled hidden>{defaultOption}</option>}
-                {optionsList.map((opt, idx) => {
-                    const optVal = typeof opt === 'object' ? opt.value : opt;
-                    const optLabel = typeof opt === 'object' ? opt.label : opt;
-                    return <option key={idx} value={optVal}>{optLabel}</option>;
-                })}
-            </select>
-        );
-    };
 
     const probValue = parseInt(editFormData.bookingProbability) || 0;
 
@@ -1483,7 +1541,9 @@ const SalesDashboard = () => {
                         <div className="flex items-center gap-4">
                             <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2 truncate pr-4">
                                 <Pencil size={20} className="text-orange-400 flex-shrink-0" />
-                                <span className="truncate hidden sm:inline">Edit Lead</span>
+                                <span className="truncate hidden sm:inline">
+                                    {activeTab === 'My Confirmation' ? 'Booking Confirmation' : 'Edit Lead'}
+                                </span>
                                 <span className="text-sm font-mono font-semibold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 flex-shrink-0">
                                     LMN{String(selectedLead?.id || '').padStart(4, '0')}
                                 </span>
@@ -1533,376 +1593,380 @@ const SalesDashboard = () => {
                     <div className="overflow-y-auto flex-1 custom-scrollbar w-full relative">
                         <form id="edit-lead-form" onSubmit={handleSubmitEdit} onKeyDown={handlePreventEnterSubmit} className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 w-full ">
 
-                            {/* SECTION 1: LEAD INFO */}
-                            <div className={sectionCls} style={{ borderColor: 'rgba(51,65,85,0.8)' }}>
-                                <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('leadInfo')}>
-                                    <div className="flex flex-col gap-0.5">
-                                        <div className="flex items-center gap-2">
-                                            <h3 className={`${sectionHeadCls} m-0`}>Lead Info</h3>
-                                            <span className="text-[11px] sm:text-xs font-mono font-bold text-slate-300 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 flex items-center gap-1">
-                                                LMN{String(selectedLead?.id || '').padStart(4, '0')}
-                                                <Pencil size={11} className="text-slate-400" />
-                                            </span>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-[10px] sm:text-xs font-semibold text-slate-400 bg-slate-800/60 border border-slate-700 px-2 py-0.5 rounded tracking-wider">Read-Only</span>
-                                        {expandedSections.leadInfo ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
-                                    </div>
-                                </div>
-                                {expandedSections.leadInfo && (
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-4">
-                                        {[
-                                            { label: 'Lead Date', name: 'leadDate' }, { label: 'Lead Source', name: 'leadSource' }, { label: 'Campaign', name: 'campaign' },
-                                            { label: 'Lead Name', name: 'leadName' }, { label: 'Mobile Number', name: 'mobileNumber' }, { label: 'Email Address', name: 'emailAddress' },
-                                            { label: 'Package Type', name: 'packageType' }, { label: 'Budget', name: 'budget' }, { label: 'Message From Lead', name: 'messageFromLead' },
-                                        ].map(f => (
-                                            <div key={f.name}>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-400 mb-1">{f.label}</label>
-                                                <input type="text" name={f.name} value={editFormData[f.name] || ''} readOnly className={readonlyCls} />
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* SECTION 2: SALES ACTIVITY */}
-                            <div className={sectionCls}>
-                                <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('salesActivity')}>
-                                    <div className="flex items-center gap-3">
-                                        <h3 className={`${sectionHeadCls} m-0`}>Sales Activity</h3>
-                                        <div className="flex items-center gap-1.5 text-[11px] sm:text-xs">
-                                            <span className="text-slate-500">Follow-Up Count:</span>
-                                            <span className="font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-900/50 px-2 py-0.5 rounded-full min-w-[22px] text-center">
-                                                {editFormData.noResponseLogs?.length || 0}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    {expandedSections.salesActivity ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
-                                </div>
-                                {expandedSections.salesActivity && (
-                                    <div className="mt-4 space-y-4">
-                                        <div className="relative">
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 items-start">
-                                                <div>
-                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Lead Response</label>
-                                                    {renderDropdown('leadResponse', editFormData.leadResponse, '', ['No Response', 'Requirement Collected'], handleInputChange)}
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Interaction Type</label>
-                                                    {renderDropdown('interactionType', editFormData.interactionType, '', ['WhatsApp', 'Call', 'Email'], handleInputChange)}
-                                                </div>
-                                                <div>
-                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Action Taken</label>
-                                                    {renderDropdown('actionTaken', editFormData.actionTaken, '', ['Sample Itinerary Shared', 'Follow-up Scheduled', 'Requirement Message Sent', 'Voice Note Sent','Promotional Offer Sent', 'Invalid Lead','Wrong Number','Others'], handleInputChange)}
+                            {activeTab !== 'My Confirmation' && (
+                                <>
+                                    {/* SECTION 1: LEAD INFO */}
+                                    <div className={sectionCls} style={{ borderColor: 'rgba(51,65,85,0.8)' }}>
+                                        <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('leadInfo')}>
+                                            <div className="flex flex-col gap-0.5">
+                                                <div className="flex items-center gap-2">
+                                                    <h3 className={`${sectionHeadCls} m-0`}>Lead Info</h3>
+                                                    <span className="text-[11px] sm:text-xs font-mono font-bold text-slate-300 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 flex items-center gap-1">
+                                                        LMN{String(selectedLead?.id || '').padStart(4, '0')}
+                                                        <Pencil size={11} className="text-slate-400" />
+                                                    </span>
                                                 </div>
                                             </div>
-                                            
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4">
-                                                {renderDatePicker('followupDate', editFormData.followupDate, 'Next Follow-Up', handleInputChange)}
-                                                <div className="sm:col-span-2">
-                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Notes</label>
-                                                    <div className="flex gap-2">
-                                                        <input type="text" name="salesNotes" value={editFormData.salesNotes} onChange={handleInputChange} className={inputCls} placeholder="Notes..." />
-                                                        <button type="button" onClick={() => handleLogNoResponse('interaction')} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap cursor-pointer">
-                                                            Save Log
-                                                        </button>
-                                                    </div>
-                                                </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-[10px] sm:text-xs font-semibold text-slate-400 bg-slate-800/60 border border-slate-700 px-2 py-0.5 rounded tracking-wider">Read-Only</span>
+                                                {expandedSections.leadInfo ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
                                             </div>
                                         </div>
-
-                                        {editFormData.leadResponse === 'No Response' && (
-                                            <div className="mt-5 p-4 bg-[#091124] border border-slate-700/60 rounded-xl">
-                                                <div className="flex justify-between items-center mb-4">
-                                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                                                        Previous Attempts ({editFormData.noResponseLogs?.length || 0})
-                                                    </p>
-                                                </div>
-                                                <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-1">
-                                                    {editFormData.noResponseLogs && editFormData.noResponseLogs.length > 0 ? (
-                                                        editFormData.noResponseLogs.map((log, origIdx) => ({ log, origIdx })).reverse().map(({ log, origIdx }) => (
-                                                            <div key={origIdx} className="flex flex-col text-xs bg-[#0f172a] p-3 rounded-lg border border-slate-700/60 shadow-sm transition-all hover:bg-slate-800/80 group">
-                                                                {editingLogIndex === origIdx ? (
-                                                                    <div className="space-y-2">
-                                                                        <div className="flex justify-between items-center mb-1">
-                                                                            <span className="text-cyan-400 font-bold tracking-wide">{log.timestamp}</span>
-                                                                            <div className="flex gap-2">
-                                                                                <button type="button" onClick={() => handleEditLogSave(origIdx)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded border-none cursor-pointer text-[10px] font-bold transition-colors">Save</button>
-                                                                                <button type="button" onClick={handleEditLogCancel} className="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded border-none cursor-pointer text-[10px] font-bold transition-colors">Cancel</button>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className="grid grid-cols-2 gap-2">
-                                                                            <input type="text" value={editingLogData.interaction} onChange={e => setEditingLogData({...editingLogData, interaction: e.target.value})} className={inlineInputCls} placeholder="Interaction Type" />
-                                                                            <input type="text" value={editingLogData.action} onChange={e => setEditingLogData({...editingLogData, action: e.target.value})} className={inlineInputCls} placeholder="Action Taken" />
-                                                                        </div>
-                                                                        <textarea value={editingLogData.notes} onChange={e => setEditingLogData({...editingLogData, notes: e.target.value})} className={`${inlineInputCls} resize-none min-h-[40px]`} placeholder="Notes" />
-                                                                    </div>
-                                                                ) : (
-                                                                    <>
-                                                                        <div className="flex justify-between items-start mb-2">
-                                                                            <span className="text-cyan-400 font-bold tracking-wide">{log.timestamp}</span>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className="text-slate-300 px-2 py-0.5 bg-slate-900 rounded border border-slate-600 text-[10px] font-medium uppercase">
-                                                                                    {log.interaction || 'N/A'}
-                                                                                </span>
-                                                                                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 ml-1">
-                                                                                    <button type="button" onClick={() => handleEditLogStart(origIdx, log)} className="text-blue-400 hover:text-blue-300 bg-transparent border-none cursor-pointer p-0 flex items-center" title="Edit Log">
-                                                                                        <Pencil size={13} />
-                                                                                    </button>
-                                                                                    <button type="button" onClick={() => handleDeleteLog(origIdx)} className="text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer p-0 flex items-center" title="Delete Log">
-                                                                                        <Trash2 size={13} />
-                                                                                    </button>
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div className="text-slate-300 mt-0.5 space-y-1.5">
-                                                                            <div><span className="text-slate-500 font-medium">Action Taken:</span> <span className="text-slate-200">{log.action || 'None'}</span></div>
-                                                                            {log.notes && <div><span className="text-slate-500 font-medium">Notes:</span> <span className="text-slate-200">{log.notes}</span></div>}
-                                                                        </div>
-                                                                    </>
-                                                                )}
-                                                            </div>
-                                                        ))
-                                                    ) : (
-                                                        <div className="text-center py-4 text-xs text-slate-500 italic border border-dashed border-slate-700/50 rounded-lg">
-                                                            No detailed logs recorded yet. Add notes and save to see history here.
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {editFormData.leadResponse === 'Requirement Collected' && (
-                                            <div className="mt-6 pt-5 border-t border-slate-700/50">
-                                                <h4 className="text-sm font-bold text-cyan-400 mb-4 tracking-wider uppercase">SALES TRACK/ LEAD OUTCOME</h4>
-                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                    {renderDatePicker('followupDate', editFormData.followupDate, 'Next Follow-Up', handleInputChange)}
-                                                    <div>
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Customer Response</label>
-                                                        {renderDropdown('customerResponse', editFormData.customerResponse, ' ', ['Booking Confirmed', 'Not Interested', 'Lead Lost', 'Negotiation', 'Client Follow-Up', 'Trip Postponed', 'Needs Revision' ], handleInputChange)}
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Notes</label>
-                                                        <div className="flex gap-2">
-                                                            <input type="text" name="outcomeNotes" value={editFormData.outcomeNotes} onChange={handleInputChange} className={inputCls} placeholder="Notes..." />
-                                                            <button type="button" onClick={() => handleLogNoResponse('outcome')} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap cursor-pointer">
-                                                                Save Log
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    
-                                                    {(editFormData.customerResponse === 'Not Interested' || editFormData.customerResponse === 'Lead Lost') && (
-                                                        <div>
-                                                            <label className="block text-[11px] sm:text-xs font-medium text-orange-400 mb-1">Closure Reason</label>
-                                                            {renderDropdown('closureReason', editFormData.closureReason, ' ', ['Budget Issue', 'Competitor', 'No Response', 'VISA Rejected','Medical Emergency','Natural Disaster','Flight Unavailable','Internal Decision'], handleInputChange)}
-                                                        </div>
-                                                    )}
-
-                                                    {(editFormData.customerResponse === 'Negotiation' || editFormData.customerResponse === 'Client Follow-Up') && (
-                                                        <div>
-                                                            <label className="block text-[11px] sm:text-xs font-medium text-orange-400 mb-1">Objection Tracking</label>
-                                                            {renderDropdown('objectionTracking', editFormData.objectionTracking, ' ', ['Price High', 'Comparing Other Agents', 'Flight Cost', 'Hotel Cost','VISA Concerns','Travel Date Issue','Family Approval Pending','Need Leave Approval','Unexpected Situations','Safety Concerns'], handleInputChange)}
-                                                        </div>
-                                                    )}
-
-                                                    {editFormData.customerResponse === 'Trip Postponed' && (
-                                                        renderDatePicker('nextFollowUpDatePostponed', editFormData.nextFollowUpDatePostponed, 'Next Follow-Up Date', handleInputChange)
-                                                    )}
-                                                </div>
-                                            </div>
-                                        )}
-                                        
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* SECTION 4: TRAVEL DETAILS */}
-                            <div className={sectionCls}>
-                                <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('travelDetails')}>
-                                    <div className="flex flex-col gap-0.5">
-                                        <h3 className={`${sectionHeadCls} m-0`}>Travel Details</h3>
-                                    </div>
-                                    {expandedSections.travelDetails ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
-                                </div>
-                                {expandedSections.travelDetails && (
-                                    editFormData.leadResponse === 'Requirement Collected' ? (
-                                        <>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-4">
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
-                                                <input type="text" name="destination" value={editFormData.destination} onChange={handleInputChange} className={inputCls} placeholder=" " />
-                                            </div>
-                                            {renderDatePicker('travelDate', editFormData.travelDate, 'Travel Date', handleInputChange)}
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
-                                                <input type="text" name="duration" value={editFormData.duration} onChange={handleInputChange} className={inputCls} />
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <div className="w-1/2">
-                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Adults)</label>
-                                                    <input type="number" name="noOfAdults" value={editFormData.noOfAdults} onChange={handleInputChange} className={inputCls} min="1" />
-                                                </div>
-                                                <div className="w-1/2">
-                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Children)</label>
-                                                    <input type="number" name="noOfChildren" value={editFormData.noOfChildren} onChange={handleInputChange} className={inputCls} min="0" />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Departure City</label>
-                                                <input type="text" name="departureCity" value={editFormData.departureCity} onChange={handleInputChange} className={inputCls} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Budget</label>
-                                                <input type="text" name="travelBudget" value={editFormData.travelBudget} onChange={handleInputChange} className={inputCls} placeholder=" " />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Type</label>
-                                                {renderDropdown('tourType', editFormData.tourType, ' ', ['Honeymoon', 'Family', 'Solo', 'Friends', 'Corporate', 'Group Tour', 'MICE'], handleInputChange)}
-                                            </div>
-                                            <div className="md:col-span-2">
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Service </label>
-                                                {renderMultiSelect('services', editFormData.services, ['Tour Package', 'Flight Booking', 'VISA Booking', 'Hotel Booking Only', 'Local Transport', 'Travel Insurance', 'Other'])}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Hotel Category</label>
-                                                {renderDropdown('hotelCategory', editFormData.hotelCategory, ' ', [' 3-Star', ' 4-Star', ' 5-Star','Luxury','Boutique','Villa','Others'], handleInputChange)}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Offers</label>
-                                                {renderDropdown('offers', editFormData.offers, ' ', [{value: 'None', label: 'No Promo Applied'}, 'Early Bird 10% Discount', 'Free Airport Transfer Upgrade', {value: 'Complimentary Honeymoon Cake & Decor', label: 'Complimentary Honeymoon Cake & Decor'}], handleInputChange)}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Action Taken</label>
-                                                {renderDropdown('actionTaken', editFormData.actionTaken, ' ', [ 'Customisation Required', 'Readymade Required'], handleInputChange)}
-                                            </div>
-                                            <div className="md:col-span-3">
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Remarks</label>
-                                                <input type="text" name="remarks" value={editFormData.remarks} onChange={handleInputChange} className={inputCls} />
-                                            </div>
-                                        </div>
-                                        </>
-                                    ) : (
-                                        <div className="mt-4 px-4 py-5 text-xs sm:text-sm text-slate-500 border border-dashed border-slate-800 rounded-xl text-center">
-                                            This section appears when Lead Response is "Requirement Collected".
-                                        </div>
-                                    )
-                                )}
-                            </div>
-
-                            {/* SECTION 5: CUSTOMISATION & OPERATIONS */}
-                            <div className={sectionCls}>
-                                <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('customisation')}>
-                                    <h3 className={`${sectionHeadCls} m-0`}>CUSTOMISATION</h3>
-                                    {expandedSections.customisation ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
-                                </div>
-                                {expandedSections.customisation && (
-                                    (editFormData.actionTaken === 'Customisation Required' || editFormData.customerResponse === 'Needs Revision') ? (
-                                        <div className="mt-4">
-                                            <div className="space-y-4">
-                                                {editFormData.customisationRequests.map((req, index) => (
-                                                    <div key={index} className="relative p-4 rounded-xl border border-slate-700/50 bg-slate-800/20">
-                                                        {editFormData.customisationRequests.length > 1 && (
-                                                            <button type="button" onClick={() => removeCustomisationRequest(index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 p-1 bg-transparent border-none cursor-pointer">
-                                                                <X size={16} />
-                                                            </button>
-                                                        )}
-                                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                                                            <div>
-                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
-                                                                <input type="text" value={req.destination || ''} onChange={(e) => handleCustomisationChange(index, 'destination', e.target.value)} className={inputCls} />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Customisation Type</label>
-                                                                {renderArrayDropdown('customisationType', req.customisationType, index, ' ', ['Complete Custom package', 'Existing Itinerary Modification', 'Hotel Change',   'Budget Optimisation', 'Add Activities','Remove Activities','Route Modification','Readymade Validation','Honeymoon Customisation','Family Customisation','Corporate Customisation','Revising Again','Other'])}
-                                                            </div>
-                                                            <div>
-                                                                {renderDatePicker(`turnoverTime_${index}`, req.turnaroundTime, 'Required By', (e) => handleCustomisationChange(index, 'turnaroundTime', e.target.value), '')}
-                                                            </div>
-                                                            <div className="md:col-span-3">
-                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Requirements</label>
-                                                                <div className="flex items-center gap-1.5 w-full">
-                                                                    <input type="text" value={req.requirements || ''} onChange={(e) => handleCustomisationChange(index, 'requirements', e.target.value)} className={`${inputCls} flex-1`} placeholder="" />
-                                                                    <button type="button" onClick={isRecording ? stopRecording : startRecording}
-                                                                        className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded whitespace-nowrap flex-shrink-0 transition-colors border-none cursor-pointer h-[38px] sm:h-[34px] ${isRecording ? 'bg-red-500 animate-pulse text-white' : 'bg-slate-800 text-cyan-400 hover:bg-slate-700'}`}>
-                                                                        {isRecording ? <><Square size={12} fill="currentColor" /> ({formatTimer(recordingTime)})</> : <><Mic size={14} /> Voice</>}
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
+                                        {expandedSections.leadInfo && (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-4">
+                                                {[
+                                                    { label: 'Lead Date', name: 'leadDate' }, { label: 'Lead Source', name: 'leadSource' }, { label: 'Campaign', name: 'campaign' },
+                                                    { label: 'Lead Name', name: 'leadName' }, { label: 'Mobile Number', name: 'mobileNumber' }, { label: 'Email Address', name: 'emailAddress' },
+                                                    { label: 'Package Type', name: 'packageType' }, { label: 'Budget', name: 'budget' }, { label: 'Message From Lead', name: 'messageFromLead' },
+                                                ].map(f => (
+                                                    <div key={f.name}>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-400 mb-1">{f.label}</label>
+                                                        <input type="text" name={f.name} value={editFormData[f.name] || ''} readOnly className={readonlyCls} />
                                                     </div>
                                                 ))}
                                             </div>
-                                            <div className="mt-3 flex justify-start">
-                                                <button type="button" onClick={addCustomisationRequest} className="text-xs sm:text-sm font-bold text-cyan-400 bg-transparent border-none hover:text-cyan-300 flex items-center gap-1 transition-colors px-2 py-1.5 rounded hover:bg-cyan-950/30 cursor-pointer">
-                                                    <Plus size={14} /> Add Destination
-                                                </button>
+                                        )}
+                                    </div>
+
+                                    {/* SECTION 2: SALES ACTIVITY */}
+                                    <div className={sectionCls}>
+                                        <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('salesActivity')}>
+                                            <div className="flex items-center gap-3">
+                                                <h3 className={`${sectionHeadCls} m-0`}>Sales Activity</h3>
+                                                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs">
+                                                    <span className="text-slate-500">Follow-Up Count:</span>
+                                                    <span className="font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-900/50 px-2 py-0.5 rounded-full min-w-[22px] text-center">
+                                                        {editFormData.noResponseLogs?.length || 0}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            {editFormData.voiceRecordings?.length > 0 && (
-                                                <div className="mt-4 p-3 bg-slate-900/60 border border-slate-800/60 rounded-lg space-y-2">
-                                                    <p className="text-[10px] sm:text-[11px] font-bold uppercase text-slate-400 tracking-wider">Audio Feeds Attached ({editFormData.voiceRecordings.length})</p>
-                                                    <div className="flex flex-col sm:grid sm:grid-cols-2 md:grid-cols-3 gap-2">
-                                                        {editFormData.voiceRecordings.map((audio, index) => (
-                                                            <div key={index} className="flex items-center justify-between p-2.5 sm:p-2 rounded-lg bg-slate-800/40 border border-slate-700/50">
-                                                                <span className="text-xs sm:text-sm text-slate-300">Voice Capture #{index + 1}</span>
-                                                                <div className="flex items-center gap-2 sm:gap-1.5">
-                                                                    <button type="button" onClick={() => togglePlayback(index)} className="p-1.5 sm:p-1 rounded-md bg-slate-800 border-none cursor-pointer text-emerald-400 hover:bg-slate-700">
-                                                                        {playingIndex === index ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+                                            {expandedSections.salesActivity ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
+                                        </div>
+                                        {expandedSections.salesActivity && (
+                                            <div className="mt-4 space-y-4">
+                                                <div className="relative">
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 items-start">
+                                                        <div>
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Lead Response</label>
+                                                            {renderDropdown('leadResponse', editFormData.leadResponse, '', ['No Response', 'Requirement Collected'], handleInputChange)}
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Interaction Type</label>
+                                                            {renderDropdown('interactionType', editFormData.interactionType, '', ['WhatsApp', 'Call', 'Email'], handleInputChange)}
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Action Taken</label>
+                                                            {renderDropdown('actionTaken', editFormData.actionTaken, '', ['Sample Itinerary Shared', 'Follow-up Scheduled', 'Requirement Message Sent', 'Voice Note Sent','Promotional Offer Sent', 'Invalid Lead','Wrong Number','Others'], handleInputChange)}
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4">
+                                                        {renderDatePicker('followupDate', editFormData.followupDate, 'Next Follow-Up', handleInputChange)}
+                                                        <div className="sm:col-span-2">
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Notes</label>
+                                                            <div className="flex gap-2">
+                                                                <input type="text" name="salesNotes" value={editFormData.salesNotes} onChange={handleInputChange} className={inputCls} placeholder="Notes..." />
+                                                                <button type="button" onClick={() => handleLogNoResponse('interaction')} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap cursor-pointer">
+                                                                    Save Log
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {editFormData.leadResponse === 'No Response' && (
+                                                    <div className="mt-5 p-4 bg-[#091124] border border-slate-700/60 rounded-xl">
+                                                        <div className="flex justify-between items-center mb-4">
+                                                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                                                                Previous Attempts ({editFormData.noResponseLogs?.length || 0})
+                                                            </p>
+                                                        </div>
+                                                        <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                                                            {editFormData.noResponseLogs && editFormData.noResponseLogs.length > 0 ? (
+                                                                editFormData.noResponseLogs.map((log, origIdx) => ({ log, origIdx })).reverse().map(({ log, origIdx }) => (
+                                                                    <div key={origIdx} className="flex flex-col text-xs bg-[#0f172a] p-3 rounded-lg border border-slate-700/60 shadow-sm transition-all hover:bg-slate-800/80 group">
+                                                                        {editingLogIndex === origIdx ? (
+                                                                            <div className="space-y-2">
+                                                                                <div className="flex justify-between items-center mb-1">
+                                                                                    <span className="text-cyan-400 font-bold tracking-wide">{log.timestamp}</span>
+                                                                                    <div className="flex gap-2">
+                                                                                        <button type="button" onClick={() => handleEditLogSave(origIdx)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded border-none cursor-pointer text-[10px] font-bold transition-colors">Save</button>
+                                                                                        <button type="button" onClick={handleEditLogCancel} className="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded border-none cursor-pointer text-[10px] font-bold transition-colors">Cancel</button>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="grid grid-cols-2 gap-2">
+                                                                                    <input type="text" value={editingLogData.interaction} onChange={e => setEditingLogData({...editingLogData, interaction: e.target.value})} className={inlineInputCls} placeholder="Interaction Type" />
+                                                                                    <input type="text" value={editingLogData.action} onChange={e => setEditingLogData({...editingLogData, action: e.target.value})} className={inlineInputCls} placeholder="Action Taken" />
+                                                                                </div>
+                                                                                <textarea value={editingLogData.notes} onChange={e => setEditingLogData({...editingLogData, notes: e.target.value})} className={`${inlineInputCls} resize-none min-h-[40px]`} placeholder="Notes" />
+                                                                            </div>
+                                                                        ) : (
+                                                                            <>
+                                                                                <div className="flex justify-between items-start mb-2">
+                                                                                    <span className="text-cyan-400 font-bold tracking-wide">{log.timestamp}</span>
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <span className="text-slate-300 px-2 py-0.5 bg-slate-900 rounded border border-slate-600 text-[10px] font-medium uppercase">
+                                                                                            {log.interaction || 'N/A'}
+                                                                                        </span>
+                                                                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 ml-1">
+                                                                                            <button type="button" onClick={() => handleEditLogStart(origIdx, log)} className="text-blue-400 hover:text-blue-300 bg-transparent border-none cursor-pointer p-0 flex items-center" title="Edit Log">
+                                                                                                <Pencil size={13} />
+                                                                                            </button>
+                                                                                            <button type="button" onClick={() => handleDeleteLog(origIdx)} className="text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer p-0 flex items-center" title="Delete Log">
+                                                                                                <Trash2 size={13} />
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="text-slate-300 mt-0.5 space-y-1.5">
+                                                                                    <div><span className="text-slate-500 font-medium">Action Taken:</span> <span className="text-slate-200">{log.action || 'None'}</span></div>
+                                                                                    {log.notes && <div><span className="text-slate-500 font-medium">Notes:</span> <span className="text-slate-200">{log.notes}</span></div>}
+                                                                                </div>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                ))
+                                                            ) : (
+                                                                <div className="text-center py-4 text-xs text-slate-500 italic border border-dashed border-slate-700/50 rounded-lg">
+                                                                    No detailed logs recorded yet. Add notes and save to see history here.
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {editFormData.leadResponse === 'Requirement Collected' && (
+                                                    <div className="mt-6 pt-5 border-t border-slate-700/50">
+                                                        <h4 className="text-sm font-bold text-cyan-400 mb-4 tracking-wider uppercase">SALES TRACK/ LEAD OUTCOME</h4>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                            {renderDatePicker('followupDate', editFormData.followupDate, 'Next Follow-Up', handleInputChange)}
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Customer Response</label>
+                                                                {renderDropdown('customerResponse', editFormData.customerResponse, ' ', ['Booking Confirmed', 'Not Interested', 'Lead Lost', 'Negotiation', 'Client Follow-Up', 'Trip Postponed', 'Needs Revision' ], handleInputChange)}
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Notes</label>
+                                                                <div className="flex gap-2">
+                                                                    <input type="text" name="outcomeNotes" value={editFormData.outcomeNotes} onChange={handleInputChange} className={inputCls} placeholder="Notes..." />
+                                                                    <button type="button" onClick={() => handleLogNoResponse('outcome')} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap cursor-pointer">
+                                                                        Save Log
                                                                     </button>
-                                                                    <button type="button" onClick={() => deleteRecording(index)} className="p-1.5 sm:p-1 rounded-md bg-slate-800 border-none cursor-pointer text-red-400 hover:bg-red-950">
-                                                                        <Trash2 size={14} />
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            {(editFormData.customerResponse === 'Not Interested' || editFormData.customerResponse === 'Lead Lost') && (
+                                                                <div>
+                                                                    <label className="block text-[11px] sm:text-xs font-medium text-orange-400 mb-1">Closure Reason</label>
+                                                                    {renderDropdown('closureReason', editFormData.closureReason, ' ', ['Budget Issue', 'Competitor', 'No Response', 'VISA Rejected','Medical Emergency','Natural Disaster','Flight Unavailable','Internal Decision'], handleInputChange)}
+                                                                </div>
+                                                            )}
+
+                                                            {(editFormData.customerResponse === 'Negotiation' || editFormData.customerResponse === 'Client Follow-Up') && (
+                                                                <div>
+                                                                    <label className="block text-[11px] sm:text-xs font-medium text-orange-400 mb-1">Objection Tracking</label>
+                                                                    {renderDropdown('objectionTracking', editFormData.objectionTracking, ' ', ['Price High', 'Comparing Other Agents', 'Flight Cost', 'Hotel Cost','VISA Concerns','Travel Date Issue','Family Approval Pending','Need Leave Approval','Unexpected Situations','Safety Concerns'], handleInputChange)}
+                                                                </div>
+                                                            )}
+
+                                                            {editFormData.customerResponse === 'Trip Postponed' && (
+                                                                renderDatePicker('nextFollowUpDatePostponed', editFormData.nextFollowUpDatePostponed, 'Next Follow-Up Date', handleInputChange)
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* SECTION 4: TRAVEL DETAILS */}
+                                    <div className={sectionCls}>
+                                        <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('travelDetails')}>
+                                            <div className="flex flex-col gap-0.5">
+                                                <h3 className={`${sectionHeadCls} m-0`}>Travel Details</h3>
+                                            </div>
+                                            {expandedSections.travelDetails ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
+                                        </div>
+                                        {expandedSections.travelDetails && (
+                                            editFormData.leadResponse === 'Requirement Collected' ? (
+                                                <>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-4">
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
+                                                        <input type="text" name="destination" value={editFormData.destination} onChange={handleInputChange} className={inputCls} placeholder=" " />
+                                                    </div>
+                                                    {renderDatePicker('travelDate', editFormData.travelDate, 'Travel Date', handleInputChange)}
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
+                                                        <input type="text" name="duration" value={editFormData.duration} onChange={handleInputChange} className={inputCls} />
+                                                    </div>
+                                                    <div className="flex gap-2">
+                                                        <div className="w-1/2">
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Adults)</label>
+                                                            <input type="number" name="noOfAdults" value={editFormData.noOfAdults} onChange={handleInputChange} className={inputCls} min="1" />
+                                                        </div>
+                                                        <div className="w-1/2">
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Children)</label>
+                                                            <input type="number" name="noOfChildren" value={editFormData.noOfChildren} onChange={handleInputChange} className={inputCls} min="0" />
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Departure City</label>
+                                                        <input type="text" name="departureCity" value={editFormData.departureCity} onChange={handleInputChange} className={inputCls} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Budget</label>
+                                                        <input type="text" name="travelBudget" value={editFormData.travelBudget} onChange={handleInputChange} className={inputCls} placeholder=" " />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Type</label>
+                                                        {renderDropdown('tourType', editFormData.tourType, ' ', ['Honeymoon', 'Family', 'Solo', 'Friends', 'Corporate', 'Group Tour', 'MICE'], handleInputChange)}
+                                                    </div>
+                                                    <div className="md:col-span-2">
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Service </label>
+                                                        {renderMultiSelect('services', editFormData.services, ['Tour Package', 'Flight Booking', 'VISA Booking', 'Hotel Booking Only', 'Local Transport', 'Travel Insurance', 'Other'])}
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Hotel Category</label>
+                                                        {renderDropdown('hotelCategory', editFormData.hotelCategory, ' ', [' 3-Star', ' 4-Star', ' 5-Star','Luxury','Boutique','Villa','Others'], handleInputChange)}
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Offers</label>
+                                                        {renderDropdown('offers', editFormData.offers, ' ', [{value: 'None', label: 'No Promo Applied'}, 'Early Bird 10% Discount', 'Free Airport Transfer Upgrade', {value: 'Complimentary Honeymoon Cake & Decor', label: 'Complimentary Honeymoon Cake & Decor'}], handleInputChange)}
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Action Taken</label>
+                                                        {renderDropdown('actionTaken', editFormData.actionTaken, ' ', [ 'Customisation Required', 'Readymade Required'], handleInputChange)}
+                                                    </div>
+                                                    <div className="md:col-span-3">
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Remarks</label>
+                                                        <input type="text" name="remarks" value={editFormData.remarks} onChange={handleInputChange} className={inputCls} />
+                                                    </div>
+                                                </div>
+                                                </>
+                                            ) : (
+                                                <div className="mt-4 px-4 py-5 text-xs sm:text-sm text-slate-500 border border-dashed border-slate-800 rounded-xl text-center">
+                                                    This section appears when Lead Response is "Requirement Collected".
+                                                </div>
+                                            )
+                                        )}
+                                    </div>
+
+                                    {/* SECTION 5: CUSTOMISATION & OPERATIONS */}
+                                    <div className={sectionCls}>
+                                        <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('customisation')}>
+                                            <h3 className={`${sectionHeadCls} m-0`}>CUSTOMISATION</h3>
+                                            {expandedSections.customisation ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
+                                        </div>
+                                        {expandedSections.customisation && (
+                                            (editFormData.actionTaken === 'Customisation Required' || editFormData.customerResponse === 'Needs Revision') ? (
+                                                <div className="mt-4">
+                                                    <div className="space-y-4">
+                                                        {editFormData.customisationRequests.map((req, index) => (
+                                                            <div key={index} className="relative p-4 rounded-xl border border-slate-700/50 bg-slate-800/20">
+                                                                {editFormData.customisationRequests.length > 1 && (
+                                                                    <button type="button" onClick={() => removeCustomisationRequest(index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 p-1 bg-transparent border-none cursor-pointer">
+                                                                        <X size={16} />
                                                                     </button>
-                                                                    <audio ref={el => audioPlayersRef.current[index] = el} src={audio.url} onEnded={() => setPlayingIndex(null)} className="hidden" />
+                                                                )}
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                                                                    <div>
+                                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
+                                                                        <input type="text" value={req.destination || ''} onChange={(e) => handleCustomisationChange(index, 'destination', e.target.value)} className={inputCls} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Customisation Type</label>
+                                                                        {renderArrayDropdown('customisationType', req.customisationType, index, ' ', ['Complete Custom package', 'Existing Itinerary Modification', 'Hotel Change',   'Budget Optimisation', 'Add Activities','Remove Activities','Route Modification','Readymade Validation','Honeymoon Customisation','Family Customisation','Corporate Customisation','Revising Again','Other'])}
+                                                                    </div>
+                                                                    <div>
+                                                                        {renderDatePicker(`turnoverTime_${index}`, req.turnaroundTime, 'Required By', (e) => handleCustomisationChange(index, 'turnaroundTime', e.target.value), '')}
+                                                                    </div>
+                                                                    <div className="md:col-span-3">
+                                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Requirements</label>
+                                                                        <div className="flex items-center gap-1.5 w-full">
+                                                                            <input type="text" value={req.requirements || ''} onChange={(e) => handleCustomisationChange(index, 'requirements', e.target.value)} className={`${inputCls} flex-1`} placeholder="" />
+                                                                            <button type="button" onClick={isRecording ? stopRecording : startRecording}
+                                                                                className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded whitespace-nowrap flex-shrink-0 transition-colors border-none cursor-pointer h-[38px] sm:h-[34px] ${isRecording ? 'bg-red-500 animate-pulse text-white' : 'bg-slate-800 text-cyan-400 hover:bg-slate-700'}`}>
+                                                                                {isRecording ? <><Square size={12} fill="currentColor" /> ({formatTimer(recordingTime)})</> : <><Mic size={14} /> Voice</>}
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         ))}
                                                     </div>
+                                                    <div className="mt-3 flex justify-start">
+                                                        <button type="button" onClick={addCustomisationRequest} className="text-xs sm:text-sm font-bold text-cyan-400 bg-transparent border-none hover:text-cyan-300 flex items-center gap-1 transition-colors px-2 py-1.5 rounded hover:bg-cyan-950/30 cursor-pointer">
+                                                            <Plus size={14} /> Add Destination
+                                                        </button>
+                                                    </div>
+                                                    {editFormData.voiceRecordings?.length > 0 && (
+                                                        <div className="mt-4 p-3 bg-slate-900/60 border border-slate-800/60 rounded-lg space-y-2">
+                                                            <p className="text-[10px] sm:text-[11px] font-bold uppercase text-slate-400 tracking-wider">Audio Feeds Attached ({editFormData.voiceRecordings.length})</p>
+                                                            <div className="flex flex-col sm:grid sm:grid-cols-2 md:grid-cols-3 gap-2">
+                                                                {editFormData.voiceRecordings.map((audio, index) => (
+                                                                    <div key={index} className="flex items-center justify-between p-2.5 sm:p-2 rounded-lg bg-slate-800/40 border border-slate-700/50">
+                                                                        <span className="text-xs sm:text-sm text-slate-300">Voice Capture #{index + 1}</span>
+                                                                        <div className="flex items-center gap-2 sm:gap-1.5">
+                                                                            <button type="button" onClick={() => togglePlayback(index)} className="p-1.5 sm:p-1 rounded-md bg-slate-800 border-none cursor-pointer text-emerald-400 hover:bg-slate-700">
+                                                                                {playingIndex === index ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+                                                                            </button>
+                                                                            <button type="button" onClick={() => deleteRecording(index)} className="p-1.5 sm:p-1 rounded-md bg-slate-800 border-none cursor-pointer text-red-400 hover:bg-red-950">
+                                                                                <Trash2 size={14} />
+                                                                            </button>
+                                                                            <audio ref={el => audioPlayersRef.current[index] = el} src={audio.url} onEnded={() => setPlayingIndex(null)} className="hidden" />
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    
+                                                    <div className="mt-6 pt-5 border-t border-slate-700/50">
+                                                     <h4 className="text-sm font-bold text-cyan-400 tracking-wider uppercase mb-3">OPERATION RESPONSE</h4>
+                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Received Date & Time</label>
+                                                                <input type="text" readOnly value={editFormData.opsCompletedOn || formatDateTime(new Date().toISOString())} className={`${readonlyCls} text-red-400 font-bold`} placeholder="Date & Time - Auto" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Prepared For</label>
+                                                                <input type="text" name="packagePreparedFor" value={editFormData.packagePreparedFor || ''} readOnly className={readonlyCls} placeholder=" " />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Prepared By</label>
+                                                                <input type="text" readOnly value={editFormData.opsPreparedBy || editFormData.assignedTo || ''} className={`${readonlyCls} text-red-400 text-[10px] sm:text-xs font-bold`} placeholder="Operations Executive name" />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Cost</label>
+                                                                <input type="text" name="packageCost" value={editFormData.packageCost || ''} readOnly className={readonlyCls} />
+                                                            </div>
+                                                            <div className="sm:col-span-2">
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Operation Notes</label>
+                                                                <input type="text" name="operationNotes" value={editFormData.operationNotes || ''} readOnly className={readonlyCls} />
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-5 pt-4 border-t border-slate-700/50">
+                                                            <h4 className="text-sm font-bold text-cyan-400 tracking-wider uppercase mb-3">SALES REVIEW</h4>
+                                                            <div className="w-full sm:w-1/3">
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Review Status</label>
+                                                                {renderDropdown('salesReviewStatus', editFormData.salesReviewStatus, ' ', ['Verified & Shared', ' Clarification / Changes Needed', 'Rejected'], handleInputChange)}
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            )}
-                                            
-                                            <div className="mt-6 pt-5 border-t border-slate-700/50">
-                                             <h4 className="text-sm font-bold text-cyan-400 tracking-wider uppercase mb-3">OPERATION RESPONSE</h4>
-                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
-                                                    <div>
-                                                        <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Received Date & Time</label>
-                                                        <input type="text" readOnly value={editFormData.opsCompletedOn || formatDateTime(new Date().toISOString())} className={`${readonlyCls} text-red-400 font-bold`} placeholder="Date & Time - Auto" />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Prepared For</label>
-                                                        <input type="text" name="packagePreparedFor" value={editFormData.packagePreparedFor || ''} readOnly className={readonlyCls} placeholder=" " />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Prepared By</label>
-                                                        <input type="text" readOnly value={editFormData.opsPreparedBy || editFormData.assignedTo || ''} className={`${readonlyCls} text-red-400 text-[10px] sm:text-xs font-bold`} placeholder="Operations Executive name" />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Cost</label>
-                                                        <input type="text" name="packageCost" value={editFormData.packageCost || ''} readOnly className={readonlyCls} />
-                                                    </div>
-                                                    <div className="sm:col-span-2">
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Operation Notes</label>
-                                                        <input type="text" name="operationNotes" value={editFormData.operationNotes || ''} readOnly className={readonlyCls} />
-                                                    </div>
+                                            ) : (
+                                                <div className="mt-4 px-4 py-5 text-xs sm:text-sm text-slate-500 border border-dashed border-slate-800 rounded-xl text-center">
+                                                    This section appears when Action Taken is "Customisation Required" or Customer Response is "Needs Revision".
                                                 </div>
-                                                <div className="mt-5 pt-4 border-t border-slate-700/50">
-                                                    <h4 className="text-sm font-bold text-cyan-400 tracking-wider uppercase mb-3">SALES REVIEW</h4>
-                                                    <div className="w-full sm:w-1/3">
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Review Status</label>
-                                                        {renderDropdown('salesReviewStatus', editFormData.salesReviewStatus, ' ', ['Verified & Shared', ' Clarification / Changes Needed', 'Rejected'], handleInputChange)}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="mt-4 px-4 py-5 text-xs sm:text-sm text-slate-500 border border-dashed border-slate-800 rounded-xl text-center">
-                                            This section appears when Action Taken is "Customisation Required" or Customer Response is "Needs Revision".
-                                        </div>
-                                    )
-                                )}
-                            </div>
+                                            )
+                                        )}
+                                    </div>
+                                </>
+                            )}
 
                             {/* SECTION 7: BOOKING CONFIRMATION */}
-                          <div className={sectionCls}>
+                            <div className={sectionCls}>
                                 <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('bookingConfirmation')}>
                                     <div className="flex flex-col gap-0.5">
                                         <h3 className={`text-sm sm:text-base font-bold tracking-wider uppercase m-0 flex items-center gap-2 ${editFormData.customerResponse === 'Booking Confirmed' ? 'text-emerald-400' : 'text-slate-500'}`}>
@@ -1912,60 +1976,263 @@ const SalesDashboard = () => {
                                     </div>
                                     {expandedSections.bookingConfirmation ? <ChevronDown size={18} className={editFormData.customerResponse === 'Booking Confirmed' ? "text-emerald-400" : "text-slate-500"}/> : <ChevronRight size={18} className="text-slate-500"/>}
                                 </div>
+                                
                                 {expandedSections.bookingConfirmation && (
-                                    editFormData.customerResponse === 'Booking Confirmed' ? (
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-4">
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Confirmed Method</label>
-                                                {renderDropdown('confirmedMethod', editFormData.confirmedMethod, ' ', ['Phone Call', 'WhatsApp', 'Office Visit' ], handleInputChange)}
+                                    (editFormData.customerResponse === 'Booking Confirmed' || activeTab === 'My Confirmation') ? (
+                                        <div className="mt-4 space-y-8">
+                                            {/* 1. MAIN BOOKING DETAILS */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                                                {(() => {
+                                                    const isConfirmTab = activeTab === 'My Confirmation';
+                                                    const confirmInputCls = isConfirmTab ? readonlyCls : inputCls;
+                                                    const tcsDisabled = isConfirmTab || editFormData.confirmedTripType === 'Domestic';
+
+                                                    return (
+                                                        <>
+                                                            {/* Row 1 */}
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Confirmed Method</label>
+                                                                {renderDropdown('confirmedMethod', editFormData.confirmedMethod, '', ['Phone Call', 'WhatsApp', 'Email', 'Office Visit'], handleInputChange, selectCls, isConfirmTab)}
+                                                            </div>
+                                                            {renderDatePicker('confirmedDate', editFormData.confirmedDate, 'Confirmed Date', handleInputChange, '', isConfirmTab)}
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Operations Executive</label>
+                                                                <input type="text" name="operationExecutive" value={editFormData.operationExecutive} onChange={handleInputChange} className={confirmInputCls} readOnly={isConfirmTab} />
+                                                            </div>
+
+                                                            {/* Row 2 */}
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination Type</label>
+                                                                {renderDropdown('confirmedTripType', editFormData.confirmedTripType, '', ['Domestic', 'International'], handleInputChange, selectCls, isConfirmTab)}
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
+                                                                <input type="text" name="confirmedDestination" value={editFormData.confirmedDestination} onChange={handleInputChange} className={confirmInputCls} readOnly={isConfirmTab} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
+                                                                <input type="text" name="confirmedDuration" value={editFormData.confirmedDuration} onChange={handleInputChange} className={confirmInputCls} readOnly={isConfirmTab} />
+                                                            </div>
+
+                                                            {/* Row 3 */}
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. of Pax (Adults | Children)</label>
+                                                                <div className="flex gap-2">
+                                                                    <input type="number" name="noOfPax" placeholder="Adults" value={editFormData.noOfPax} onChange={handleInputChange} className={confirmInputCls} min="1" readOnly={isConfirmTab} />
+                                                                    <input type="number" name="confirmedNoOfChildren" placeholder="Children" value={editFormData.confirmedNoOfChildren} onChange={handleInputChange} className={confirmInputCls} min="0" readOnly={isConfirmTab} />
+                                                                </div>
+                                                            </div>
+                                                            {renderDatePicker('departureDate', editFormData.departureDate, 'Departure Date', handleInputChange, '', isConfirmTab)}
+                                                            {renderDatePicker('returnDate', editFormData.returnDate, 'Return Date', handleInputChange, '', isConfirmTab)}
+
+                                                            {/* Row 4 */}
+                                                            {renderDatePicker('tourStartDate', editFormData.tourStartDate, 'Tour Start Date', handleInputChange, '', isConfirmTab)}
+                                                            {renderDatePicker('tourEndDate', editFormData.tourEndDate, 'Tour End Date', handleInputChange, '', isConfirmTab)}
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Services</label>
+                                                                {renderMultiSelect('confirmedServices', editFormData.confirmedServices, ['Flight Booking', 'Hotel Booking', 'Train Booking', 'Bus Booking', 'VISA Apply', 'Travel Insurance'], isConfirmTab)}
+                                                            </div>
+
+                                                            {/* Row 5 */}
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">GST</label>
+                                                                {renderDropdown('gst', editFormData.gst, '', ['Yes', 'NO'], handleInputChange, selectCls, isConfirmTab)}
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">TCS</label>
+                                                                {renderDropdown('tcs', editFormData.tcs, '', ['Yes', 'No' ], handleInputChange, selectCls, tcsDisabled)}
+                                                            </div>
+                                                            
+                                                            {/* Dynamic Service Costs (up to 3 to map to backend) */}
+                                                            {(() => {
+                                                                const selectedServicesArr = editFormData.confirmedServices ? editFormData.confirmedServices.split(', ').filter(Boolean) : [];
+                                                                return selectedServicesArr.slice(0, 3).map((srv, idx) => (
+                                                                    <div key={idx}>
+                                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">{srv} Cost</label>
+                                                                        <input type="text" name={`service${idx+1}Cost`} value={editFormData[`service${idx+1}Cost`] || ''} onChange={handleInputChange} className={confirmInputCls} readOnly={isConfirmTab} />
+                                                                    </div>
+                                                                ));
+                                                            })()}
+                                                            
+                                                            {(!editFormData.confirmedServices || editFormData.confirmedServices.split(', ').filter(Boolean).length === 0) && (
+                                                                <div>
+                                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Cost</label>
+                                                                    <input type="text" name="finalPackageValue" value={editFormData.finalPackageValue} onChange={handleInputChange} className={confirmInputCls} readOnly={isConfirmTab} />
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
                                             </div>
-                                            {renderDatePicker('confirmedDate', editFormData.confirmedDate, 'Confirmed Date', handleInputChange)}
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Operations Executive</label>
-                                                <input type="text" name="operationExecutive" value={editFormData.operationExecutive} onChange={handleInputChange} className={inputCls} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Travel Type</label>
-                                                {renderDropdown('confirmedTripType', editFormData.confirmedTripType, ' ', ['Domestic', 'International'], handleInputChange)}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
-                                                <input type="text" name="confirmedDestination" value={editFormData.confirmedDestination} onChange={handleInputChange} className={inputCls} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
-                                                <input type="text" name="confirmedDuration" value={editFormData.confirmedDuration} onChange={handleInputChange} className={inputCls} />
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <div className="w-1/2">
-                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Adults)</label>
-                                                    <input type="number" name="noOfPax" value={editFormData.noOfPax} onChange={handleInputChange} className={inputCls} min="1" />
+
+                                            {/* 2. PASSENGER DETAILS & 3. DOCUMENT COLLECTION — My Confirmation only */}
+                                            {activeTab === 'My Confirmation' && (
+                                                <>
+                                                {/* 2. PASSENGER DETAILS */}
+                                                <div className="pt-5 border-t border-slate-700/50">
+                                                    <h4 className="text-sm font-bold text-cyan-400 mb-4 tracking-wider uppercase">Passenger Details</h4>
+                                                    
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 p-4 bg-slate-800/20 border border-slate-700/50 rounded-xl mb-4">
+                                                        <div>
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">
+                                                                {editFormData.confirmedTripType === 'International' ? 'Full Name As Per Passport' : 'Full Name As Per Aadhar'}
+                                                            </label>
+                                                            <input type="text" name="fullName" value={currentPassenger.fullName} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Date of Birth</label>
+                                                            <input type="date" name="dob" value={currentPassenger.dob} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Gender</label>
+                                                            <select name="gender" value={currentPassenger.gender} onChange={handleCurrentPassengerChange} className={selectCls}>
+                                                                <option value="" disabled hidden></option>
+                                                                <option value="Male">Male</option>
+                                                                <option value="Female">Female</option>
+                                                                <option value="Other">Other</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Aadhar Card Number</label>
+                                                            <input type="text" name="aadharNumber" value={currentPassenger.aadharNumber} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                        </div>
+
+                                                        {editFormData.confirmedTripType === 'International' && (
+                                                            <>
+                                                                <div>
+                                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">PAN Card Number</label>
+                                                                    <input type="text" name="panNumber" value={currentPassenger.panNumber} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Number</label>
+                                                                    <input type="text" name="passportNumber" value={currentPassenger.passportNumber} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Place of Issue</label>
+                                                                    <input type="text" name="passportIssuePlace" value={currentPassenger.passportIssuePlace} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Issue Date</label>
+                                                                    <input type="date" name="passportIssueDate" value={currentPassenger.passportIssueDate} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Expiry Date</label>
+                                                                    <input type="date" name="passportExpiryDate" value={currentPassenger.passportExpiryDate} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                        <div>
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Mobile Number</label>
+                                                            <input type="text" name="mobileNumber" value={currentPassenger.mobileNumber} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Emergency Contact Number</label>
+                                                            <input type="text" name="emergencyContact" value={currentPassenger.emergencyContact} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                        </div>
+                                                        
+                                                        <div className="md:col-span-3 flex justify-start mt-2">
+                                                            <button type="button" onClick={handleAddPassenger} className="text-cyan-400 font-bold text-sm flex items-center gap-1 hover:text-cyan-300 bg-transparent border-none cursor-pointer">
+                                                                <Plus size={16} /> Add Another Passenger
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* PASSENGER TABLE */}
+                                                    {editFormData.passengers && editFormData.passengers.length > 0 && (
+                                                        <div className="overflow-x-auto custom-scrollbar border border-slate-700/50 rounded-lg">
+                                                            <table className="w-full text-left text-[11px] sm:text-xs text-slate-300 whitespace-nowrap">
+                                                                <thead className="bg-slate-800/80 border-b border-slate-700/50">
+                                                                    <tr>
+                                                                        <th className="p-2.5 font-medium">Name</th>
+                                                                        <th className="p-2.5 font-medium">DOB</th>
+                                                                        <th className="p-2.5 font-medium">Gender</th>
+                                                                        <th className="p-2.5 font-medium">Aadhar</th>
+                                                                        {editFormData.confirmedTripType === 'International' && (
+                                                                            <>
+                                                                                <th className="p-2.5 font-medium">PAN</th>
+                                                                                <th className="p-2.5 font-medium">Passport</th>
+                                                                                <th className="p-2.5 font-medium">Issue Place</th>
+                                                                                <th className="p-2.5 font-medium">Issue Date</th>
+                                                                                <th className="p-2.5 font-medium">Expiry</th>
+                                                                            </>
+                                                                        )}
+                                                                        <th className="p-2.5 font-medium">Mobile</th>
+                                                                        <th className="p-2.5 font-medium text-center">Action</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {editFormData.passengers.map((p, idx) => (
+                                                                        <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/40">
+                                                                            <td className="p-2.5">{p.fullName}</td>
+                                                                            <td className="p-2.5">{p.dob}</td>
+                                                                            <td className="p-2.5">{p.gender}</td>
+                                                                            <td className="p-2.5">{p.aadharNumber}</td>
+                                                                            {editFormData.confirmedTripType === 'International' && (
+                                                                                <>
+                                                                                    <td className="p-2.5">{p.panNumber}</td>
+                                                                                    <td className="p-2.5">{p.passportNumber}</td>
+                                                                                    <td className="p-2.5">{p.passportIssuePlace}</td>
+                                                                                    <td className="p-2.5">{p.passportIssueDate}</td>
+                                                                                    <td className="p-2.5">{p.passportExpiryDate}</td>
+                                                                                </>
+                                                                            )}
+                                                                            <td className="p-2.5">{p.mobileNumber}</td>
+                                                                            <td className="p-2.5 text-center">
+                                                                                <button type="button" onClick={() => handleRemovePassenger(idx)} className="text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer">
+                                                                                    <Trash2 size={14} />
+                                                                                </button>
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <div className="w-1/2">
-                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Children)</label>
-                                                    <input type="number" name="confirmedNoOfChildren" value={editFormData.confirmedNoOfChildren} onChange={handleInputChange} className={inputCls} min="0" />
+
+                                                {/* 3. DOCUMENT COLLECTION */}
+                                                <div className="pt-5 border-t border-slate-700/50">
+                                                    <h4 className="text-sm font-bold text-cyan-400 mb-4 tracking-wider uppercase">Document Collection</h4>
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                                                        <div>
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Aadhar Copy</label>
+                                                            <select name="aadharCopy" value={editFormData.aadharCopy} onChange={handleInputChange} className={selectCls}>
+                                                                <option value="" disabled hidden></option>
+                                                                <option value="Pending">Pending</option>
+                                                                <option value="Received">Received</option>
+                                                            </select>
+                                                        </div>
+                                                        {editFormData.confirmedTripType === 'International' && (
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Copy</label>
+                                                                <select name="passportCopy" value={editFormData.passportCopy} onChange={handleInputChange} className={selectCls}>
+                                                                    <option value="" disabled hidden></option>
+                                                                    <option value="Pending">Pending</option>
+                                                                    <option value="Received">Received</option>
+                                                                </select>
+                                                            </div>
+                                                        )}
+                                                        <div>
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Photograph</label>
+                                                            <select name="photograph" value={editFormData.photograph} onChange={handleInputChange} className={selectCls}>
+                                                                <option value="" disabled hidden></option>
+                                                                <option value="Pending">Pending</option>
+                                                                <option value="Received">Received</option>
+                                                            </select>
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Attach Drive Link</label>
+                                                            <input type="text" name="attachDriveLink" value={editFormData.attachDriveLink} onChange={handleInputChange} className={inputCls} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Remarks</label>
+                                                            <input type="text" name="docRemarks" value={editFormData.docRemarks} onChange={handleInputChange} className={inputCls} />
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                            </div>
-                                            {renderDatePicker('departureDate', editFormData.departureDate, 'Departure Date', handleInputChange)}
-                                            {renderDatePicker('returnDate', editFormData.returnDate, 'Return Date', handleInputChange)}
-                                            {renderDatePicker('tourStartDate', editFormData.tourStartDate, 'Tour Start Date', handleInputChange)}
-                                            {renderDatePicker('tourEndDate', editFormData.tourEndDate, 'Tour End Date', handleInputChange)}
-                                            <div className="md:col-span-2">
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Services </label>
-                                                {renderMultiSelect('confirmedServices', editFormData.confirmedServices, ['Flight Booking', 'Train Booking', 'Bus Booking','VISA Apply','Travel Insurance' ])}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Discount</label>
-                                                <input type="text" name="discount" value={editFormData.discount} onChange={handleInputChange} className={inputCls} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Final Package Value</label>
-                                                <input type="text" name="finalPackageValue" value={editFormData.finalPackageValue} onChange={handleInputChange} className={inputCls} />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">{`Service Cost`}</label>
-                                                <input type="text" name="serviceCost" value={editFormData.serviceCost} onChange={handleInputChange} className={inputCls} />
-                                            </div>
+                                                </>
+                                            )}
+
                                         </div>
                                     ) : (
                                         <div className="mt-4 px-4 py-5 text-xs sm:text-sm text-slate-500 border border-dashed border-slate-800 rounded-xl text-center">
@@ -1975,104 +2242,105 @@ const SalesDashboard = () => {
                                 )}
                             </div>
 
-                            {/* SECTION 8: PAYMENT INFORMATION */}
-                            <div id="section-paymentInfo" className={sectionCls}>
-                                <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('paymentInfo')}>
-                                    <h3 className={`text-sm sm:text-base font-bold tracking-wider uppercase m-0 flex items-center gap-2 text-emerald-400`}>
-                                        <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
-                                        Payment Information
-                                    </h3>
-                                    {expandedSections.paymentInfo ? <ChevronDown size={18} className="text-emerald-400" /> : <ChevronRight size={18} className="text-slate-500"/>}
-                                </div>
-                                
-                                {expandedSections.paymentInfo && (
-                                    <div className="mt-4">
-                                        {/* Payment History View */}
-                                        <div className="mb-6 p-4 bg-[#091124] border border-slate-700/60 rounded-xl">
-                                            <h4 className="text-[11px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">Payment History</h4>
-                                            
-                                            <div className="overflow-x-auto custom-scrollbar">
-                                                <table className="w-full text-left text-xs sm:text-sm text-slate-300 whitespace-nowrap">
-                                                    <thead className="text-slate-500 font-semibold border-b border-slate-800">
-                                                        <tr>
-                                                            <th className="pb-2 font-medium">Date</th>
-                                                            <th className="pb-2 font-medium">Payment Stage</th>
-                                                            <th className="pb-2 font-medium">Service</th>
-                                                            <th className="pb-2 font-medium">Amount</th>
-                                                            <th className="pb-2 font-medium">Mode</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-slate-800">
-                                                        {editFormData.paymentHistoryList && editFormData.paymentHistoryList.length > 0 ? (
-                                                            editFormData.paymentHistoryList.map((payment, idx) => (
-                                                                <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
-                                                                    <td className="py-2.5">{payment.date}</td>
-                                                                    <td className="py-2.5">{payment.stage}</td>
-                                                                    <td className="py-2.5">{payment.service}</td>
-                                                                    <td className="py-2.5 text-emerald-400 font-semibold">₹{payment.amount}</td>
-                                                                    <td className="py-2.5">{payment.mode}</td>
-                                                                </tr>
-                                                            ))
-                                                        ) : (
-                                                            <tr>
-                                                                <td colSpan="5" className="py-4 text-center text-slate-500 italic">No payments recorded yet.</td>
-                                                            </tr>
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-
-                                        {/* Payment Entry Form matching the reference image */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 border-t border-slate-700/50 pt-5">
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Service</label>
-                                                {renderDropdown('paymentService', editFormData.paymentService, '', ['Tour Package', 'Flight Booking', 'Hotel Booking', 'VISA Booking', 'Transport'], handleInputChange)}
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Amount Collected</label>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
-                                                    <input type="text" name="amountReceived" value={editFormData.amountReceived} onChange={handleInputChange} className={`${inputCls} pl-7`} placeholder="Currency" />
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Payment Mode</label>
-                                                {renderDropdown('paymentMode', editFormData.paymentMode, '', ['UPI / QR', 'Net Banking', 'Credit Card', 'Cash'], handleInputChange)}
-                                            </div>
-                                            
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Transaction Reference</label>
-                                                <input type="text" name="transactionId" value={editFormData.transactionId} onChange={handleInputChange} className={inputCls} />
-                                            </div>
-                                            {renderDatePicker('customerPaymentDate', editFormData.customerPaymentDate, 'Customer Payment Date', handleInputChange, '')}
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Payment Stage</label>
-                                                {renderDropdown('paymentStatus', editFormData.paymentStatus, '', ['First Payment', 'Pending Initial Deposit', 'Partially Paid Tokens', 'Fully Settled Clearance', 'Payment Overdue'], handleInputChange)}
-                                            </div>
-
-                                            <div>
-                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Attachment</label>
-                                                <div className="relative flex items-center justify-center bg-slate-900 border border-slate-700 rounded-lg sm:rounded px-3 py-2 sm:py-1.5 cursor-pointer hover:border-cyan-500 transition-colors">
-                                                    <span className="text-cyan-400 text-sm font-medium flex items-center gap-2">
-                                                        <FileText size={16} />
-                                                        Attach File
-                                                    </span>
-                                                    <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                                                </div>
-                                            </div>
-                                            {renderDatePicker('nextPaymentDate', editFormData.nextPaymentDate, 'Next Payment Date', handleInputChange, '')}
-                                            
-                                            <div className="flex items-end h-full">
-                                                <button type="button" onClick={handleAddPaymentHistory} className="w-full h-[38px] sm:h-[34px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 border-none cursor-pointer">
-                                                    <Plus size={16} /> Save Payment Record
-                                                </button>
-                                            </div>
-                                        </div>
+                            {activeTab !== 'My Confirmation' && (
+                                <div id="section-paymentInfo" className={sectionCls}>
+                                    {/* SECTION 8: PAYMENT INFORMATION */}
+                                    <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('paymentInfo')}>
+                                        <h3 className={`text-sm sm:text-base font-bold tracking-wider uppercase m-0 flex items-center gap-2 text-emerald-400`}>
+                                            <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
+                                            Payment Information
+                                        </h3>
+                                        {expandedSections.paymentInfo ? <ChevronDown size={18} className="text-emerald-400" /> : <ChevronRight size={18} className="text-slate-500"/>}
                                     </div>
-                                )}
-                            </div>
+                                    
+                                    {expandedSections.paymentInfo && (
+                                        <div className="mt-4">
+                                            {/* Payment History View */}
+                                            <div className="mb-6 p-4 bg-[#091124] border border-slate-700/60 rounded-xl">
+                                                <h4 className="text-[11px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">Payment History</h4>
+                                                
+                                                <div className="overflow-x-auto custom-scrollbar">
+                                                    <table className="w-full text-left text-xs sm:text-sm text-slate-300 whitespace-nowrap">
+                                                        <thead className="text-slate-500 font-semibold border-b border-slate-800">
+                                                            <tr>
+                                                                <th className="pb-2 font-medium">Date</th>
+                                                                <th className="pb-2 font-medium">Payment Stage</th>
+                                                                <th className="pb-2 font-medium">Service</th>
+                                                                <th className="pb-2 font-medium">Amount</th>
+                                                                <th className="pb-2 font-medium">Mode</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-slate-800">
+                                                            {editFormData.paymentHistoryList && editFormData.paymentHistoryList.length > 0 ? (
+                                                                editFormData.paymentHistoryList.map((payment, idx) => (
+                                                                    <tr key={idx} className="hover:bg-slate-800/40 transition-colors">
+                                                                        <td className="py-2.5">{payment.date}</td>
+                                                                        <td className="py-2.5">{payment.stage}</td>
+                                                                        <td className="py-2.5">{payment.service}</td>
+                                                                        <td className="py-2.5 text-emerald-400 font-semibold">₹{payment.amount}</td>
+                                                                        <td className="py-2.5">{payment.mode}</td>
+                                                                    </tr>
+                                                                ))
+                                                            ) : (
+                                                                <tr>
+                                                                    <td colSpan="5" className="py-4 text-center text-slate-500 italic">No payments recorded yet.</td>
+                                                                </tr>
+                                                            )}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
 
+                                            {/* Payment Entry Form matching the reference image */}
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 border-t border-slate-700/50 pt-5">
+                                                <div>
+                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Service</label>
+                                                    {renderDropdown('paymentService', editFormData.paymentService, '', ['Tour Package', 'Flight Booking', 'Hotel Booking', 'VISA Booking', 'Transport'], handleInputChange)}
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Amount Collected</label>
+                                                    <div className="relative">
+                                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₹</span>
+                                                        <input type="text" name="amountReceived" value={editFormData.amountReceived} onChange={handleInputChange} className={`${inputCls} pl-7`} placeholder="" />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Payment Mode</label>
+                                                    {renderDropdown('paymentMode', editFormData.paymentMode, '', ['UPI / QR', 'Net Banking', 'Credit Card', 'Cash'], handleInputChange)}
+                                                </div>
+                                                
+                                                <div>
+                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Transaction Reference</label>
+                                                    <input type="text" name="transactionId" value={editFormData.transactionId} onChange={handleInputChange} className={inputCls} />
+                                                </div>
+                                                {renderDatePicker('customerPaymentDate', editFormData.customerPaymentDate, 'Customer Payment Date', handleInputChange, '')}
+                                                <div>
+                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Payment Stage</label>
+                                                    {renderDropdown('paymentStatus', editFormData.paymentStatus, '', ['First Payment', 'Pending Initial Deposit', 'Partially Paid Tokens', 'Fully Settled Clearance', 'Payment Overdue'], handleInputChange)}
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Attachment</label>
+                                                    <div className="relative flex items-center justify-center bg-slate-900 border border-slate-700 rounded-lg sm:rounded px-3 py-2 sm:py-1.5 cursor-pointer hover:border-cyan-500 transition-colors">
+                                                        <span className="text-cyan-400 text-sm font-medium flex items-center gap-2">
+                                                            <FileText size={16} />
+                                                            Attach File
+                                                        </span>
+                                                        <input type="file" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                                    </div>
+                                                </div>
+                                                {renderDatePicker('nextPaymentDate', editFormData.nextPaymentDate, 'Next Payment Date', handleInputChange, '')}
+                                                
+                                                <div className="flex items-end h-full">
+                                                    <button type="button" onClick={handleAddPaymentHistory} className="w-full h-[38px] sm:h-[34px] bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 border-none cursor-pointer">
+                                                        <Plus size={16} /> Save Payment Record
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </form>
                     </div>
 

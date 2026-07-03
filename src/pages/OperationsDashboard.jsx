@@ -1412,7 +1412,7 @@ export default function OperationsDashboard() {
                                                                     <CustomSelect value={req.service} onChange={(v) => handleArrayChange('paymentRequests', index, 'service', v)} className={selectCls} placeholder="Select" options={['Transport', 'Hotel', 'Local Vehicle Operator']} />
                                                                 </div>
                                                                 <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Provider Name <span className="text-[10px] text-red-400 italic ml-1">(autofetch)</span></label>
+                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Provider Name</label>
                                                                     <input type="text" value={req.providerName} readOnly className={readonlyCls} placeholder="Auto-populated" />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={req.paymentDueDate} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
