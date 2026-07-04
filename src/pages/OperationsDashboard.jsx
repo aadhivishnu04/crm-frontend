@@ -80,7 +80,7 @@ const MOCK_LEADS = [
 // ─────────────────────────────────────────────
 // COMPONENT – Custom Select (with Manual Entry)
 // ─────────────────────────────────────────────
-const CustomSelect = ({ value, onChange, options, placeholder = "-- Select --", className }) => {
+const CustomSelect = ({ value, onChange, options, placeholder = "", className }) => {
     const normalizedOptions = options.map(opt => typeof opt === 'object' ? opt : { value: opt, label: opt });
     const optionValues = normalizedOptions.map(opt => String(opt.value));
     
@@ -100,7 +100,7 @@ const CustomSelect = ({ value, onChange, options, placeholder = "-- Select --", 
                     type="text"
                     value={safeValue}
                     onChange={(e) => onChange(e.target.value)}
-                    placeholder="Manual entry..."
+                    placeholder=" "
                     className={`w-full bg-slate-900 border border-slate-700 rounded text-white text-sm font-bold focus:border-cyan-500 outline-none flex-1 min-w-[80px] ${className && className.includes('py-1.5') ? 'py-1.5 px-3' : 'py-2 px-3'}`}
                     autoFocus
                 />
@@ -536,6 +536,35 @@ export default function OperationsDashboard() {
             ? lead.paymentRequests
             : [{ service: '', providerName: '', paymentDueDate: '', serviceCost: '', paymentType: '', amountToPay: '', paymentAccountDetails: '' }];
 
+
+        // ─── Priority Auto-Calculation Logic ───
+        let calculatedPriority = lead.priority || 'Low';
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        
+        let earliestReqDate = null;
+        if (parsedCustomisationRequests.length > 0) {
+            const dates = parsedCustomisationRequests
+                .map(req => new Date(req.turnaroundTime || req.requiredByDate))
+                .filter(d => !isNaN(d.getTime()));
+            if (dates.length > 0) earliestReqDate = new Date(Math.min(...dates));
+        }
+        
+        const travelDate = new Date(lead.travelDate || lead.travelDates);
+        
+        if (earliestReqDate && !isNaN(earliestReqDate.getTime())) {
+            const diffDaysReq = Math.ceil((earliestReqDate - today) / (1000 * 60 * 60 * 24));
+            if (diffDaysReq <= 1) calculatedPriority = 'High';
+            else if (diffDaysReq >= 2 && diffDaysReq <= 4) calculatedPriority = 'Medium';
+            else if (diffDaysReq >= 5 && diffDaysReq <= 7) calculatedPriority = 'Low';
+        }
+        
+        if (travelDate && !isNaN(travelDate.getTime())) {
+            const diffDaysTravel = Math.ceil((travelDate - today) / (1000 * 60 * 60 * 24));
+            if (diffDaysTravel <= 7) calculatedPriority = 'High';
+        }
+
+
         setSelectedLeadForEdit({
             ...lead,
             customisationRequests: parsedCustomisationRequests,
@@ -558,7 +587,7 @@ export default function OperationsDashboard() {
             voiceNote: lead.voiceNote || '',
             destination: lead.destination || '',
             workType: lead.workType || '',
-            priority: lead.priority || '',
+            priority: calculatedPriority,
             status: lead.status || '',
             activityType: lead.activityType || '',
             activityOutcome: lead.activityOutcome || '',
@@ -811,7 +840,7 @@ export default function OperationsDashboard() {
                         <div className="flex items-center gap-2 w-full sm:w-auto relative">
                             <div className="relative flex-1 sm:w-64">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-                                <input type="text" placeholder="Search Name, ID, Destination..." value={searchQuery} onChange={(e) => handleSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 text-sm bg-transparent border border-slate-600 rounded-lg focus:outline-none text-slate-100 placeholder-slate-500" />
+                                <input type="text" placeholder=" " value={searchQuery} onChange={(e) => handleSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 text-sm bg-transparent border border-slate-600 rounded-lg focus:outline-none text-slate-100 placeholder-slate-500" />
                             </div>
                             <button onClick={() => setIsFilterOpen(!isFilterOpen)} className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors border flex-shrink-0 ${isFilterOpen || selectedPlatform !== 'All' ? 'bg-slate-700/30 text-white border-slate-600' : 'text-slate-200 bg-transparent border-slate-700/20 hover:bg-slate-800/30'}`}>
                                 <SlidersHorizontal size={15} />
@@ -1154,15 +1183,15 @@ export default function OperationsDashboard() {
                                                                 {/* Row 1 */}
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Flight Type</label>
-                                                                    <CustomSelect value={flight.flightType} onChange={(v) => handleArrayChange('flights', index, 'flightType', v)} className={selectCls} placeholder="Select" options={['One Way', 'Round Trip', 'Multi City']} />
+                                                                    <CustomSelect value={flight.flightType} onChange={(v) => handleArrayChange('flights', index, 'flightType', v)} className={selectCls} placeholder="" options={['One Way', 'Round Trip', 'Multi City']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Flight Responsibility</label>
-                                                                    <CustomSelect value={flight.flightResponsibility} onChange={(v) => handleArrayChange('flights', index, 'flightResponsibility', v)} className={selectCls} placeholder="Select" options={['Agency', 'Client']} />
+                                                                    <CustomSelect value={flight.flightResponsibility} onChange={(v) => handleArrayChange('flights', index, 'flightResponsibility', v)} className={selectCls} placeholder="" options={['Agency', 'Client']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booking Status</label>
-                                                                    <CustomSelect value={flight.bookingStatus} onChange={(v) => handleArrayChange('flights', index, 'bookingStatus', v)} className={selectCls} placeholder="Select" options={['Pending', 'Confirmed', 'Cancelled']} />
+                                                                    <CustomSelect value={flight.bookingStatus} onChange={(v) => handleArrayChange('flights', index, 'bookingStatus', v)} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
                                                                 </div>
 
                                                                 {/* Row 2 */}
@@ -1170,13 +1199,13 @@ export default function OperationsDashboard() {
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">PNR No.</label><input type="text" value={flight.pnr} onChange={(e) => handleArrayChange('flights', index, 'pnr', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booked Through</label>
-                                                                    <CustomSelect value={flight.bookedThrough} onChange={(v) => handleArrayChange('flights', index, 'bookedThrough', v)} className={selectCls} placeholder="Select" options={['Internal Team', 'DMC', 'Direct Client']} />
+                                                                    <CustomSelect value={flight.bookedThrough} onChange={(v) => handleArrayChange('flights', index, 'bookedThrough', v)} className={selectCls} placeholder="" options={['Internal Team', 'DMC', 'Direct Client']} />
                                                                 </div>
 
                                                                 {/* Row 3 */}
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Category</label>
-                                                                    <CustomSelect value={flight.category} onChange={(v) => handleArrayChange('flights', index, 'category', v)} className={selectCls} placeholder="Select" options={['Economy', 'Premium Economy', 'Business', 'First Class']} />
+                                                                    <CustomSelect value={flight.category} onChange={(v) => handleArrayChange('flights', index, 'category', v)} className={selectCls} placeholder="" options={['Economy', 'Premium Economy', 'Business', 'First Class']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Flight Departure Date & Time</label><DatePickerField type="datetime-local" value={flight.departureDateTime} onChange={(e) => handleArrayChange('flights', index, 'departureDateTime', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Boarding Point</label><input type="text" value={flight.boardingPoint} onChange={(e) => handleArrayChange('flights', index, 'boardingPoint', e.target.value)} className={inputCls} /></div>
@@ -1184,7 +1213,7 @@ export default function OperationsDashboard() {
                                                                 {/* Row 4 */}
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Ticket Shared</label>
-                                                                    <CustomSelect value={flight.ticketShared} onChange={(v) => handleArrayChange('flights', index, 'ticketShared', v)} className={selectCls} placeholder="Select" options={['Yes', 'No']} />
+                                                                    <CustomSelect value={flight.ticketShared} onChange={(v) => handleArrayChange('flights', index, 'ticketShared', v)} className={selectCls} placeholder="" options={['Yes', 'No']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Ticket Shared Date</label><DatePickerField type="date" value={flight.ticketSharedDate} onChange={(e) => handleArrayChange('flights', index, 'ticketSharedDate', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Deboarding Point</label><input type="text" value={flight.deboardingPoint} onChange={(e) => handleArrayChange('flights', index, 'deboardingPoint', e.target.value)} className={inputCls} /></div>
@@ -1192,7 +1221,7 @@ export default function OperationsDashboard() {
                                                                 {/* Row 5 */}
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Flight Cost</label><input type="text" value={flight.flightCost} onChange={(e) => handleArrayChange('flights', index, 'flightCost', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Markup Cost</label><input type="text" value={flight.markupCost || ''} onChange={(e) => handleArrayChange('flights', index, 'markupCost', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Drive Link</label><input type="text" placeholder="https://..." value={flight.driveLink} onChange={(e) => handleArrayChange('flights', index, 'driveLink', e.target.value)} className={inputCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Drive Link</label><input type="text" placeholder="" value={flight.driveLink} onChange={(e) => handleArrayChange('flights', index, 'driveLink', e.target.value)} className={inputCls} /></div>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -1210,7 +1239,7 @@ export default function OperationsDashboard() {
                                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                     <div>
                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Insurance Required (yes/no)</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insRequired} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insRequired: v })} className={selectCls} placeholder="Select" options={['Yes', 'No']} />
+                                                        <CustomSelect value={selectedLeadForEdit.insRequired} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insRequired: v })} className={selectCls} placeholder="" options={['Yes', 'No']} />
                                                     </div>
                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Provider</label><input type="text" value={selectedLeadForEdit.insProvider} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insProvider: e.target.value })} className={inputCls} /></div>
                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Policy Number</label><input type="text" value={selectedLeadForEdit.insPolicyNo} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insPolicyNo: e.target.value })} className={inputCls} /></div>
@@ -1218,11 +1247,11 @@ export default function OperationsDashboard() {
                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Cost</label><input type="text" value={selectedLeadForEdit.insCost} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insCost: e.target.value })} className={inputCls} /></div>
                                                     <div>
                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Status (Pending / Issued)</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insStatus: v })} className={selectCls} placeholder="Select" options={['Pending', 'Issued']} />
+                                                        <CustomSelect value={selectedLeadForEdit.insStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insStatus: v })} className={selectCls} placeholder="" options={['Pending', 'Issued']} />
                                                     </div>
                                                     <div>
                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Policy Shared (Yes / no)</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insPolicyShared} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insPolicyShared: v })} className={selectCls} placeholder="Select" options={['Yes', 'No']} />
+                                                        <CustomSelect value={selectedLeadForEdit.insPolicyShared} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insPolicyShared: v })} className={selectCls} placeholder="" options={['Yes', 'No']} />
                                                     </div>
 
                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Markup Cost</label><input type="text" value={selectedLeadForEdit.insMarkup || ''} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insMarkup: e.target.value })} className={inputCls} /></div>
@@ -1242,28 +1271,28 @@ export default function OperationsDashboard() {
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Destination</label><input type="text" value={visa.destination} onChange={(e) => handleArrayChange('visas', index, 'destination', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">VISA Type</label>
-                                                                    <CustomSelect value={visa.visaType} onChange={v => handleArrayChange('visas', index, 'visaType', v)} className={selectCls} placeholder="Select" options={['Tourist', 'Business', 'Transit', 'e-Visa', 'Visa on Arrival']} />
+                                                                    <CustomSelect value={visa.visaType} onChange={v => handleArrayChange('visas', index, 'visaType', v)} className={selectCls} placeholder="" options={['Tourist', 'Business', 'Transit', 'e-Visa', 'Visa on Arrival']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Transit VISA Required</label>
-                                                                    <CustomSelect value={visa.transitVisaReq} onChange={v => handleArrayChange('visas', index, 'transitVisaReq', v)} className={selectCls} placeholder="Select" options={['Yes', 'No']} />
+                                                                    <CustomSelect value={visa.transitVisaReq} onChange={v => handleArrayChange('visas', index, 'transitVisaReq', v)} className={selectCls} placeholder="" options={['Yes', 'No']} />
                                                                 </div>
 
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Arrival Card Applicable</label>
-                                                                    <CustomSelect value={visa.arrivalCardApplicable} onChange={v => handleArrayChange('visas', index, 'arrivalCardApplicable', v)} className={selectCls} placeholder="Yes/ No" options={['Yes', 'No']} />
+                                                                    <CustomSelect value={visa.arrivalCardApplicable} onChange={v => handleArrayChange('visas', index, 'arrivalCardApplicable', v)} className={selectCls} placeholder="" options={['Yes', 'No']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Arrival Card Details</label><input type="text" value={visa.arrivalCardDetails} onChange={e => handleArrayChange('visas', index, 'arrivalCardDetails', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Applied by</label>
-                                                                    <CustomSelect value={visa.appliedBy} onChange={v => handleArrayChange('visas', index, 'appliedBy', v)} className={selectCls} placeholder="Client / Vendor / Team" options={['Client', 'Vendor', 'Team']} />
+                                                                    <CustomSelect value={visa.appliedBy} onChange={v => handleArrayChange('visas', index, 'appliedBy', v)} className={selectCls} placeholder="" options={['Client', 'Vendor', 'Team']} />
                                                                 </div>
 
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Documents Pending</label><input type="text" value={visa.docsPending} onChange={e => handleArrayChange('visas', index, 'docsPending', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Status</label><input type="text" value={visa.visaStatus} onChange={e => handleArrayChange('visas', index, 'visaStatus', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">VISA Copy Shared</label>
-                                                                    <CustomSelect value={visa.visaCopyShared} onChange={v => handleArrayChange('visas', index, 'visaCopyShared', v)} className={selectCls} placeholder="Select" options={['Yes', 'No']} />
+                                                                    <CustomSelect value={visa.visaCopyShared} onChange={v => handleArrayChange('visas', index, 'visaCopyShared', v)} className={selectCls} placeholder="" options={['Yes', 'No']} />
                                                                 </div>
 
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Approval Date</label><DatePickerField type="date" value={visa.visaApprovalDate} onChange={e => handleArrayChange('visas', index, 'visaApprovalDate', e.target.value)} className={inputCls} /></div>
@@ -1291,14 +1320,14 @@ export default function OperationsDashboard() {
                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Contact Person</label><input type="text" value={selectedLeadForEdit.dmcContactPerson} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcContactPerson: e.target.value })} className={inputCls} /></div>
                                                     <div>
                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Package Type</label>
-                                                        <CustomSelect value={selectedLeadForEdit.dmcPackageType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcPackageType: v })} className={selectCls} placeholder="Select" options={['Standard', 'Premium', 'Luxury', 'Budget']} />
+                                                        <CustomSelect value={selectedLeadForEdit.dmcPackageType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcPackageType: v })} className={selectCls} placeholder="" options={['Standard', 'Premium', 'Luxury', 'Budget']} />
                                                     </div>
 
                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">WhatsApp Number</label><input type="text" value={selectedLeadForEdit.dmcWhatsapp} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcWhatsapp: e.target.value })} className={inputCls} /></div>
                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Email Address</label><input type="text" value={selectedLeadForEdit.dmcEmail} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcEmail: e.target.value })} className={inputCls} /></div>
                                                     <div>
                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
-                                                        <CustomSelect value={selectedLeadForEdit.dmcStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcStatus: v })} className={selectCls} placeholder="Select" options={['Pending', 'Confirmed', 'Cancelled']} />
+                                                        <CustomSelect value={selectedLeadForEdit.dmcStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcStatus: v })} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
                                                     </div>
 
                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Reference No./ Booking Id</label><input type="text" value={selectedLeadForEdit.dmcRefNo} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcRefNo: e.target.value })} className={inputCls} /></div>
@@ -1310,7 +1339,7 @@ export default function OperationsDashboard() {
                                                     <h3 className={sectionHeadCls}>DMC Deliverables</h3>
                                                     <div className="w-1/3 min-w-[200px]">
                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Check Box</label>
-                                                        <CustomSelect value={selectedLeadForEdit.dmcDeliverables} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcDeliverables: v })} className={selectCls} placeholder="Select" options={['Accommodation', 'Transport', 'Sightseeing', 'All Included']} />
+                                                        <CustomSelect value={selectedLeadForEdit.dmcDeliverables} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcDeliverables: v })} className={selectCls} placeholder="" options={['Accommodation', 'Transport', 'Sightseeing', 'All Included']} />
                                                     </div>
                                                 </div>
                                             </div>
@@ -1332,12 +1361,12 @@ export default function OperationsDashboard() {
                                                                 
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booked By</label>
-                                                                    <CustomSelect value={hotel.bookedBy} onChange={(v) => handleArrayChange('intHotels', index, 'bookedBy', v)} className={selectCls} placeholder="Select" options={['Operations Desk 1', 'Operations Desk 2', 'Ground Vendor']} />
+                                                                    <CustomSelect value={hotel.bookedBy} onChange={(v) => handleArrayChange('intHotels', index, 'bookedBy', v)} className={selectCls} placeholder="" options={['Operations Desk 1', 'Operations Desk 2', 'Ground Vendor']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Reference No./ Booking Id</label><input type="text" value={hotel.refNo} onChange={(e) => handleArrayChange('intHotels', index, 'refNo', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
-                                                                    <CustomSelect value={hotel.status} onChange={(v) => handleArrayChange('intHotels', index, 'status', v)} className={selectCls} placeholder="Select" options={['Pending', 'Confirmed', 'Cancelled']} />
+                                                                    <CustomSelect value={hotel.status} onChange={(v) => handleArrayChange('intHotels', index, 'status', v)} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
                                                                 </div>
                                                                 
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Room Category</label><input type="text" value={hotel.roomCategory} onChange={(e) => handleArrayChange('intHotels', index, 'roomCategory', e.target.value)} className={inputCls} /></div>
@@ -1346,22 +1375,22 @@ export default function OperationsDashboard() {
                                                                 
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Specifications</label>
-                                                                    <CustomSelect value={hotel.specifications} onChange={(v) => handleArrayChange('intHotels', index, 'specifications', v)} className={selectCls} placeholder="Select" options={['Standard', 'Sea View', 'City View']} />
+                                                                    <CustomSelect value={hotel.specifications} onChange={(v) => handleArrayChange('intHotels', index, 'specifications', v)} className={selectCls} placeholder="" options={['Standard', 'Sea View', 'City View']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Meal Plan</label>
-                                                                    <CustomSelect value={hotel.mealPlan} onChange={(v) => handleArrayChange('intHotels', index, 'mealPlan', v)} className={selectCls} placeholder="Select" options={['EP', 'CP', 'MAP', 'AP']} />
+                                                                    <CustomSelect value={hotel.mealPlan} onChange={(v) => handleArrayChange('intHotels', index, 'mealPlan', v)} className={selectCls} placeholder="" options={['EP', 'CP', 'MAP', 'AP']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Early Check-In / Late</label>
-                                                                    <CustomSelect value={hotel.earlyCheckIn} onChange={(v) => handleArrayChange('intHotels', index, 'earlyCheckIn', v)} className={selectCls} placeholder="Select" options={['None', 'Early Check-In', 'Late Check-Out']} />
+                                                                    <CustomSelect value={hotel.earlyCheckIn} onChange={(v) => handleArrayChange('intHotels', index, 'earlyCheckIn', v)} className={selectCls} placeholder="" options={['None', 'Early Check-In', 'Late Check-Out']} />
                                                                 </div>
                                                                 
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Check-In Date & Time</label><DatePickerField type="datetime-local" value={hotel.checkInDateTime} onChange={(e) => handleArrayChange('intHotels', index, 'checkInDateTime', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Check-Out Date & Time</label><DatePickerField type="datetime-local" value={hotel.checkOutDateTime} onChange={(e) => handleArrayChange('intHotels', index, 'checkOutDateTime', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Refreshment Room Required</label>
-                                                                    <CustomSelect value={hotel.refreshmentRoom} onChange={(v) => handleArrayChange('intHotels', index, 'refreshmentRoom', v)} className={selectCls} placeholder="Select" options={['Yes', 'No']} />
+                                                                    <CustomSelect value={hotel.refreshmentRoom} onChange={(v) => handleArrayChange('intHotels', index, 'refreshmentRoom', v)} className={selectCls} placeholder="" options={['Yes', 'No']} />
                                                                 </div>
 
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Cost</label><input type="text" value={hotel.cost} onChange={(e) => handleArrayChange('intHotels', index, 'cost', e.target.value)} className={inputCls} /></div>
@@ -1398,14 +1427,14 @@ export default function OperationsDashboard() {
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Vehicle Number</label><input type="text" value={trans.vehicleNumber} onChange={(e) => handleArrayChange('intTransports', index, 'vehicleNumber', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
-                                                                    <CustomSelect value={trans.status} onChange={(v) => handleArrayChange('intTransports', index, 'status', v)} className={selectCls} placeholder="Select Status" options={['Pending', 'Confirmed', 'Cancelled']} />
+                                                                    <CustomSelect value={trans.status} onChange={(v) => handleArrayChange('intTransports', index, 'status', v)} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
                                                                 </div>
 
                                                                 {/* Row 3 */}
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Driver Contact Number</label><input type="text" value={trans.driverContact} onChange={(e) => handleArrayChange('intTransports', index, 'driverContact', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Duration</label>
-                                                                    <CustomSelect value={trans.duration} onChange={(v) => handleArrayChange('intTransports', index, 'duration', v)} className={selectCls} placeholder="Select Duration" options={['Half Day', 'Full Day', 'Multi Day']} />
+                                                                    <CustomSelect value={trans.duration} onChange={(v) => handleArrayChange('intTransports', index, 'duration', v)} className={selectCls} placeholder="" options={['Half Day', 'Full Day', 'Multi Day']} />
                                                                 </div>
                                                                 <div className="hidden sm:block"></div>
 
@@ -1470,18 +1499,18 @@ export default function OperationsDashboard() {
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Service</label>
-                                                                    <CustomSelect value={req.service} onChange={(v) => handleArrayChange('paymentRequests', index, 'service', v)} className={selectCls} placeholder="Select" options={['Transport', 'Hotel', 'Local Vehicle Operator']} />
+                                                                    <CustomSelect value={req.service} onChange={(v) => handleArrayChange('paymentRequests', index, 'service', v)} className={selectCls} placeholder="" options={['Transport', 'Hotel', 'Local Vehicle Operator']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Provider Name <span className="text-[10px] text-red-400 italic ml-1">(autofetch)</span></label>
-                                                                    <input type="text" value={req.providerName} readOnly className={readonlyCls} placeholder="Auto-populated" />
+                                                                    <input type="text" value={req.providerName} readOnly className={readonlyCls} placeholder="" />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={req.paymentDueDate} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
                                                                 
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Service Cost</label><input type="text" value={req.serviceCost} onChange={(e) => handleArrayChange('paymentRequests', index, 'serviceCost', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Payment Type</label>
-                                                                    <CustomSelect value={req.paymentType} onChange={(v) => handleArrayChange('paymentRequests', index, 'paymentType', v)} className={selectCls} placeholder="Select" options={['Full Payment', 'Advance', 'Balance']} />
+                                                                    <CustomSelect value={req.paymentType} onChange={(v) => handleArrayChange('paymentRequests', index, 'paymentType', v)} className={selectCls} placeholder="" options={['Full Payment', 'Advance', 'Balance']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Amount to Pay</label><input type="text" value={req.amountToPay} onChange={(e) => handleArrayChange('paymentRequests', index, 'amountToPay', e.target.value)} className={inputCls} /></div>
                                                                 
@@ -1615,19 +1644,19 @@ export default function OperationsDashboard() {
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Transport Type</label>
-                                                                    <CustomSelect value={trans.transportType} onChange={(v) => updateDomTransport(index, 'transportType', v)} className={selectCls} placeholder="Select Type" options={['Flight', 'Train', 'Bus']} />
+                                                                    <CustomSelect value={trans.transportType} onChange={(v) => updateDomTransport(index, 'transportType', v)} className={selectCls} placeholder="" options={['Flight', 'Train', 'Bus']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booked By</label>
-                                                                    <CustomSelect value={trans.bookedBy} onChange={(v) => updateDomTransport(index, 'bookedBy', v)} className={selectCls} placeholder="Select" options={['Internal Team', 'Customer']} />
+                                                                    <CustomSelect value={trans.bookedBy} onChange={(v) => updateDomTransport(index, 'bookedBy', v)} className={selectCls} placeholder="" options={['Internal Team', 'Customer']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booking Status</label>
-                                                                    <CustomSelect value={trans.bookingStatus} onChange={(v) => updateDomTransport(index, 'bookingStatus', v)} className={selectCls} placeholder="Select" options={['Pending', 'Confirmed', 'Cancelled']} />
+                                                                    <CustomSelect value={trans.bookingStatus} onChange={(v) => updateDomTransport(index, 'bookingStatus', v)} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
                                                                 </div>
                                                                 <div className="sm:col-start-2">
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Ticket Shared to Client</label>
-                                                                    <CustomSelect value={trans.ticketSharedToClient || ''} onChange={(v) => updateDomTransport(index, 'ticketSharedToClient', v)} className={selectCls} placeholder="Yes / No" options={['Yes', 'No']} />
+                                                                    <CustomSelect value={trans.ticketSharedToClient || ''} onChange={(v) => updateDomTransport(index, 'ticketSharedToClient', v)} className={selectCls} placeholder="" options={['Yes', 'No']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Shared Date</label>
@@ -1652,7 +1681,7 @@ export default function OperationsDashboard() {
                                                                                     
                                                                                     <div>
                                                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Booked Through</label>
-                                                                                        <CustomSelect value={trans.flight?.[leg]?.bookedThrough || ''} onChange={(v) => updateDomTransportNested(index, 'flight', leg, 'bookedThrough', v)} className={selectCls} placeholder="Select" options={['Internal', 'DMC', 'Direct']} />
+                                                                                        <CustomSelect value={trans.flight?.[leg]?.bookedThrough || ''} onChange={(v) => updateDomTransportNested(index, 'flight', leg, 'bookedThrough', v)} className={selectCls} placeholder="" options={['Internal', 'DMC', 'Direct']} />
                                                                                     </div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Departure Date & Time</label><DatePickerField type="datetime-local" value={trans.flight?.[leg]?.depDateTime || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'depDateTime', e.target.value)} className={inputCls} /></div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">From</label><input type="text" value={trans.flight?.[leg]?.from || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'from', e.target.value)} className={inputCls} /></div>
@@ -1706,7 +1735,7 @@ export default function OperationsDashboard() {
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Seat Details</label><input type="text" value={trans.train?.[leg]?.seatDetails || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'seatDetails', e.target.value)} className={inputCls} /></div>
                                                                                     <div>
                                                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Train Class</label>
-                                                                                        <CustomSelect value={trans.train?.[leg]?.trainClass || ''} onChange={(v) => updateDomTransportNested(index, 'train', leg, 'trainClass', v)} className={selectCls} placeholder="Select Class" options={['1A', '2A', '3A', 'SL', 'CC', 'EC']} />
+                                                                                        <CustomSelect value={trans.train?.[leg]?.trainClass || ''} onChange={(v) => updateDomTransportNested(index, 'train', leg, 'trainClass', v)} className={selectCls} placeholder="" options={['1A', '2A', '3A', 'SL', 'CC', 'EC']} />
                                                                                     </div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Ticket Link</label><input type="text" value={trans.train?.[leg]?.attachTicketLink || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'attachTicketLink', e.target.value)} className={inputCls} /></div>
                                                                                     
@@ -1775,31 +1804,6 @@ export default function OperationsDashboard() {
                                                 </div>
                                             </div>
 
-                                            {/* Travel Insurance */}
-                                            <div className={sectionCls}>
-                                                <h3 className={sectionHeadCls}>Travel Insurance</h3>
-                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Insurance Required (yes/no)</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insRequired} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insRequired: v })} className={selectCls} placeholder="Select" options={['Yes', 'No']} />
-                                                    </div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Provider</label><input type="text" value={selectedLeadForEdit.insProvider} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insProvider: e.target.value })} className={inputCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Policy Number</label><input type="text" value={selectedLeadForEdit.insPolicyNo} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insPolicyNo: e.target.value })} className={inputCls} /></div>
-                                                    
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Cost</label><input type="text" value={selectedLeadForEdit.insCost} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insCost: e.target.value })} className={inputCls} /></div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Status (Pending / Issued)</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insStatus: v })} className={selectCls} placeholder="Select" options={['Pending', 'Issued']} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Policy Shared (Yes / no)</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insPolicyShared} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insPolicyShared: v })} className={selectCls} placeholder="Select" options={['Yes', 'No']} />
-                                                    </div>
-
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Mark-Up</label><input type="text" value={selectedLeadForEdit.insMarkup || ''} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insMarkup: e.target.value })} className={inputCls} /></div>
-                                                </div>
-                                            </div>
-
                                             {/* 5. Hotel Booking */}
                                             <div className={sectionCls}>
                                                 <h3 className={sectionHeadCls}>Hotel Booking</h3>
@@ -1815,12 +1819,12 @@ export default function OperationsDashboard() {
                                                                 
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booked By</label>
-                                                                    <CustomSelect value={hotel.bookedBy} onChange={(v) => handleArrayChange('domHotels', index, 'bookedBy', v)} className={selectCls} placeholder="Select" options={['Operations Desk 1', 'Operations Desk 2', 'Ground Vendor']} />
+                                                                    <CustomSelect value={hotel.bookedBy} onChange={(v) => handleArrayChange('domHotels', index, 'bookedBy', v)} className={selectCls} placeholder="" options={['Operations Desk 1', 'Operations Desk 2', 'Ground Vendor']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Reference No./ Booking Id</label><input type="text" value={hotel.refNo} onChange={(e) => handleArrayChange('domHotels', index, 'refNo', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
-                                                                    <CustomSelect value={hotel.status} onChange={(v) => handleArrayChange('domHotels', index, 'status', v)} className={selectCls} placeholder="Select" options={['Pending', 'Confirmed', 'Cancelled']} />
+                                                                    <CustomSelect value={hotel.status} onChange={(v) => handleArrayChange('domHotels', index, 'status', v)} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
                                                                 </div>
                                                                 
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Room Category</label><input type="text" value={hotel.roomCategory} onChange={(e) => handleArrayChange('domHotels', index, 'roomCategory', e.target.value)} className={inputCls} /></div>
@@ -1829,15 +1833,15 @@ export default function OperationsDashboard() {
                                                                 
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Specifications</label>
-                                                                    <CustomSelect value={hotel.specifications} onChange={(v) => handleArrayChange('domHotels', index, 'specifications', v)} className={selectCls} placeholder="Select" options={['Standard', 'Sea View', 'City View']} />
+                                                                    <CustomSelect value={hotel.specifications} onChange={(v) => handleArrayChange('domHotels', index, 'specifications', v)} className={selectCls} placeholder="" options={['Standard', 'Sea View', 'City View']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Meal Plan</label>
-                                                                    <CustomSelect value={hotel.mealPlan} onChange={(v) => handleArrayChange('domHotels', index, 'mealPlan', v)} className={selectCls} placeholder="Select" options={['EP', 'CP', 'MAP', 'AP']} />
+                                                                    <CustomSelect value={hotel.mealPlan} onChange={(v) => handleArrayChange('domHotels', index, 'mealPlan', v)} className={selectCls} placeholder="" options={['EP', 'CP', 'MAP', 'AP']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Early Check-In / Late</label>
-                                                                    <CustomSelect value={hotel.earlyCheckIn} onChange={(v) => handleArrayChange('domHotels', index, 'earlyCheckIn', v)} className={selectCls} placeholder="Select" options={['None', 'Early Check-In', 'Late Check-Out']} />
+                                                                    <CustomSelect value={hotel.earlyCheckIn} onChange={(v) => handleArrayChange('domHotels', index, 'earlyCheckIn', v)} className={selectCls} placeholder="" options={['None', 'Early Check-In', 'Late Check-Out']} />
                                                                 </div>
                                                                 
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Check-In Date & Time</label><DatePickerField type="datetime-local" value={hotel.checkInDateTime} onChange={(e) => handleArrayChange('domHotels', index, 'checkInDateTime', e.target.value)} className={inputCls} /></div>
@@ -1882,7 +1886,7 @@ export default function OperationsDashboard() {
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Vehicle Number</label><input type="text" value={trans.vehicleNumber} onChange={(e) => handleArrayChange('domLocalTransports', index, 'vehicleNumber', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
-                                                                    <CustomSelect value={trans.status} onChange={(v) => handleArrayChange('domLocalTransports', index, 'status', v)} className={selectCls} placeholder="Select Status" options={['Pending', 'Confirmed', 'Cancelled']} />
+                                                                    <CustomSelect value={trans.status} onChange={(v) => handleArrayChange('domLocalTransports', index, 'status', v)} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
                                                                 </div>
 
                                                                 {/* Row 3 */}
@@ -1893,7 +1897,7 @@ export default function OperationsDashboard() {
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Duration</label>
-                                                                    <CustomSelect value={trans.duration} onChange={(v) => handleArrayChange('domLocalTransports', index, 'duration', v)} className={selectCls} placeholder="Select Duration" options={['Half Day', 'Full Day', 'Multi Day']} />
+                                                                    <CustomSelect value={trans.duration} onChange={(v) => handleArrayChange('domLocalTransports', index, 'duration', v)} className={selectCls} placeholder="" options={['Half Day', 'Full Day', 'Multi Day']} />
                                                                 </div>
 
                                                                 {/* Row 4 */}
@@ -1957,18 +1961,18 @@ export default function OperationsDashboard() {
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Service</label>
-                                                                    <CustomSelect value={req.service} onChange={(v) => handleArrayChange('paymentRequests', index, 'service', v)} className={selectCls} placeholder="Select" options={['Transport', 'Hotel', 'Local Vehicle Operator']} />
+                                                                    <CustomSelect value={req.service} onChange={(v) => handleArrayChange('paymentRequests', index, 'service', v)} className={selectCls} placeholder="" options={['Transport', 'Hotel', 'Local Vehicle Operator']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Provider Name <span className="text-[10px] text-red-400 italic ml-1">(autofetch)</span></label>
-                                                                    <input type="text" value={req.providerName} readOnly className={readonlyCls} placeholder="Auto-populated" />
+                                                                    <input type="text" value={req.providerName} readOnly className={readonlyCls} placeholder="" />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={req.paymentDueDate} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
                                                                 
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Service Cost</label><input type="text" value={req.serviceCost} onChange={(e) => handleArrayChange('paymentRequests', index, 'serviceCost', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Payment Type</label>
-                                                                    <CustomSelect value={req.paymentType} onChange={(v) => handleArrayChange('paymentRequests', index, 'paymentType', v)} className={selectCls} placeholder="Select" options={['Full Payment', 'Advance', 'Balance']} />
+                                                                    <CustomSelect value={req.paymentType} onChange={(v) => handleArrayChange('paymentRequests', index, 'paymentType', v)} className={selectCls} placeholder="" options={['Full Payment', 'Advance', 'Balance']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Amount to Pay</label><input type="text" value={req.amountToPay} onChange={(e) => handleArrayChange('paymentRequests', index, 'amountToPay', e.target.value)} className={inputCls} /></div>
                                                                 
@@ -1994,27 +1998,32 @@ export default function OperationsDashboard() {
                                     /* ─── STANDARD OPS PIPELINE EDIT ────────────────────── */
                                     <div className="space-y-6">
 
-                                        {/* Section 1: Client Info */}
+                                        {/* Section 1: LEAD INFO */}
                                         <div className={sectionCls} style={{ borderColor: 'rgba(51,65,85,0.8)' }}>
                                             <h3 className={sectionHeadCls} style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
-                                                <span className="font-bold">Client Info</span>
+                                                <span className="font-bold">LEAD INFO</span>
                                             </h3>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Name</label><input type="text" readOnly value={selectedLeadForEdit.customerName} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Mobile Number</label><input type="text" readOnly value={selectedLeadForEdit.mobileNumber} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Sales Executive</label><input type="text" readOnly value={selectedLeadForEdit.salesExecutive} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">No. of Adults</label><input type="text" readOnly value={selectedLeadForEdit.noOfAdults} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">No. of Children</label><input type="text" readOnly value={selectedLeadForEdit.noOfChildren} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Duration</label><input type="text" readOnly value={selectedLeadForEdit.duration} className={readonlyCls} /></div>
+                                                {/* Fetched from Leads Manager through Sales - Jobs */}
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Date</label><input type="text" readOnly value={selectedLeadForEdit.dateAdded || selectedLeadForEdit.createdAt || selectedLeadForEdit.date || ''} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Source</label><input type="text" readOnly value={selectedLeadForEdit.platform || selectedLeadForEdit.leadSource || ''} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Campaign</label><input type="text" readOnly value={selectedLeadForEdit.campaign || ''} className={readonlyCls} /></div>
+                                                
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Name</label><input type="text" readOnly value={selectedLeadForEdit.customerName || selectedLeadForEdit.leadName || ''} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Mobile Number</label><input type="text" readOnly value={selectedLeadForEdit.mobileNumber || selectedLeadForEdit.phone || ''} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Email Address</label><input type="text" readOnly value={selectedLeadForEdit.emailAddress || selectedLeadForEdit.email || ''} className={readonlyCls} /></div>
+                                                
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Package Type</label><input type="text" readOnly value={selectedLeadForEdit.packageType || ''} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Budget</label><input type="text" readOnly value={selectedLeadForEdit.budget || selectedLeadForEdit.amount || ''} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Message From Lead</label><input type="text" readOnly value={selectedLeadForEdit.messageFromLead || selectedLeadForEdit.leadMessage || selectedLeadForEdit.message || ''} className={readonlyCls} /></div>
                                             </div>
                                         </div>
 
-                                        {/* Section 2: Destination Request */}
+                                        {/* Section 2: DESTINATION REQUEST */}
                                         <div className={sectionCls} style={{ borderColor: 'rgba(51,65,85,0.8)' }}>
                                             <h3 className={sectionHeadCls} style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-bold">Destination Request</span>
-                                                    <span className="text-[10px] text-slate-500 italic bg-slate-800/50 px-2 py-0.5 rounded">Fetched from sales form</span>
+                                                    <span className="font-bold">DESTINATION REQUEST</span>
                                                 </div>
                                                 <div className="flex items-center gap-2">
                                                     <button type="button" onClick={() => setActiveModal({ type: 'view', section: 'Destination Request' })} className="flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded text-xs font-bold transition-colors cursor-pointer">
@@ -2023,73 +2032,109 @@ export default function OperationsDashboard() {
                                                 </div>
                                             </h3>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                                                {/* Fetched from Customisation Section */}
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-400 mb-1">Destination</label>
-                                                    <input type="text" readOnly value={uniqueDestinations.join(', ') || selectedLeadForEdit.destination || ''} className={readonlyCls} />
+                                                    <input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.destination || selectedLeadForEdit.destination || ''} className={readonlyCls} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-400 mb-1">Customisation Type</label>
                                                     <input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.customisationType || selectedLeadForEdit.customisationType || ''} className={readonlyCls} />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Tour Type</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.tourType || selectedLeadForEdit.tourType || ''} className={readonlyCls} />
+                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Required By</label>
+                                                    <input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.requiredByDate || selectedLeadForEdit.customisationRequests?.[0]?.turnaroundTime || ''} className={readonlyCls} />
                                                 </div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Travel Date</label><DatePickerField type="date" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.travelDate || selectedLeadForEdit.travelDate || ''} className={readonlyCls} /></div>
+
+                                                {/* Fetched from Travel Details */}
                                                 <div>
-                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Travel Month</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.travelMonth || selectedLeadForEdit.travelMonth || ''} className={readonlyCls} />
+                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Package Type</label>
+                                                    <input type="text" readOnly value={selectedLeadForEdit.tourType || selectedLeadForEdit.packageType || ''} className={readonlyCls} />
                                                 </div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Budget</label><input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.budget || selectedLeadForEdit.budget || ''} className={readonlyCls} /></div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Travel Date</label>
+                                                    <DatePickerField type="date" readOnly value={selectedLeadForEdit.travelDate || selectedLeadForEdit.travelDates || ''} className={readonlyCls} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Duration</label>
+                                                    <input type="text" readOnly value={selectedLeadForEdit.duration || ''} className={readonlyCls} />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-400 mb-1">No. Of Pax</label>
+                                                    <input type="text" readOnly value={`${selectedLeadForEdit.noOfAdults || '0'} Adults, ${selectedLeadForEdit.noOfChildren || '0'} Children`} className={readonlyCls} />
+                                                </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-400 mb-1">Hotel Category</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.hotelCategory || selectedLeadForEdit.hotelCategory || ''} className={readonlyCls} />
+                                                    <input type="text" readOnly value={selectedLeadForEdit.hotelCategory || ''} className={readonlyCls} />
                                                 </div>
-                                                
-                                                {/* Gray / Fetch Fields */}
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Readymade Package Details</label><input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.readymadePackageDetails || selectedLeadForEdit.readymadePackageDetails || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Turnaround Time</label><input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.turnaroundTime || selectedLeadForEdit.turnaroundTime || ''} className={readonlyCls} /></div>
-                                                <div className="sm:col-span-2"><label className="block text-xs font-bold text-slate-400 mb-1">Sales Remarks</label><input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.salesRemarks || selectedLeadForEdit.salesRemarks || ''} className={readonlyCls} /></div>
                                                 <div>
-                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Voice Note {`>`}</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.voiceNoteSummary || 'No voice note attached'} className={readonlyCls} />
+                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Budget</label>
+                                                    <input type="text" readOnly value={selectedLeadForEdit.travelBudget || selectedLeadForEdit.budget || selectedLeadForEdit.amount || ''} className={readonlyCls} />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Service</label>
+                                                    <input type="text" readOnly value={selectedLeadForEdit.services || selectedLeadForEdit.service || ''} className={readonlyCls} />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Departure City</label>
+                                                    <input type="text" readOnly value={selectedLeadForEdit.departureCity || ''} className={readonlyCls} />
+                                                </div>
+                                                <div className="hidden md:block"></div> {/* Spacer for grid alignment */}
+
+                                                {/* Requirements mapped from Customisation Section */}
+                                                <div className="md:col-span-3">
+                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Requirements</label>
+                                                    <textarea readOnly rows={2} value={selectedLeadForEdit.customisationRequests?.[0]?.requirements || selectedLeadForEdit.requirements || ''} className={`${readonlyCls} resize-none`} />
                                                 </div>
                                             </div>
                                         </div>
 
-                                        {/* Section 3: Operations Activity */}
+                                        {/* Section 3: OPERATIONS ACTIVITY */}
                                         <div className={sectionCls}>
-                                            <h3 className={sectionHeadCls} style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
-                                                <span className="font-bold">Operations Activity</span>
-                                                <div className="flex items-center gap-1.5">
-                                                    <button type="button" onClick={() => setActiveModal({ type: 'history', section: 'Operations Activity' })} className="flex items-center gap-1 px-2.5 py-1 bg-slate-800/50 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-[10px] uppercase font-bold transition-colors cursor-pointer"><History size={12} /> History</button>
-                                                    <button type="button" className="flex items-center gap-1 px-2.5 py-1 bg-slate-800/50 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-[10px] uppercase font-bold transition-colors cursor-pointer"><Pencil size={12} /> Edit</button>
-                                                </div>
-                                            </h3>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 border-b border-slate-800/60 pb-4">
                                                 <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Destination</label>
-                                                    <CustomSelect value={selectedLeadForEdit.destination} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, destination: v })} className={selectCls} placeholder="Select Destination" options={destinationOptions} />
+                                                    <h3 className={`${sectionHeadCls} border-none mb-0 pb-0 flex items-center`}>
+                                                        <span className="font-bold">OPERATIONS ACTIVITY</span>
+                                                    </h3>
+                                                </div>
+                                                 
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Priority</label>
+                                                    <CustomSelect value={selectedLeadForEdit.priority} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, priority: v })} className={selectCls} placeholder="" options={['High', 'Medium', 'Low']} />
+                                                </div>
+                                                
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Destinations</label>
+                                                    <CustomSelect value={selectedLeadForEdit.destination} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, destination: v })} className={selectCls} placeholder="" options={destinationOptions} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">Work Type</label>
-                                                    <CustomSelect value={selectedLeadForEdit.workType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, workType: v })} className={selectCls} placeholder="Vendor Assistance" options={['FIT', 'Vendor Assistance', 'Group Departure']} />
+                                                    <CustomSelect value={selectedLeadForEdit.workType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, workType: v })} className={selectCls} placeholder="" options={['FIT', 'Vendor Assistance', 'Group Departure']} />
                                                 </div>
+                                                <div className="hidden md:block"></div> {/* Spacer for visual alignment matching screenshot */}
+                                                
+                                                <div className="hidden md:block"></div> {/* Spacer for visual alignment */}
+                                                <div className="hidden md:block"></div> {/* Spacer for visual alignment */}
                                                 <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Priority</label>
-                                                    <CustomSelect value={selectedLeadForEdit.priority} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, priority: v })} className={selectCls} placeholder="Select Priority" options={['High', 'Medium', 'Normal', 'Low']} />
+                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Destination Type</label>
+                                                    <CustomSelect value={selectedLeadForEdit.tourType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, tourType: v })} className={selectCls} placeholder="" options={['Domestic', 'International']} />
                                                 </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">Activity Type</label>
-                                                    <CustomSelect value={selectedLeadForEdit.activityType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, activityType: v })} className={selectCls} placeholder="Select Activity" options={['Call Client', 'Vendor Sync', 'Itinerary Draft', 'Rate Verification']} />
+                                                    <CustomSelect value={selectedLeadForEdit.activityType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, activityType: v })} className={selectCls} placeholder="" options={['Call Client', 'Vendor Sync', 'Itinerary Draft', 'Rate Verification']} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">Activity Outcome</label>
-                                                    <CustomSelect value={selectedLeadForEdit.activityOutcome} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, activityOutcome: v })} className={selectCls} placeholder="Select Outcome" options={[{ value: 'Connected', label: 'Connected / Answered' }, 'No Response', { value: 'Rates Shared', label: 'Rates Shared OK' }, 'Revisions Pending']} />
+                                                    <CustomSelect value={selectedLeadForEdit.activityOutcome} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, activityOutcome: v })} className={selectCls} placeholder="" options={[{ value: 'Connected', label: 'Connected / Answered' }, 'No Response', { value: 'Rates Shared', label: 'Rates Shared OK' }, 'Revisions Pending']} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">Status</label>
-                                                    <CustomSelect value={selectedLeadForEdit.status} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, status: v })} className={selectCls} placeholder="Select Status" options={['New Requests', 'Follow-Up', 'Shared to Sales', 'Confirmed Bookings', 'Upcoming Departure']} />
+                                                    <CustomSelect value={selectedLeadForEdit.status} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, status: v })} className={selectCls} placeholder="" options={['New Requests', 'Follow-Up', 'Shared to Sales', 'Confirmed Bookings', 'Upcoming Departure']} />
                                                 </div>
                                                 <div className="sm:col-span-3">
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">Notes</label>
@@ -2101,7 +2146,7 @@ export default function OperationsDashboard() {
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">Follow-Up Type</label>
-                                                    <CustomSelect value={selectedLeadForEdit.followUpType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, followUpType: v })} className={selectCls} placeholder="Select Type" options={['Call', 'WhatsApp', 'Email']} />
+                                                    <CustomSelect value={selectedLeadForEdit.followUpType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, followUpType: v })} className={selectCls} placeholder="" options={['Call', 'WhatsApp', 'Email']} />
                                                 </div>
                                             </div>
                                         </div>
@@ -2127,11 +2172,11 @@ export default function OperationsDashboard() {
                                                     </div>
                                                     <div>
                                                         <label className="block text-xs font-bold text-slate-300 mb-1">Service</label>
-                                                        <CustomSelect value={selectedLeadForEdit.service || ''} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, service: v })} className={selectCls} placeholder="Select Service" options={['Hotel', 'Transport', 'Activities', 'Full Package']} />
+                                                        <CustomSelect value={selectedLeadForEdit.service || ''} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, service: v })} className={selectCls} placeholder="" options={['Hotel', 'Transport', 'Activities', 'Full Package']} />
                                                     </div>
                                                     <div>
                                                         <label className="block text-xs font-bold text-slate-300 mb-1">Contact Method</label>
-                                                        <CustomSelect value={selectedLeadForEdit.contactMethod} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, contactMethod: v })} className={selectCls} placeholder="Select Method" options={['Email Platform', 'WhatsApp API', 'B2B Portal Integration', 'Verbal Call']} />
+                                                        <CustomSelect value={selectedLeadForEdit.contactMethod} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, contactMethod: v })} className={selectCls} placeholder="" options={['Email Platform', 'WhatsApp API', 'B2B Portal Integration', 'Verbal Call']} />
                                                     </div>
                                                     <div>
                                                         <label className="block text-xs font-bold text-slate-300 mb-1">Contact Date & Time</label>
@@ -2139,11 +2184,11 @@ export default function OperationsDashboard() {
                                                     </div>
                                                     <div>
                                                         <label className="block text-xs font-bold text-slate-300 mb-1">Vendor Response Status</label>
-                                                        <CustomSelect value={selectedLeadForEdit.vendorResponseStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorResponseStatus: v })} className={selectCls} placeholder="Select Status" options={['Awaiting Rates', 'Rates Received', 'Negotiation In Progress']} />
+                                                        <CustomSelect value={selectedLeadForEdit.vendorResponseStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorResponseStatus: v })} className={selectCls} placeholder="" options={['Awaiting Rates', 'Rates Received', 'Negotiation In Progress']} />
                                                     </div>
                                                     <div>
                                                         <label className="block text-xs font-bold text-slate-300 mb-1">Next Action Required</label>
-                                                        <CustomSelect value={selectedLeadForEdit.nextActionRequired} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, nextActionRequired: v })} className={selectCls} placeholder="Select" options={['Yes', 'No']} />
+                                                        <CustomSelect value={selectedLeadForEdit.nextActionRequired} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, nextActionRequired: v })} className={selectCls} placeholder="" options={['Yes', 'No']} />
                                                     </div>
                                                     <div>
                                                         <label className="block text-xs font-bold text-slate-300 mb-1">Next Action Date</label>
@@ -2168,15 +2213,15 @@ export default function OperationsDashboard() {
                                                     <button type="button" onClick={() => setActiveModal({ type: 'view', section: 'Itinerary Preparation' })} className="flex items-center gap-1 px-2.5 py-1 bg-slate-800/50 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-[10px] uppercase font-bold transition-colors cursor-pointer"><Eye size={12} /> View</button>
                                                     <button type="button" className="flex items-center gap-1 px-2.5 py-1 bg-slate-800/50 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-[10px] uppercase font-bold transition-colors cursor-pointer"><Pencil size={12} /> Edit</button>
                                                 </div>
-                                            </h3>
+                                            </h3>   
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">Preparation Method</label>
-                                                    <CustomSelect value={selectedLeadForEdit.preparationMethod} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, preparationMethod: v })} className={selectCls} placeholder="Select Method" options={['Portal Designer v2', 'Manual Template Excel Sheet', 'External API Integrator Suite']} />
+                                                    <CustomSelect value={selectedLeadForEdit.preparationMethod} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, preparationMethod: v })} className={selectCls} placeholder="" options={['Portal Designer v2', 'Manual Template Excel Sheet', 'External API Integrator Suite']} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">Itinerary Version</label>
-                                                    <CustomSelect value={selectedLeadForEdit.itineraryVersion} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, itineraryVersion: v })} className={selectCls} placeholder="Select Version" options={['1.0.0', '1.1.0', '2.0.0']} />
+                                                    <CustomSelect value={selectedLeadForEdit.itineraryVersion} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, itineraryVersion: v })} className={selectCls} placeholder="" options={['1.0.0', '1.1.0', '2.0.0']} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">Working Notes</label>
@@ -2201,7 +2246,7 @@ export default function OperationsDashboard() {
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">QC Status</label>
-                                                    <CustomSelect value={selectedLeadForEdit.qcStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, qcStatus: v })} className={selectCls} placeholder="Approved" options={['Pending Review', 'Approved', 'Correction Needed']} />
+                                                    <CustomSelect value={selectedLeadForEdit.qcStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, qcStatus: v })} className={selectCls} placeholder="" options={['Pending Review', 'Approved', 'Correction Needed']} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">QC Remarks</label>
@@ -2228,7 +2273,7 @@ export default function OperationsDashboard() {
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">Shared Via</label>
-                                                    <CustomSelect value={selectedLeadForEdit.sharedVia} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, sharedVia: v })} className={selectCls} placeholder="Select Channel" options={['Slack Channel Matrix', 'Internal CRM Note Connection']} />
+                                                    <CustomSelect value={selectedLeadForEdit.sharedVia} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, sharedVia: v })} className={selectCls} placeholder="" options={['Slack Channel Matrix', 'Internal CRM Note Connection']} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-medium text-slate-500 mb-1">Sales Acknowledged</label>
