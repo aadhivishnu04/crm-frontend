@@ -7,6 +7,7 @@ import {
     Briefcase, FileText, Activity, ShieldCheck, Share2, Play, Square, Plus,
     ChevronLeft, ChevronRight, ArrowUp
 } from 'lucide-react';
+import { getCurrentUser } from '../utils/auth';
 
 // ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
 const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
@@ -221,13 +222,17 @@ function useLeads(triggerNotification) {
 
     useEffect(() => { fetchLeads(); }, []);
 
-    const acceptJob = async (id, targetStatus = 'Follow-Up') => {
-        setLeads(prev => prev.map(l => l.id === id ? { ...l, status: targetStatus } : l));
+    const acceptJob = async (id, targetStatus = 'Follow-Up', opsName = 'Admin') => {
+        setLeads(prev => prev.map(l => l.id === id ? { ...l, status: targetStatus, operationExecutive: opsName, opsPreparedBy: opsName } : l));
         try {
             const res = await fetch(`${API_BASE_URL}/leads/${id}/assign`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: targetStatus }),
+                body: JSON.stringify({ 
+                    status: targetStatus, 
+                    operationExecutive: opsName, 
+                    opsPreparedBy: opsName 
+                }),
             });
             if (!res.ok) throw new Error('Network status commit failed');
             triggerNotification('success', `Job token assignment updated to ${targetStatus}.`);
@@ -298,6 +303,11 @@ export default function OperationsDashboard() {
     const [notification, setNotification] = useState({ show: false, type: '', message: '' });
     const triggerNotification = (type, message) => setNotification({ show: true, type, message });
 
+    // --- USER IDENTIFICATION ---
+    const user = getCurrentUser();
+    const loggedInUserName = user?.name || 'Admin';
+    const isAdmin = user?.role?.toLowerCase() === 'admin';
+
     useEffect(() => {
         if (notification.show) {
             const t = setTimeout(() => setNotification(prev => ({ ...prev, show: false })), 3000);
@@ -353,11 +363,15 @@ export default function OperationsDashboard() {
         }
     }
 
-    const countNew = leads.filter(l => l.status === 'New Requests' || l.status === 'Move To Operation').length;
-    const countFollow = leads.filter(l => l.status === 'Follow-Up' || l.status === 'Ops Assigned').length;
-    const countShared = leads.filter(l => l.status === 'Shared to Sales').length;
-    const countBooked = leads.filter(l => l.status === 'Confirmed Bookings').length;
-    const countDepart = leads.filter(l => l.status === 'Upcoming Departure').length;
+    // --- TAB COUNTS WITH ISOLATION ---
+    const isAuthorizedForOps = (l) => isAdmin || l.operationExecutive === loggedInUserName || l.opsPreparedBy === loggedInUserName;
+
+    const countNew = leads.filter(l => l.status === 'New Requests' || l.status === 'Move To Operation').length; // Common Pool
+    const countFollow = leads.filter(l => (l.status === 'Follow-Up' || l.status === 'Ops Assigned') && isAuthorizedForOps(l)).length;
+    const countShared = leads.filter(l => l.status === 'Shared to Sales' && isAuthorizedForOps(l)).length;
+    const countBooked = leads.filter(l => l.status === 'Confirmed Bookings' && isAuthorizedForOps(l)).length;
+    const countDepart = leads.filter(l => l.status === 'Upcoming Departure' && isAuthorizedForOps(l)).length;
+
 
     const handleTabChange = (tab) => { setActiveTab(tab); setCurrentPage(1); };
     const handleSearch = (val) => { setSearchQuery(val); setCurrentPage(1); };
@@ -721,14 +735,24 @@ export default function OperationsDashboard() {
         }
     };
 
+    // --- MAIN FILTER WITH ISOLATION ---
     const filtered = leads.filter(item => {
         const q = searchQuery.toLowerCase();
         const matchSearch = !q || `LMN${item.id}`.toLowerCase().includes(q) || (item.customerName || '').toLowerCase().includes(q) || (item.destination || '').toLowerCase().includes(q);
         let sNorm = item.status;
         if (sNorm === 'Move To Operation') sNorm = 'New Requests';
         if (sNorm === 'Ops Assigned') sNorm = 'Follow-Up';
+        
         const matchTab = sNorm === activeTab;
-        return matchSearch && matchTab && (selectedPlatform === 'All' ? true : item.platform === selectedPlatform);
+        const matchPlatform = selectedPlatform === 'All' ? true : item.platform === selectedPlatform;
+
+        // INDIVIDUAL ISOLATION FOR OPS
+        let isAuthorized = true;
+        if (activeTab !== 'New Requests' && !isAdmin) {
+            isAuthorized = (item.operationExecutive === loggedInUserName) || (item.opsPreparedBy === loggedInUserName);
+        }
+
+        return matchSearch && matchTab && matchPlatform && isAuthorized;
     });
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / entriesPerPage));
@@ -1502,7 +1526,7 @@ export default function OperationsDashboard() {
                                                                     <CustomSelect value={req.service} onChange={(v) => handleArrayChange('paymentRequests', index, 'service', v)} className={selectCls} placeholder="" options={['Transport', 'Hotel', 'Local Vehicle Operator']} />
                                                                 </div>
                                                                 <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Provider Name <span className="text-[10px] text-red-400 italic ml-1">(autofetch)</span></label>
+                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Provider Name </label>
                                                                     <input type="text" value={req.providerName} readOnly className={readonlyCls} placeholder="" />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={req.paymentDueDate} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
@@ -1964,7 +1988,7 @@ export default function OperationsDashboard() {
                                                                     <CustomSelect value={req.service} onChange={(v) => handleArrayChange('paymentRequests', index, 'service', v)} className={selectCls} placeholder="" options={['Transport', 'Hotel', 'Local Vehicle Operator']} />
                                                                 </div>
                                                                 <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Provider Name <span className="text-[10px] text-red-400 italic ml-1">(autofetch)</span></label>
+                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Provider Name </label>
                                                                     <input type="text" value={req.providerName} readOnly className={readonlyCls} placeholder="" />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={req.paymentDueDate} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
@@ -2453,7 +2477,7 @@ export default function OperationsDashboard() {
                         <p className="text-slate-400 mb-5 text-xs leading-relaxed">Acknowledge lead <strong>LMN{leadToAcknowledge.id}</strong>? Transitions to Follow-Up workspace.</p>
                         <div className="flex items-center justify-center gap-2">
                             <button type="button" onClick={() => setLeadToAcknowledge(null)} className="flex-1 py-2 rounded bg-slate-900 text-slate-300 border border-slate-700 font-bold text-xs uppercase tracking-wider cursor-pointer">Abort</button>
-                            <button type="button" onClick={async () => { await acceptJob(leadToAcknowledge.id, 'Follow-Up'); setLeadToAcknowledge(null); }} className="flex-1 py-2 rounded bg-cyan-500 text-slate-900 font-black text-xs uppercase tracking-wider cursor-pointer">Confirm</button>
+                            <button type="button" onClick={async () => { await acceptJob(leadToAcknowledge.id, 'Follow-Up', loggedInUserName); setLeadToAcknowledge(null); }} className="flex-1 py-2 rounded bg-cyan-500 text-slate-900 font-black text-xs uppercase tracking-wider cursor-pointer">Confirm</button>
                         </div>
                     </div>
                 </div>

@@ -6,6 +6,7 @@ import {
     Plus, UserPlus, Phone, Mail, Globe, MessageSquare, CreditCard,
     Flame, Sun, Snowflake, Save, FileText
 } from 'lucide-react';
+import { getCurrentUser } from '../utils/auth';
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
 const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
@@ -61,7 +62,13 @@ const formatDateTime = (dateStr) => {
 
 const SalesDashboard = () => {
     // --- USER IDENTIFICATION ---
-    const loggedInUserName = localStorage.getItem('userName') || 'Admin';
+    const user = getCurrentUser();
+    
+    // Fix: Look for name, then fallback to username, then email, before finally defaulting to Admin
+    const loggedInUserName = user?.name || user?.username || user?.email || 'Admin';
+    
+    // Fix: Make sure Admin rights are strictly applied
+    const isAdmin = user?.role?.toLowerCase() === 'admin' || loggedInUserName.toLowerCase() === 'admin';
 
     // Shared Input / UI Classes
     const inputCls = "w-full px-3 py-2 sm:py-1.5 bg-slate-900 border border-slate-700 rounded-lg sm:rounded text-white text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 outline-none transition-all";
@@ -367,12 +374,28 @@ const SalesDashboard = () => {
         
         const newEntry = { timestamp: formatDateTime(new Date().toISOString()), interaction: currentInteraction, action: currentAction, notes: currentNotes };
     
-        const updatedLogs = [...(editFormData.noResponseLogs || []), newEntry];
-        const updatedCount = updatedLogs.length; 
-        const updatedHistory = appendHistory(editFormData.history, `${isOutcome ? 'Outcome Update' : 'Follow-up'}: ${currentInteraction || 'Logged'}`, currentNotes || currentAction);
+        let updatedLogs = [...(editFormData.noResponseLogs || []), newEntry];
+        let updatedCount = updatedLogs.length; 
+        let updatedHistory = appendHistory(editFormData.history, `${isOutcome ? 'Outcome Update' : 'Follow-up'}: ${currentInteraction || 'Logged'}`, currentNotes || currentAction);
 
         let newStatus = selectedLead?.status || editFormData.leadStatus;
+        
+        // Trigger Recycle Bin at 10 logs
         if (updatedCount >= 10) newStatus = 'Recycle Bin';
+
+        // --- NEW RECYCLE BIN RESET CONDITION ---
+        if (newStatus === 'Recycle Bin' && updatedCount > 0) {
+            updatedHistory = appendHistory(updatedHistory, 'Auto-Moved to Recycle Bin', `Reached max follow-ups. Counter reset to 0. Archiving past attempts.`);
+            [...updatedLogs].reverse().forEach(log => {
+                updatedHistory = appendHistory(
+                    updatedHistory, 
+                    `Archived Cycle: ${log.interaction || 'Attempt'}`, 
+                    `Action: ${log.action || 'N/A'} | Notes: ${log.notes || 'None'} | Time: ${log.timestamp}`
+                );
+            });
+            updatedLogs = [];
+            updatedCount = 0;
+        }
 
         setEditFormData(prev => ({
             ...prev,
@@ -460,16 +483,30 @@ const SalesDashboard = () => {
 
     useEffect(() => { fetchJobs(); return () => clearInterval(timerRef.current); }, [activeTab]);
 
+    // Fix: Broaden staff directory fetch to check multiple fields for accurate dropdown population
     useEffect(() => {
         const fetchStaffDirectory = async () => {
             try {
                 const response = await fetch(`${API_BASE_URL}/employees`);
                 if (response.ok) {
                     const data = await response.json();
-                    setOperationsStaff(data.filter(emp => emp.designation?.toLowerCase().includes('operation')).map(emp => emp.name));
-                    setSalesStaff(data.filter(emp => emp.designation?.toLowerCase().includes('sales')).map(emp => emp.name));
+                    
+                    const sales = data.filter(emp => {
+                        const searchString = `${emp.designation || ''} ${emp.role || ''} ${emp.department || ''}`.toLowerCase();
+                        return searchString.includes('sales');
+                    }).map(emp => emp.name || emp.username);
+
+                    const ops = data.filter(emp => {
+                        const searchString = `${emp.designation || ''} ${emp.role || ''} ${emp.department || ''}`.toLowerCase();
+                        return searchString.includes('operation') || searchString.includes('ops');
+                    }).map(emp => emp.name || emp.username);
+                    
+                    setSalesStaff(sales);
+                    setOperationsStaff(ops);
                 }
-            } catch (error) { console.error('Failed to fetch dynamic directory components:', error); }
+            } catch (error) { 
+                console.error('Failed to fetch dynamic directory components:', error); 
+            }
         };
         fetchStaffDirectory();
     }, []);
@@ -622,18 +659,55 @@ const SalesDashboard = () => {
         setSelectedLead(lead); setReassignOption('pool'); setReassignTargetEmployee(''); setReassignReason(''); setIsReassignModalOpen(true);
     };
 
+    // Fix: Updated handleReassignSubmit with Recycle Bin recovery handling and correct PUT endpoint
     const handleReassignSubmit = async () => {
         if (reassignOption === 'employee' && !reassignTargetEmployee) { alert('Please select a sales employee to assign this job.'); return; }
         try {
-            const actionText = reassignOption === 'pool' ? 'Moved back to Jobs Pool' : `Reassigned to ${reassignTargetEmployee}`;
-            const noteText = reassignOption === 'pool' ? 'Released from sales assignment.' : `Reason: ${reassignReason || 'No reason provided.'}`;
-            const updatedHistory = appendHistory(selectedLead.history, actionText, noteText);
-            const payload = reassignOption === 'pool'
-                ? { assignedTo: '', status: 'Jobs', history: JSON.stringify(updatedHistory) }
-                : { assignedTo: reassignTargetEmployee, status: 'Sales Assigned', reassignmentReason: reassignReason, history: JSON.stringify(updatedHistory) };
+            const isRecycled = selectedLead.status === 'Recycle Bin' || selectedLead.followupCount >= 10 || selectedLead.followUpCount >= 10;
+            
+            const actionText = reassignOption === 'pool' 
+                ? (isRecycled ? 'Recovered to Jobs Pool' : 'Moved back to Jobs Pool') 
+                : (isRecycled ? `Recovered & Assigned to ${reassignTargetEmployee}` : `Reassigned to ${reassignTargetEmployee}`);
+                
+            const noteText = reassignOption === 'pool' 
+                ? 'Released from sales assignment.' 
+                : `Reason: ${reassignReason || 'No reason provided.'}`;
+                
+            let updatedHistory = appendHistory(selectedLead.history, actionText, noteText);
+            
+            let payload = reassignOption === 'pool'
+                ? { assignedTo: '', status: 'Jobs' }
+                : { assignedTo: reassignTargetEmployee, status: 'Sales Assigned', reassignmentReason: reassignReason };
 
-            const response = await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            if (isRecycled) {
+                let parsedLogs = [];
+                try {
+                    if (typeof selectedLead.noResponseLogs === 'string') {
+                        parsedLogs = JSON.parse(selectedLead.noResponseLogs);
+                    } else if (Array.isArray(selectedLead.noResponseLogs)) {
+                        parsedLogs = selectedLead.noResponseLogs;
+                    }
+                } catch (e) { parsedLogs = []; }
+
+                [...parsedLogs].reverse().forEach(log => {
+                    updatedHistory = appendHistory(
+                        updatedHistory, 
+                        `Archived Cycle: ${log.interaction || 'Attempt'}`, 
+                        `Action: ${log.action || 'N/A'} | Notes: ${log.notes || 'None'} | Time: ${log.timestamp}`
+                    );
+                });
+
+                payload.followupCount = 0;
+                payload.followUpCount = 0;
+                payload.noResponseLogs = JSON.stringify([]);
+            }
+
+            payload.history = JSON.stringify(updatedHistory);
+
+            const response = await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
+                method: 'PUT', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(payload)
             });
 
             if (response.ok) { 
@@ -789,9 +863,25 @@ const SalesDashboard = () => {
             }
 
             let finalStatus = editFormData.leadStatus;
+            
+            // Trigger Recycle Bin at 10 logs
             if (logsCount >= 10) finalStatus = 'Recycle Bin';
 
-            const updatedHistory = appendHistory( currentHistory, `Lead Profile Updated`, `Status: ${editFormData.leadStatusField || finalStatus} | Stage: ${editFormData.leadResponse || 'N/A'}` );
+            let updatedHistory = appendHistory( currentHistory, `Lead Profile Updated`, `Status: ${editFormData.leadStatusField || finalStatus} | Stage: ${editFormData.leadResponse || 'N/A'}` );
+
+            // --- NEW RECYCLE BIN RESET CONDITION ---
+            if (finalStatus === 'Recycle Bin' && logsCount > 0) {
+                updatedHistory = appendHistory(updatedHistory, 'Auto-Moved to Recycle Bin', `Archived ${logsCount} attempts. Follow-up counter reset to 0.`);
+                [...updatedLogs].reverse().forEach(log => {
+                    updatedHistory = appendHistory(
+                        updatedHistory, 
+                        `Archived Cycle: ${log.interaction || 'Attempt'}`, 
+                        `Action: ${log.action || 'N/A'} | Notes: ${log.notes || 'None'} | Time: ${log.timestamp}`
+                    );
+                });
+                updatedLogs = [];
+                logsCount = 0;
+            }
 
             // Strict Payload Mapping -> Forcing frontend keys into recognized backend keys
             const payload = {
@@ -874,36 +964,64 @@ const SalesDashboard = () => {
 
     const handleOpenAssignModal = (lead) => { setSelectedLead(lead); setAssignTo(''); setIsAssignModalOpen(true); };
 
+    // Fix: Updated handleAssignSubmit with Recycle Bin recovery handling and correct PUT endpoint
     const handleAssignSubmit = async () => {
         if (!assignTo) { alert('Please select a team or choose self assignment.'); return; }
         try {
             const finalAssignee = assignTo === 'Self Assigned' ? loggedInUserName : assignTo;
-            const updatedHistory = appendHistory(selectedLead.history, `Assigned to ${finalAssignee}`, 'Lead claimed/assigned from pool.');
+            let updatedHistory = selectedLead.history || [];
+            
+            // Check if the lead is coming out of the Recycle Bin
+            const isRecycled = selectedLead.status === 'Recycle Bin' || selectedLead.followupCount >= 10 || selectedLead.followUpCount >= 10;
+            
+            let payload = { 
+                assignedTo: finalAssignee, 
+                status: 'Sales Assigned' // This ensures it maps to "My Jobs"
+            };
 
-            const response = await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ assignedTo: finalAssignee, status: 'Sales Assigned', history: JSON.stringify(updatedHistory) })
+            if (isRecycled) {
+                updatedHistory = appendHistory(updatedHistory, `Recovered & Assigned to ${finalAssignee}`, 'Restored from Recycle Bin. Follow-up counter reset to 0.');
+                
+                let parsedLogs = [];
+                try {
+                    if (typeof selectedLead.noResponseLogs === 'string') {
+                        parsedLogs = JSON.parse(selectedLead.noResponseLogs);
+                    } else if (Array.isArray(selectedLead.noResponseLogs)) {
+                        parsedLogs = selectedLead.noResponseLogs;
+                    }
+                } catch (e) { parsedLogs = []; }
+
+                [...parsedLogs].reverse().forEach(log => {
+                    updatedHistory = appendHistory(
+                        updatedHistory, 
+                        `Archived Cycle: ${log.interaction || 'Attempt'}`, 
+                        `Action: ${log.action || 'N/A'} | Notes: ${log.notes || 'None'} | Time: ${log.timestamp}`
+                    );
+                });
+
+                // Reset the counters
+                payload.followupCount = 0;
+                payload.followUpCount = 0;
+                payload.noResponseLogs = JSON.stringify([]);
+            } else {
+                updatedHistory = appendHistory(updatedHistory, `Assigned to ${finalAssignee}`, 'Lead claimed/assigned from pool.');
+            }
+
+            payload.history = JSON.stringify(updatedHistory);
+
+            // CRITICAL FIX: Use the main update endpoint instead of /assign
+            const response = await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
+                method: 'PUT', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
             });
+            
             if (response.ok) { 
                 await fetchJobs(true);
                 setIsAssignModalOpen(false); 
             }
             else alert('Failed to assign.');
         } catch (error) { console.error('Assign error:', error); }
-    };
-
-    const handleMoveToOps = async (leadId) => {
-        if (!window.confirm('Are you sure you want to send this to Operations?')) return;
-        try {
-            const leadToMove = jobs.find(j => j.id === leadId);
-            const updatedHistory = appendHistory(leadToMove?.history, 'Moved to Operations', 'Sales process completed, handed over to operations team.');
-
-            const response = await fetch(`${API_BASE_URL}/leads/${leadId}/assign`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'Move To Operation', history: JSON.stringify(updatedHistory) })
-            });
-            if (response.ok) await fetchJobs(true); else alert('Failed to move to operations.');
-        } catch (error) { console.error('Move to ops error:', error); }
     };
 
     const categories = [
@@ -935,11 +1053,16 @@ const SalesDashboard = () => {
 
         if (activeTab === 'Recycle') matchTab = isRecycleBin;
         else if (isRecycleBin) matchTab = false; 
-        else if (activeTab === 'My Jobs') {
-            const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required']; 
-            matchTab = validActiveStatuses.includes(itemStatus) && (item.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
-        } else if (activeTab === 'Customisation Ready') { matchTab = itemStatus === 'Shared to Sales'; } 
-        else if (activeTab === 'My Confirmation') { matchTab = item.customerResponse === 'Booking Confirmed' && (item.assignedTo === loggedInUserName || loggedInUserName === 'Admin'); } 
+   // INDIVIDUAL ISOLATION: "My Jobs"
+else if (activeTab === 'My Jobs') {
+    const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required']; 
+    matchTab = validActiveStatuses.includes(itemStatus) && (item.assignedTo === loggedInUserName || isAdmin);
+} 
+else if (activeTab === 'Customisation Ready') { matchTab = itemStatus === 'Shared to Sales'; } 
+// INDIVIDUAL ISOLATION: "My Confirmation"
+else if (activeTab === 'My Confirmation') { 
+    matchTab = item.customerResponse === 'Booking Confirmed' && (item.assignedTo === loggedInUserName || isAdmin); 
+}
         else if (activeTab === 'Jobs') { matchTab = itemStatus === 'Jobs'; }
 
         return matchSearch && matchPlatform && matchTab;
@@ -988,9 +1111,9 @@ const SalesDashboard = () => {
                         const isRecycleBin = (d.followupCount >= 10 || d.followUpCount >= 10 || itemStatus === 'Recycle Bin');
                         if (cat.id === 'Recycle') return isRecycleBin;
                         if (isRecycleBin) return false;
-                        if (cat.id === 'My Jobs') return ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required'].includes(itemStatus) && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
-                        if (cat.id === 'Customisation Ready') return itemStatus === 'Shared to Sales';
-                        if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
+                       if (cat.id === 'My Jobs') return ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required'].includes(itemStatus) && (d.assignedTo === loggedInUserName || isAdmin);
+if (cat.id === 'Customisation Ready') return itemStatus === 'Shared to Sales';
+if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && (d.assignedTo === loggedInUserName || isAdmin);
                         return itemStatus === cat.id;
                     }).length;
                     
@@ -1335,17 +1458,12 @@ const SalesDashboard = () => {
                                                     <RefreshCw size={18} />
                                                 </button>
                                             )}
-                                            {(row.status === 'Sales Assigned' || activeTab === 'My Jobs' || activeTab === 'My Confirmation') ? (
-                                                <button type="button" onClick={() => handleMoveToOps(row.id)}
-                                                    className="flex items-center gap-1.5 px-3 py-2 md:py-1.5 text-[11px] sm:text-xs font-bold md:font-medium text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/10 rounded-lg md:rounded-md transition-colors whitespace-nowrap" title="Send to Operations">
-                                                    <Send size={14} className="hidden md:block"/> Send to Ops
-                                                </button>
-                                            ) : (activeTab === 'Jobs' || activeTab === 'Recycle' || activeTab === 'Customisation Ready') ? (
+                                            {(activeTab === 'Jobs' || activeTab === 'Recycle' || activeTab === 'Customisation Ready') && (
                                                 <button type="button" onClick={() => handleOpenAssignModal(row)}
                                                     className="p-2 md:p-1.5 text-orange-400 md:text-slate-400 hover:text-orange-400 bg-orange-500/10 md:bg-transparent hover:bg-orange-900/30 rounded-lg transition-colors" title="Assign">
                                                     <CheckSquare size={18} />
                                                 </button>
-                                            ) : null}
+                                            )}
                                         </div>
                                     </td>
                                 </tr>
