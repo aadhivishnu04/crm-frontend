@@ -1024,6 +1024,36 @@ const SalesDashboard = () => {
         } catch (error) { console.error('Assign error:', error); }
     };
 
+    // New Function: Move Lead directly to Operations
+    const handleMoveToOperation = async (lead) => {
+        if (!window.confirm(`Are you sure you want to move Lead LMN${lead.id} to Operations?`)) return;
+        
+        try {
+            // Log the action in the lead's history
+            let updatedHistory = appendHistory(lead.history || [], 'Moved to Operations', 'Lead transferred to the operations team for processing.');
+            
+            const payload = {
+                status: 'Move To Operation',
+                history: JSON.stringify(updatedHistory)
+            };
+
+            const response = await fetch(`${API_BASE_URL}/leads/${lead.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                await fetchJobs(true); // Silently refresh the list so it disappears from My Jobs
+            } else {
+                alert('Failed to move lead to operations.');
+            }
+        } catch (error) {
+            console.error('Error moving to operations:', error);
+            alert('Network error while moving lead.');
+        }
+    };
+
     const categories = [
         { id: 'Jobs', label: 'JOBS', icon: ShoppingCart },
         { id: 'My Jobs', label: 'MY JOBS', icon: Target },
@@ -1453,10 +1483,16 @@ if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirm
                                                 </button>
                                             )}
                                             {activeTab === 'My Jobs' && (
-                                                <button type="button" onClick={() => handleOpenReassignModal(row)}
-                                                    className="p-2 md:p-1.5 text-orange-400 md:text-slate-400 hover:text-orange-400 bg-orange-500/10 md:bg-transparent hover:bg-yellow-900/30 rounded-lg transition-colors" title="Reassign">
-                                                    <RefreshCw size={18} />
-                                                </button>
+                                                <>
+                                                    <button type="button" onClick={() => handleMoveToOperation(row)}
+                                                        className="p-2 md:p-1.5 text-emerald-400 md:text-slate-400 hover:text-emerald-400 bg-emerald-500/10 md:bg-transparent hover:bg-emerald-900/30 rounded-lg transition-colors" title="Move to Operations">
+                                                        <Send size={18} />
+                                                    </button>
+                                                    <button type="button" onClick={() => handleOpenReassignModal(row)}
+                                                        className="p-2 md:p-1.5 text-orange-400 md:text-slate-400 hover:text-orange-400 bg-orange-500/10 md:bg-transparent hover:bg-yellow-900/30 rounded-lg transition-colors" title="Reassign">
+                                                        <RefreshCw size={18} />
+                                                    </button>
+                                                </>
                                             )}
                                             {(activeTab === 'Jobs' || activeTab === 'Recycle' || activeTab === 'Customisation Ready') && (
                                                 <button type="button" onClick={() => handleOpenAssignModal(row)}
