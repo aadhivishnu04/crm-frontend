@@ -64,10 +64,10 @@ const SalesDashboard = () => {
     // --- USER IDENTIFICATION ---
     const user = getCurrentUser();
     
-    // Fix: Look for name, then fallback to username, then email, before finally defaulting to Admin
+    // Look for name, then fallback to username, then email, before finally defaulting to Admin
     const loggedInUserName = user?.name || user?.username || user?.email || 'Admin';
     
-    // Fix: Make sure Admin rights are strictly applied
+    // Make sure Admin rights are strictly applied
     const isAdmin = user?.role?.toLowerCase() === 'admin' || loggedInUserName.toLowerCase() === 'admin';
 
     // Shared Input / UI Classes
@@ -483,7 +483,6 @@ const SalesDashboard = () => {
 
     useEffect(() => { fetchJobs(); return () => clearInterval(timerRef.current); }, [activeTab]);
 
-    // Fix: Broaden staff directory fetch to check multiple fields for accurate dropdown population
     useEffect(() => {
         const fetchStaffDirectory = async () => {
             try {
@@ -659,7 +658,7 @@ const SalesDashboard = () => {
         setSelectedLead(lead); setReassignOption('pool'); setReassignTargetEmployee(''); setReassignReason(''); setIsReassignModalOpen(true);
     };
 
-    // Fix: Updated handleReassignSubmit with Recycle Bin recovery handling and correct PUT endpoint
+    // Fix: Updated handleReassignSubmit to use dual endpoint for proper routing
     const handleReassignSubmit = async () => {
         if (reassignOption === 'employee' && !reassignTargetEmployee) { alert('Please select a sales employee to assign this job.'); return; }
         try {
@@ -675,7 +674,7 @@ const SalesDashboard = () => {
                 
             let updatedHistory = appendHistory(selectedLead.history, actionText, noteText);
             
-            let payload = reassignOption === 'pool'
+            let assignPayload = reassignOption === 'pool'
                 ? { assignedTo: '', status: 'Jobs' }
                 : { assignedTo: reassignTargetEmployee, status: 'Sales Assigned', reassignmentReason: reassignReason };
 
@@ -697,24 +696,38 @@ const SalesDashboard = () => {
                     );
                 });
 
-                payload.followupCount = 0;
-                payload.followUpCount = 0;
-                payload.noResponseLogs = JSON.stringify([]);
+                assignPayload.history = JSON.stringify(updatedHistory);
+
+                // 1. Map Assigned User securely
+                await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
+                    method: 'PUT', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(assignPayload)
+                });
+
+                // 2. Clear Recycle Bin counters via main endpoint
+                await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
+                    method: 'PUT', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({
+                        followupCount: 0,
+                        followUpCount: 0,
+                        noResponseLogs: JSON.stringify([]),
+                        status: assignPayload.status
+                    })
+                });
+            } else {
+                assignPayload.history = JSON.stringify(updatedHistory);
+
+                await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
+                    method: 'PUT', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify(assignPayload)
+                });
             }
 
-            payload.history = JSON.stringify(updatedHistory);
-
-            const response = await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
-                method: 'PUT', 
-                headers: { 'Content-Type': 'application/json' }, 
-                body: JSON.stringify(payload)
-            });
-
-            if (response.ok) { 
-                await fetchJobs(true);
-                setIsReassignModalOpen(false); 
-            }
-            else alert('Failed to execute reassignment.');
+            await fetchJobs(true);
+            setIsReassignModalOpen(false); 
         } catch (error) { console.error('Reassign error:', error); }
     };
 
@@ -788,6 +801,11 @@ const SalesDashboard = () => {
             }];
         }
 
+        let derivedActionTaken = lead.actionTaken || '';
+        if (lead.status === 'Customisation Ready') {
+            derivedActionTaken = 'Customisation Required';
+        }
+
         setEditFormData({
             leadName: lead.customerName || lead.profileName || '', leadSource: lead.platform || 'Website', leadDate: formatDateTime(lead.createdAt || lead.dateAdded) || '',
             mobileNumber: lead.phone || lead.mobileNo || '', emailAddress: lead.email || '', assignedTo: lead.assignedTo || 'Unassigned',
@@ -796,7 +814,7 @@ const SalesDashboard = () => {
             travelDate: lead.travelDate || lead.travelDates || lead.dates || '', duration: lead.duration || '', travelBudget: lead.travelBudget || lead.budget || lead.amount || '',
             hotelCategory: lead.hotelCategory || '', noOfAdults: lead.noOfAdults || lead.travellerCount || lead.noOfPax || '2', noOfChildren: lead.noOfChildren || '0', offers: lead.offers || '', departureCity: lead.departureCity || '',
             
-            firstAttempt: lead.firstAttempt || '', leadResponse: lead.leadResponse || '', interactionType: lead.interactionType || '', actionTaken: lead.actionTaken || '',
+            firstAttempt: lead.firstAttempt || '', leadResponse: lead.leadResponse || '', interactionType: lead.interactionType || '', actionTaken: derivedActionTaken,
             leadStatusField: lead.leadStatusField || '', salesNotes: '', outcomeNotes: '', followupDate: lead.nextFollowUp || lead.followupDate || '',
             leadTemperature: lead.leadTemperature || '', objectionTracking: lead.objectionTracking || '', customerResponse: lead.customerResponse || '',
             bookingProbability: lead.bookingProbability || '0%', closureReason: lead.closureReason || '', nextFollowUpDatePostponed: lead.nextFollowUpDatePostponed || '',
@@ -866,6 +884,12 @@ const SalesDashboard = () => {
             
             // Trigger Recycle Bin at 10 logs
             if (logsCount >= 10) finalStatus = 'Recycle Bin';
+
+            if (editFormData.actionTaken === 'Customisation Required' && finalStatus !== 'Recycle Bin' && finalStatus !== 'Move To Operation') {
+                finalStatus = 'Customisation Ready';
+            } else if (finalStatus === 'Customisation Ready' && editFormData.actionTaken !== 'Customisation Required') {
+                finalStatus = 'Sales Assigned'; // Revert back to My Jobs if they change their mind
+            }
 
             let updatedHistory = appendHistory( currentHistory, `Lead Profile Updated`, `Status: ${editFormData.leadStatusField || finalStatus} | Stage: ${editFormData.leadResponse || 'N/A'}` );
 
@@ -964,7 +988,7 @@ const SalesDashboard = () => {
 
     const handleOpenAssignModal = (lead) => { setSelectedLead(lead); setAssignTo(''); setIsAssignModalOpen(true); };
 
-    // Fix: Updated handleAssignSubmit with Recycle Bin recovery handling and correct PUT endpoint
+    // Fix: Updated handleAssignSubmit to use dual endpoint for proper routing
     const handleAssignSubmit = async () => {
         if (!assignTo) { alert('Please select a team or choose self assignment.'); return; }
         try {
@@ -974,7 +998,7 @@ const SalesDashboard = () => {
             // Check if the lead is coming out of the Recycle Bin
             const isRecycled = selectedLead.status === 'Recycle Bin' || selectedLead.followupCount >= 10 || selectedLead.followUpCount >= 10;
             
-            let payload = { 
+            let assignPayload = { 
                 assignedTo: finalAssignee, 
                 status: 'Sales Assigned' // This ensures it maps to "My Jobs"
             };
@@ -999,32 +1023,44 @@ const SalesDashboard = () => {
                     );
                 });
 
-                // Reset the counters
-                payload.followupCount = 0;
-                payload.followUpCount = 0;
-                payload.noResponseLogs = JSON.stringify([]);
+                assignPayload.history = JSON.stringify(updatedHistory);
+
+                // 1. Map Assigned User securely
+                await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
+                    method: 'PUT', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(assignPayload)
+                });
+                
+                // 2. Clear Recycle Bin counters via main endpoint
+                await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
+                    method: 'PUT', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        followupCount: 0,
+                        followUpCount: 0,
+                        noResponseLogs: JSON.stringify([]),
+                        status: 'Sales Assigned'
+                    })
+                });
+
             } else {
                 updatedHistory = appendHistory(updatedHistory, `Assigned to ${finalAssignee}`, 'Lead claimed/assigned from pool.');
+                assignPayload.history = JSON.stringify(updatedHistory);
+
+                await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
+                    method: 'PUT', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(assignPayload)
+                });
             }
-
-            payload.history = JSON.stringify(updatedHistory);
-
-            // CRITICAL FIX: Use the main update endpoint instead of /assign
-            const response = await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
-                method: 'PUT', 
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
             
-            if (response.ok) { 
-                await fetchJobs(true);
-                setIsAssignModalOpen(false); 
-            }
-            else alert('Failed to assign.');
+            await fetchJobs(true);
+            setIsAssignModalOpen(false); 
         } catch (error) { console.error('Assign error:', error); }
     };
 
-    // New Function: Move Lead directly to Operations
+    // Move Lead directly to Operations
     const handleMoveToOperation = async (lead) => {
         if (!window.confirm(`Are you sure you want to move Lead LMN${lead.id} to Operations?`)) return;
         
@@ -1083,16 +1119,19 @@ const SalesDashboard = () => {
 
         if (activeTab === 'Recycle') matchTab = isRecycleBin;
         else if (isRecycleBin) matchTab = false; 
-   // INDIVIDUAL ISOLATION: "My Jobs"
-else if (activeTab === 'My Jobs') {
-    const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required']; 
-    matchTab = validActiveStatuses.includes(itemStatus) && (item.assignedTo === loggedInUserName || isAdmin);
-} 
-else if (activeTab === 'Customisation Ready') { matchTab = itemStatus === 'Shared to Sales'; } 
-// INDIVIDUAL ISOLATION: "My Confirmation"
-else if (activeTab === 'My Confirmation') { 
-    matchTab = item.customerResponse === 'Booking Confirmed' && (item.assignedTo === loggedInUserName || isAdmin); 
-}
+        
+        // FIX: Removed "|| isAdmin" so leads ONLY appear in the assigned individual's dashboard
+        else if (activeTab === 'My Jobs') {
+            const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required']; 
+            matchTab = validActiveStatuses.includes(itemStatus) && item.assignedTo === loggedInUserName;
+        } 
+        else if (activeTab === 'Customisation Ready') { 
+            matchTab = itemStatus === 'Shared to Sales' || itemStatus === 'Customisation Ready'; 
+        } 
+        // FIX: Removed "|| isAdmin" so confirmations ONLY appear in the assigned individual's dashboard
+        else if (activeTab === 'My Confirmation') { 
+            matchTab = item.customerResponse === 'Booking Confirmed' && item.assignedTo === loggedInUserName; 
+        }
         else if (activeTab === 'Jobs') { matchTab = itemStatus === 'Jobs'; }
 
         return matchSearch && matchPlatform && matchTab;
@@ -1141,9 +1180,13 @@ else if (activeTab === 'My Confirmation') {
                         const isRecycleBin = (d.followupCount >= 10 || d.followUpCount >= 10 || itemStatus === 'Recycle Bin');
                         if (cat.id === 'Recycle') return isRecycleBin;
                         if (isRecycleBin) return false;
-                       if (cat.id === 'My Jobs') return ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required'].includes(itemStatus) && (d.assignedTo === loggedInUserName || isAdmin);
-if (cat.id === 'Customisation Ready') return itemStatus === 'Shared to Sales';
-if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && (d.assignedTo === loggedInUserName || isAdmin);
+                        
+                        const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required'];
+                        
+                        // FIX: Filter strictly relies on the assigned user (removed isAdmin)
+                        if (cat.id === 'My Jobs') return validActiveStatuses.includes(itemStatus) && d.assignedTo === loggedInUserName;
+                        if (cat.id === 'Customisation Ready') return itemStatus === 'Shared to Sales' || itemStatus === 'Customisation Ready';
+                        if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && d.assignedTo === loggedInUserName;
                         return itemStatus === cat.id;
                     }).length;
                     
@@ -1174,9 +1217,13 @@ if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirm
                             const isRecycleBin = (d.followupCount >= 10 || d.followUpCount >= 10 || itemStatus === 'Recycle Bin');
                             if (cat.id === 'Recycle') return isRecycleBin;
                             if (isRecycleBin) return false;
-                            if (cat.id === 'My Jobs') return ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required'].includes(itemStatus) && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
-                            if (cat.id === 'Customisation Ready') return itemStatus === 'Shared to Sales';
-                            if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && (d.assignedTo === loggedInUserName || loggedInUserName === 'Admin');
+                            
+                            const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required'];
+                            
+                            // FIX: Filter strictly relies on the assigned user (removed isAdmin)
+                            if (cat.id === 'My Jobs') return validActiveStatuses.includes(itemStatus) && d.assignedTo === loggedInUserName;
+                            if (cat.id === 'Customisation Ready') return itemStatus === 'Shared to Sales' || itemStatus === 'Customisation Ready';
+                            if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && d.assignedTo === loggedInUserName;
                             return itemStatus === cat.id;
                         }).length;
 
@@ -1482,17 +1529,18 @@ if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirm
                                                     <Pencil size={18} />
                                                 </button>
                                             )}
+                                            {/* Fix: Render the Send button in both My Jobs and Customisation Ready */}
+                                            {(activeTab === 'My Jobs' || activeTab === 'Customisation Ready') && (
+                                                <button type="button" onClick={() => handleMoveToOperation(row)}
+                                                    className="p-2 md:p-1.5 text-emerald-400 md:text-slate-400 hover:text-emerald-400 bg-emerald-500/10 md:bg-transparent hover:bg-emerald-900/30 rounded-lg transition-colors" title="Move to Operations">
+                                                    <Send size={18} />
+                                                </button>
+                                            )}
                                             {activeTab === 'My Jobs' && (
-                                                <>
-                                                    <button type="button" onClick={() => handleMoveToOperation(row)}
-                                                        className="p-2 md:p-1.5 text-emerald-400 md:text-slate-400 hover:text-emerald-400 bg-emerald-500/10 md:bg-transparent hover:bg-emerald-900/30 rounded-lg transition-colors" title="Move to Operations">
-                                                        <Send size={18} />
-                                                    </button>
-                                                    <button type="button" onClick={() => handleOpenReassignModal(row)}
-                                                        className="p-2 md:p-1.5 text-orange-400 md:text-slate-400 hover:text-orange-400 bg-orange-500/10 md:bg-transparent hover:bg-yellow-900/30 rounded-lg transition-colors" title="Reassign">
-                                                        <RefreshCw size={18} />
-                                                    </button>
-                                                </>
+                                                <button type="button" onClick={() => handleOpenReassignModal(row)}
+                                                    className="p-2 md:p-1.5 text-orange-400 md:text-slate-400 hover:text-orange-400 bg-orange-500/10 md:bg-transparent hover:bg-yellow-900/30 rounded-lg transition-colors" title="Reassign">
+                                                    <RefreshCw size={18} />
+                                                </button>
                                             )}
                                             {(activeTab === 'Jobs' || activeTab === 'Recycle' || activeTab === 'Customisation Ready') && (
                                                 <button type="button" onClick={() => handleOpenAssignModal(row)}
