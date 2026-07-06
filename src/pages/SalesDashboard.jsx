@@ -658,7 +658,6 @@ const SalesDashboard = () => {
         setSelectedLead(lead); setReassignOption('pool'); setReassignTargetEmployee(''); setReassignReason(''); setIsReassignModalOpen(true);
     };
 
-    // Fix: Updated handleReassignSubmit to use dual endpoint for proper routing
     const handleReassignSubmit = async () => {
         if (reassignOption === 'employee' && !reassignTargetEmployee) { alert('Please select a sales employee to assign this job.'); return; }
         try {
@@ -988,7 +987,6 @@ const SalesDashboard = () => {
 
     const handleOpenAssignModal = (lead) => { setSelectedLead(lead); setAssignTo(''); setIsAssignModalOpen(true); };
 
-    // Fix: Updated handleAssignSubmit to use dual endpoint for proper routing
     const handleAssignSubmit = async () => {
         if (!assignTo) { alert('Please select a team or choose self assignment.'); return; }
         try {
@@ -1120,7 +1118,7 @@ const SalesDashboard = () => {
         if (activeTab === 'Recycle') matchTab = isRecycleBin;
         else if (isRecycleBin) matchTab = false; 
         
-        // FIX: Removed "|| isAdmin" so leads ONLY appear in the assigned individual's dashboard
+        // Filter strictly relies on the assigned user
         else if (activeTab === 'My Jobs') {
             const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required']; 
             matchTab = validActiveStatuses.includes(itemStatus) && item.assignedTo === loggedInUserName;
@@ -1128,7 +1126,7 @@ const SalesDashboard = () => {
         else if (activeTab === 'Customisation Ready') { 
             matchTab = itemStatus === 'Shared to Sales' || itemStatus === 'Customisation Ready'; 
         } 
-        // FIX: Removed "|| isAdmin" so confirmations ONLY appear in the assigned individual's dashboard
+        // Filter strictly relies on the assigned user
         else if (activeTab === 'My Confirmation') { 
             matchTab = item.customerResponse === 'Booking Confirmed' && item.assignedTo === loggedInUserName; 
         }
@@ -1183,7 +1181,6 @@ const SalesDashboard = () => {
                         
                         const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required'];
                         
-                        // FIX: Filter strictly relies on the assigned user (removed isAdmin)
                         if (cat.id === 'My Jobs') return validActiveStatuses.includes(itemStatus) && d.assignedTo === loggedInUserName;
                         if (cat.id === 'Customisation Ready') return itemStatus === 'Shared to Sales' || itemStatus === 'Customisation Ready';
                         if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && d.assignedTo === loggedInUserName;
@@ -1220,7 +1217,6 @@ const SalesDashboard = () => {
                             
                             const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required'];
                             
-                            // FIX: Filter strictly relies on the assigned user (removed isAdmin)
                             if (cat.id === 'My Jobs') return validActiveStatuses.includes(itemStatus) && d.assignedTo === loggedInUserName;
                             if (cat.id === 'Customisation Ready') return itemStatus === 'Shared to Sales' || itemStatus === 'Customisation Ready';
                             if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && d.assignedTo === loggedInUserName;
@@ -1529,8 +1525,8 @@ const SalesDashboard = () => {
                                                     <Pencil size={18} />
                                                 </button>
                                             )}
-                                            {/* Fix: Render the Send button in both My Jobs and Customisation Ready */}
-                                            {(activeTab === 'My Jobs' || activeTab === 'Customisation Ready') && (
+                                            {/* Fix: Render the Send button in My Jobs, Customisation Ready, and My Confirmation */}
+                                            {(activeTab === 'My Jobs' || activeTab === 'Customisation Ready' || activeTab === 'My Confirmation') && (
                                                 <button type="button" onClick={() => handleMoveToOperation(row)}
                                                     className="p-2 md:p-1.5 text-emerald-400 md:text-slate-400 hover:text-emerald-400 bg-emerald-500/10 md:bg-transparent hover:bg-emerald-900/30 rounded-lg transition-colors" title="Move to Operations">
                                                     <Send size={18} />
