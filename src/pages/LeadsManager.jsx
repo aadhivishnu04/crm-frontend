@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect ,useRef} from 'react';
 import { 
     Search, MapPin, Calendar, Users,
     Pencil, Trash2, Save, X, ChevronDown,
@@ -117,7 +117,7 @@ const Select = ({ options, value, onChange, placeholder, className = '' }) => {
                 }}
                 className={`w-full appearance-none bg-[#0f172a] border border-slate-600 rounded-lg px-3 py-2 sm:py-2.5 text-sm sm:text-base text-slate-200 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40 transition-all cursor-pointer ${className}`}
             >
-                {placeholder && <option value="" disabled>{placeholder}</option>}
+               {placeholder !== undefined && <option value="" disabled hidden>{placeholder}</option>}
                 {options.map(o => <option key={o} value={o}>{o}</option>)}
                 <option value="__MANUAL__" className="font-bold text-emerald-400 bg-slate-800">+ Add Manual / Other</option>
             </select>
@@ -147,8 +147,8 @@ const PLATFORM_STYLES = {
 // Fixed pax default to '' to show placeholder
 const initialLeadState = {
     customerName: '', phone: '', email: '', destination: '',
-    travelDates: '', pax: '', childrenPax: '0', packageType: 'Custom / Flexible',
-    budget: '₹25,000 - ₹50,000', platform: 'Website', campaign: '', leadMessage: '', notes: ''
+    travelDates: '', pax: '', childrenPax: '', packageType: '',
+    budget: '', platform: '', campaign: '', leadMessage: '', notes: ''
 };
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
@@ -167,6 +167,8 @@ const LeadsManager = () => {
     // View Modal State
     const [viewModalOpen, setViewModalOpen] = useState(false);
     const [viewingLead, setViewingLead] = useState(null);
+    // Add this ref for the date picker
+    const dateInputRef = useRef(null);
 
     // ── FETCH LEADS & CAMPAIGNS ────────────────────────────────────────────────
     useEffect(() => {
@@ -200,26 +202,25 @@ const LeadsManager = () => {
         setEditingId(null);
         setLeadModalOpen(true);
     };
-
-    const openEditModal = (lead) => {
-        setLeadForm({
-            customerName: lead.customerName || '',
-            phone: lead.phone || '',
-            email: lead.email || '',
-            destination: lead.destination || '',
-            travelDates: lead.travelDates || '',
-            pax: lead.pax || '',
-            childrenPax: lead.noOfChildren || lead.childrenPax || '0', // Directly binds to Prisma column
-            packageType: lead.packageType || 'Custom / Flexible',
-            budget: lead.budget || '₹25,000 - ₹50,000',
-            platform: lead.platform || 'Website',
-            campaign: lead.campaign || '',
-            leadMessage: lead.leadMessage || '',
-            notes: lead.notes || ''
-        });
-        setEditingId(lead.id);
-        setLeadModalOpen(true);
-    };
+const openEditModal = (lead) => {
+    setLeadForm({
+        customerName: lead.customerName || '',
+        phone: lead.phone || '',
+        email: lead.email || '',
+        destination: lead.destination || '',
+        travelDates: lead.travelDates || '',
+        pax: lead.pax || '',
+        childrenPax: lead.noOfChildren || lead.childrenPax || '', 
+        packageType: lead.packageType || '',
+        budget: lead.budget || '',
+        platform: lead.platform || '',
+        campaign: lead.campaign || '',
+        leadMessage: lead.leadMessage || '',
+        notes: lead.notes || ''
+    });
+    setEditingId(lead.id);
+    setLeadModalOpen(true);
+};
 
     const openViewModal = (lead) => {
         setViewingLead(lead);
@@ -539,9 +540,31 @@ const LeadsManager = () => {
                             <Field label="Destination">
                                 <Input value={leadForm.destination} onChange={e => setLeadForm({ ...leadForm, destination: e.target.value })} />
                             </Field>
-                            <Field label="Tentative Travel Date">
-                                <Input value={leadForm.travelDates} onChange={e => setLeadForm({ ...leadForm, travelDates: e.target.value })} />
-                            </Field>
+ <Field label="Tentative Travel Date">
+    <div className="relative flex items-center">
+        <input 
+            type="date"
+            ref={dateInputRef}
+            value={leadForm.travelDates} 
+            onChange={e => setLeadForm({ ...leadForm, travelDates: e.target.value })} 
+            onClick={() => {
+                if (dateInputRef.current) {
+                    try { 
+                        dateInputRef.current.showPicker(); 
+                    } catch (err) {
+                        // Catch safely for older browsers that don't support showPicker
+                        console.error(err); 
+                    }
+                }
+            }}
+            className="w-full bg-[#0f172a] border border-slate-600 rounded-lg pl-3 pr-10 py-2 sm:py-2.5 text-sm sm:text-base text-slate-200 placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/40 transition-all cursor-pointer [&::-webkit-calendar-picker-indicator]:hidden"
+        />
+        {/* Changed from <button> to <div> and added pointer-events-none */}
+        <div className="absolute right-3 text-slate-400 pointer-events-none flex items-center justify-center">
+            <Calendar size={18} />
+        </div>
+    </div>
+</Field>
                             <Field label="Number of Adults">
                                 <Select options={PAX_OPTIONS} value={leadForm.pax} onChange={v => setLeadForm({ ...leadForm, pax: v })} placeholder="" />
                             </Field>
@@ -554,9 +577,13 @@ const LeadsManager = () => {
                                 <Field label="Package Type">
                                 <Select options={PACKAGE_TYPES} value={leadForm.packageType} onChange={v => setLeadForm({ ...leadForm, packageType: v })} placeholder="" />
                             </Field>
-                              <Field label="Message from Lead">
-                                <TextArea rows="2" value={leadForm.leadMessage} onChange={e => setLeadForm({ ...leadForm, leadMessage: e.target.value })} />
-                            </Field>
+                             <Field label="Message from Lead" className="sm:col-span-2 md:col-span-2">
+    <TextArea 
+        rows="2" 
+        value={leadForm.leadMessage} 
+        onChange={e => setLeadForm({ ...leadForm, leadMessage: e.target.value })} 
+    />
+</Field>
                         </div>
                     </div>
                      

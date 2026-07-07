@@ -1994,10 +1994,10 @@ const SalesDashboard = () => {
                                                         <input type="text" name="destination" value={editFormData.destination} onChange={handleInputChange} className={inputCls} placeholder=" " />
                                                     </div>
                                                     {renderDatePicker('travelDate', editFormData.travelDate, 'Travel Date', handleInputChange)}
-                                                    <div>
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
-                                                        <input type="text" name="duration" value={editFormData.duration} onChange={handleInputChange} className={inputCls} />
-                                                    </div>
+                                                   <div>
+    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
+    {renderDropdown('duration', editFormData.duration, '', ['1 Day (Same Day Return)', '1N / 2D', '2N / 3D', '3N / 4D', '4N / 5D', '5N / 6D', '6N / 7D', '7N / 8D', '8N / 9D', '9N / 10D', '10-15 Days', '15+ Days'], handleInputChange)}
+</div>
                                                     <div className="flex gap-2">
                                                         <div className="w-1/2">
                                                             <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Adults)</label>
@@ -2012,10 +2012,10 @@ const SalesDashboard = () => {
                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Departure City</label>
                                                         <input type="text" name="departureCity" value={editFormData.departureCity} onChange={handleInputChange} className={inputCls} />
                                                     </div>
-                                                    <div>
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Budget</label>
-                                                        <input type="text" name="travelBudget" value={editFormData.travelBudget} onChange={handleInputChange} className={inputCls} placeholder=" " />
-                                                    </div>
+                                                   <div>
+    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Budget</label>
+    {renderDropdown('travelBudget', editFormData.travelBudget, ' ', BUDGET_OPTIONS, handleInputChange)}
+</div>
                                                     <div>
                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Type</label>
                                                         {renderDropdown('tourType', editFormData.tourType, ' ', ['Honeymoon', 'Family', 'Solo', 'Friends', 'Corporate', 'Group Tour', 'MICE'], handleInputChange)}
@@ -2207,10 +2207,10 @@ const SalesDashboard = () => {
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
                                                                 <input type="text" name="confirmedDestination" value={editFormData.confirmedDestination} onChange={handleInputChange} className={confirmInputCls} readOnly={isConfirmTab} />
                                                             </div>
-                                                            <div>
-                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
-                                                                <input type="text" name="confirmedDuration" value={editFormData.confirmedDuration} onChange={handleInputChange} className={confirmInputCls} readOnly={isConfirmTab} />
-                                                            </div>
+                                                      <div>
+    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
+    {renderDropdown('confirmedDuration', editFormData.confirmedDuration, '', ['1 Day (Same Day Return)', '1N / 2D', '2N / 3D', '3N / 4D', '4N / 5D', '5N / 6D', '6N / 7D', '7N / 8D', '8N / 9D', '9N / 10D', '10-15 Days', '15+ Days'], handleInputChange, selectCls, isConfirmTab)}
+</div>
 
                                                             {/* Row 3 */}
                                                             <div>
