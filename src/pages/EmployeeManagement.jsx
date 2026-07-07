@@ -537,14 +537,14 @@ const EmployeeManagement = () => {
                     <div className="bg-[#0f172a] border border-[#1e3a52] rounded-2xl shadow-2xl w-full max-w-2xl relative max-h-[calc(100vh-24px)] sm:max-h-[90vh] flex flex-col overflow-hidden">
                         
                         <div className="flex justify-between items-center p-4 sm:p-5 border-b border-[#1e3a52] bg-[#0f172a] z-10 flex-shrink-0">
-                            <h2 className="text-lg sm:text-xl font-bold text-white">Full Identity Dossier</h2>
+                            <h2 className="text-lg sm:text-xl font-bold text-white"> Profile</h2>
                             <button onClick={() => setIsViewModalOpen(false)} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-[#132033]"><X size={20} /></button>
                         </div>
 
                         <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {tableHeaders.some(h => h.id === 'status') && (
                                 <div className="bg-[#132033] p-3.5 rounded-xl border border-[#1e3a52] flex items-center justify-between sm:col-span-2">
-                                    <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Telemetry System Status</label>
+                                    {/* <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Telemetry System Status</label> */}
                                     <div className="flex items-center gap-2.5 bg-[#0f172a] px-3 py-1.5 rounded-lg border border-[#1e3a52]">
                                         <StatusDot status={viewingEmployee.status} />
                                         <span className={`text-sm font-bold ${viewingEmployee.status === 'online' ? 'text-emerald-400' : 'text-slate-400'}`}>

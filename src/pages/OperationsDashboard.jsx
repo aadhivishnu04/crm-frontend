@@ -5,7 +5,7 @@ import {
     ShoppingCart, Target, X, Send, AlertCircle, CheckCircle2,
     Mic, Trash2, Layers, BookmarkCheck, PlaneTakeoff, Info,
     Briefcase, FileText, Activity, ShieldCheck, Share2, Play, Square, Plus,
-    ChevronLeft, ChevronRight, ArrowUp
+    ChevronLeft, ChevronRight, ArrowUp, Copy
 } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
 
@@ -29,54 +29,77 @@ const getOperationTourType = (lead) => {
     return lead.tourType || 'International Tour';
 };
 
-const MOCK_LEADS = [
-    {
-        id: 12,
-        customerName: 'heer',
-        destination: 'Singapore',
-        date: 'March 4',
-        amount: '₹5,00,000+',
-        status: 'Confirmed Bookings',
-        platform: 'Instagram',
-        phone: '9876543210',
-        leadMessage: 'Looking for a luxury Singapore trip for 2 adults',
-        priority: 'High',
-        createDate: '2026-06-09 10:30',
-        salesExecutive: 'Alex',
-        tourType: 'International Tour',
-        duration: '5 Nights / 6 Days',
-        noOfAdults: '2',
-        noOfChildren: '0',
-        hotelCategory: '5 Star',
-        travelDate: '2026-08-12',
-        travelMonth: 'August',
-        budget: '₹5,00,000+',
-        workType: 'FIT',
-        activityType: 'Call Client',
-        activityOutcome: 'Connected',
-        notes: 'Initial blueprint parameters confirmed.',
-        nextActionRequired: 'Yes',
-        nextActionDate: '2026-06-15T10:00',
-        vendorName: 'Global Hotels Inc',
-        contactMethod: 'Email Platform',
-        contactDate: '2026-06-09T14:30',
-        vendorResponseStatus: 'Rates Received',
-        followUpType: 'Follow up call',
-        preparationMethod: 'Portal Designer v2',
-        itineraryVersion: '1.0.0',
-        workingNotes: 'Margin targeted at 12%',
-        qcStatus: 'Approved',
-        reviewedBy: 'Operations Lead Manager',
-        sharedTo: 'Alex',
-        sharedVia: 'Slack Channel Matrix',
-        salesAcknowledged: 'Yes',
-        finalStatus: 'Handover Completed',
-        salesFunnelLeadStatus: 'Hot Prospect',
-        salesFunnelNotes: 'Ready to clear payment token upon receipt of v1 itinerary layout.',
-        localVoiceRecordings: [],
-        customisationRequests: '[{"destination":"Singapore","customisationType":"New Itinerary","requirements":"Need Universal Studios tickets included","assignedTo":"Operations Desk 1","raiseRequest":"Yes","readymadePackageDetails":"Standard SG 5N","turnaroundTime":"24 hours","status":"Pending"}]'
+// ─── DYNAMIC MESSAGE GENERATOR FOR VENDOR ASSISTANCE ──────────────────────────
+const generateVendorMessage = (lead) => {
+    const contact = lead.vendorContactPerson || '[Contact Person]';
+    const dest = lead.destination || '[Destination]';
+    const pkg = lead.packageType || lead.tourType || '[Package Type]';
+    const tDate = lead.travelDate || lead.travelDates || '[Travel Date]';
+    const dur = lead.duration || '[Duration]';
+    const paxA = lead.noOfAdults || '0';
+    const paxC = lead.noOfChildren || '0';
+    const hotel = lead.hotelCategory || '[Hotel Category]';
+    const vType = lead.vendorVisaType || '[VISA Type]';
+    const srv = lead.vendorService;
+
+    if (!srv) return '';
+
+    let msg = `Hi ${contact},\n\nGreetings from iTour!\n\n`;
+
+    if (srv === 'Complete Package' || srv === 'Land Only') {
+        msg += `Please share your best quotation for the following travel requirement.\n\n`;
+        msg += `TRAVEL REQUIREMENTS\n\n`;
+        msg += `Destination: ${dest}\n`;
+        msg += `Package Type: ${pkg}\n`;
+        msg += `Travel Dates: ${tDate}\n`;
+        msg += `Duration: ${dur}\n`;
+        msg += `Travellers: ${paxA} Adults | ${paxC} Children\n`;
+        if (srv === 'Complete Package') {
+            msg += `Hotel Category: ${hotel}\n`;
+        }
+        msg += `\n`;
+
+        msg += `Please provide a complete package excluding flights, including:\n`;
+        if (srv === 'Complete Package') {
+            msg += `• Airport Transfers\n• Hotel Accommodation\n• Local Transfers\n• Sightseeing\n• Applicable Taxes (if any)\n\n`;
+        } else {
+            msg += `• Airport Transfers\n• Local Transfers\n• Sightseeing\n• Applicable Taxes (if any)\n\n`;
+        }
+
+        if (srv === 'Complete Package') {
+            const pTypeLower = pkg.toLowerCase();
+            if (pTypeLower.includes('honeymoon')) {
+                msg += `HONEYMOON PREFERENCES\n\nKindly suggest honeymoon-friendly hotels/resorts and include honeymoon inclusions wherever available, such as:\n\n• Honeymoon Room Decoration\n• Candlelight Dinner\n• Honeymoon Cake\n• Complimentary Honeymoon Benefits\n• Romantic Experiences (if available)\n\nPlease mention any complimentary inclusions or paid upgrade options separately.\n\n`;
+            } else if (pTypeLower.includes('family')) {
+                msg += `FAMILY PREFERENCES\n\nKindly suggest family-friendly hotels and include suitable room options for the mentioned travellers. Consider\n\n• Family-friendly accommodation\n• Interconnecting / Family Rooms (if available)\n• Child-friendly sightseeing and activities (if applicable)\n• Comfortable transfers suitable for the group\n• Hotels with good amenities for families\n\nPlease mention any complimentary inclusions or paid upgrade options separately.\n\n`;
+            } else if (pTypeLower.includes('corporate') || pTypeLower.includes('mice')) {
+                msg += `CORPORATE REQUIREMENTS\n\nKindly suggest family-friendly hotels and include suitable room options for the mentioned travellers. Consider\n\n• Business hotels in convenient locations\n• Early Check-in / Late Check-out (subject to availability)\n• Reliable airport and local transfers\n• Flexible cancellation or amendment policy (if available)\n\nPlease mention any complimentary inclusions or paid upgrade options separately.\n\n`;
+            }
+        }
+
+        msg += `Kindly Share\n\n• Detailed Day-wise Itinerary\n• Hotel Options\n• Package Inclusions\n• Package Exclusions\n• Cancellation Policy\n• Quotation\n\n`;
+    } else if (srv === 'VISA') {
+        msg += `Please share your best quotation for the following VISA requirement.\n\n`;
+        msg += `Destination: ${dest}\n\n`;
+        msg += `VISA Type: ${vType}\n\n`;
+        msg += `Duration: ${dur}\n\n`;
+        msg += `Travel Dates: ${tDate}\n\n`;
+        msg += `Travellers: ${paxA} Adults | ${paxC} Children\n\n`;
+        msg += `Kindly Share:\n\n• VISA Charges\n• Required Documents\n• Processing Time\n• Validity\n• Appointment Requirement (if applicable)\n• Terms & Conditions\n\n`;
+    } else if (srv === 'Insurance') {
+        msg += `Please share your best quotation for Travel Insurance for below requirement.\n\n`;
+        msg += `Destination: ${dest}\n\n`;
+        msg += `Duration: ${dur}\n\n`;
+        msg += `Travel Dates: ${tDate}\n\n`;
+        msg += `Travellers: ${paxA} Adults | ${paxC} Children\n\n`;
+        msg += `Kindly Share:\n\n• Insurance Plan Details\n• Coverage\n• Premium Amount\n• Policy Validity\n• Claim Process\n\n`;
+    } else {
+         msg += `Please share your best quotation for the following requirement.\n\nDestination: ${dest}\nTravel Dates: ${tDate}\nTravellers: ${paxA} Adults | ${paxC} Children\n\n`;
     }
-];
+
+    msg += `Kindly share your best available rates at the earliest.\n\nThank you.\n\nRegards,`;
+    return msg;
+};
 
 // ─────────────────────────────────────────────
 // COMPONENT – Custom Select (with Manual Entry)
@@ -107,10 +130,7 @@ const CustomSelect = ({ value, onChange, options, placeholder = "", className })
                 />
                 <button
                     type="button"
-                    onClick={() => {
-                        setIsManual(false);
-                        onChange('');
-                    }}
+                    onClick={() => { setIsManual(false); onChange(''); }}
                     className={`flex items-center justify-center bg-slate-800 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded border border-slate-600 transition-colors flex-shrink-0 ${className && className.includes('py-1.5') ? 'p-1.5' : 'p-2'}`}
                     title="Cancel custom entry"
                 >
@@ -154,11 +174,8 @@ const DatePickerField = ({ value, onChange, type = "date", readOnly = false, cla
             className={`relative w-full flex items-center ${!readOnly ? 'cursor-pointer' : ''}`}
             onClick={() => {
                 if (!readOnly && inputRef.current && inputRef.current.showPicker) {
-                    try {
-                        inputRef.current.showPicker();
-                    } catch (e) {
-                        inputRef.current.focus();
-                    }
+                    try { inputRef.current.showPicker(); } 
+                    catch (e) { inputRef.current.focus(); }
                 }
             }}
         >
@@ -175,106 +192,6 @@ const DatePickerField = ({ value, onChange, type = "date", readOnly = false, cla
         </div>
     );
 };
-
-// ─────────────────────────────────────────────
-// HOOK – useLeads ENGINE
-// ─────────────────────────────────────────────
-function useLeads(triggerNotification) {
-    const [leads, setLeads] = useState([]);
-    const [isLoading, setLoading] = useState(true);
-
-    const fetchLeads = async () => {
-        setLoading(true);
-        try {
-            const res = await fetch(`${API_BASE_URL}/leads`);
-            if (!res.ok) throw new Error(`HTTP state exception code: ${res.status}`);
-            const data = await res.json();
-
-            const mappedData = data.map(lead => {
-                let parsedAudio = [];
-                if (lead.voiceBinaryFile) {
-                    try { parsedAudio = JSON.parse(lead.voiceBinaryFile); }
-                    catch (e) { console.warn("Failed to extract voice data array:", e); }
-                }
-
-                let currentStatus = lead.status || 'New Requests';
-                if (currentStatus === 'Move To Operation') currentStatus = 'New Requests';
-                if (currentStatus === 'Ops Assigned') currentStatus = 'Follow-Up';
-                if (lead.customerResponse === 'Booking Confirmed') currentStatus = 'Confirmed Bookings';
-
-                return {
-                    ...lead,
-                    date: lead.travelDates || lead.date || 'TBD',
-                    amount: lead.budget || lead.amount || 'TBD',
-                    status: currentStatus,
-                    localVoiceRecordings: parsedAudio
-                };
-            });
-
-            setLeads(mappedData);
-        } catch (err) {
-            console.error('Failed to sync via API route, activating fallback mock data matrix:', err);
-            setLeads(MOCK_LEADS);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => { fetchLeads(); }, []);
-
-    const acceptJob = async (id, targetStatus = 'Follow-Up', opsName = 'Admin') => {
-        setLeads(prev => prev.map(l => l.id === id ? { ...l, status: targetStatus, operationExecutive: opsName, opsPreparedBy: opsName } : l));
-        try {
-            const res = await fetch(`${API_BASE_URL}/leads/${id}/assign`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    status: targetStatus, 
-                    operationExecutive: opsName, 
-                    opsPreparedBy: opsName 
-                }),
-            });
-            if (!res.ok) throw new Error('Network status commit failed');
-            triggerNotification('success', `Job token assignment updated to ${targetStatus}.`);
-        } catch (err) {
-            triggerNotification('success', `Job assigned to ${targetStatus} locally.`);
-        }
-    };
-
-    const updateLead = async (id, updatedData) => {
-        setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updatedData } : l));
-        try {
-            const res = await fetch(`${API_BASE_URL}/leads/${id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(updatedData),
-            });
-            if (!res.ok) throw new Error('Commit request rejected');
-            triggerNotification('success', 'CRM Sales Handover configuration update committed!');
-            fetchLeads();
-        } catch (err) {
-            triggerNotification('success', 'Changes updated inside active local application stack.');
-        }
-    };
-
-    const sendToFulfillment = async (lead) => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/leads/${lead.id}/assign`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: 'Upcoming Departure' })
-            });
-            if (!response.ok) throw new Error('Source status parameter reference mismatch');
-            setLeads(prev => prev.filter(l => l.id !== lead.id));
-            triggerNotification('success', 'Job profile transmitted to external fulfillment logs.');
-        } catch (err) {
-            setLeads(prev => prev.filter(l => l.id !== lead.id));
-            triggerNotification('success', 'Job sent to fulfillment (simulation mode).');
-        }
-    };
-
-    return { leads, isLoading, acceptJob, updateLead, sendToFulfillment, refetch: fetchLeads };
-}
 
 // ─────────────────────────────────────────────
 // COMPONENT – Pagination
@@ -303,7 +220,36 @@ export default function OperationsDashboard() {
     const [notification, setNotification] = useState({ show: false, type: '', message: '' });
     const triggerNotification = (type, message) => setNotification({ show: true, type, message });
 
-    // --- USER IDENTIFICATION ---
+    // HTTP / Local Network Fallback Copy System
+    const copyToClipboard = (text) => {
+        if (navigator.clipboard && window.isSecureContext) {
+            // HTTPS Context
+            navigator.clipboard.writeText(text)
+                .then(() => triggerNotification('success', 'Message format copied to clipboard!'))
+                .catch(() => fallbackCopyText(text));
+        } else {
+            // HTTP Context Fallback
+            fallbackCopyText(text);
+        }
+    };
+
+    const fallbackCopyText = (text) => {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            triggerNotification('success', 'Message format copied to clipboard!');
+        } catch (err) {
+            triggerNotification('error', 'Failed to copy text. Browser blocked action.');
+        }
+        document.body.removeChild(textArea);
+    };
+
     const user = getCurrentUser();
     const loggedInUserName = user?.name || 'Admin';
     const isAdmin = user?.role?.toLowerCase() === 'admin';
@@ -315,8 +261,8 @@ export default function OperationsDashboard() {
         }
     }, [notification.show]);
 
-    const { leads, isLoading, acceptJob, updateLead, sendToFulfillment } = useLeads(triggerNotification);
-
+    const [leads, setLeads] = useState([]);
+    const [isLoading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('New Requests');
     const [searchQuery, setSearchQuery] = useState('');
     const [entriesPerPage] = useState(10);
@@ -329,21 +275,41 @@ export default function OperationsDashboard() {
     const [leadToAcknowledge, setLeadToAcknowledge] = useState(null);
     const [leadToFulfill, setLeadToFulfill] = useState(null);
     
-    // Popup Modal State for History & View modes
     const [activeModal, setActiveModal] = useState(null); 
-
     const [showScrollTop, setShowScrollTop] = useState(false);
     const mainRef = useRef(null);
     const tabScrollRef = useRef(null);
 
-    const [isRecording, setIsRecording] = useState(false);
-    const [recordingTime, setRecordingTime] = useState(0);
-    const [playingIndex, setPlayingIndex] = useState(null);
+    // --- DATA FETCHING ---
+    const fetchLeads = async () => {
+        setLoading(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/leads`);
+            if (!res.ok) throw new Error(`HTTP state exception code: ${res.status}`);
+            const data = await res.json();
 
-    const mediaRecorderRef = useRef(null);
-    const audioChunksRef = useRef([]);
-    const timerRef = useRef(null);
-    const audioPlayersRef = useRef({});
+            const mappedData = data.map(lead => {
+                let parsedAudio = [];
+                if (lead.voiceBinaryFile) {
+                    try { parsedAudio = JSON.parse(lead.voiceBinaryFile); }
+                    catch (e) { console.warn("Failed to parse audio"); }
+                }
+                return {
+                    ...lead,
+                    date: lead.travelDates || lead.date || 'TBD',
+                    amount: lead.budget || lead.amount || 'TBD',
+                    localVoiceRecordings: parsedAudio
+                };
+            });
+            setLeads(mappedData);
+        } catch (err) {
+            console.error('Failed to sync via API route:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => { fetchLeads(); }, []);
 
     useEffect(() => {
         const el = mainRef.current;
@@ -353,93 +319,186 @@ export default function OperationsDashboard() {
         return () => el.removeEventListener('scroll', handleScroll);
     }, []);
 
-    const scrollToTop = () => {
-        mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    const scrollToTop = () => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    const scrollTabs = (dir) => tabScrollRef.current && tabScrollRef.current.scrollBy({ left: dir * 160, behavior: 'smooth' });
+
+    const getTabStatus = (rawStatus) => {
+        if (['New Requests', 'Move To Operation', 'Customization Required', 'Customisation Ready', 'Pending'].includes(rawStatus)) return 'New Requests';
+        if (['Ops Assigned', 'Follow-Up'].includes(rawStatus)) return 'Follow-Up';
+        if (['Upcoming Departure', 'Upcoming Bookings'].includes(rawStatus)) return 'Upcoming Bookings';
+        if (['Confirmed Bookings'].includes(rawStatus)) return 'Confirmed Bookings';
+        return rawStatus || 'New Requests';
     };
 
-    const scrollTabs = (dir) => {
-        if (tabScrollRef.current) {
-            tabScrollRef.current.scrollBy({ left: dir * 160, behavior: 'smooth' });
+    // --- FLATTEN LEADS ---
+    const expandedLeads = leads.flatMap(item => {
+        let parsedRequests = [];
+        if (item.customisationRequests) {
+            try { 
+                parsedRequests = typeof item.customisationRequests === 'string' 
+                    ? JSON.parse(item.customisationRequests) 
+                    : item.customisationRequests; 
+            } catch { parsedRequests = []; }
         }
-    }
 
-    // --- TAB COUNTS WITH ISOLATION ---
-    const isAuthorizedForOps = (l) => isAdmin || l.operationExecutive === loggedInUserName || l.opsPreparedBy === loggedInUserName;
+        if (parsedRequests && parsedRequests.length > 0) {
+            return parsedRequests.map((req, index) => {
+                let rawRowStatus = (req.status && req.status !== 'Pending') ? req.status : 'Pending';
+                return {
+                    ...item,
+                    uniqueKey: `${item.id}-${index}`,
+                    reqIndex: index,
+                    rawRowStatus: rawRowStatus,
+                    destination: req.destination || item.destination,
+                    customisationType: req.customisationType || item.customisationType,
+                    requirements: req.requirements || item.requirements,
+                    turnaroundTime: req.turnaroundTime || req.requiredByDate || item.turnaroundTime,
+                    assignedOps: req.assignedTo || item.operationExecutive || ''
+                };
+            });
+        }
 
-    const countNew = leads.filter(l => l.status === 'New Requests' || l.status === 'Move To Operation').length; // Common Pool
-    const countFollow = leads.filter(l => (l.status === 'Follow-Up' || l.status === 'Ops Assigned') && isAuthorizedForOps(l)).length;
-    const countShared = leads.filter(l => l.status === 'Shared to Sales' && isAuthorizedForOps(l)).length;
-    const countBooked = leads.filter(l => l.status === 'Confirmed Bookings' && isAuthorizedForOps(l)).length;
-    const countDepart = leads.filter(l => l.status === 'Upcoming Departure' && isAuthorizedForOps(l)).length;
+        return [{ 
+            ...item, 
+            uniqueKey: `${item.id}-0`, 
+            reqIndex: 0, 
+            rawRowStatus: item.status || 'New Requests',
+            assignedOps: item.operationExecutive || ''
+        }];
+    });
 
+    const isAuthorizedForOps = (l) => isAdmin || l.assignedOps === loggedInUserName || l.opsPreparedBy === loggedInUserName;
+
+    // --- TAB COUNTS ---
+    const countNew = expandedLeads.filter(l => getTabStatus(l.rawRowStatus) === 'New Requests').length; 
+    const countFollow = expandedLeads.filter(l => getTabStatus(l.rawRowStatus) === 'Follow-Up' && isAuthorizedForOps(l)).length;
+    const countBooked = expandedLeads.filter(l => getTabStatus(l.rawRowStatus) === 'Confirmed Bookings' && isAuthorizedForOps(l)).length;
+    
+    const countUpcoming = expandedLeads.filter(l => {
+        if (getTabStatus(l.rawRowStatus) !== 'Upcoming Bookings' || !isAuthorizedForOps(l)) return false;
+        const travelDate = new Date(l.travelDate || l.travelDates || l.departureDate);
+        const past15Days = new Date();
+        past15Days.setDate(past15Days.getDate() - 15);
+        return !isNaN(travelDate) && travelDate >= past15Days;
+    }).length;
+
+    // --- MAIN ACTION HANDLERS ---
+    const handleAcknowledgeRequest = async (row) => {
+        const leadId = row.id;
+        const reqIndex = row.reqIndex;
+        const targetStatus = 'Follow-Up';
+        const opsName = loggedInUserName;
+
+        const originalLead = leads.find(l => l.id === leadId);
+        if (!originalLead) return;
+
+        let parsedRequests = [];
+        try {
+            parsedRequests = typeof originalLead.customisationRequests === 'string'
+                ? JSON.parse(originalLead.customisationRequests)
+                : (originalLead.customisationRequests || []);
+        } catch(e) { parsedRequests = []; }
+
+        if (parsedRequests.length > 0 && parsedRequests[reqIndex]) {
+            parsedRequests[reqIndex].status = targetStatus;
+            parsedRequests[reqIndex].assignedTo = opsName;
+        }
+
+        const allProcessed = parsedRequests.every(r => r.status === 'Follow-Up' || r.status === 'Customisation Ready');
+
+        const updatedData = {
+            customisationRequests: JSON.stringify(parsedRequests),
+            operationExecutive: opsName,
+            opsPreparedBy: opsName,
+            status: allProcessed ? targetStatus : originalLead.status
+        };
+
+        setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...updatedData } : l));
+
+        try {
+            await fetch(`${API_BASE_URL}/leads/${leadId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedData),
+            });
+            triggerNotification('success', `Request from ${row.customerName} acknowledged.`);
+            fetchLeads();
+        } catch (err) {
+            triggerNotification('success', `Request acknowledged (Simulation mode).`);
+        }
+        setLeadToAcknowledge(null);
+    };
+
+    const handleSendToSalesReady = async (row) => {
+        const leadId = row.id;
+        const reqIndex = row.reqIndex;
+        const targetStatus = 'Customisation Ready'; 
+
+        const originalLead = leads.find(l => l.id === leadId);
+        if (!originalLead) return;
+
+        let parsedRequests = [];
+        try {
+            parsedRequests = typeof originalLead.customisationRequests === 'string'
+                ? JSON.parse(originalLead.customisationRequests)
+                : (originalLead.customisationRequests || []);
+        } catch(e) { parsedRequests = []; }
+
+        if (parsedRequests.length > 0 && parsedRequests[reqIndex]) {
+            parsedRequests[reqIndex].status = targetStatus;
+        }
+
+        const updatedData = {
+            customisationRequests: JSON.stringify(parsedRequests),
+            status: targetStatus 
+        };
+
+        setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...updatedData } : l));
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/leads/${leadId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedData),
+            });
+            if (!res.ok) throw new Error('Update failed');
+            triggerNotification('success', `Pushed back to Sales successfully.`);
+            fetchLeads();
+        } catch (err) {
+            triggerNotification('success', `Pushed back to Sales (Simulation mode).`);
+        }
+    };
+
+    const updateLead = async (id, updatedData) => {
+        setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updatedData } : l));
+        try {
+            await fetch(`${API_BASE_URL}/leads/${id}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updatedData),
+            });
+            triggerNotification('success', 'Configuration update committed!');
+            fetchLeads();
+        } catch (err) {
+            triggerNotification('success', 'Changes updated inside active local application stack.');
+        }
+    };
+
+    const sendToFulfillment = async (lead) => {
+        try {
+            await fetch(`${API_BASE_URL}/leads/${lead.id}/assign`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'Upcoming Departure' })
+            });
+            setLeads(prev => prev.filter(l => l.id !== lead.id));
+            triggerNotification('success', 'Job profile transmitted to external fulfillment logs.');
+        } catch (err) {
+            setLeads(prev => prev.filter(l => l.id !== lead.id));
+            triggerNotification('success', 'Job sent to fulfillment (simulation mode).');
+        }
+    };
 
     const handleTabChange = (tab) => { setActiveTab(tab); setCurrentPage(1); };
     const handleSearch = (val) => { setSearchQuery(val); setCurrentPage(1); };
 
-    const startRecording = async () => {
-        audioChunksRef.current = [];
-        setRecordingTime(0);
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorderRef.current = new MediaRecorder(stream);
-            mediaRecorderRef.current.ondataavailable = (event) => {
-                if (event.data.size > 0) audioChunksRef.current.push(event.data);
-            };
-            mediaRecorderRef.current.onstop = () => {
-                const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-                const url = URL.createObjectURL(audioBlob);
-                const reader = new FileReader();
-                reader.readAsDataURL(audioBlob);
-                reader.onloadend = () => {
-                    setSelectedLeadForEdit(prev => ({
-                        ...prev,
-                        localVoiceRecordings: [...(prev.localVoiceRecordings || []), { url, base64: reader.result, timestamp: new Date().toLocaleString() }]
-                    }));
-                };
-                stream.getTracks().forEach(t => t.stop());
-            };
-            mediaRecorderRef.current.start();
-            setIsRecording(true);
-            timerRef.current = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
-        } catch (err) {
-            alert('Microphone access denied. Please check system parameters.');
-        }
-    };
-
-    const stopRecording = () => {
-        if (mediaRecorderRef.current && isRecording) {
-            mediaRecorderRef.current.stop();
-            setIsRecording(false);
-            clearInterval(timerRef.current);
-        }
-    };
-
-    const deleteRecording = (index) => {
-        if (playingIndex === index) {
-            audioPlayersRef.current[index]?.pause();
-            setPlayingIndex(null);
-        }
-        setSelectedLeadForEdit(prev => ({
-            ...prev,
-            localVoiceRecordings: prev.localVoiceRecordings.filter((_, i) => i !== index)
-        }));
-    };
-
-    const togglePlayback = (index) => {
-        const player = audioPlayersRef.current[index];
-        if (!player) return;
-        if (playingIndex === index) {
-            player.pause();
-            setPlayingIndex(null);
-        } else {
-            audioPlayersRef.current[playingIndex]?.pause();
-            player.play();
-            setPlayingIndex(index);
-        }
-    };
-
-    const formatTimer = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
-
+    // --- FORM DATA HANDLERS ---
     const handleArrayChange = (arrayName, index, field, value) => {
         const newArray = [...selectedLeadForEdit[arrayName]];
         newArray[index] = { ...newArray[index], [field]: value };
@@ -456,7 +515,6 @@ export default function OperationsDashboard() {
         setSelectedLeadForEdit(prev => ({ ...prev, [arrayName]: newArray }));
     };
 
-    // Deep nested transport array handlers
     const updateDomTransport = (index, field, value) => {
         const newTrans = [...selectedLeadForEdit.domTransports];
         newTrans[index][field] = value;
@@ -465,9 +523,7 @@ export default function OperationsDashboard() {
 
     const updateDomTransportNested = (index, mode, leg, field, value) => {
         const newTrans = JSON.parse(JSON.stringify(selectedLeadForEdit.domTransports));
-        if (!newTrans[index][mode]) {
-            newTrans[index][mode] = { onward: {}, return: null };
-        }
+        if (!newTrans[index][mode]) newTrans[index][mode] = { onward: {}, return: null };
         if (!newTrans[index][mode][leg]) newTrans[index][mode][leg] = {};
         newTrans[index][mode][leg][field] = value;
         setSelectedLeadForEdit({ ...selectedLeadForEdit, domTransports: newTrans });
@@ -485,6 +541,11 @@ export default function OperationsDashboard() {
         setSelectedLeadForEdit({ ...selectedLeadForEdit, domTransports: newTrans });
     };
 
+    const handleVendorServiceChange = (v) => {
+        const updatedLead = { ...selectedLeadForEdit, vendorService: v };
+        const newMsg = generateVendorMessage(updatedLead);
+        setSelectedLeadForEdit({ ...updatedLead, vendorMessage: newMsg });
+    };
 
     const handleEditClick = (lead) => {
         let parsedCustomisationRequests = [];
@@ -496,71 +557,29 @@ export default function OperationsDashboard() {
             } catch { parsedCustomisationRequests = []; }
         }
         
-        // Ensure at least one request exists to populate the Operations data if missing
         if (!parsedCustomisationRequests || parsedCustomisationRequests.length === 0) {
             parsedCustomisationRequests = [{
-                destination: lead.destinationRequest || lead.destination || '',
-                customisationType: lead.customisationType || '',
-                requirements: lead.requirements || '',
-                readymadePackageDetails: lead.readymadePackageDetails || '',
-                turnaroundTime: lead.turnaroundTime || '',
-                status: 'Pending'
+                destination: lead.destinationRequest || lead.destination || '', customisationType: lead.customisationType || '', requirements: lead.requirements || '',
+                readymadePackageDetails: lead.readymadePackageDetails || '', turnaroundTime: lead.turnaroundTime || '', status: 'Pending'
             }];
         }
 
-        const passengers = Array.isArray(lead.passengers) && lead.passengers.length > 0
-            ? lead.passengers
-            : [{ fullName: '', dob: '', gender: '', aadharNumber: '', panNumber: '', passportNumber: '', passportIssueDate: '', passportExpiryDate: '', passportIssuePlace: '', mobileNumber: '', emergencyContact: '' }];
+        const passengers = Array.isArray(lead.passengers) && lead.passengers.length > 0 ? lead.passengers : [{ fullName: '', dob: '', gender: '', aadharNumber: '', panNumber: '', passportNumber: '', passportIssueDate: '', passportExpiryDate: '', passportIssuePlace: '', mobileNumber: '', emergencyContact: '' }];
+        const intTransports = Array.isArray(lead.intTransports) && lead.intTransports.length > 0 ? lead.intTransports : [{ operatorName: '', vehicleType: '', contactPerson: '', driverName: '', vehicleNumber: '', status: '', driverContact: '', duration: '', pickupPoint: '', pickupDate: '', dropPoint: '', dropDate: '', notes: '', cost: '', markup: '', paymentDueDate: '' }];
+        const flights = Array.isArray(lead.flights) && lead.flights.length > 0 ? lead.flights : [{ flightType: '', flightResponsibility: '', bookingStatus: '', airline: '', pnr: '', bookedThrough: '', category: '', departureDateTime: '', boardingPoint: '', ticketShared: '', ticketSharedDate: '', deboardingPoint: '', flightCost: '', markupCost: '', driveLink: '' }];
+        const visas = Array.isArray(lead.visas) && lead.visas.length > 0 ? lead.visas : [{ destination: '', visaType: '', transitVisaReq: '', arrivalCardApplicable: '', arrivalCardDetails: '', appliedBy: '', docsPending: '', visaStatus: '', visaCopyShared: '', visaApprovalDate: '', visaExpiryDate: '', visaCost: '', markupCost: '' }];
+        const domTransports = Array.isArray(lead.domTransports) && lead.domTransports.length > 0 ? lead.domTransports : [{ transportType: '', bookedBy: '', bookingStatus: '', ticketSharedToClient: '', sharedDate: '', flight: { onward: { airline: '', pnr: '', bookingDate: '', flightCost: '', markupCost: '', depDateTime: '', from: '', attachTicket: '', notes: '', to: '' }, return: null }, train: { onward: { trainName: '', trainNo: '', bookingDate: '', boardingStation: '', destination: '', trainStartTime: '', cost: '', markupCost: '', trainReachingTime: '', seatDetails: '', trainClass: '', attachTicketLink: '', meals: '' }, return: null }, bus: { onward: { serviceProvider: '', bookingDate: '', destination: '', boardingPoint: '', travelDateTime: '', seatDetails: '', cost: '', markupCost: '', attachTicketLink: '' }, return: null } }];
+        const intHotels = Array.isArray(lead.intHotels) && lead.intHotels.length > 0 ? intHotels : [{ location: '', hotelName: '', hotelCategory: '', bookedBy: '', refNo: '', status: '', roomCategory: '', noOfRooms: '', addMattress: '', specifications: '', mealPlan: '', earlyCheckIn: '', checkInDateTime: '', checkOutDateTime: '', refreshmentRoom: '', cost: '', paymentDueDate: '', attachVoucher: '', specialArrangements: '', notes: '' }];
+        const domHotels = Array.isArray(lead.domHotels) && lead.domHotels.length > 0 ? domHotels : [{ location: '', hotelName: '', hotelCategory: '', bookedBy: '', refNo: '', status: '', roomCategory: '', noOfRooms: '', addMattress: '', specifications: '', mealPlan: '', earlyCheckIn: '', checkInDateTime: '', checkOutDateTime: '', refreshmentRoom: '', cost: '', markup: '', paymentDueDate: '', attachVoucher: '', specialArrangements: '', notes: '' }];
+        const domLocalTransports = Array.isArray(lead.domLocalTransports) && lead.domLocalTransports.length > 0 ? domLocalTransports : [{ serviceProvider: '', vehicleType: '', contactPerson: '', driverName: '', vehicleNumber: '', status: '', pickupPoint: '', pickupDate: '', duration: '', dropPoint: '', dropDate: '', tollParking: '', cost: '', markup: '', paymentDueDate: '', notes: '' }];
+        const paymentRequests = Array.isArray(lead.paymentRequests) && lead.paymentRequests.length > 0 ? paymentRequests : [{ service: '', providerName: '', paymentDueDate: '', serviceCost: '', paymentType: '', amountToPay: '', paymentAccountDetails: '' }];
 
-        const intTransports = Array.isArray(lead.intTransports) && lead.intTransports.length > 0
-            ? lead.intTransports
-            : [{ operatorName: '', vehicleType: '', contactPerson: '', driverName: '', vehicleNumber: '', status: '', driverContact: '', duration: '', pickupPoint: '', pickupDate: '', dropPoint: '', dropDate: '', notes: '', cost: '', markup: '', paymentDueDate: '' }];
-
-        const flights = Array.isArray(lead.flights) && lead.flights.length > 0
-            ? lead.flights
-            : [{ flightType: '', flightResponsibility: '', bookingStatus: '', airline: '', pnr: '', bookedThrough: '', category: '', departureDateTime: '', boardingPoint: '', ticketShared: '', ticketSharedDate: '', deboardingPoint: '', flightCost: '', markupCost: '', driveLink: '' }];
-
-        const visas = Array.isArray(lead.visas) && lead.visas.length > 0
-            ? lead.visas
-            : [{ destination: '', visaType: '', transitVisaReq: '', arrivalCardApplicable: '', arrivalCardDetails: '', appliedBy: '', docsPending: '', visaStatus: '', visaCopyShared: '', visaApprovalDate: '', visaExpiryDate: '', visaCost: '', markupCost: '' }];
-
-        // Initialize Domestic Form arrays
-        const domTransports = Array.isArray(lead.domTransports) && lead.domTransports.length > 0
-            ? lead.domTransports
-            : [{
-                transportType: '', bookedBy: '', bookingStatus: '', ticketSharedToClient: '', sharedDate: '',
-                flight: { onward: { airline: '', pnr: '', bookingDate: '', flightCost: '', markupCost: '', depDateTime: '', from: '', attachTicket: '', notes: '', to: '' }, return: null },
-                train: { onward: { trainName: '', trainNo: '', bookingDate: '', boardingStation: '', destination: '', trainStartTime: '', cost: '', markupCost: '', trainReachingTime: '', seatDetails: '', trainClass: '', attachTicketLink: '', meals: '' }, return: null },
-                bus: { onward: { serviceProvider: '', bookingDate: '', destination: '', boardingPoint: '', travelDateTime: '', seatDetails: '', cost: '', markupCost: '', attachTicketLink: '' }, return: null }
-            }];
-
-        const intHotels = Array.isArray(lead.intHotels) && lead.intHotels.length > 0
-            ? lead.intHotels
-            : [{ location: '', hotelName: '', hotelCategory: '', bookedBy: '', refNo: '', status: '', roomCategory: '', noOfRooms: '', addMattress: '', specifications: '', mealPlan: '', earlyCheckIn: '', checkInDateTime: '', checkOutDateTime: '', refreshmentRoom: '', cost: '', paymentDueDate: '', attachVoucher: '', specialArrangements: '', notes: '' }];
-
-        const domHotels = Array.isArray(lead.domHotels) && lead.domHotels.length > 0
-            ? lead.domHotels
-            : [{ location: '', hotelName: '', hotelCategory: '', bookedBy: '', refNo: '', status: '', roomCategory: '', noOfRooms: '', addMattress: '', specifications: '', mealPlan: '', earlyCheckIn: '', checkInDateTime: '', checkOutDateTime: '', refreshmentRoom: '', cost: '', markup: '', paymentDueDate: '', attachVoucher: '', specialArrangements: '', notes: '' }];
-
-        const domLocalTransports = Array.isArray(lead.domLocalTransports) && lead.domLocalTransports.length > 0
-            ? lead.domLocalTransports
-            : [{ serviceProvider: '', vehicleType: '', contactPerson: '', driverName: '', vehicleNumber: '', status: '', pickupPoint: '', pickupDate: '', duration: '', dropPoint: '', dropDate: '', tollParking: '', cost: '', markup: '', paymentDueDate: '', notes: '' }];
-
-        const paymentRequests = Array.isArray(lead.paymentRequests) && lead.paymentRequests.length > 0
-            ? lead.paymentRequests
-            : [{ service: '', providerName: '', paymentDueDate: '', serviceCost: '', paymentType: '', amountToPay: '', paymentAccountDetails: '' }];
-
-
-        // ─── Priority Auto-Calculation Logic ───
         let calculatedPriority = lead.priority || 'Low';
-        const today = new Date();
-        today.setHours(0,0,0,0);
+        const today = new Date(); today.setHours(0,0,0,0);
         
         let earliestReqDate = null;
         if (parsedCustomisationRequests.length > 0) {
-            const dates = parsedCustomisationRequests
-                .map(req => new Date(req.turnaroundTime || req.requiredByDate))
-                .filter(d => !isNaN(d.getTime()));
+            const dates = parsedCustomisationRequests.map(req => new Date(req.turnaroundTime || req.requiredByDate)).filter(d => !isNaN(d.getTime()));
             if (dates.length > 0) earliestReqDate = new Date(Math.min(...dates));
         }
         
@@ -578,178 +597,75 @@ export default function OperationsDashboard() {
             if (diffDaysTravel <= 7) calculatedPriority = 'High';
         }
 
-
         setSelectedLeadForEdit({
             ...lead,
             customisationRequests: parsedCustomisationRequests,
-            customisationType: lead.customisationType || '',
-            customerName: lead.customerName || lead.profileName || '',
-            mobileNumber: lead.phone || lead.mobileNumber || '',
-            salesExecutive: lead.salesExecutive || '',
-            destinationRequest: lead.destinationRequest || '',
-            tourType: getOperationTourType(lead),
-            duration: lead.duration || '',
-            noOfAdults: lead.noOfAdults || '',
-            noOfChildren: lead.noOfChildren || '',
-            hotelCategory: lead.hotelCategory || '',
-            travelDate: lead.travelDate || lead.travelDates || '',
-            travelMonth: lead.travelMonth || '',
-            budget: lead.budget || lead.amount || '',
-            readymadePackageDetails: lead.readymadePackageDetails || '',
-            turnaroundTime: lead.turnaroundTime || '',
-            salesRemarks: lead.salesRemarks || '',
-            voiceNote: lead.voiceNote || '',
-            destination: lead.destination || '',
-            workType: lead.workType || '',
-            priority: calculatedPriority,
-            status: lead.status || '',
-            activityType: lead.activityType || '',
-            activityOutcome: lead.activityOutcome || '',
-            notes: lead.notes || '',
-            nextActionRequired: lead.nextActionRequired || '',
-            nextActionDate: lead.nextActionDate || '',
-            vendorName: lead.vendorName || '',
-            contactMethod: lead.contactMethod || '',
-            contactDate: lead.contactDate || '',
-            vendorResponseStatus: lead.vendorResponseStatus || '',
-            vendorRemarks: lead.vendorRemarks || '',
-            nextFollowType: lead.nextFollowType || '',
-            followUpType: lead.followUpType || '',
-            preparationMethod: lead.preparationMethod || '',
-            itineraryVersion: lead.itineraryVersion || '',
-            workingNotes: lead.workingNotes || '',
-            itineraryPrepDate: lead.itineraryPrepDate || '',
-            qcStatus: lead.qcStatus || '',
-            qcRemarks: lead.qcRemarks || '',
-            reviewedBy: lead.reviewedBy || '',
-            qcDate: lead.qcDate || '',
-            sharedTo: lead.sharedTo || '',
-            sharedVia: lead.sharedVia || '',
-            salesAcknowledged: lead.salesAcknowledged || '',
-            finalStatus: lead.finalStatus || '',
-            salesFunnelLeadStatus: lead.salesFunnelLeadStatus || 'Pipeline Active',
-            salesFunnelNotes: lead.salesFunnelNotes || '',
-            localVoiceRecordings: lead.localVoiceRecordings || [],
-            bookingDate: lead.bookingDate || '',
-            packageCost: lead.packageCost || lead.amount || '',
-            confirmationDate: lead.confirmationDate || '',
+            customisationType: lead.customisationType || '', customerName: lead.customerName || lead.profileName || '', mobileNumber: lead.phone || lead.mobileNumber || '', salesExecutive: lead.salesExecutive || '',
+            destinationRequest: lead.destinationRequest || '', tourType: getOperationTourType(lead), duration: lead.duration || '', noOfAdults: lead.noOfAdults || '', noOfChildren: lead.noOfChildren || '', hotelCategory: lead.hotelCategory || '',
+            travelDate: lead.travelDate || lead.travelDates || '', travelMonth: lead.travelMonth || '', budget: lead.budget || lead.amount || '', readymadePackageDetails: lead.readymadePackageDetails || '',
+            turnaroundTime: lead.turnaroundTime || '', salesRemarks: lead.salesRemarks || '', voiceNote: lead.voiceNote || '', destination: lead.destination || '', workType: lead.workType || '',
+            priority: calculatedPriority, status: lead.status || '', activityType: lead.activityType || '', activityOutcome: lead.activityOutcome || '', notes: lead.notes || '',
+            nextActionRequired: lead.nextActionRequired || '', nextActionDate: lead.nextActionDate || '', 
             
-            // Shared details
-            passengers,
-            intTransports,
-            flights,
-            visas,
-            domTransports,
-            domHotels,
-            intHotels,
-            domLocalTransports,
-            paymentRequests,
-
-            // Simple Documents
-            docAadhar: lead.docAadhar || '',
-            docPan: lead.docPan || '',
-            docPhoto: lead.docPhoto || '',
-            docPassport: lead.docPassport || '',
-            docDriveLink: lead.docDriveLink || '',
-            documentStatus: lead.documentStatus || '', 
-            docRemarks: lead.docRemarks || '',
-
-            // Domestic/International General Single fields
-            domTransportType: lead.domTransportType || lead.transportMode || '',
-            specialOffers: lead.specialOffers || lead.offers || '',
-            arrivalDate: lead.arrivalDate || '',
-            departureDate: lead.departureDate || '',
-            returnDate: lead.returnDate || '',
-
-            // International Insurance & DMC
-            insRequired: lead.insRequired || '',
-            insProvider: lead.insProvider || '',
-            insPolicyNo: lead.insPolicyNo || '',
-            insCost: lead.insCost || '',
-            insMarkup: lead.insMarkup || '',
-            insStatus: lead.insStatus || '',
-            insPolicyShared: lead.insPolicyShared || '',
-
-            dmcName: lead.dmcName || '',
-            dmcContactPerson: lead.dmcContactPerson || '',
-            dmcPackageType: lead.dmcPackageType || '',
-            dmcWhatsapp: lead.dmcWhatsapp || '',
-            dmcEmail: lead.dmcEmail || '',
-            dmcStatus: lead.dmcStatus || '',
-            dmcRefNo: lead.dmcRefNo || '',
-            dmcPackageCost: lead.dmcPackageCost || '',
-            dmcMarkupCost: lead.dmcMarkupCost || '',
-            dmcVoucherReceived: lead.dmcVoucherReceived || '',
-            dmcDeliverables: lead.dmcDeliverables || '',
-
-            // Checkboxes
-            reqVeg: lead.reqVeg || false,
-            reqWheelchair: lead.reqWheelchair || false,
-            reqSenior: lead.reqSenior || false,
-            reqHoneymoon: lead.reqHoneymoon || false,
-            reqCandlelight: lead.reqCandlelight || false,
-            reqFloating: lead.reqFloating || false,
-            reqDecor: lead.reqDecor || false,
-            reqBirthday: lead.reqBirthday || false,
-            reqAnniversary: lead.reqAnniversary || false,
-            reqManualAdd: lead.reqManualAdd || false
+            vendorService: lead.vendorService || '', vendorDmcName: lead.vendorDmcName || lead.dmcName || '', vendorContactPerson: lead.vendorContactPerson || '', vendorVisaType: lead.vendorVisaType || '', vendorMessage: lead.vendorMessage || '',
+            vendorName: lead.vendorName || '', contactMethod: lead.contactMethod || '', contactDate: lead.contactDate || '', vendorResponseStatus: lead.vendorResponseStatus || '', vendorRemarks: lead.vendorRemarks || '', 
+            
+            nextFollowType: lead.nextFollowType || '', followUpType: lead.followUpType || '',
+            preparationMethod: lead.preparationMethod || '', itineraryVersion: lead.itineraryVersion || '', workingNotes: lead.workingNotes || '', itineraryPrepDate: lead.itineraryPrepDate || '',
+            qcStatus: lead.qcStatus || '', qcRemarks: lead.qcRemarks || '', reviewedBy: lead.reviewedBy || '', qcDate: lead.qcDate || '', salesAcknowledged: lead.salesAcknowledged || '', finalStatus: lead.finalStatus || '',
+            salesFunnelLeadStatus: lead.salesFunnelLeadStatus || 'Pipeline Active', salesFunnelNotes: lead.salesFunnelNotes || '', localVoiceRecordings: lead.localVoiceRecordings || [], bookingDate: lead.bookingDate || '',
+            packageCost: lead.packageCost || lead.amount || '', confirmationDate: lead.confirmationDate || '', 
+            passengers, intTransports, flights, visas, domTransports, domHotels, intHotels, domLocalTransports, paymentRequests,
+            docAadhar: lead.docAadhar || '', docPan: lead.docPan || '', docPhoto: lead.docPhoto || '', docPassport: lead.docPassport || '', docDriveLink: lead.docDriveLink || '', documentStatus: lead.documentStatus || '', docRemarks: lead.docRemarks || '',
+            domTransportType: lead.domTransportType || lead.transportMode || '', specialOffers: lead.specialOffers || lead.offers || '', arrivalDate: lead.arrivalDate || '', departureDate: lead.departureDate || '', returnDate: lead.returnDate || '',
+            insRequired: lead.insRequired || '', insProvider: lead.insProvider || '', insPolicyNo: lead.insPolicyNo || '', insCost: lead.insCost || '', insMarkup: lead.insMarkup || '', insStatus: lead.insStatus || '', insPolicyShared: lead.insPolicyShared || '',
+            dmcName: lead.dmcName || '', dmcContactPerson: lead.dmcContactPerson || '', dmcPackageType: lead.dmcPackageType || '', dmcWhatsapp: lead.dmcWhatsapp || '', dmcEmail: lead.dmcEmail || '', dmcStatus: lead.dmcStatus || '',
+            dmcRefNo: lead.dmcRefNo || '', dmcPackageCost: lead.dmcPackageCost || '', dmcMarkupCost: lead.dmcMarkupCost || '', dmcVoucherReceived: lead.dmcVoucherReceived || '', dmcDeliverables: lead.dmcDeliverables || '',
+            reqVeg: lead.reqVeg || false, reqWheelchair: lead.reqWheelchair || false, reqSenior: lead.reqSenior || false, reqHoneymoon: lead.reqHoneymoon || false, reqCandlelight: lead.reqCandlelight || false,
+            reqFloating: lead.reqFloating || false, reqDecor: lead.reqDecor || false, reqBirthday: lead.reqBirthday || false, reqAnniversary: lead.reqAnniversary || false, reqManualAdd: lead.reqManualAdd || false
         });
     };
 
     const handleEditSubmit = (e) => {
         e.preventDefault();
-
-        // FORCE HISTORY LOGGING ON EVERY SAVE
-        const timestamp = new Date().toLocaleString('en-IN', { 
-            month: 'short', day: 'numeric', year: 'numeric', 
-            hour: '2-digit', minute: '2-digit', hour12: true 
-        });
+        const timestamp = new Date().toLocaleString('en-IN', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
         
         let currentHistory = [];
         try { 
-            currentHistory = typeof selectedLeadForEdit.history === 'string' 
-                ? JSON.parse(selectedLeadForEdit.history) 
-                : (Array.isArray(selectedLeadForEdit.history) ? selectedLeadForEdit.history : []); 
+            currentHistory = typeof selectedLeadForEdit.history === 'string' ? JSON.parse(selectedLeadForEdit.history) : (Array.isArray(selectedLeadForEdit.history) ? selectedLeadForEdit.history : []); 
         } catch(err){}
+        const updatedHistory = [{ date: timestamp, action: 'Operations Profile Updated', note: 'Data synchronized and saved from Operations Dashboard.' }, ...currentHistory];
 
-        const updatedHistory = [
-            { date: timestamp, action: 'Operations Profile Updated', note: 'Data synchronized and saved from Operations Dashboard.' }, 
-            ...currentHistory
-        ];
-
-        const payloadToSave = {
-            ...selectedLeadForEdit,
+        const payloadToSave = { 
+            ...selectedLeadForEdit, 
             history: JSON.stringify(updatedHistory)
         };
-
+        
         updateLead(selectedLeadForEdit.id, payloadToSave);
         setSelectedLeadForEdit(null);
     };
 
-    const handleSendToFulfillment = async () => {
-        try {
-            await sendToFulfillment(leadToFulfill);
-            setLeadToFulfill(null);
-        } catch (error) {
-            triggerNotification('error', 'Transmission execution exception.');
-        }
-    };
-
-    // --- MAIN FILTER WITH ISOLATION ---
-    const filtered = leads.filter(item => {
+    // --- FILTER & DISPLAY DATA ---
+    const filtered = expandedLeads.filter(item => {
         const q = searchQuery.toLowerCase();
         const matchSearch = !q || `LMN${item.id}`.toLowerCase().includes(q) || (item.customerName || '').toLowerCase().includes(q) || (item.destination || '').toLowerCase().includes(q);
-        let sNorm = item.status;
-        if (sNorm === 'Move To Operation') sNorm = 'New Requests';
-        if (sNorm === 'Ops Assigned') sNorm = 'Follow-Up';
         
-        const matchTab = sNorm === activeTab;
+        let tabMatchedStatus = getTabStatus(item.rawRowStatus);
+        let matchTab = tabMatchedStatus === activeTab;
         const matchPlatform = selectedPlatform === 'All' ? true : item.platform === selectedPlatform;
 
-        // INDIVIDUAL ISOLATION FOR OPS
         let isAuthorized = true;
         if (activeTab !== 'New Requests' && !isAdmin) {
-            isAuthorized = (item.operationExecutive === loggedInUserName) || (item.opsPreparedBy === loggedInUserName);
+            isAuthorized = (item.assignedOps === loggedInUserName) || (item.opsPreparedBy === loggedInUserName);
+        }
+
+        if (activeTab === 'Upcoming Bookings') {
+            const today = new Date();
+            const past15Days = new Date(today);
+            past15Days.setDate(today.getDate() - 15);
+            const travelDate = new Date(item.travelDate || item.travelDates || item.departureDate);
+            const isWithin15DaysBack = !isNaN(travelDate) && travelDate >= past15Days;
+            matchTab = (tabMatchedStatus === 'Upcoming Bookings') && isWithin15DaysBack;
         }
 
         return matchSearch && matchTab && matchPlatform && isAuthorized;
@@ -759,11 +675,10 @@ export default function OperationsDashboard() {
     const paginated = filtered.slice((currentPage - 1) * entriesPerPage, currentPage * entriesPerPage);
 
     const categories = [
-        { id: 'New Requests', label: 'New Requests', icon: ShoppingCart, count: countNew },
-        { id: 'Follow-Up', label: 'Follow-Up', icon: Target, count: countFollow },
-        { id: 'Shared to Sales', label: 'Shared to Sales', icon: Layers, count: countShared },
+        { id: 'New Requests', label: 'Jobs', icon: ShoppingCart, count: countNew },
+        { id: 'Follow-Up', label: 'My Jobs', icon: Target, count: countFollow },
         { id: 'Confirmed Bookings', label: 'Confirmed Bookings', icon: BookmarkCheck, count: countBooked },
-        { id: 'Upcoming Departure', label: 'Upcoming Departure', icon: PlaneTakeoff, count: countDepart },
+        { id: 'Upcoming Bookings', label: 'Upcoming Bookings', icon: PlaneTakeoff, count: countUpcoming },
     ];
 
     const inputCls = "w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm focus:border-cyan-500 outline-none";
@@ -772,33 +687,26 @@ export default function OperationsDashboard() {
     const sectionCls = "p-5 rounded-xl border border-slate-800 bg-slate-900/40 shadow-sm";
     const sectionHeadCls = "text-sm font-bold text-cyan-400 mb-5 pb-2 border-b border-slate-800/60 tracking-wider uppercase";
 
-    // Dynamic Destinations pulled strictly from the Customisation Requests array attached to the Lead
-    const uniqueDestinations = selectedLeadForEdit ? [...new Set(
-        (selectedLeadForEdit.customisationRequests || [])
-        .map(req => req.destination)
-        .filter(Boolean)
-    )] : [];
-
-    // Safe fallback so dropdown doesn't break if Sales failed to provide a destination
+    const uniqueDestinations = selectedLeadForEdit ? [...new Set((selectedLeadForEdit.customisationRequests || []).map(req => req.destination).filter(Boolean))] : [];
     const destinationOptions = uniqueDestinations.length > 0 ? uniqueDestinations : ['Singapore', 'Dubai', 'Thailand', 'Malaysia', 'Japan', { value: 'UK', label: 'United Kingdom' }, 'India'];
 
+    const baseVendorOptions = ['Bali DMC', 'Dubai DMC', 'Thai DMC', 'Singapore DMC', 'Vendor A', 'Vendor B'];
+    const leadsVendorOptions = leads
+        .filter(l => l.vendorContactPerson && l.destination)
+        .map(l => `${l.vendorContactPerson} - ${l.destination}`);
+    
+    let dynamicVendorOptions = [...new Set([...baseVendorOptions, ...leadsVendorOptions])];
+    
+    if (selectedLeadForEdit?.vendorContactPerson && selectedLeadForEdit?.destination) {
+        const combo = `${selectedLeadForEdit.vendorContactPerson} - ${selectedLeadForEdit.destination}`;
+        if (!dynamicVendorOptions.includes(combo)) {
+            dynamicVendorOptions.push(combo);
+        }
+    }
+
     return (
-        <div
-            ref={mainRef}
-            className="w-full bg-[#0f172a] min-h-screen font-sans text-white overflow-y-auto relative"
-            style={{ height: '100vh' }}
-        >
-            <style>{`
-                .custom-date-input::-webkit-calendar-picker-indicator {
-                    opacity: 0;
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    cursor: pointer;
-                }
-            `}</style>
+        <div ref={mainRef} className="w-full bg-[#0f172a] min-h-screen font-sans text-white overflow-y-auto relative" style={{ height: '100vh' }}>
+            <style>{`.custom-date-input::-webkit-calendar-picker-indicator { opacity: 0; position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: pointer; }`}</style>
             
             <div className="p-4 sm:p-6">
                 {notification.show && (
@@ -813,16 +721,12 @@ export default function OperationsDashboard() {
                     <p className="text-slate-400 text-sm sm:text-base mt-1">Manage, allocate, and process active operational pipeline handovers.</p>
                 </div>
 
-                <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+                <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                     {categories.map((cat) => {
                         const Icon = cat.icon;
                         const isActive = activeTab === cat.id;
                         return (
-                            <div
-                                key={cat.id}
-                                onClick={() => handleTabChange(cat.id)}
-                                className={`relative p-5 rounded-xl cursor-pointer transition-all duration-200 border shadow-sm hover:shadow-md ${isActive ? 'ring-2 ring-offset-2 border-slate-500 bg-[#07202a] text-white' : 'bg-transparent border-slate-700/20 text-slate-200'}`}
-                            >
+                            <div key={cat.id} onClick={() => handleTabChange(cat.id)} className={`relative p-5 rounded-xl cursor-pointer transition-all duration-200 border shadow-sm hover:shadow-md ${isActive ? 'ring-2 ring-offset-2 border-slate-500 bg-[#07202a] text-white' : 'bg-transparent border-slate-700/20 text-slate-200'}`}>
                                 <div className="flex justify-between items-start mb-2">
                                     <div className={`p-3 rounded-lg ${isActive ? 'bg-slate-700 text-white' : 'bg-slate-800/20 text-slate-300'}`}><Icon size={24} strokeWidth={2} /></div>
                                     <span className={`text-xl font-bold ${isActive ? 'text-white' : 'text-slate-200'}`}>{cat.count}</span>
@@ -900,8 +804,7 @@ export default function OperationsDashboard() {
                                             <th className="px-6 py-4">Destination</th>
                                             <th className="px-6 py-4">Work / Priority</th>
                                             {activeTab === 'Follow-Up' && <th className="px-6 py-4">Vendor</th>}
-                                            {activeTab === 'Shared to Sales' && <th className="px-6 py-4">Version</th>}
-                                            {activeTab === 'Upcoming Departure' && <th className="px-6 py-4">Status</th>}
+                                            {activeTab === 'Upcoming Bookings' && <th className="px-6 py-4">Status</th>}
                                         </>
                                     )}
                                     <th className="px-6 py-4 text-right">Actions</th>
@@ -911,7 +814,7 @@ export default function OperationsDashboard() {
                                 {isLoading ? (
                                     <tr><td colSpan="11" className="px-6 py-12 text-center text-slate-500">Querying database records...</td></tr>
                                 ) : paginated.length > 0 ? paginated.map(row => (
-                                    <tr key={row.id} className="hover:bg-slate-800/30 transition-colors">
+                                    <tr key={row.uniqueKey} className="hover:bg-slate-800/30 transition-colors">
                                         {activeTab === 'Confirmed Bookings' ? (
                                             <>
                                                 <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
@@ -963,17 +866,12 @@ export default function OperationsDashboard() {
                                                 {activeTab === 'Follow-Up' && (
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-col text-xs gap-0.5 text-slate-400">
-                                                            <span>Vendor: <strong className="text-slate-200">{row.vendorName || 'Internal'}</strong></span>
+                                                            <span>Vendor: <strong className="text-slate-200">{row.vendorDmcName || row.vendorName || 'Internal'}</strong></span>
                                                             <span>Next: <strong className="text-amber-400">{row.nextFollowUp || 'TBD'}</strong></span>
                                                         </div>
                                                     </td>
                                                 )}
-                                                {activeTab === 'Shared to Sales' && (
-                                                    <td className="px-6 py-4">
-                                                        <span className="font-mono bg-[#1a3350] text-sky-300 px-2 py-0.5 rounded font-bold text-xs">v{row.itineraryVersion || '1.0.0'}</span>
-                                                    </td>
-                                                )}
-                                                {activeTab === 'Upcoming Departure' && (
+                                                {activeTab === 'Upcoming Bookings' && (
                                                     <td className="px-6 py-4">
                                                         <span className="text-cyan-400 font-bold text-xs bg-cyan-950 border border-cyan-800 px-2 py-0.5 rounded">{row.voucherStatus || 'Vouchered'}</span>
                                                     </td>
@@ -992,13 +890,13 @@ export default function OperationsDashboard() {
                                                         <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-yellow-900/20 rounded-md transition-colors" title="Edit"><Pencil size={18} /></button>
                                                         
                                                         {activeTab === 'Follow-Up' && (
-                                                            <button type="button" onClick={() => updateLead(row.id, { status: 'Shared to Sales' })} className="p-1.5 text-slate-400 hover:text-purple-400 hover:bg-purple-900/30 rounded-md transition-colors" title="Share back to Sales">
-                                                                <Share2 size={18} />
+                                                            <button type="button" onClick={() => handleSendToSalesReady(row)} className="p-1.5 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/30 rounded-md transition-colors border border-transparent hover:border-emerald-800" title="Send to Sales (Customisation Ready)">
+                                                                <Send size={16} />
                                                             </button>
                                                         )}
                                                     </>
                                                 )}
-                                                {activeTab !== 'Upcoming Departure' && (
+                                                {activeTab !== 'Upcoming Bookings' && (
                                                     <button type="button" onClick={() => setLeadToFulfill(row)} className="p-1.5 text-slate-400 hover:text-orange-400 hover:bg-orange-900/30 rounded-md transition-colors" title="Send to Fulfillment">
                                                         <Send size={18} className="text-orange-400" />
                                                     </button>
@@ -1024,7 +922,7 @@ export default function OperationsDashboard() {
                         {isLoading ? (
                             <div className="px-4 py-10 text-center text-slate-500 text-sm">Loading records...</div>
                         ) : paginated.length > 0 ? paginated.map(row => (
-                            <div key={row.id} className="p-4 hover:bg-slate-800/20 transition-colors">
+                            <div key={row.uniqueKey} className="p-4 hover:bg-slate-800/20 transition-colors">
                                 <div className="flex items-start justify-between mb-2">
                                     <div className="flex items-center gap-2">
                                         <span className="font-mono font-bold text-slate-300 text-sm">LMN{row.id}</span>
@@ -1042,13 +940,13 @@ export default function OperationsDashboard() {
                                                 <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 bg-slate-800 rounded-md border border-slate-700" title="Edit"><Pencil size={15} /></button>
                                                 
                                                 {activeTab === 'Follow-Up' && (
-                                                    <button type="button" onClick={() => updateLead(row.id, { status: 'Shared to Sales' })} className="p-1.5 text-slate-400 hover:text-purple-400 bg-slate-800 rounded-md border border-slate-700" title="Share to Sales">
-                                                        <Share2 size={15} />
+                                                    <button type="button" onClick={() => handleSendToSalesReady(row)} className="p-1.5 text-emerald-400 bg-emerald-950/40 rounded-md border border-emerald-900/50" title="Send to Sales (Customisation Ready)">
+                                                        <Send size={15} />
                                                     </button>
                                                 )}
                                             </>
                                         )}
-                                        {activeTab !== 'Upcoming Departure' && (
+                                        {activeTab !== 'Upcoming Bookings' && (
                                             <button type="button" onClick={() => setLeadToFulfill(row)} className="p-1.5 bg-slate-800 rounded-md border border-slate-700" title="Fulfillment">
                                                 <Send size={15} className="text-orange-400" />
                                             </button>
@@ -1069,18 +967,15 @@ export default function OperationsDashboard() {
 
                                 {activeTab === 'Follow-Up' && (
                                     <div className="text-xs text-slate-400 bg-slate-800/30 rounded px-2.5 py-1.5 mt-1">
-                                        Vendor: <strong className="text-slate-200">{row.vendorName || 'Internal'}</strong>
+                                        Vendor: <strong className="text-slate-200">{row.vendorDmcName || row.vendorName || 'Internal'}</strong>
                                         <span className="mx-2">·</span>
                                         Next: <strong className="text-amber-400">{row.nextFollowUp || 'TBD'}</strong>
                                     </div>
                                 )}
-                                {activeTab === 'Shared to Sales' && (
-                                    <span className="inline-block mt-1 font-mono bg-[#1a3350] text-sky-300 px-2 py-0.5 rounded font-bold text-xs">v{row.itineraryVersion || '1.0.0'}</span>
-                                )}
                                 {activeTab === 'Confirmed Bookings' && (
                                     <span className="inline-block mt-1 text-emerald-400 font-black font-mono text-sm">{row.amount || '₹2,50,000'}</span>
                                 )}
-                                {activeTab === 'Upcoming Departure' && (
+                                {activeTab === 'Upcoming Bookings' && (
                                     <span className="inline-block mt-1 text-cyan-400 font-bold text-xs bg-cyan-950 border border-cyan-800 px-2 py-0.5 rounded">{row.voucherStatus || 'Vouchered'}</span>
                                 )}
                             </div>
@@ -1126,11 +1021,7 @@ export default function OperationsDashboard() {
 
                                 {activeTab === 'Confirmed Bookings' ? (
                                     selectedLeadForEdit.tourType === 'International Tour' ? (
-                                        /* ───────────────────────────────────────────── */
-                                        /* NEW INTERNATIONAL CONFIRMED BOOKING VIEW      */
-                                        /* ───────────────────────────────────────────── */
                                         <div className="space-y-6">
-                                            
                                             {/* Booking Information */}
                                             <div className={sectionCls} style={{ borderColor: 'rgba(56, 189, 248, 0.4)' }}>
                                                 <h3 className={`${sectionHeadCls} text-sky-400 border-sky-900/50 flex flex-wrap justify-between gap-1`}>
@@ -1159,7 +1050,7 @@ export default function OperationsDashboard() {
                                                 </div>
                                             </div>
 
-                                            {/* Passenger Details - STRICTLY READ ONLY */}
+                                            {/* Passenger Details */}
                                             <div className={sectionCls}>
                                                 <h3 className={`${sectionHeadCls} flex flex-wrap justify-between gap-1`}>
                                                     <span>Passenger Details (Locked - Fetched from Sales)</span>
@@ -1204,7 +1095,6 @@ export default function OperationsDashboard() {
                                                             {index > 0 && <button type="button" onClick={() => removeArrayItem('flights', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
                                                             
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                                                                {/* Row 1 */}
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Flight Type</label>
                                                                     <CustomSelect value={flight.flightType} onChange={(v) => handleArrayChange('flights', index, 'flightType', v)} className={selectCls} placeholder="" options={['One Way', 'Round Trip', 'Multi City']} />
@@ -1218,7 +1108,6 @@ export default function OperationsDashboard() {
                                                                     <CustomSelect value={flight.bookingStatus} onChange={(v) => handleArrayChange('flights', index, 'bookingStatus', v)} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
                                                                 </div>
 
-                                                                {/* Row 2 */}
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Airline</label><input type="text" value={flight.airline} onChange={(e) => handleArrayChange('flights', index, 'airline', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">PNR No.</label><input type="text" value={flight.pnr} onChange={(e) => handleArrayChange('flights', index, 'pnr', e.target.value)} className={inputCls} /></div>
                                                                 <div>
@@ -1226,7 +1115,6 @@ export default function OperationsDashboard() {
                                                                     <CustomSelect value={flight.bookedThrough} onChange={(v) => handleArrayChange('flights', index, 'bookedThrough', v)} className={selectCls} placeholder="" options={['Internal Team', 'DMC', 'Direct Client']} />
                                                                 </div>
 
-                                                                {/* Row 3 */}
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Category</label>
                                                                     <CustomSelect value={flight.category} onChange={(v) => handleArrayChange('flights', index, 'category', v)} className={selectCls} placeholder="" options={['Economy', 'Premium Economy', 'Business', 'First Class']} />
@@ -1234,7 +1122,6 @@ export default function OperationsDashboard() {
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Flight Departure Date & Time</label><DatePickerField type="datetime-local" value={flight.departureDateTime} onChange={(e) => handleArrayChange('flights', index, 'departureDateTime', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Boarding Point</label><input type="text" value={flight.boardingPoint} onChange={(e) => handleArrayChange('flights', index, 'boardingPoint', e.target.value)} className={inputCls} /></div>
 
-                                                                {/* Row 4 */}
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Ticket Shared</label>
                                                                     <CustomSelect value={flight.ticketShared} onChange={(v) => handleArrayChange('flights', index, 'ticketShared', v)} className={selectCls} placeholder="" options={['Yes', 'No']} />
@@ -1242,7 +1129,6 @@ export default function OperationsDashboard() {
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Ticket Shared Date</label><DatePickerField type="date" value={flight.ticketSharedDate} onChange={(e) => handleArrayChange('flights', index, 'ticketSharedDate', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Deboarding Point</label><input type="text" value={flight.deboardingPoint} onChange={(e) => handleArrayChange('flights', index, 'deboardingPoint', e.target.value)} className={inputCls} /></div>
 
-                                                                {/* Row 5 */}
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Flight Cost</label><input type="text" value={flight.flightCost} onChange={(e) => handleArrayChange('flights', index, 'flightCost', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Markup Cost</label><input type="text" value={flight.markupCost || ''} onChange={(e) => handleArrayChange('flights', index, 'markupCost', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Drive Link</label><input type="text" placeholder="" value={flight.driveLink} onChange={(e) => handleArrayChange('flights', index, 'driveLink', e.target.value)} className={inputCls} /></div>
@@ -1319,8 +1205,8 @@ export default function OperationsDashboard() {
                                                                     <CustomSelect value={visa.visaCopyShared} onChange={v => handleArrayChange('visas', index, 'visaCopyShared', v)} className={selectCls} placeholder="" options={['Yes', 'No']} />
                                                                 </div>
 
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Approval Date</label><DatePickerField type="date" value={visa.visaApprovalDate} onChange={e => handleArrayChange('visas', index, 'visaApprovalDate', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Expiry Date</label><DatePickerField type="date" value={visa.visaExpiryDate} onChange={e => handleArrayChange('visas', index, 'visaExpiryDate', e.target.value)} className={inputCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Approval Date</label><DatePickerField type="date" value={visa.visaApprovalDate} onChange={(e) => handleArrayChange('visas', index, 'visaApprovalDate', e.target.value)} className={inputCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Expiry Date</label><DatePickerField type="date" value={visa.visaExpiryDate} onChange={(e) => handleArrayChange('visas', index, 'visaExpiryDate', e.target.value)} className={inputCls} /></div>
                                                                 <div className="hidden sm:block"></div>
 
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Cost</label><input type="text" value={visa.visaCost} onChange={e => handleArrayChange('visas', index, 'visaCost', e.target.value)} className={inputCls} /></div>
@@ -1336,231 +1222,12 @@ export default function OperationsDashboard() {
                                                 </div>
                                             </div>
 
-                                            {/* DMC Details & Deliverables */}
-                                            <div className={sectionCls}>
-                                                <h3 className={sectionHeadCls}>DMC Details</h3>
-                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">DMC Name</label><input type="text" value={selectedLeadForEdit.dmcName} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcName: e.target.value })} className={inputCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Contact Person</label><input type="text" value={selectedLeadForEdit.dmcContactPerson} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcContactPerson: e.target.value })} className={inputCls} /></div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Package Type</label>
-                                                        <CustomSelect value={selectedLeadForEdit.dmcPackageType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcPackageType: v })} className={selectCls} placeholder="" options={['Standard', 'Premium', 'Luxury', 'Budget']} />
-                                                    </div>
-
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">WhatsApp Number</label><input type="text" value={selectedLeadForEdit.dmcWhatsapp} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcWhatsapp: e.target.value })} className={inputCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Email Address</label><input type="text" value={selectedLeadForEdit.dmcEmail} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcEmail: e.target.value })} className={inputCls} /></div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
-                                                        <CustomSelect value={selectedLeadForEdit.dmcStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcStatus: v })} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
-                                                    </div>
-
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Reference No./ Booking Id</label><input type="text" value={selectedLeadForEdit.dmcRefNo} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcRefNo: e.target.value })} className={inputCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Package Cost</label><input type="text" value={selectedLeadForEdit.dmcPackageCost || ''} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcPackageCost: e.target.value })} className={inputCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Markup Cost</label><input type="text" value={selectedLeadForEdit.dmcMarkupCost || ''} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcMarkupCost: e.target.value })} className={inputCls} /></div>
-                                                </div>
-
-                                                <div className="mt-6 border-t border-slate-700/50 pt-6">
-                                                    <h3 className={sectionHeadCls}>DMC Deliverables</h3>
-                                                    <div className="w-1/3 min-w-[200px]">
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Check Box</label>
-                                                        <CustomSelect value={selectedLeadForEdit.dmcDeliverables} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, dmcDeliverables: v })} className={selectCls} placeholder="" options={['Accommodation', 'Transport', 'Sightseeing', 'All Included']} />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Hotel Booking */}
-                                            <div className={sectionCls}>
-                                                <h3 className={`${sectionHeadCls} flex flex-wrap justify-between gap-1`}>
-                                                    <span>Hotel Booking</span>
-                                                </h3>
-                                                <div className="space-y-6">
-                                                    {selectedLeadForEdit.intHotels?.map((hotel, index) => (
-                                                        <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative">
-                                                            <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-slate-400 border border-slate-700 rounded">HOTEL {index + 1}</span>
-                                                            {index > 0 && <button type="button" onClick={() => removeArrayItem('intHotels', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
-                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Location</label><input type="text" value={hotel.location} onChange={(e) => handleArrayChange('intHotels', index, 'location', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Hotel Name</label><input type="text" value={hotel.hotelName} onChange={(e) => handleArrayChange('intHotels', index, 'hotelName', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Hotel Category</label><input type="text" value={hotel.hotelCategory} onChange={(e) => handleArrayChange('intHotels', index, 'hotelCategory', e.target.value)} className={inputCls} /></div>
-                                                                
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Booked By</label>
-                                                                    <CustomSelect value={hotel.bookedBy} onChange={(v) => handleArrayChange('intHotels', index, 'bookedBy', v)} className={selectCls} placeholder="" options={['Operations Desk 1', 'Operations Desk 2', 'Ground Vendor']} />
-                                                                </div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Reference No./ Booking Id</label><input type="text" value={hotel.refNo} onChange={(e) => handleArrayChange('intHotels', index, 'refNo', e.target.value)} className={inputCls} /></div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
-                                                                    <CustomSelect value={hotel.status} onChange={(v) => handleArrayChange('intHotels', index, 'status', v)} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
-                                                                </div>
-                                                                
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Room Category</label><input type="text" value={hotel.roomCategory} onChange={(e) => handleArrayChange('intHotels', index, 'roomCategory', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">No. Of Rooms</label><input type="text" value={hotel.noOfRooms} onChange={(e) => handleArrayChange('intHotels', index, 'noOfRooms', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Additional Mattress</label><input type="text" value={hotel.addMattress} onChange={(e) => handleArrayChange('intHotels', index, 'addMattress', e.target.value)} className={inputCls} /></div>
-                                                                
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Specifications</label>
-                                                                    <CustomSelect value={hotel.specifications} onChange={(v) => handleArrayChange('intHotels', index, 'specifications', v)} className={selectCls} placeholder="" options={['Standard', 'Sea View', 'City View']} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Meal Plan</label>
-                                                                    <CustomSelect value={hotel.mealPlan} onChange={(v) => handleArrayChange('intHotels', index, 'mealPlan', v)} className={selectCls} placeholder="" options={['EP', 'CP', 'MAP', 'AP']} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Early Check-In / Late</label>
-                                                                    <CustomSelect value={hotel.earlyCheckIn} onChange={(v) => handleArrayChange('intHotels', index, 'earlyCheckIn', v)} className={selectCls} placeholder="" options={['None', 'Early Check-In', 'Late Check-Out']} />
-                                                                </div>
-                                                                
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Check-In Date & Time</label><DatePickerField type="datetime-local" value={hotel.checkInDateTime} onChange={(e) => handleArrayChange('intHotels', index, 'checkInDateTime', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Check-Out Date & Time</label><DatePickerField type="datetime-local" value={hotel.checkOutDateTime} onChange={(e) => handleArrayChange('intHotels', index, 'checkOutDateTime', e.target.value)} className={inputCls} /></div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Refreshment Room Required</label>
-                                                                    <CustomSelect value={hotel.refreshmentRoom} onChange={(v) => handleArrayChange('intHotels', index, 'refreshmentRoom', v)} className={selectCls} placeholder="" options={['Yes', 'No']} />
-                                                                </div>
-
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Cost</label><input type="text" value={hotel.cost} onChange={(e) => handleArrayChange('intHotels', index, 'cost', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={hotel.paymentDueDate} onChange={(e) => handleArrayChange('intHotels', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Voucher Link</label><input type="text" value={hotel.attachVoucher} onChange={(e) => handleArrayChange('intHotels', index, 'attachVoucher', e.target.value)} className={inputCls} /></div>
-
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Special Arrangements</label><input type="text" value={hotel.specialArrangements} onChange={(e) => handleArrayChange('intHotels', index, 'specialArrangements', e.target.value)} className={inputCls} /></div>
-                                                                <div className="sm:col-span-2"><label className="block text-xs font-medium text-slate-400 mb-1">Notes</label><input type="text" value={hotel.notes} onChange={(e) => handleArrayChange('intHotels', index, 'notes', e.target.value)} className={inputCls} /></div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                    <button type="button" onClick={() => addArrayItem('intHotels', { location: '', hotelName: '', hotelCategory: '', bookedBy: '', refNo: '', status: '', roomCategory: '', noOfRooms: '', addMattress: '', specifications: '', mealPlan: '', earlyCheckIn: '', checkInDateTime: '', checkOutDateTime: '', refreshmentRoom: '', cost: '', paymentDueDate: '', attachVoucher: '', specialArrangements: '', notes: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md transition-colors cursor-pointer">
-                                                        <Plus size={14} /> Add Hotel
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {/* Local Transport */}
-                                            <div className={sectionCls}>
-                                                <h3 className={sectionHeadCls}>Local Transport</h3>
-                                                <div className="space-y-6">
-                                                    {selectedLeadForEdit.intTransports?.map((trans, index) => (
-                                                        <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative">
-                                                            <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-slate-400 border border-slate-700 rounded">VEHICLE {index + 1}</span>
-                                                            {index > 0 && <button type="button" onClick={() => removeArrayItem('intTransports', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
-                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                                                                {/* Row 1 */}
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Local Operator Name</label><input type="text" value={trans.operatorName} onChange={(e) => handleArrayChange('intTransports', index, 'operatorName', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Vehicle Type</label><input type="text" value={trans.vehicleType} onChange={(e) => handleArrayChange('intTransports', index, 'vehicleType', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Contact Person</label><input type="text" value={trans.contactPerson} onChange={(e) => handleArrayChange('intTransports', index, 'contactPerson', e.target.value)} className={inputCls} /></div>
-                                                                
-                                                                {/* Row 2 */}
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Driver Name</label><input type="text" value={trans.driverName} onChange={(e) => handleArrayChange('intTransports', index, 'driverName', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Vehicle Number</label><input type="text" value={trans.vehicleNumber} onChange={(e) => handleArrayChange('intTransports', index, 'vehicleNumber', e.target.value)} className={inputCls} /></div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
-                                                                    <CustomSelect value={trans.status} onChange={(v) => handleArrayChange('intTransports', index, 'status', v)} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
-                                                                </div>
-
-                                                                {/* Row 3 */}
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Driver Contact Number</label><input type="text" value={trans.driverContact} onChange={(e) => handleArrayChange('intTransports', index, 'driverContact', e.target.value)} className={inputCls} /></div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Duration</label>
-                                                                    <CustomSelect value={trans.duration} onChange={(v) => handleArrayChange('intTransports', index, 'duration', v)} className={selectCls} placeholder="" options={['Half Day', 'Full Day', 'Multi Day']} />
-                                                                </div>
-                                                                <div className="hidden sm:block"></div>
-
-                                                                {/* Row 4 */}
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Pickup Point</label><input type="text" value={trans.pickupPoint} onChange={(e) => handleArrayChange('intTransports', index, 'pickupPoint', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Pickup Date</label><DatePickerField type="date" value={trans.pickupDate} onChange={(e) => handleArrayChange('intTransports', index, 'pickupDate', e.target.value)} className={inputCls} /></div>
-                                                                <div className="hidden sm:block"></div>
-
-                                                                {/* Row 5 */}
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Drop Point</label><input type="text" value={trans.dropPoint} onChange={(e) => handleArrayChange('intTransports', index, 'dropPoint', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Drop Date</label><DatePickerField type="date" value={trans.dropDate} onChange={(e) => handleArrayChange('intTransports', index, 'dropDate', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Notes</label><input type="text" value={trans.notes} onChange={(e) => handleArrayChange('intTransports', index, 'notes', e.target.value)} className={inputCls} /></div>
-
-                                                                {/* Row 6 */}
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Cost</label><input type="text" value={trans.cost} onChange={(e) => handleArrayChange('intTransports', index, 'cost', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Mark-Up</label><input type="text" value={trans.markup || ''} onChange={(e) => handleArrayChange('intTransports', index, 'markup', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={trans.paymentDueDate} onChange={(e) => handleArrayChange('intTransports', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                    <button type="button" onClick={() => addArrayItem('intTransports', { operatorName: '', vehicleType: '', contactPerson: '', driverName: '', vehicleNumber: '', status: '', driverContact: '', duration: '', pickupPoint: '', pickupDate: '', dropPoint: '', dropDate: '', notes: '', cost: '', markup: '', paymentDueDate: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md transition-colors cursor-pointer">
-                                                        <Plus size={14} /> Add Transport
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {/* Special Requirements */}
-                                            <div className={sectionCls}>
-                                                <h3 className={`${sectionHeadCls} flex flex-wrap justify-between gap-1`}>
-                                                    <span>Special Requirements</span>
-                                                </h3>
-                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-y-4 gap-x-2">
-                                                    {[
-                                                        { id: 'reqVeg', label: 'Vegetarian Meal' },
-                                                        { id: 'reqFloating', label: 'Floating Breakfast' },
-                                                        { id: 'reqWheelchair', label: 'Wheelchair Assistance' },
-                                                        { id: 'reqDecor', label: 'Special Decoration' },
-                                                        { id: 'reqSenior', label: 'Senior Citizen' },
-                                                        { id: 'reqBirthday', label: 'Birthday During Trip' },
-                                                        { id: 'reqHoneymoon', label: 'Honeymoon Perks' },
-                                                        { id: 'reqAnniversary', label: 'Anniversary During Trip' },
-                                                        { id: 'reqCandlelight', label: 'Candlelight Dinner' },
-                                                        { id: 'reqManualAdd', label: 'Add Manually' },
-                                                    ].map(chk => (
-                                                        <label key={chk.id} className="flex items-center gap-2 cursor-pointer group">
-                                                            <input type="checkbox" checked={selectedLeadForEdit[chk.id]} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, [chk.id]: e.target.checked })}
-                                                                className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-cyan-500 cursor-pointer" />
-                                                            <span className="text-xs text-slate-300 group-hover:text-white transition-colors">{chk.label}</span>
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {/* 8. Payment Request */}
-                                            <div className={sectionCls}>
-                                                <h3 className={sectionHeadCls}>Payment Request</h3>
-                                                <div className="space-y-6">
-                                                    {selectedLeadForEdit.paymentRequests?.map((req, index) => (
-                                                        <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative">
-                                                            <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-slate-400 border border-slate-700 rounded">PAYMENT {index + 1}</span>
-                                                            {index > 0 && <button type="button" onClick={() => removeArrayItem('paymentRequests', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
-                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Service</label>
-                                                                    <CustomSelect value={req.service} onChange={(v) => handleArrayChange('paymentRequests', index, 'service', v)} className={selectCls} placeholder="" options={['Transport', 'Hotel', 'Local Vehicle Operator']} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Provider Name </label>
-                                                                    <input type="text" value={req.providerName} readOnly className={readonlyCls} placeholder="" />
-                                                                </div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={req.paymentDueDate} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
-                                                                
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Service Cost</label><input type="text" value={req.serviceCost} onChange={(e) => handleArrayChange('paymentRequests', index, 'serviceCost', e.target.value)} className={inputCls} /></div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Payment Type</label>
-                                                                    <CustomSelect value={req.paymentType} onChange={(v) => handleArrayChange('paymentRequests', index, 'paymentType', v)} className={selectCls} placeholder="" options={['Full Payment', 'Advance', 'Balance']} />
-                                                                </div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Amount to Pay</label><input type="text" value={req.amountToPay} onChange={(e) => handleArrayChange('paymentRequests', index, 'amountToPay', e.target.value)} className={inputCls} /></div>
-                                                                
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Account Details</label><input type="text" value={req.paymentAccountDetails} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentAccountDetails', e.target.value)} className={inputCls} /></div>
-                                                                
-                                                                <div className="sm:col-start-3 flex items-end">
-                                                                    <button type="button" className="w-full py-2 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-400 border border-emerald-800 font-bold text-xs rounded transition-colors cursor-pointer text-center">
-                                                                        Request To Director & Accounts
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                    <button type="button" onClick={() => addArrayItem('paymentRequests', { service: '', providerName: '', paymentDueDate: '', serviceCost: '', paymentType: '', amountToPay: '', paymentAccountDetails: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md transition-colors cursor-pointer">
-                                                        <Plus size={14} /> Add Payment Request
-                                                    </button>
-                                                </div>
-                                            </div>
-
                                         </div>
                                     ) : (
                                         /* ───────────────────────────────────────────── */
                                         /* NEW DOMESTIC CONFIRMED BOOKING VIEW           */
                                         /* ───────────────────────────────────────────── */
                                         <div className="space-y-6">
-                                            
                                             {/* 1. Booking Information */}
                                             <div className={sectionCls} style={{ borderColor: 'rgba(56, 189, 248, 0.4)' }}>
                                                 <h3 className={`${sectionHeadCls} text-sky-400 border-sky-900/50 flex flex-wrap justify-between gap-1`}>
@@ -1589,7 +1256,7 @@ export default function OperationsDashboard() {
                                                 </div>
                                             </div>
 
-                                            {/* 2. Passenger Details - STRICTLY READ ONLY */}
+                                            {/* 2. Passenger Details */}
                                             <div className={sectionCls}>
                                                 <h3 className={`${sectionHeadCls} flex flex-wrap justify-between gap-1`}>
                                                     <span>Passenger Details (Locked - Fetched from Sales)</span>
@@ -1624,34 +1291,16 @@ export default function OperationsDashboard() {
                                                 </div>
                                             </div>
 
-                                            {/* 3. Document Collection - STRICTLY READ ONLY */}
+                                            {/* 3. Document Collection */}
                                             <div className={sectionCls}>
                                                 <h3 className={sectionHeadCls}>Document Collection (Locked - Fetched from Sales)</h3>
                                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 opacity-80">
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Aadhar Copy</label>
-                                                        <input type="text" readOnly value={selectedLeadForEdit.docAadhar || 'Pending'} className={readonlyCls} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">PAN Card</label>
-                                                        <input type="text" readOnly value={selectedLeadForEdit.docPan || 'Pending'} className={readonlyCls} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Photograph</label>
-                                                        <input type="text" readOnly value={selectedLeadForEdit.docPhoto || 'Pending'} className={readonlyCls} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Attach Drive Link</label>
-                                                        <input type="text" readOnly value={selectedLeadForEdit.docDriveLink || 'N/A'} className={readonlyCls} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Document Status</label>
-                                                        <input type="text" readOnly value={selectedLeadForEdit.documentStatus || 'Pending'} className={readonlyCls} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Remarks</label>
-                                                        <input type="text" readOnly value={selectedLeadForEdit.docRemarks || 'None'} className={readonlyCls} />
-                                                    </div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Aadhar Copy</label><input type="text" readOnly value={selectedLeadForEdit.docAadhar || 'Pending'} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">PAN Card</label><input type="text" readOnly value={selectedLeadForEdit.docPan || 'Pending'} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Photograph</label><input type="text" readOnly value={selectedLeadForEdit.docPhoto || 'Pending'} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Drive Link</label><input type="text" readOnly value={selectedLeadForEdit.docDriveLink || 'N/A'} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Document Status</label><input type="text" readOnly value={selectedLeadForEdit.documentStatus || 'Pending'} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Remarks</label><input type="text" readOnly value={selectedLeadForEdit.docRemarks || 'None'} className={readonlyCls} /></div>
                                                 </div>
                                             </div>
 
@@ -1688,11 +1337,9 @@ export default function OperationsDashboard() {
                                                                 </div>
                                                             </div>
 
-                                                            {/* IF FLIGHT */}
                                                             {trans.transportType === 'Flight' && (
                                                                 <div className="space-y-4 border-t border-slate-700/30 pt-4">
                                                                     <div className="font-bold text-cyan-400 text-xs uppercase tracking-widest">If Flight</div>
-                                                                    
                                                                     {['onward', 'return'].map((leg) => {
                                                                         if (leg === 'return' && !trans.flight?.return) return null;
                                                                         return (
@@ -1702,42 +1349,32 @@ export default function OperationsDashboard() {
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Airline</label><input type="text" value={trans.flight?.[leg]?.airline || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'airline', e.target.value)} className={inputCls} /></div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">PNR No.</label><input type="text" value={trans.flight?.[leg]?.pnr || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'pnr', e.target.value)} className={inputCls} /></div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Booking Date</label><DatePickerField type="date" value={trans.flight?.[leg]?.bookingDate || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'bookingDate', e.target.value)} className={inputCls} /></div>
-                                                                                    
                                                                                     <div>
                                                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Booked Through</label>
                                                                                         <CustomSelect value={trans.flight?.[leg]?.bookedThrough || ''} onChange={(v) => updateDomTransportNested(index, 'flight', leg, 'bookedThrough', v)} className={selectCls} placeholder="" options={['Internal', 'DMC', 'Direct']} />
                                                                                     </div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Departure Date & Time</label><DatePickerField type="datetime-local" value={trans.flight?.[leg]?.depDateTime || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'depDateTime', e.target.value)} className={inputCls} /></div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">From</label><input type="text" value={trans.flight?.[leg]?.from || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'from', e.target.value)} className={inputCls} /></div>
-                                                                                    
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Drive Link</label><input type="text" value={trans.flight?.[leg]?.attachTicket || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'attachTicket', e.target.value)} className={inputCls} /></div>
                                                                                     <div className="hidden sm:block"></div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">To</label><input type="text" value={trans.flight?.[leg]?.to || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'to', e.target.value)} className={inputCls} /></div>
-                                                                                    
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Flight Cost</label><input type="text" value={trans.flight?.[leg]?.flightCost || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'flightCost', e.target.value)} className={inputCls} /></div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Markup Cost</label><input type="text" value={trans.flight?.[leg]?.markupCost || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'markupCost', e.target.value)} className={inputCls} /></div>
                                                                                 </div>
                                                                             </div>
                                                                         );
                                                                     })}
-
                                                                     {!trans.flight?.return ? (
-                                                                        <button type="button" onClick={() => addDomTransportReturn(index, 'flight')} className="font-bold text-sm text-cyan-400 hover:text-cyan-300 bg-transparent border-none cursor-pointer p-0 text-left">
-                                                                            + Add Return Details
-                                                                        </button>
+                                                                        <button type="button" onClick={() => addDomTransportReturn(index, 'flight')} className="font-bold text-sm text-cyan-400 hover:text-cyan-300 bg-transparent border-none cursor-pointer p-0 text-left">+ Add Return Details</button>
                                                                     ) : (
-                                                                        <button type="button" onClick={() => removeDomTransportReturn(index, 'flight')} className="font-bold text-sm text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer p-0 text-left">
-                                                                            - Remove Return Details
-                                                                        </button>
+                                                                        <button type="button" onClick={() => removeDomTransportReturn(index, 'flight')} className="font-bold text-sm text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer p-0 text-left">- Remove Return Details</button>
                                                                     )}
                                                                 </div>
                                                             )}
 
-                                                            {/* IF TRAIN */}
                                                             {trans.transportType === 'Train' && (
                                                                 <div className="space-y-4 border-t border-slate-700/30 pt-4">
                                                                     <div className="font-bold text-cyan-400 text-xs uppercase tracking-widest">If Train is Selected</div>
-                                                                    
                                                                     {['onward', 'return'].map((leg) => {
                                                                         if (leg === 'return' && !trans.train?.return) return null;
                                                                         return (
@@ -1762,7 +1399,6 @@ export default function OperationsDashboard() {
                                                                                         <CustomSelect value={trans.train?.[leg]?.trainClass || ''} onChange={(v) => updateDomTransportNested(index, 'train', leg, 'trainClass', v)} className={selectCls} placeholder="" options={['1A', '2A', '3A', 'SL', 'CC', 'EC']} />
                                                                                     </div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Ticket Link</label><input type="text" value={trans.train?.[leg]?.attachTicketLink || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'attachTicketLink', e.target.value)} className={inputCls} /></div>
-                                                                                    
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Meals</label><input type="text" value={trans.train?.[leg]?.meals || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'meals', e.target.value)} className={inputCls} /></div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Train Cost</label><input type="text" value={trans.train?.[leg]?.trainCost || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'trainCost', e.target.value)} className={inputCls} /></div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Mark-Up</label><input type="text" value={trans.train?.[leg]?.markupCost || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'markupCost', e.target.value)} className={inputCls} /></div>
@@ -1770,24 +1406,17 @@ export default function OperationsDashboard() {
                                                                             </div>
                                                                         );
                                                                     })}
-
                                                                     {!trans.train?.return ? (
-                                                                        <button type="button" onClick={() => addDomTransportReturn(index, 'train')} className="font-bold text-sm text-cyan-400 hover:text-cyan-300 bg-transparent border-none cursor-pointer p-0 text-left">
-                                                                            + Add Return Details
-                                                                        </button>
+                                                                        <button type="button" onClick={() => addDomTransportReturn(index, 'train')} className="font-bold text-sm text-cyan-400 hover:text-cyan-300 bg-transparent border-none cursor-pointer p-0 text-left">+ Add Return Details</button>
                                                                     ) : (
-                                                                        <button type="button" onClick={() => removeDomTransportReturn(index, 'train')} className="font-bold text-sm text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer p-0 text-left">
-                                                                            - Remove Return Details
-                                                                        </button>
+                                                                        <button type="button" onClick={() => removeDomTransportReturn(index, 'train')} className="font-bold text-sm text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer p-0 text-left">- Remove Return Details</button>
                                                                     )}
                                                                 </div>
                                                             )}
 
-                                                            {/* IF BUS */}
                                                             {trans.transportType === 'Bus' && (
                                                                 <div className="space-y-4 border-t border-slate-700/30 pt-4">
                                                                     <div className="font-bold text-cyan-400 text-xs uppercase tracking-widest">If Bus is Selected</div>
-                                                                    
                                                                     {['onward', 'return'].map((leg) => {
                                                                         if (leg === 'return' && !trans.bus?.return) return null;
                                                                         return (
@@ -1797,26 +1426,19 @@ export default function OperationsDashboard() {
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Service Provider</label><input type="text" value={trans.bus?.[leg]?.serviceProvider || ''} onChange={(e) => updateDomTransportNested(index, 'bus', leg, 'serviceProvider', e.target.value)} className={inputCls} /></div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Booking Date</label><DatePickerField type="date" value={trans.bus?.[leg]?.bookingDate || ''} onChange={(e) => updateDomTransportNested(index, 'bus', leg, 'bookingDate', e.target.value)} className={inputCls} /></div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Destination</label><input type="text" value={trans.bus?.[leg]?.destination || ''} onChange={(e) => updateDomTransportNested(index, 'bus', leg, 'destination', e.target.value)} className={inputCls} /></div>
-                                                                                    
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Boarding Point</label><input type="text" value={trans.bus?.[leg]?.boardingPoint || ''} onChange={(e) => updateDomTransportNested(index, 'bus', leg, 'boardingPoint', e.target.value)} className={inputCls} /></div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Travel Date & Time</label><DatePickerField type="datetime-local" value={trans.bus?.[leg]?.travelDateTime || ''} onChange={(e) => updateDomTransportNested(index, 'bus', leg, 'travelDateTime', e.target.value)} className={inputCls} /></div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Seat Details</label><input type="text" value={trans.bus?.[leg]?.seatDetails || ''} onChange={(e) => updateDomTransportNested(index, 'bus', leg, 'seatDetails', e.target.value)} className={inputCls} /></div>
-                                                                                    
                                                                                     <div className="sm:col-start-2"><label className="block text-xs font-medium text-slate-400 mb-1">Bus Cost</label><input type="text" value={trans.bus?.[leg]?.cost || ''} onChange={(e) => updateDomTransportNested(index, 'bus', leg, 'cost', e.target.value)} className={inputCls} /></div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Mark-Up</label><input type="text" value={trans.bus?.[leg]?.markupCost || ''} onChange={(e) => updateDomTransportNested(index, 'bus', leg, 'markupCost', e.target.value)} className={inputCls} /></div>
                                                                                 </div>
                                                                             </div>
                                                                         );
                                                                     })}
-
                                                                     {!trans.bus?.return ? (
-                                                                        <button type="button" onClick={() => addDomTransportReturn(index, 'bus')} className="font-bold text-sm text-cyan-400 hover:text-cyan-300 bg-transparent border-none cursor-pointer p-0 text-left">
-                                                                            + Add Return Details
-                                                                        </button>
+                                                                        <button type="button" onClick={() => addDomTransportReturn(index, 'bus')} className="font-bold text-sm text-cyan-400 hover:text-cyan-300 bg-transparent border-none cursor-pointer p-0 text-left">+ Add Return Details</button>
                                                                     ) : (
-                                                                        <button type="button" onClick={() => removeDomTransportReturn(index, 'bus')} className="font-bold text-sm text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer p-0 text-left">
-                                                                            - Remove Return Details
-                                                                        </button>
+                                                                        <button type="button" onClick={() => removeDomTransportReturn(index, 'bus')} className="font-bold text-sm text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer p-0 text-left">- Remove Return Details</button>
                                                                     )}
                                                                 </div>
                                                             )}
@@ -1840,7 +1462,6 @@ export default function OperationsDashboard() {
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Location</label><input type="text" value={hotel.location} onChange={(e) => handleArrayChange('domHotels', index, 'location', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Hotel Name</label><input type="text" value={hotel.hotelName} onChange={(e) => handleArrayChange('domHotels', index, 'hotelName', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Hotel Category</label><input type="text" value={hotel.hotelCategory} onChange={(e) => handleArrayChange('domHotels', index, 'hotelCategory', e.target.value)} className={inputCls} /></div>
-                                                                
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booked By</label>
                                                                     <CustomSelect value={hotel.bookedBy} onChange={(v) => handleArrayChange('domHotels', index, 'bookedBy', v)} className={selectCls} placeholder="" options={['Operations Desk 1', 'Operations Desk 2', 'Ground Vendor']} />
@@ -1850,11 +1471,9 @@ export default function OperationsDashboard() {
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
                                                                     <CustomSelect value={hotel.status} onChange={(v) => handleArrayChange('domHotels', index, 'status', v)} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
                                                                 </div>
-                                                                
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Room Category</label><input type="text" value={hotel.roomCategory} onChange={(e) => handleArrayChange('domHotels', index, 'roomCategory', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">No. Of Rooms</label><input type="text" value={hotel.noOfRooms} onChange={(e) => handleArrayChange('domHotels', index, 'noOfRooms', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Additional Mattress</label><input type="text" value={hotel.addMattress} onChange={(e) => handleArrayChange('domHotels', index, 'addMattress', e.target.value)} className={inputCls} /></div>
-                                                                
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Specifications</label>
                                                                     <CustomSelect value={hotel.specifications} onChange={(v) => handleArrayChange('domHotels', index, 'specifications', v)} className={selectCls} placeholder="" options={['Standard', 'Sea View', 'City View']} />
@@ -1867,18 +1486,15 @@ export default function OperationsDashboard() {
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Early Check-In / Late</label>
                                                                     <CustomSelect value={hotel.earlyCheckIn} onChange={(v) => handleArrayChange('domHotels', index, 'earlyCheckIn', v)} className={selectCls} placeholder="" options={['None', 'Early Check-In', 'Late Check-Out']} />
                                                                 </div>
-                                                                
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Check-In Date & Time</label><DatePickerField type="datetime-local" value={hotel.checkInDateTime} onChange={(e) => handleArrayChange('domHotels', index, 'checkInDateTime', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Check-Out Date & Time</label><DatePickerField type="datetime-local" value={hotel.checkOutDateTime} onChange={(e) => handleArrayChange('domHotels', index, 'checkOutDateTime', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Refreshment Room Required</label>
                                                                     <CustomSelect value={hotel.refreshmentRoom} onChange={(v) => handleArrayChange('domHotels', index, 'refreshmentRoom', v)} className={selectCls} placeholder="Select" options={['Yes', 'No']} />
                                                                 </div>
-
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Cost</label><input type="text" value={hotel.cost} onChange={(e) => handleArrayChange('domHotels', index, 'cost', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={hotel.paymentDueDate} onChange={(e) => handleArrayChange('domHotels', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Voucher Link</label><input type="text" value={hotel.attachVoucher} onChange={(e) => handleArrayChange('domHotels', index, 'attachVoucher', e.target.value)} className={inputCls} /></div>
-
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Mark-Up</label><input type="text" value={hotel.markup || ''} onChange={(e) => handleArrayChange('domHotels', index, 'markup', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Special Arrangements</label><input type="text" value={hotel.specialArrangements} onChange={(e) => handleArrayChange('domHotels', index, 'specialArrangements', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Notes</label><input type="text" value={hotel.notes} onChange={(e) => handleArrayChange('domHotels', index, 'notes', e.target.value)} className={inputCls} /></div>
@@ -1900,20 +1516,15 @@ export default function OperationsDashboard() {
                                                             <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-slate-400 border border-slate-700 rounded">VEHICLE {index + 1}</span>
                                                             {index > 0 && <button type="button" onClick={() => removeArrayItem('domLocalTransports', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                                                                {/* Row 1 */}
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Local Operator Name</label><input type="text" value={trans.serviceProvider || trans.operatorName || ''} onChange={(e) => handleArrayChange('domLocalTransports', index, 'serviceProvider', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Vehicle Type</label><input type="text" value={trans.vehicleType} onChange={(e) => handleArrayChange('domLocalTransports', index, 'vehicleType', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Contact Person</label><input type="text" value={trans.contactPerson} onChange={(e) => handleArrayChange('domLocalTransports', index, 'contactPerson', e.target.value)} className={inputCls} /></div>
-                                                                
-                                                                {/* Row 2 */}
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Driver Name</label><input type="text" value={trans.driverName} onChange={(e) => handleArrayChange('domLocalTransports', index, 'driverName', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Vehicle Number</label><input type="text" value={trans.vehicleNumber} onChange={(e) => handleArrayChange('domLocalTransports', index, 'vehicleNumber', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
                                                                     <CustomSelect value={trans.status} onChange={(v) => handleArrayChange('domLocalTransports', index, 'status', v)} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
                                                                 </div>
-
-                                                                {/* Row 3 */}
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Driver Contact Number</label><input type="text" value={trans.driverContact || ''} onChange={(e) => handleArrayChange('domLocalTransports', index, 'driverContact', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Toll Parking & Other State Permit</label>
@@ -1923,18 +1534,12 @@ export default function OperationsDashboard() {
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Duration</label>
                                                                     <CustomSelect value={trans.duration} onChange={(v) => handleArrayChange('domLocalTransports', index, 'duration', v)} className={selectCls} placeholder="" options={['Half Day', 'Full Day', 'Multi Day']} />
                                                                 </div>
-
-                                                                {/* Row 4 */}
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Pickup Point</label><input type="text" value={trans.pickupPoint} onChange={(e) => handleArrayChange('domLocalTransports', index, 'pickupPoint', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Pickup Date</label><DatePickerField type="date" value={trans.pickupDate} onChange={(e) => handleArrayChange('domLocalTransports', index, 'pickupDate', e.target.value)} className={inputCls} /></div>
                                                                 <div className="hidden sm:block"></div>
-
-                                                                {/* Row 5 */}
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Drop Point</label><input type="text" value={trans.dropPoint} onChange={(e) => handleArrayChange('domLocalTransports', index, 'dropPoint', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Drop Date</label><DatePickerField type="date" value={trans.dropDate} onChange={(e) => handleArrayChange('domLocalTransports', index, 'dropDate', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Notes</label><input type="text" value={trans.notes} onChange={(e) => handleArrayChange('domLocalTransports', index, 'notes', e.target.value)} className={inputCls} /></div>
-                                                                
-                                                                {/* Row 6 */}
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Cost</label><input type="text" value={trans.cost} onChange={(e) => handleArrayChange('domLocalTransports', index, 'cost', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Mark-Up</label><input type="text" value={trans.markup || ''} onChange={(e) => handleArrayChange('domLocalTransports', index, 'markup', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={trans.paymentDueDate} onChange={(e) => handleArrayChange('domLocalTransports', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
@@ -1992,51 +1597,39 @@ export default function OperationsDashboard() {
                                                                     <input type="text" value={req.providerName} readOnly className={readonlyCls} placeholder="" />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={req.paymentDueDate} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
-                                                                
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Service Cost</label><input type="text" value={req.serviceCost} onChange={(e) => handleArrayChange('paymentRequests', index, 'serviceCost', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Payment Type</label>
                                                                     <CustomSelect value={req.paymentType} onChange={(v) => handleArrayChange('paymentRequests', index, 'paymentType', v)} className={selectCls} placeholder="" options={['Full Payment', 'Advance', 'Balance']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Amount to Pay</label><input type="text" value={req.amountToPay} onChange={(e) => handleArrayChange('paymentRequests', index, 'amountToPay', e.target.value)} className={inputCls} /></div>
-                                                                
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Account Details</label><input type="text" value={req.paymentAccountDetails} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentAccountDetails', e.target.value)} className={inputCls} /></div>
-                                                                
                                                                 <div className="sm:col-start-3 flex items-end">
-                                                                    <button type="button" className="w-full py-2 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-400 border border-emerald-800 font-bold text-xs rounded transition-colors cursor-pointer text-center">
-                                                                        Request To Director & Accounts
-                                                                    </button>
+                                                                    <button type="button" className="w-full py-2 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-400 border border-emerald-800 font-bold text-xs rounded transition-colors cursor-pointer text-center">Request To Director & Accounts</button>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     ))}
-                                                    <button type="button" onClick={() => addArrayItem('paymentRequests', { service: '', providerName: '', paymentDueDate: '', serviceCost: '', paymentType: '', amountToPay: '', paymentAccountDetails: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md transition-colors cursor-pointer">
-                                                        <Plus size={14} /> Add Payment Request
-                                                    </button>
+                                                    <button type="button" onClick={() => addArrayItem('paymentRequests', { service: '', providerName: '', paymentDueDate: '', serviceCost: '', paymentType: '', amountToPay: '', paymentAccountDetails: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md transition-colors cursor-pointer"><Plus size={14} /> Add Payment Request</button>
                                                 </div>
                                             </div>
-
                                         </div>
                                     )
                                 ) : (
                                     /* ─── STANDARD OPS PIPELINE EDIT ────────────────────── */
                                     <div className="space-y-6">
-
                                         {/* Section 1: LEAD INFO */}
                                         <div className={sectionCls} style={{ borderColor: 'rgba(51,65,85,0.8)' }}>
                                             <h3 className={sectionHeadCls} style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
                                                 <span className="font-bold">LEAD INFO</span>
                                             </h3>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                                                {/* Fetched from Leads Manager through Sales - Jobs */}
                                                 <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Date</label><input type="text" readOnly value={selectedLeadForEdit.dateAdded || selectedLeadForEdit.createdAt || selectedLeadForEdit.date || ''} className={readonlyCls} /></div>
                                                 <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Source</label><input type="text" readOnly value={selectedLeadForEdit.platform || selectedLeadForEdit.leadSource || ''} className={readonlyCls} /></div>
                                                 <div><label className="block text-xs font-bold text-slate-400 mb-1">Campaign</label><input type="text" readOnly value={selectedLeadForEdit.campaign || ''} className={readonlyCls} /></div>
-                                                
                                                 <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Name</label><input type="text" readOnly value={selectedLeadForEdit.customerName || selectedLeadForEdit.leadName || ''} className={readonlyCls} /></div>
                                                 <div><label className="block text-xs font-bold text-slate-400 mb-1">Mobile Number</label><input type="text" readOnly value={selectedLeadForEdit.mobileNumber || selectedLeadForEdit.phone || ''} className={readonlyCls} /></div>
                                                 <div><label className="block text-xs font-bold text-slate-400 mb-1">Email Address</label><input type="text" readOnly value={selectedLeadForEdit.emailAddress || selectedLeadForEdit.email || ''} className={readonlyCls} /></div>
-                                                
                                                 <div><label className="block text-xs font-bold text-slate-400 mb-1">Package Type</label><input type="text" readOnly value={selectedLeadForEdit.packageType || ''} className={readonlyCls} /></div>
                                                 <div><label className="block text-xs font-bold text-slate-400 mb-1">Budget</label><input type="text" readOnly value={selectedLeadForEdit.budget || selectedLeadForEdit.amount || ''} className={readonlyCls} /></div>
                                                 <div><label className="block text-xs font-bold text-slate-400 mb-1">Message From Lead</label><input type="text" readOnly value={selectedLeadForEdit.messageFromLead || selectedLeadForEdit.leadMessage || selectedLeadForEdit.message || ''} className={readonlyCls} /></div>
@@ -2046,68 +1639,24 @@ export default function OperationsDashboard() {
                                         {/* Section 2: DESTINATION REQUEST */}
                                         <div className={sectionCls} style={{ borderColor: 'rgba(51,65,85,0.8)' }}>
                                             <h3 className={sectionHeadCls} style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
+                                                <div className="flex items-center gap-2"><span className="font-bold">DESTINATION REQUEST</span></div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className="font-bold">DESTINATION REQUEST</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <button type="button" onClick={() => setActiveModal({ type: 'view', section: 'Destination Request' })} className="flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded text-xs font-bold transition-colors cursor-pointer">
-                                                        <Eye size={14} /> View
-                                                    </button>
+                                                    <button type="button" onClick={() => setActiveModal({ type: 'view', section: 'Destination Request' })} className="flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded text-xs font-bold transition-colors cursor-pointer"><Eye size={14} /> View</button>
                                                 </div>
                                             </h3>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                                                {/* Fetched from Customisation Section */}
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Destination</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.destination || selectedLeadForEdit.destination || ''} className={readonlyCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Customisation Type</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.customisationType || selectedLeadForEdit.customisationType || ''} className={readonlyCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Required By</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.requiredByDate || selectedLeadForEdit.customisationRequests?.[0]?.turnaroundTime || ''} className={readonlyCls} />
-                                                </div>
-
-                                                {/* Fetched from Travel Details */}
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Package Type</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.tourType || selectedLeadForEdit.packageType || ''} className={readonlyCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Travel Date</label>
-                                                    <DatePickerField type="date" readOnly value={selectedLeadForEdit.travelDate || selectedLeadForEdit.travelDates || ''} className={readonlyCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Duration</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.duration || ''} className={readonlyCls} />
-                                                </div>
-
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-400 mb-1">No. Of Pax</label>
-                                                    <input type="text" readOnly value={`${selectedLeadForEdit.noOfAdults || '0'} Adults, ${selectedLeadForEdit.noOfChildren || '0'} Children`} className={readonlyCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Hotel Category</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.hotelCategory || ''} className={readonlyCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Budget</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.travelBudget || selectedLeadForEdit.budget || selectedLeadForEdit.amount || ''} className={readonlyCls} />
-                                                </div>
-
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Service</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.services || selectedLeadForEdit.service || ''} className={readonlyCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Departure City</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.departureCity || ''} className={readonlyCls} />
-                                                </div>
-                                                <div className="hidden md:block"></div> {/* Spacer for grid alignment */}
-
-                                                {/* Requirements mapped from Customisation Section */}
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Destination</label><input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.destination || selectedLeadForEdit.destination || ''} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Customisation Type</label><input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.customisationType || selectedLeadForEdit.customisationType || ''} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Required By</label><input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.requiredByDate || selectedLeadForEdit.customisationRequests?.[0]?.turnaroundTime || ''} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Package Type</label><input type="text" readOnly value={selectedLeadForEdit.tourType || selectedLeadForEdit.packageType || ''} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Travel Date</label><DatePickerField type="date" readOnly value={selectedLeadForEdit.travelDate || selectedLeadForEdit.travelDates || ''} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Duration</label><input type="text" readOnly value={selectedLeadForEdit.duration || ''} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">No. Of Pax</label><input type="text" readOnly value={`${selectedLeadForEdit.noOfAdults || '0'} Adults, ${selectedLeadForEdit.noOfChildren || '0'} Children`} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Hotel Category</label><input type="text" readOnly value={selectedLeadForEdit.hotelCategory || ''} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Budget</label><input type="text" readOnly value={selectedLeadForEdit.travelBudget || selectedLeadForEdit.budget || selectedLeadForEdit.amount || ''} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Service</label><input type="text" readOnly value={selectedLeadForEdit.services || selectedLeadForEdit.service || ''} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Departure City</label><input type="text" readOnly value={selectedLeadForEdit.departureCity || ''} className={readonlyCls} /></div>
+                                                <div className="hidden md:block"></div> 
                                                 <div className="md:col-span-3">
                                                     <label className="block text-xs font-bold text-slate-400 mb-1">Requirements</label>
                                                     <textarea readOnly rows={2} value={selectedLeadForEdit.customisationRequests?.[0]?.requirements || selectedLeadForEdit.requirements || ''} className={`${readonlyCls} resize-none`} />
@@ -2117,115 +1666,113 @@ export default function OperationsDashboard() {
 
                                         {/* Section 3: OPERATIONS ACTIVITY */}
                                         <div className={sectionCls}>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 border-b border-slate-800/60 pb-4">
-                                                <div>
-                                                    <h3 className={`${sectionHeadCls} border-none mb-0 pb-0 flex items-center`}>
-                                                        <span className="font-bold">OPERATIONS ACTIVITY</span>
-                                                    </h3>
-                                                </div>
-                                                 
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Priority</label>
-                                                    <CustomSelect value={selectedLeadForEdit.priority} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, priority: v })} className={selectCls} placeholder="" options={['High', 'Medium', 'Low']} />
-                                                </div>
-                                                
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Destinations</label>
-                                                    <CustomSelect value={selectedLeadForEdit.destination} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, destination: v })} className={selectCls} placeholder="" options={destinationOptions} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Work Type</label>
-                                                    <CustomSelect value={selectedLeadForEdit.workType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, workType: v })} className={selectCls} placeholder="" options={['FIT', 'Vendor Assistance', 'Group Departure']} />
-                                                </div>
-                                                <div className="hidden md:block"></div> {/* Spacer for visual alignment matching screenshot */}
-                                                
-                                                <div className="hidden md:block"></div> {/* Spacer for visual alignment */}
-                                                <div className="hidden md:block"></div> {/* Spacer for visual alignment */}
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Destination Type</label>
-                                                    <CustomSelect value={selectedLeadForEdit.tourType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, tourType: v })} className={selectCls} placeholder="" options={['Domestic', 'International']} />
+                                            <div className="flex justify-between items-center mb-5 border-b border-slate-800/60 pb-3">
+                                                <h3 className="text-sm font-bold text-cyan-400 tracking-wider uppercase m-0">OPERATIONS ACTIVITY</h3>
+                                                <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
+                                                    <button type="button" onClick={() => setActiveModal({ type: 'history', section: 'Operations Activity' })} className="hover:text-cyan-400 cursor-pointer transition-colors bg-transparent border-none p-0">History</button>
+                                                    <span className="text-slate-600">|</span>
+                                                    <button type="button" className="hover:text-cyan-400 cursor-pointer transition-colors bg-transparent border-none p-0">Edit</button>
                                                 </div>
                                             </div>
-
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-2">
                                                 <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Activity Type</label>
-                                                    <CustomSelect value={selectedLeadForEdit.activityType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, activityType: v })} className={selectCls} placeholder="" options={['Call Client', 'Vendor Sync', 'Itinerary Draft', 'Rate Verification']} />
+                                                    <label className="block text-xs font-bold text-slate-300 mb-1.5">Destinations</label>
+                                                    <CustomSelect value={selectedLeadForEdit.destination} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, destination: v })} className={selectCls} placeholder="Select Destination" options={destinationOptions} />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Activity Outcome</label>
-                                                    <CustomSelect value={selectedLeadForEdit.activityOutcome} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, activityOutcome: v })} className={selectCls} placeholder="" options={[{ value: 'Connected', label: 'Connected / Answered' }, 'No Response', { value: 'Rates Shared', label: 'Rates Shared OK' }, 'Revisions Pending']} />
+                                                    <label className="block text-xs font-bold text-slate-300 mb-1.5">Destination Type</label>
+                                                    <CustomSelect value={selectedLeadForEdit.tourType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, tourType: v })} className={selectCls} placeholder="Select Type" options={['Domestic', 'International']} />
                                                 </div>
                                                 <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Status</label>
-                                                    <CustomSelect value={selectedLeadForEdit.status} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, status: v })} className={selectCls} placeholder="" options={['New Requests', 'Follow-Up', 'Shared to Sales', 'Confirmed Bookings', 'Upcoming Departure']} />
-                                                </div>
-                                                <div className="sm:col-span-3">
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Notes</label>
-                                                    <input type="text" value={selectedLeadForEdit.notes} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, notes: e.target.value })} className={inputCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Next Follow-Up Date</label>
-                                                    <DatePickerField type="datetime-local" value={selectedLeadForEdit.nextActionDate} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, nextActionDate: e.target.value })} className={inputCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Follow-Up Type</label>
-                                                    <CustomSelect value={selectedLeadForEdit.followUpType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, followUpType: v })} className={selectCls} placeholder="" options={['Call', 'WhatsApp', 'Email']} />
+                                                    <label className="block text-xs font-bold text-slate-300 mb-1.5">Work Type</label>
+                                                    <CustomSelect value={selectedLeadForEdit.workType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, workType: v })} className={selectCls} placeholder="Select Work Type" options={['FIT', 'Vendor Assistance', 'Group Departure']} />
                                                 </div>
                                             </div>
                                         </div>
 
-                                        {/* Section 4: Vendor Coordination */}
+                                        {/* Section 4: VENDOR ASSISTANCE */}
                                         {selectedLeadForEdit.workType === 'Vendor Assistance' && (
                                             <div className={sectionCls}>
                                                 <h3 className={sectionHeadCls} style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
-                                                    <span className="font-bold">Vendor Coordination</span>
-                                                    <div className="flex items-center gap-1.5">
-                                                        <button type="button" onClick={() => setActiveModal({ type: 'view', section: 'Vendor Coordination' })} className="flex items-center gap-1 px-2.5 py-1 bg-slate-800/50 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-[10px] uppercase font-bold transition-colors cursor-pointer"><Eye size={12} /> View</button>
-                                                        <button type="button" className="flex items-center gap-1 px-2.5 py-1 bg-slate-800/50 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-[10px] uppercase font-bold transition-colors cursor-pointer"><Pencil size={12} /> Edit</button>
-                                                    </div>
+                                                    <span className="font-bold uppercase tracking-wider">VENDOR ASSISTANCE {(selectedLeadForEdit.tourType === 'International' || selectedLeadForEdit.tourType === 'International Tour') ? '(INTERNATIONAL)' : '(DOMESTIC)'}</span>
                                                 </h3>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-500 mb-1">Destination</label>
-                                                        <input type="text" readOnly value={selectedLeadForEdit.destination} className={readonlyCls} />
+                                                
+                                                {(selectedLeadForEdit.tourType === 'International' || selectedLeadForEdit.tourType === 'International Tour') ? (
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-400 mb-1.5">Destination</label>
+                                                            <input type="text" readOnly value={selectedLeadForEdit.destination} className={readonlyCls} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-300 mb-1.5">Services</label>
+                                                            <CustomSelect value={selectedLeadForEdit.vendorService} onChange={handleVendorServiceChange} className={selectCls} placeholder="Select Service" options={['Complete Package', 'Land Only', 'VISA', 'Insurance', 'Others']} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-300 mb-1.5">DMC Name</label>
+                                                            <CustomSelect value={selectedLeadForEdit.vendorDmcName} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorDmcName: v })} className={selectCls} placeholder="Select DMC" options={dynamicVendorOptions} />
+                                                        </div>
+
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-300 mb-1.5">Contact Person</label>
+                                                            <input type="text" value={selectedLeadForEdit.vendorContactPerson} onChange={e => {
+                                                                const updated = { ...selectedLeadForEdit, vendorContactPerson: e.target.value };
+                                                                setSelectedLeadForEdit({...updated, vendorMessage: generateVendorMessage(updated)});
+                                                            }} className={inputCls} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-300 mb-1.5">Contact Method</label>
+                                                            <CustomSelect value={selectedLeadForEdit.contactMethod} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, contactMethod: v })} className={selectCls} placeholder="Select Method" options={['Email Platform', 'WhatsApp API', 'B2B Portal Integration', 'Verbal Call']} />
+                                                        </div>
+                                                        <div>
+                                                            {selectedLeadForEdit.vendorService === 'VISA' ? (
+                                                                <>
+                                                                    <label className="block text-xs font-bold text-slate-300 mb-1.5">VISA Type</label>
+                                                                    <CustomSelect value={selectedLeadForEdit.vendorVisaType} onChange={v => {
+                                                                        const updated = { ...selectedLeadForEdit, vendorVisaType: v };
+                                                                        setSelectedLeadForEdit({...updated, vendorMessage: generateVendorMessage(updated)});
+                                                                    }} className={selectCls} placeholder="Select VISA" options={['Tourist', 'Business', 'Transit', 'e-Visa']} />
+                                                                </>
+                                                            ) : <div className="hidden sm:block"></div>}
+                                                        </div>
+
+                                                        <div className="sm:col-span-3 mt-1 flex justify-end">
+                                                            <button type="button" className="text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md px-4 py-2 transition-colors flex items-center gap-1.5"><Plus size={14}/> Add Another Vendor</button>
+                                                        </div>
+
+                                                        {selectedLeadForEdit.vendorMessage && (
+                                                            <div className="sm:col-span-3 mt-2 bg-[#091124] border border-slate-700/60 rounded-xl overflow-hidden shadow-inner transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
+                                                                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700/60 bg-slate-900/50">
+                                                                    <label className="block text-sm font-bold text-slate-200">Message Format (Review & Edit) <span className="text-orange-400 ml-1">— {selectedLeadForEdit.vendorService}</span></label>
+                                                                    <button type="button" onClick={() => copyToClipboard(selectedLeadForEdit.vendorMessage)} className="px-4 py-1.5 bg-[#16D3F2]/10 hover:bg-[#16D3F2]/20 text-[#16D3F2] rounded text-xs font-bold transition-colors cursor-pointer border border-[#16D3F2]/30 flex items-center gap-1.5 shadow-sm"><Copy size={14}/> Copy </button>
+                                                                </div>
+                                                                <div className="p-1">
+                                                                    <textarea rows="16" value={selectedLeadForEdit.vendorMessage} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorMessage: e.target.value })} className="w-full bg-transparent border-none text-slate-300 text-[13px] leading-relaxed p-4 focus:ring-0 outline-none custom-scrollbar resize-y" spellCheck="false" />
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Vendor Name</label>
-                                                        <input type="text" value={selectedLeadForEdit.vendorName} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorName: e.target.value })} className={inputCls} />
+                                                ) : (
+                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                                                        <div><label className="block text-xs font-bold text-slate-300 mb-1.5">Destination</label><input type="text" readOnly value={selectedLeadForEdit.destination} className={readonlyCls} /></div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-300 mb-1.5">Services</label>
+                                                            <CustomSelect value={selectedLeadForEdit.service || ''} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, service: v })} className={selectCls} placeholder="Select Service" options={['Hotel', 'Transport', 'Activities', 'Full Package']} />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-300 mb-1.5">Vendor Name</label>
+                                                            <CustomSelect value={selectedLeadForEdit.vendorName} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorName: v })} className={selectCls} placeholder="Select Vendor" options={dynamicVendorOptions} />
+                                                        </div>
+                                                        <div><label className="block text-xs font-bold text-slate-300 mb-1.5">Contact Person</label><input type="text" value={selectedLeadForEdit.vendorContactPerson} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorContactPerson: e.target.value })} className={inputCls} /></div>
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-300 mb-1.5">Contact Method</label>
+                                                            <CustomSelect value={selectedLeadForEdit.contactMethod} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, contactMethod: v })} className={selectCls} placeholder="Select Method" options={['Email Platform', 'WhatsApp API', 'B2B Portal Integration', 'Verbal Call']} />
+                                                        </div>
+                                                        <div></div>
+                                                        <div className="sm:col-span-3 mt-2 flex justify-end">
+                                                            <button type="button" className="text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md px-4 py-2 transition-colors flex items-center gap-1.5"><Plus size={14}/> Add Another Vendor</button>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Service</label>
-                                                        <CustomSelect value={selectedLeadForEdit.service || ''} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, service: v })} className={selectCls} placeholder="" options={['Hotel', 'Transport', 'Activities', 'Full Package']} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Contact Method</label>
-                                                        <CustomSelect value={selectedLeadForEdit.contactMethod} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, contactMethod: v })} className={selectCls} placeholder="" options={['Email Platform', 'WhatsApp API', 'B2B Portal Integration', 'Verbal Call']} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Contact Date & Time</label>
-                                                        <DatePickerField type="datetime-local" value={selectedLeadForEdit.contactDate} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, contactDate: e.target.value })} className={inputCls} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Vendor Response Status</label>
-                                                        <CustomSelect value={selectedLeadForEdit.vendorResponseStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorResponseStatus: v })} className={selectCls} placeholder="" options={['Awaiting Rates', 'Rates Received', 'Negotiation In Progress']} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Next Action Required</label>
-                                                        <CustomSelect value={selectedLeadForEdit.nextActionRequired} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, nextActionRequired: v })} className={selectCls} placeholder="" options={['Yes', 'No']} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Next Action Date</label>
-                                                        <DatePickerField type="date" value={selectedLeadForEdit.vendorNextActionDate || selectedLeadForEdit.nextActionDate} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorNextActionDate: e.target.value })} className={inputCls} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Vendor Remarks</label>
-                                                        <textarea rows="1" value={selectedLeadForEdit.vendorRemarks} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRemarks: e.target.value })} className={inputCls} />
-                                                    </div>
-                                                    <div className="sm:col-span-3 mt-2">
-                                                        <button type="button" className="text-xs font-bold text-cyan-400 bg-transparent border-none cursor-pointer">Add Vendor</button>
-                                                    </div>
-                                                </div>
+                                                )}
                                             </div>
                                         )}
 
@@ -2287,59 +1834,23 @@ export default function OperationsDashboard() {
                                             </div>
                                         </div>
 
-                                        {/* Section 7: Share to Sales */}
-                                        <div className={sectionCls}>
-                                            <h3 className={sectionHeadCls}>Share to Sales</h3>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Shared To</label>
-                                                    <input type="text" value={selectedLeadForEdit.sharedTo || selectedLeadForEdit.salesExecutive} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, sharedTo: e.target.value })} className={inputCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Shared Via</label>
-                                                    <CustomSelect value={selectedLeadForEdit.sharedVia} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, sharedVia: v })} className={selectCls} placeholder="" options={['Slack Channel Matrix', 'Internal CRM Note Connection']} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-medium text-slate-500 mb-1">Sales Acknowledged</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.salesAcknowledged} className={readonlyCls} />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Section 8: Client Status */}
+                                        {/* Section 7: Client Status */}
                                         <div className={sectionCls}>
                                             <h3 className={sectionHeadCls}>Client Status</h3>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                                                <div>
-                                                    <label className="block text-xs font-medium text-slate-500 mb-1">Lead Status</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.status || selectedLeadForEdit.leadStatus} className={readonlyCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-medium text-slate-500 mb-1">Sales Funnel Lead Status</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.salesFunnelLeadStatus} className={readonlyCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-medium text-slate-500 mb-1">Sales Remarks</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.salesRemarks} className={readonlyCls} />
-                                                </div>
+                                                <div><label className="block text-xs font-medium text-slate-500 mb-1">Lead Status</label><input type="text" readOnly value={selectedLeadForEdit.status || selectedLeadForEdit.leadStatus} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-medium text-slate-500 mb-1">Sales Funnel Lead Status</label><input type="text" readOnly value={selectedLeadForEdit.salesFunnelLeadStatus} className={readonlyCls} /></div>
+                                                <div><label className="block text-xs font-medium text-slate-500 mb-1">Sales Remarks</label><input type="text" readOnly value={selectedLeadForEdit.salesRemarks} className={readonlyCls} /></div>
                                             </div>
                                         </div>
-
                                     </div>
                                 )}
                         </form>
                     </div>
 
-                    {/* Sticky Footer matching Sales Dashboard */}
                     <div className="px-4 sm:px-6 py-4 border-t border-slate-800 bg-[#0b1329] z-20 flex justify-end gap-3 flex-shrink-0">
-                        <button type="button" onClick={() => setSelectedLeadForEdit(null)}
-                            className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-transparent border border-cyan-500 hover:bg-slate-800 cursor-pointer text-cyan-400 text-sm sm:text-base font-semibold rounded-lg sm:rounded transition-colors uppercase tracking-wider order-2 sm:order-1">
-                            CANCEL
-                        </button>
-                        <button type="submit" form="edit-ops-form" 
-                            className="w-full sm:w-auto px-10 py-3 sm:py-2.5 bg-[#16D3F2] hover:bg-cyan-400 active:bg-cyan-600 border-none cursor-pointer text-[#0f172a] text-sm sm:text-base font-bold rounded-lg sm:rounded shadow transition-colors uppercase tracking-wider order-1 sm:order-2">
-                            SUBMIT
-                        </button>
+                        <button type="button" onClick={() => setSelectedLeadForEdit(null)} className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-transparent border border-cyan-500 hover:bg-slate-800 cursor-pointer text-cyan-400 text-sm sm:text-base font-semibold rounded-lg sm:rounded transition-colors uppercase tracking-wider order-2 sm:order-1">CANCEL</button>
+                        <button type="submit" form="edit-ops-form" className="w-full sm:w-auto px-10 py-3 sm:py-2.5 bg-[#16D3F2] hover:bg-cyan-400 active:bg-cyan-600 border-none cursor-pointer text-[#0f172a] text-sm sm:text-base font-bold rounded-lg sm:rounded shadow transition-colors uppercase tracking-wider order-1 sm:order-2">SUBMIT</button>
                     </div>
                 </div>
             )}
@@ -2400,49 +1911,8 @@ export default function OperationsDashboard() {
                                             ))}
                                         </div>
                                     )}
-                                    {activeModal.section === 'Vendor Coordination' && (
-                                        <div className="space-y-3">
-                                            <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg text-xs text-slate-300 shadow-inner">
-                                                <div className="grid grid-cols-2 gap-y-4 gap-x-4">
-                                                    <div className="flex flex-col"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">Destination</span><span className="text-slate-200 font-medium">{selectedLeadForEdit.destination || 'N/A'}</span></div>
-                                                    <div className="flex flex-col"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">Vendor Name</span><span className="text-slate-200 font-medium">{selectedLeadForEdit.vendorName || 'N/A'}</span></div>
-                                                    <div className="flex flex-col"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">Service</span><span className="text-slate-200 font-medium">{selectedLeadForEdit.service || 'N/A'}</span></div>
-                                                    <div className="flex flex-col"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">Contact Method</span><span className="text-slate-200 font-medium">{selectedLeadForEdit.contactMethod || 'N/A'}</span></div>
-                                                    <div className="flex flex-col"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">Date & Time</span><span className="text-slate-200 font-medium">{selectedLeadForEdit.contactDate || 'N/A'}</span></div>
-                                                    <div className="flex flex-col"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">Response Status</span><span className="text-slate-200 font-medium">{selectedLeadForEdit.vendorResponseStatus || 'N/A'}</span></div>
-                                                    <div className="flex flex-col"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">Next Action Date</span><span className="text-slate-200 font-medium">{selectedLeadForEdit.vendorNextActionDate || selectedLeadForEdit.nextActionDate || 'N/A'}</span></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {activeModal.section === 'Itinerary Preparation' && (
-                                        <div className="space-y-3">
-                                            <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg text-xs text-slate-300 shadow-inner">
-                                                <div className="grid grid-cols-2 gap-y-4 gap-x-4">
-                                                    <div className="flex flex-col"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">Destination</span><span className="text-slate-200 font-medium">{selectedLeadForEdit.destination || 'N/A'}</span></div>
-                                                    <div className="flex flex-col"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">Preparation Method</span><span className="text-slate-200 font-medium">{selectedLeadForEdit.preparationMethod || 'N/A'}</span></div>
-                                                    <div className="flex flex-col"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">Itinerary Version</span><span className="text-slate-200 font-medium">{selectedLeadForEdit.itineraryVersion || 'N/A'}</span></div>
-                                                    <div className="flex flex-col"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">Date & Time</span><span className="text-slate-200 font-medium">{selectedLeadForEdit.itineraryPrepDate || 'N/A'}</span></div>
-                                                    <div className="flex flex-col col-span-2"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">Working Notes</span><span className="text-slate-200 font-medium whitespace-pre-wrap">{selectedLeadForEdit.workingNotes || 'N/A'}</span></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {activeModal.section === 'Quality Check' && (
-                                        <div className="space-y-3">
-                                            <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg text-xs text-slate-300 shadow-inner">
-                                                <div className="grid grid-cols-2 gap-y-4 gap-x-4">
-                                                    <div className="flex flex-col"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">Destination</span><span className="text-slate-200 font-medium">{selectedLeadForEdit.destination || 'N/A'}</span></div>
-                                                    <div className="flex flex-col"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">QC Status</span><span className="text-slate-200 font-medium">{selectedLeadForEdit.qcStatus || 'N/A'}</span></div>
-                                                    <div className="flex flex-col"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">Reviewed By</span><span className="text-slate-200 font-medium">{selectedLeadForEdit.reviewedBy || 'N/A'}</span></div>
-                                                    <div className="flex flex-col"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">Date & Time</span><span className="text-slate-200 font-medium">{selectedLeadForEdit.qcDate || 'N/A'}</span></div>
-                                                    <div className="flex flex-col col-span-2"><span className="text-cyan-500/70 font-semibold mb-1 uppercase tracking-wider text-[10px]">QC Remarks</span><span className="text-slate-200 font-medium whitespace-pre-wrap">{selectedLeadForEdit.qcRemarks || 'N/A'}</span></div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    )}
-                                    {/* Fallback for anything else */}
-                                    {!['Destination Request', 'Vendor Coordination', 'Itinerary Preparation', 'Quality Check'].includes(activeModal.section) && (
+                                    {/* Fallback parameters */}
+                                    {!['Destination Request'].includes(activeModal.section) && (
                                         <div className="space-y-3">
                                             <p className="text-slate-400 text-xs">Viewing locked system parameters for <strong>{activeModal.section}</strong> module.</p>
                                             <div className="bg-slate-900 border border-slate-800 p-4 rounded-lg font-mono text-xs text-slate-300 whitespace-pre-wrap leading-relaxed shadow-inner">
@@ -2473,11 +1943,11 @@ export default function OperationsDashboard() {
             {leadToAcknowledge && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[150] p-4">
                     <div className="bg-[#1e293b] border-0 rounded-xl shadow-2xl w-full max-w-sm text-center p-6">
-                        <h3 className="text-base font-bold text-white uppercase tracking-wider mb-2">Acknowledge Pipeline Job</h3>
-                        <p className="text-slate-400 mb-5 text-xs leading-relaxed">Acknowledge lead <strong>LMN{leadToAcknowledge.id}</strong>? Transitions to Follow-Up workspace.</p>
+                        <h3 className="text-base font-bold text-white uppercase tracking-wider mb-2">Acknowledge Request</h3>
+                        <p className="text-slate-400 mb-5 text-xs leading-relaxed">Acknowledge customisation request for <strong>{leadToAcknowledge.destination}</strong> (LMN{leadToAcknowledge.id})? This will move it to your Follow-Up workspace.</p>
                         <div className="flex items-center justify-center gap-2">
                             <button type="button" onClick={() => setLeadToAcknowledge(null)} className="flex-1 py-2 rounded bg-slate-900 text-slate-300 border border-slate-700 font-bold text-xs uppercase tracking-wider cursor-pointer">Abort</button>
-                            <button type="button" onClick={async () => { await acceptJob(leadToAcknowledge.id, 'Follow-Up', loggedInUserName); setLeadToAcknowledge(null); }} className="flex-1 py-2 rounded bg-cyan-500 text-slate-900 font-black text-xs uppercase tracking-wider cursor-pointer">Confirm</button>
+                            <button type="button" onClick={async () => { await handleAcknowledgeRequest(leadToAcknowledge); }} className="flex-1 py-2 rounded bg-cyan-500 text-slate-900 font-black text-xs uppercase tracking-wider cursor-pointer">Confirm</button>
                         </div>
                     </div>
                 </div>
@@ -2491,7 +1961,7 @@ export default function OperationsDashboard() {
                         <p className="text-slate-400 mb-5 text-xs">Confirm push for <strong>LMN{leadToFulfill.id}</strong>.</p>
                         <div className="flex justify-center gap-2">
                             <button type="button" onClick={() => setLeadToFulfill(null)} className="flex-1 py-2 rounded bg-slate-900 border border-slate-700 text-slate-300 text-xs font-semibold cursor-pointer">Cancel</button>
-                            <button type="button" onClick={handleSendToFulfillment} className="flex-1 py-2 rounded bg-orange-500 text-slate-900 font-black text-xs cursor-pointer">Send</button>
+                            <button type="button" onClick={() => sendToFulfillment(leadToFulfill)} className="flex-1 py-2 rounded bg-orange-500 text-slate-900 font-black text-xs cursor-pointer">Send</button>
                         </div>
                     </div>
                 </div>
@@ -2509,12 +1979,11 @@ export default function OperationsDashboard() {
                             <p><strong>Customer:</strong> {selectedLeadForView.customerName || selectedLeadForView.profileName}</p>
                             <p><strong>Destination:</strong> {selectedLeadForView.destination}</p>
                             <p><strong>Budget:</strong> <span className="text-emerald-400 font-bold">{selectedLeadForView.amount || selectedLeadForView.budget}</span></p>
-                            <p><strong>Status:</strong> <span className="text-cyan-400">{selectedLeadForView.status}</span></p>
+                            <p><strong>Status:</strong> <span className="text-cyan-400">{selectedLeadForView.rowStatus || selectedLeadForView.status}</span></p>
                         </div>
                     </div>
                 </div>
             )}
-
         </div>
     );
 }
