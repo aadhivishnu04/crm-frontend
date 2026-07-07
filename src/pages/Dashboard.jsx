@@ -563,10 +563,8 @@ const Dashboard = () => {
                 if (leadsRes.ok) {
                     const leadsData = await leadsRes.json();
                     if (Array.isArray(leadsData)) {
-                        setAllLeads(leadsData); 
-                        const unassignedCount = leadsData.filter(l => !l.status || l.status === 'Jobs').length;
-                        setUnassignedJobsCount(unassignedCount);
                         
+                        // Calculate aggregations dynamically
                         let calcTotalIn = 0;
                         let calcTotalOut = 0;
                         let calcPending = 0;
@@ -574,12 +572,35 @@ const Dashboard = () => {
                         const alertsCalculated = [];
                         const indPaymentList = [];
 
-                        leadsData.forEach(lead => {
+                        const processedLeads = leadsData.map(lead => {
                             const parseAmt = (v) => parseFloat(String(v).replace(/[₹,\s]/g, '')) || 0;
                             const packageCost = parseAmt(lead.totalPackageCost || lead.packageCost || lead.budget);
-                            const amountReceived = parseAmt(lead.amountReceived);
+                            
+                            // --- NEW PAYMENT SUMMATION LOGIC ---
+                            // Extracts and sums up amounts from the Payment History array created by SalesDashboard
+                            let totalReceived = 0;
+                            let paymentHistory = [];
+                            try { 
+                                paymentHistory = typeof lead.paymentHistoryDetails === 'string' 
+                                    ? JSON.parse(lead.paymentHistoryDetails) 
+                                    : (lead.paymentHistoryList || []); 
+                            } catch(e) {}
+                            
+                            if (Array.isArray(paymentHistory) && paymentHistory.length > 0) {
+                                totalReceived = paymentHistory.reduce((sum, p) => sum + parseAmt(p.amount), 0);
+                            } else {
+                                totalReceived = parseAmt(lead.amountReceived);
+                            }
+
+                            const amountReceived = totalReceived;
                             const balancePending = lead.balancePending ? parseAmt(lead.balancePending) : Math.max(0, packageCost - amountReceived);
                             
+                            // Mutate lead to hold computed values for Modals
+                            lead.computedTotalReceived = amountReceived;
+                            lead.computedBalancePending = balancePending;
+                            lead.computedPackageCost = packageCost;
+                            // ------------------------------------
+
                             calcTotalIn += amountReceived;
                             calcPending += balancePending;
 
@@ -626,8 +647,14 @@ const Dashboard = () => {
                                     }
                                 }
                             }
+                            
+                            return lead;
                         });
 
+                        setAllLeads(processedLeads); 
+                        const unassignedCount = processedLeads.filter(l => !l.status || l.status === 'Jobs').length;
+                        setUnassignedJobsCount(unassignedCount);
+                        
                         setPayments({ totalIn: calcTotalIn, totalOut: calcTotalOut, pending: calcPending });
                         setIndividualPayments(indPaymentList.sort((a, b) => b.pending - a.pending));
                         setFulfillmentAlerts(alertsCalculated.sort((a,b) => a.daysLeft - b.daysLeft));
@@ -925,9 +952,7 @@ const Dashboard = () => {
                 {/* Subtle gradient accent */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-blue-500/3 dark:to-blue-500/5 pointer-events-none rounded-2xl" />
                 <div className="min-w-0 relative">
-                    {/* <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">iTour WFO · Dashboard</p> */}
                     <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 dark:text-white mb-1 tracking-tight truncate">Welcome Back, {displayHeaderName}</h1>
-                    {/* <p className="text-xs sm:text-sm text-slate-400 dark:text-slate-500">Here's what's happening with your travel business today.</p> */}
                 </div>
                 <div className="flex items-center w-full lg:w-auto gap-2.5 sm:gap-3 relative">
                     <button
@@ -973,15 +998,15 @@ const Dashboard = () => {
                 ))}
             </div>
 
-            {/* ── ROW 3: PAYMENTS, SALES TARGETS, CALENDAR ── */}
+            {/* ── UPDATED ROW 3: PAYMENTS & CALENDAR ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                 
-                {/* ── GRANULAR PAYMENT PROFILES PANEL ── */}
-                <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-[480px] lg:col-span-1">
+                {/* ── GRANULAR PAYMENT PROFILES PANEL (Spans 2 columns) ── */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-[480px] lg:col-span-2">
                     <div className="flex justify-between items-center mb-3 flex-shrink-0">
                         <div>
-                            <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Payment</h2>
-                            <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Live ledger</p>
+                            <h2 className="text-medium font-bold text-slate-800 dark:text-white tracking-tight">Payment</h2>
+                            <p className="text-[12px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Live ledger</p>
                         </div>
                         <div className="flex items-center gap-2.5">
                             <button type="button" onClick={() => setPaymentModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 dark:border-emerald-500/20 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors bg-emerald-50/50 dark:bg-transparent">View All</button>
@@ -990,14 +1015,14 @@ const Dashboard = () => {
                             </div>
                         </div>
                     </div>
-                    <div className="flex gap-3 mb-4 text-[10px] font-bold border border-slate-100 dark:border-slate-700/40 rounded-xl p-2.5 flex-shrink-0 bg-slate-50 dark:bg-slate-800/30">
+                    <div className="flex gap-3 mb-4 text-[14px] font-bold border border-slate-100 dark:border-slate-700/40 rounded-xl p-2.5 flex-shrink-0 bg-slate-50 dark:bg-slate-800/30">
                         <div className="flex-1">
-                            <span className="block text-slate-400 text-[9px] uppercase tracking-widest mb-0.5">Money In</span>
+                            <span className="block text-slate-400 text-[12px] uppercase tracking-widest mb-0.5">Money In</span>
                             <span className="text-emerald-500 font-mono">₹{payments.totalIn.toLocaleString('en-IN')}</span>
                         </div>
                         <div className="w-px bg-slate-200 dark:bg-slate-700/50" />
                         <div className="flex-1">
-                            <span className="block text-slate-400 text-[9px] uppercase tracking-widest mb-0.5">Money Out</span>
+                            <span className="block text-slate-400 text-[12px] uppercase tracking-widest mb-0.5">Money Out</span>
                             <span className="text-rose-400 font-mono">₹{payments.totalOut.toLocaleString('en-IN')}</span>
                         </div>
                     </div>
@@ -1010,10 +1035,10 @@ const Dashboard = () => {
                                 <div key={pay.id} onClick={() => setSelectedPaymentLead(pay.rawLead)} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/30 bg-slate-50/50 dark:bg-slate-800/20 space-y-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700/60 transition-all group">
                                     <div className="flex justify-between items-start gap-2">
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{pay.customerName}</p>
-                                            <p className="text-[9px] text-slate-400 flex items-center gap-1 truncate mt-0.5"><MapPin size={9}/> {pay.destination} · LMN{pay.id}</p>
+                                            <p className="text-base font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{pay.customerName}</p>
+                                            <p className="text-[14px] text-slate-400 flex items-center gap-1 truncate mt-0.5"><MapPin size={9}/> {pay.destination} · LMN{pay.id}</p>
                                         </div>
-                                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
+                                        <span className={`text-[14px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
                                             pay.paymentStatus === 'Fully Paid' || pay.paymentStatus === 'Cleared' 
                                                 ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' 
                                                 : 'bg-orange-500/10 text-orange-400 border-orange-500/20'
@@ -1021,23 +1046,146 @@ const Dashboard = () => {
                                             {pay.paymentStatus}
                                         </span>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-1 pt-2 border-t border-slate-100 dark:border-slate-700/30 text-[9px] font-mono">
+                                    <div className="grid grid-cols-3 gap-1 pt-2 border-t border-slate-100 dark:border-slate-700/30 text-[12px] font-mono">
                                         <div>
-                                            <span className="text-slate-400 block text-[8px] uppercase tracking-wide mb-0.5">Received</span>
+                                            <span className="text-slate-400 block text-[12px] uppercase tracking-wide mb-0.5">Received</span>
                                             <span className="text-emerald-500 font-bold">₹{pay.received.toLocaleString('en-IN')}</span>
                                         </div>
                                         <div>
-                                            <span className="text-slate-400 block text-[8px] uppercase tracking-wide mb-0.5">Paid Ops</span>
+                                            <span className="text-slate-400 block text-[12px] uppercase tracking-wide mb-0.5">Paid Ops</span>
                                             <span className="text-rose-400 font-bold">₹{pay.vendorPaid.toLocaleString('en-IN')}</span>
                                         </div>
                                         <div>
-                                            <span className="text-slate-400 block text-[8px] uppercase tracking-wide mb-0.5">Balance</span>
+                                            <span className="text-slate-400 block text-[12px] uppercase tracking-wide mb-0.5">Balance</span>
                                             <span className="text-amber-400 font-bold">₹{pay.pending.toLocaleString('en-IN')}</span>
                                         </div>
                                     </div>
                                 </div>
                             ))
                         )}
+                    </div>
+                </div>
+
+                {/* ── CALENDAR PANEL (Spans 1 column) ── */}
+                <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/30 flex flex-col gap-3 shadow-sm lg:col-span-1">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
+                    </div>
+
+                    {/* Date strip */}
+                    <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30 rounded-xl p-2.5">
+                        <div className="flex justify-between items-center mb-2.5 px-0.5">
+                            <div className="flex gap-1">
+                                <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronLeft size={14}/></button>
+                                <button onClick={nextDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronRight size={14}/></button>
+                            </div>
+                        </div>
+                        <div className="flex justify-between items-center gap-1">
+                            {dateStrip.map((date, idx) => {
+                                const isSelected = date.toDateString() === currentDate.toDateString();
+                                return (
+                                    <div key={idx} onClick={() => { setCurrentDate(date); openAddEvent(date); }}
+                                        className={`flex flex-col items-center justify-center py-2 rounded-xl cursor-pointer transition-all w-full min-w-0 ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
+                                        <span className="text-[8px] uppercase font-bold tracking-wider mb-1 block">{date.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 2)}</span>
+                                        <span className={`text-sm font-bold ${isSelected ? 'text-white' : ''}`}>{date.getDate()}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                        <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-700/30 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
+                            <Eye size={12}/> <span>View All</span>
+                        </button>
+                        <button onClick={() => openAddEvent(currentDate)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[11px] font-bold transition-colors shadow-lg shadow-blue-500/20">
+                            <Plus size={12}/> <span>Create</span>
+                        </button>   
+                    </div>
+
+                    <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-700/30 rounded-xl p-3 flex-1 flex flex-col">
+                        <div className="flex justify-between items-center mb-2.5">
+                            <h3 className="text-[9px] uppercase tracking-widest font-bold text-slate-400">Reminders · {currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
+                            <span className="text-[9px] font-bold text-slate-500 bg-slate-200 dark:bg-slate-700/60 px-1.5 py-0.5 rounded-full">{filteredEvents.length}</span>
+                        </div>
+                        <div className="space-y-2 flex-1 overflow-y-auto max-h-[140px] pr-1 custom-scrollbar">
+                            {filteredEvents.length === 0 ? (
+                                <p className="text-slate-400 text-center py-4 text-[10px]">No reminders today.</p>
+                            ) : (
+                                filteredEvents.map((event, idx) => {
+                                    const evDate = event.date ? new Date(event.date + 'T00:00:00') : new Date();
+                                    return (
+                                        <div key={event.id || idx} className="flex gap-2.5 items-start group hover:bg-slate-100 dark:hover:bg-slate-800/40 p-1.5 rounded-lg transition-colors">
+                                            <div className="pl-2 border-l-2 border-blue-400/50 flex flex-col items-center min-w-[28px] flex-shrink-0">
+                                                <span className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight">{evDate.getDate()}</span>
+                                                <span className="text-[8px] font-bold text-slate-400 uppercase">{monthNames[evDate.getMonth()].substring(0, 3)}</span>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">{event.title}</h4>
+                                                <p className="text-[9px] text-slate-400 flex items-center gap-1 mt-0.5"><Clock size={9}/> {event.time}</p>
+                                            </div>
+                                            <button onClick={() => deleteEvent(event.id)} className="text-slate-400 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><Trash2 size={11}/></button>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            {/* ── UPDATED ROW 4: TASKS, SALES TARGETS, & TOP DESTINATIONS ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+                
+                {/* ── TASKS PANEL ── */}
+                <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                    <div className="flex justify-between items-center mb-4">
+                        <div>
+                            <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
+                            <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{taskCounts.pending} pending</p>
+                        </div>
+                        <button onClick={openAddTask} className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-violet-500/20">
+                            <Plus size={13} /> Add Task
+                        </button>
+                    </div>
+
+                    {/* Filter tabs */}
+                    <div className="flex gap-1.5 mb-4 bg-slate-100 dark:bg-slate-800/40 p-1 rounded-xl">
+                        {[
+                            { key: 'all', label: `All (${taskCounts.all})` },
+                            { key: 'pending', label: `Pending (${taskCounts.pending})` },
+                            { key: 'completed', label: `Done (${taskCounts.completed})` },
+                        ].map(tab => (
+                            <button key={tab.key} onClick={() => setTaskFilter(tab.key)} className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all whitespace-nowrap px-2 cursor-pointer border-none uppercase tracking-wide ${taskFilter === tab.key ? 'bg-white dark:bg-slate-700/80 text-slate-800 dark:text-white shadow-sm' : 'bg-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="space-y-1 flex-1 overflow-y-auto max-h-[320px] sm:max-h-[380px] custom-scrollbar pr-1">
+                        {filteredTasks.length === 0 && <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No tasks here. Add one!</div>}
+                        {filteredTasks.map(task => (
+                            <div key={task.id} className="flex items-center justify-between py-3 px-3 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-slate-700/40 hover:bg-slate-50 dark:hover:bg-slate-800/30 group transition-all gap-3">
+                                <div className="flex items-center gap-3 min-w-0 flex-1">
+                                    <button onClick={() => toggleTask(task.id, task.completed)} className={`w-5 h-5 rounded-lg flex items-center justify-center border-2 transition-all cursor-pointer flex-shrink-0 ${task.completed ? 'bg-violet-500 border-violet-500' : 'bg-transparent border-slate-300 dark:border-slate-600 hover:border-violet-400'}`}>
+                                        {task.completed && <Check size={11} className="text-white" strokeWidth={3} />}
+                                    </button>
+                                    <div className="min-w-0">
+                                        <p className={`text-xs font-semibold truncate ${task.completed ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>{task.title}</p>
+                                        <p className="text-[9px] text-slate-400 mt-0.5 flex items-center gap-1 uppercase tracking-wide"><Calendar size={9}/> {formatTaskDateTime(task.time)}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                    <PriorityBadge priority={task.priority} />
+                                    <div className="flex gap-0.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                                        <button onClick={() => openEditTask(task)} className="p-1.5 rounded-lg text-slate-400 bg-transparent border-none cursor-pointer hover:text-blue-400 hover:bg-blue-500/10 transition-colors"><Pencil size={12} /></button>
+                                        <button onClick={() => deleteTask(task.id)} className="p-1.5 rounded-lg text-slate-400 bg-transparent border-none cursor-pointer hover:text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={12} /></button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 
@@ -1107,134 +1255,11 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* ── CALENDAR PANEL ── */}
-                <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/30 flex flex-col gap-3 shadow-sm lg:col-span-1">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
-                    </div>
-
-                    {/* Date strip */}
-                    <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30 rounded-xl p-2.5">
-                        <div className="flex justify-between items-center mb-2.5 px-0.5">
-                            <div className="flex gap-1">
-                                <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronLeft size={14}/></button>
-                                <button onClick={nextDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronRight size={14}/></button>
-                            </div>
-                        </div>
-                        <div className="flex justify-between items-center gap-1">
-                            {dateStrip.map((date, idx) => {
-                                const isSelected = date.toDateString() === currentDate.toDateString();
-                                return (
-                                    <div key={idx} onClick={() => { setCurrentDate(date); openAddEvent(date); }}
-                                        className={`flex flex-col items-center justify-center py-2 rounded-xl cursor-pointer transition-all w-full min-w-0 ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
-                                        <span className="text-[8px] uppercase font-bold tracking-wider mb-1 block">{date.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 2)}</span>
-                                        <span className={`text-sm font-bold ${isSelected ? 'text-white' : ''}`}>{date.getDate()}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-700/30 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
-                            <Eye size={12}/> <span>View All</span>
-                        </button>
-                        <button onClick={() => openAddEvent(currentDate)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[11px] font-bold transition-colors shadow-lg shadow-blue-500/20">
-                            <Plus size={12}/> <span>Create</span>
-                        </button>   
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-700/30 rounded-xl p-3 flex-1 flex flex-col">
-                        <div className="flex justify-between items-center mb-2.5">
-                            <h3 className="text-[9px] uppercase tracking-widest font-bold text-slate-400">Reminders · {currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
-                            <span className="text-[9px] font-bold text-slate-500 bg-slate-200 dark:bg-slate-700/60 px-1.5 py-0.5 rounded-full">{filteredEvents.length}</span>
-                        </div>
-                        <div className="space-y-2 flex-1 overflow-y-auto max-h-[140px] pr-1 custom-scrollbar">
-                            {filteredEvents.length === 0 ? (
-                                <p className="text-slate-400 text-center py-4 text-[10px]">No reminders today.</p>
-                            ) : (
-                                filteredEvents.map((event, idx) => {
-                                    const evDate = event.date ? new Date(event.date + 'T00:00:00') : new Date();
-                                    return (
-                                        <div key={event.id || idx} className="flex gap-2.5 items-start group hover:bg-slate-100 dark:hover:bg-slate-800/40 p-1.5 rounded-lg transition-colors">
-                                            <div className="pl-2 border-l-2 border-blue-400/50 flex flex-col items-center min-w-[28px] flex-shrink-0">
-                                                <span className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight">{evDate.getDate()}</span>
-                                                <span className="text-[8px] font-bold text-slate-400 uppercase">{monthNames[evDate.getMonth()].substring(0, 3)}</span>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">{event.title}</h4>
-                                                <p className="text-[9px] text-slate-400 flex items-center gap-1 mt-0.5"><Clock size={9}/> {event.time}</p>
-                                            </div>
-                                            <button onClick={() => deleteEvent(event.id)} className="text-slate-400 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><Trash2 size={11}/></button>
-                                        </div>
-                                    );
-                                })
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* ── ROW 4: TASKS + TOP DESTINATIONS ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                
-                {/* ── TASKS PANEL ── */}
-                <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-2">
-                    <div className="flex justify-between items-center mb-4">
-                        <div>
-                            <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
-                            <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{taskCounts.pending} pending</p>
-                        </div>
-                        <button onClick={openAddTask} className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-violet-500/20">
-                            <Plus size={13} /> Add Task
-                        </button>
-                    </div>
-
-                    {/* Filter tabs */}
-                    <div className="flex gap-1.5 mb-4 bg-slate-100 dark:bg-slate-800/40 p-1 rounded-xl">
-                        {[
-                            { key: 'all', label: `All (${taskCounts.all})` },
-                            { key: 'pending', label: `Pending (${taskCounts.pending})` },
-                            { key: 'completed', label: `Done (${taskCounts.completed})` },
-                        ].map(tab => (
-                            <button key={tab.key} onClick={() => setTaskFilter(tab.key)} className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all whitespace-nowrap px-2 cursor-pointer border-none uppercase tracking-wide ${taskFilter === tab.key ? 'bg-white dark:bg-slate-700/80 text-slate-800 dark:text-white shadow-sm' : 'bg-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="space-y-1 flex-1 overflow-y-auto max-h-[320px] sm:max-h-[380px] custom-scrollbar pr-1">
-                        {filteredTasks.length === 0 && <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No tasks here. Add one!</div>}
-                        {filteredTasks.map(task => (
-                            <div key={task.id} className="flex items-center justify-between py-3 px-3 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-slate-700/40 hover:bg-slate-50 dark:hover:bg-slate-800/30 group transition-all gap-3">
-                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <button onClick={() => toggleTask(task.id, task.completed)} className={`w-5 h-5 rounded-lg flex items-center justify-center border-2 transition-all cursor-pointer flex-shrink-0 ${task.completed ? 'bg-violet-500 border-violet-500' : 'bg-transparent border-slate-300 dark:border-slate-600 hover:border-violet-400'}`}>
-                                        {task.completed && <Check size={11} className="text-white" strokeWidth={3} />}
-                                    </button>
-                                    <div className="min-w-0">
-                                        <p className={`text-xs font-semibold truncate ${task.completed ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>{task.title}</p>
-                                        <p className="text-[9px] text-slate-400 mt-0.5 flex items-center gap-1 uppercase tracking-wide"><Calendar size={9}/> {formatTaskDateTime(task.time)}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                    <PriorityBadge priority={task.priority} />
-                                    <div className="flex gap-0.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => openEditTask(task)} className="p-1.5 rounded-lg text-slate-400 bg-transparent border-none cursor-pointer hover:text-blue-400 hover:bg-blue-500/10 transition-colors"><Pencil size={12} /></button>
-                                        <button onClick={() => deleteTask(task.id)} className="p-1.5 rounded-lg text-slate-400 bg-transparent border-none cursor-pointer hover:text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={12} /></button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
                 {/* ── TOP DESTINATIONS PANEL ── */}
                 <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                     <div className="flex justify-between items-center mb-4">
                         <div>
                             <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Top Destinations</h2>
-                            {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">By lead count</p> */}
                         </div>
                         <button type="button" onClick={() => setTopDestinationsModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">View All</button>
                     </div>
@@ -1264,6 +1289,7 @@ const Dashboard = () => {
                         )}
                     </div>
                 </div>
+
             </div>
 
             {/* ── ROW 5: FULFILLMENT ALERTS & ACTIVE TEAM ── */}
@@ -1459,15 +1485,15 @@ const Dashboard = () => {
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700/30">
                                 <div>
                                     <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wide mb-1">Total Package</p>
-                                    <p className="text-sm font-bold text-slate-800 dark:text-white">₹{(selectedPaymentLead.totalPackageCost || selectedPaymentLead.packageCost || 0).toLocaleString('en-IN')}</p>
+                                    <p className="text-sm font-bold text-slate-800 dark:text-white">₹{(selectedPaymentLead.computedPackageCost || selectedPaymentLead.totalPackageCost || selectedPaymentLead.packageCost || 0).toLocaleString('en-IN')}</p>
                                 </div>
                                 <div>
                                     <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wide mb-1">Total Received</p>
-                                    <p className="text-sm font-bold text-emerald-500">₹{(selectedPaymentLead.amountReceived || 0).toLocaleString('en-IN')}</p>
+                                    <p className="text-sm font-bold text-emerald-500">₹{(selectedPaymentLead.computedTotalReceived || selectedPaymentLead.amountReceived || 0).toLocaleString('en-IN')}</p>
                                 </div>
                                 <div>
                                     <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wide mb-1">Pending Balance</p>
-                                    <p className="text-sm font-bold text-amber-500">₹{(selectedPaymentLead.balancePending || Math.max(0, (selectedPaymentLead.totalPackageCost || selectedPaymentLead.packageCost || 0) - (selectedPaymentLead.amountReceived || 0))).toLocaleString('en-IN')}</p>
+                                    <p className="text-sm font-bold text-amber-500">₹{(selectedPaymentLead.computedBalancePending || Math.max(0, (selectedPaymentLead.totalPackageCost || selectedPaymentLead.packageCost || 0) - (selectedPaymentLead.amountReceived || 0))).toLocaleString('en-IN')}</p>
                                 </div>
                                 <div>
                                     <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wide mb-1">Status</p>
@@ -1597,8 +1623,8 @@ const Dashboard = () => {
                                 <h4 className="font-bold text-amber-500 border-b border-slate-100 dark:border-slate-700/30 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><Wallet size={13}/> Financial Overview</h4>
                                 {[
                                     { label: 'Quoted Budget', value: selectedLeadDetails.budget || selectedLeadDetails.budgetRange || 'N/A' },
-                                    { label: 'Total Package Cost', value: `₹${selectedLeadDetails.totalPackageCost || selectedLeadDetails.packageCost || '0'}` },
-                                    { label: 'Amount Received', value: `₹${selectedLeadDetails.amountReceived || '0'}` },
+                                    { label: 'Total Package Cost', value: `₹${selectedLeadDetails.computedPackageCost || selectedLeadDetails.totalPackageCost || selectedLeadDetails.packageCost || '0'}` },
+                                    { label: 'Amount Received', value: `₹${selectedLeadDetails.computedTotalReceived || selectedLeadDetails.amountReceived || '0'}` },
                                     { label: 'Payment Status', value: selectedLeadDetails.paymentStatus || 'Pending' },
                                 ].map(({ label, value }) => (
                                     <div key={label}>
