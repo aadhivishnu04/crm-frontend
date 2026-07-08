@@ -2057,7 +2057,7 @@ export default function OperationsDashboard() {
                                                             {req.vendorMessage && (
                                                                 <div className="sm:col-span-3 mt-2 bg-[#091124] border border-slate-700/60 rounded-xl overflow-hidden shadow-inner transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
                                                                     <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700/60 bg-slate-900/50">
-                                                                        <label className="block text-sm font-bold text-slate-200">Message Format (Review & Edit) <span className="text-orange-400 ml-1">— {req.vendorService || 'Custom'}</span></label>
+                                                                        <label className="block text-sm font-bold text-slate-200">Message Format Review & Edit <span className="text-orange-100 ml-1"> ({req.vendorService || 'Custom'})</span></label>
                                                                         <button type="button" onClick={() => copyToClipboard(req.vendorMessage)} className="px-4 py-1.5 bg-[#16D3F2]/10 hover:bg-[#16D3F2]/20 text-[#16D3F2] rounded text-xs font-bold transition-colors cursor-pointer border border-[#16D3F2]/30 flex items-center gap-1.5 shadow-sm"><Copy size={14}/> Copy </button>
                                                                     </div>
                                                                     <div className="p-1">
