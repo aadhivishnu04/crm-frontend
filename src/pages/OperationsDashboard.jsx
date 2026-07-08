@@ -30,8 +30,8 @@ const getOperationTourType = (lead) => {
 };
 
 // ─── DYNAMIC MESSAGE GENERATOR FOR VENDOR ASSISTANCE ──────────────────────────
-const generateVendorMessage = (lead) => {
-    const contact = lead.vendorContactPerson || '[Contact Person]';
+const generateVendorMessage = (req, lead) => {
+    const contact = req.vendorContactPerson || '[Contact Person]';
     const dest = lead.destination || '[Destination]';
     const pkg = lead.packageType || lead.tourType || '[Package Type]';
     const tDate = lead.travelDate || lead.travelDates || '[Travel Date]';
@@ -39,14 +39,19 @@ const generateVendorMessage = (lead) => {
     const paxA = lead.noOfAdults || '0';
     const paxC = lead.noOfChildren || '0';
     const hotel = lead.hotelCategory || '[Hotel Category]';
-    const vType = lead.vendorVisaType || '[VISA Type]';
-    const srv = lead.vendorService;
+    const vType = req.vendorVisaType || '[VISA Type]';
+    const srv = req.vendorService;
 
     if (!srv) return '';
 
     let msg = `Hi ${contact},\n\nGreetings from iTour!\n\n`;
 
-    if (srv === 'Complete Package' || srv === 'Land Only') {
+    const isVisa = srv === 'VISA';
+    const isInsurance = srv === 'Insurance';
+    const isLandOnly = srv === 'Land Only';
+    const isCompleteOrOther = !isVisa && !isInsurance; 
+
+    if (isCompleteOrOther) {
         msg += `Please share your best quotation for the following travel requirement.\n\n`;
         msg += `TRAVEL REQUIREMENTS\n\n`;
         msg += `Destination: ${dest}\n`;
@@ -54,19 +59,19 @@ const generateVendorMessage = (lead) => {
         msg += `Travel Dates: ${tDate}\n`;
         msg += `Duration: ${dur}\n`;
         msg += `Travellers: ${paxA} Adults | ${paxC} Children\n`;
-        if (srv === 'Complete Package') {
+        if (!isLandOnly) {
             msg += `Hotel Category: ${hotel}\n`;
         }
         msg += `\n`;
 
         msg += `Please provide a complete package excluding flights, including:\n`;
-        if (srv === 'Complete Package') {
+        if (!isLandOnly) {
             msg += `• Airport Transfers\n• Hotel Accommodation\n• Local Transfers\n• Sightseeing\n• Applicable Taxes (if any)\n\n`;
         } else {
             msg += `• Airport Transfers\n• Local Transfers\n• Sightseeing\n• Applicable Taxes (if any)\n\n`;
         }
 
-        if (srv === 'Complete Package') {
+        if (!isLandOnly) {
             const pTypeLower = pkg.toLowerCase();
             if (pTypeLower.includes('honeymoon')) {
                 msg += `HONEYMOON PREFERENCES\n\nKindly suggest honeymoon-friendly hotels/resorts and include honeymoon inclusions wherever available, such as:\n\n• Honeymoon Room Decoration\n• Candlelight Dinner\n• Honeymoon Cake\n• Complimentary Honeymoon Benefits\n• Romantic Experiences (if available)\n\nPlease mention any complimentary inclusions or paid upgrade options separately.\n\n`;
@@ -78,7 +83,7 @@ const generateVendorMessage = (lead) => {
         }
 
         msg += `Kindly Share\n\n• Detailed Day-wise Itinerary\n• Hotel Options\n• Package Inclusions\n• Package Exclusions\n• Cancellation Policy\n• Quotation\n\n`;
-    } else if (srv === 'VISA') {
+    } else if (isVisa) {
         msg += `Please share your best quotation for the following VISA requirement.\n\n`;
         msg += `Destination: ${dest}\n\n`;
         msg += `VISA Type: ${vType}\n\n`;
@@ -86,15 +91,13 @@ const generateVendorMessage = (lead) => {
         msg += `Travel Dates: ${tDate}\n\n`;
         msg += `Travellers: ${paxA} Adults | ${paxC} Children\n\n`;
         msg += `Kindly Share:\n\n• VISA Charges\n• Required Documents\n• Processing Time\n• Validity\n• Appointment Requirement (if applicable)\n• Terms & Conditions\n\n`;
-    } else if (srv === 'Insurance') {
+    } else if (isInsurance) {
         msg += `Please share your best quotation for Travel Insurance for below requirement.\n\n`;
         msg += `Destination: ${dest}\n\n`;
         msg += `Duration: ${dur}\n\n`;
         msg += `Travel Dates: ${tDate}\n\n`;
         msg += `Travellers: ${paxA} Adults | ${paxC} Children\n\n`;
         msg += `Kindly Share:\n\n• Insurance Plan Details\n• Coverage\n• Premium Amount\n• Policy Validity\n• Claim Process\n\n`;
-    } else {
-         msg += `Please share your best quotation for the following requirement.\n\nDestination: ${dest}\nTravel Dates: ${tDate}\nTravellers: ${paxA} Adults | ${paxC} Children\n\n`;
     }
 
     msg += `Kindly share your best available rates at the earliest.\n\nThank you.\n\nRegards,`;
@@ -104,18 +107,19 @@ const generateVendorMessage = (lead) => {
 // ─────────────────────────────────────────────
 // COMPONENT – Custom Select (with Manual Entry)
 // ─────────────────────────────────────────────
-const CustomSelect = ({ value, onChange, options, placeholder = "", className }) => {
+const CustomSelect = ({ value, onChange, options, className, hideDefaultManual = false, manualTrigger = "__MANUAL__", placeholder = "" }) => {
     const normalizedOptions = options.map(opt => typeof opt === 'object' ? opt : { value: opt, label: opt });
     const optionValues = normalizedOptions.map(opt => String(opt.value));
     
     const safeValue = value !== undefined && value !== null ? String(value) : '';
-    const isCustomValue = safeValue !== "" && !optionValues.includes(safeValue);
-
-    const [isManual, setIsManual] = useState(isCustomValue);
+    
+    const [isManual, setIsManual] = useState(safeValue !== "" && !optionValues.includes(safeValue));
 
     useEffect(() => {
-        setIsManual(safeValue !== "" && !optionValues.includes(safeValue));
-    }, [safeValue]);
+        if (safeValue !== "" && !optionValues.includes(safeValue) && !isManual) {
+            setIsManual(true);
+        }
+    }, [safeValue, optionValues, isManual]);
 
     if (isManual) {
         return (
@@ -124,7 +128,6 @@ const CustomSelect = ({ value, onChange, options, placeholder = "", className })
                     type="text"
                     value={safeValue}
                     onChange={(e) => onChange(e.target.value)}
-                    placeholder=" "
                     className={`w-full bg-slate-900 border border-slate-700 rounded text-white text-sm font-bold focus:border-cyan-500 outline-none flex-1 min-w-[80px] ${className && className.includes('py-1.5') ? 'py-1.5 px-3' : 'py-2 px-3'}`}
                     autoFocus
                 />
@@ -144,7 +147,7 @@ const CustomSelect = ({ value, onChange, options, placeholder = "", className })
         <select
             value={safeValue}
             onChange={(e) => {
-                if (e.target.value === '__MANUAL__') {
+                if (e.target.value === manualTrigger) {
                     setIsManual(true);
                     onChange('');
                 } else {
@@ -157,7 +160,7 @@ const CustomSelect = ({ value, onChange, options, placeholder = "", className })
             {normalizedOptions.map((opt, idx) => (
                 <option key={idx} value={opt.value}>{opt.label}</option>
             ))}
-            <option value="__MANUAL__" className="font-bold text-cyan-400 bg-slate-800">+ Add Manual / Other</option>
+            {!hideDefaultManual && <option value={manualTrigger} className="font-bold text-cyan-400 bg-slate-800">+ Add Manual / Other</option>}
         </select>
     );
 };
@@ -220,15 +223,12 @@ export default function OperationsDashboard() {
     const [notification, setNotification] = useState({ show: false, type: '', message: '' });
     const triggerNotification = (type, message) => setNotification({ show: true, type, message });
 
-    // HTTP / Local Network Fallback Copy System
     const copyToClipboard = (text) => {
         if (navigator.clipboard && window.isSecureContext) {
-            // HTTPS Context
             navigator.clipboard.writeText(text)
                 .then(() => triggerNotification('success', 'Message format copied to clipboard!'))
                 .catch(() => fallbackCopyText(text));
         } else {
-            // HTTP Context Fallback
             fallbackCopyText(text);
         }
     };
@@ -272,15 +272,37 @@ export default function OperationsDashboard() {
 
     const [selectedLeadForView, setSelectedLeadForView] = useState(null);
     const [selectedLeadForEdit, setSelectedLeadForEdit] = useState(null);
-    const [leadToAcknowledge, setLeadToAcknowledge] = useState(null);
     const [leadToFulfill, setLeadToFulfill] = useState(null);
     
+    const [operationsStaff, setOperationsStaff] = useState([]);
+    const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+    const [assignTo, setAssignTo] = useState('');
+    const [selectedLeadForAssign, setSelectedLeadForAssign] = useState(null);
+
     const [activeModal, setActiveModal] = useState(null); 
     const [showScrollTop, setShowScrollTop] = useState(false);
     const mainRef = useRef(null);
     const tabScrollRef = useRef(null);
 
-    // --- DATA FETCHING ---
+    useEffect(() => {
+        const fetchStaffDirectory = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/employees`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const ops = data.filter(emp => {
+                        const searchString = `${emp.designation || ''} ${emp.role || ''} ${emp.department || ''}`.toLowerCase();
+                        return searchString.includes('operation') || searchString.includes('ops');
+                    }).map(emp => emp.name || emp.username);
+                    setOperationsStaff(ops);
+                }
+            } catch (error) { 
+                console.error('Failed to fetch dynamic directory components:', error); 
+            }
+        };
+        fetchStaffDirectory();
+    }, []);
+
     const fetchLeads = async () => {
         setLoading(true);
         try {
@@ -330,7 +352,6 @@ export default function OperationsDashboard() {
         return rawStatus || 'New Requests';
     };
 
-    // --- FLATTEN LEADS ---
     const expandedLeads = leads.flatMap(item => {
         let parsedRequests = [];
         if (item.customisationRequests) {
@@ -369,11 +390,9 @@ export default function OperationsDashboard() {
 
     const isAuthorizedForOps = (l) => isAdmin || l.assignedOps === loggedInUserName || l.opsPreparedBy === loggedInUserName;
 
-    // --- TAB COUNTS ---
     const countNew = expandedLeads.filter(l => getTabStatus(l.rawRowStatus) === 'New Requests').length; 
     const countFollow = expandedLeads.filter(l => getTabStatus(l.rawRowStatus) === 'Follow-Up' && isAuthorizedForOps(l)).length;
     const countBooked = expandedLeads.filter(l => getTabStatus(l.rawRowStatus) === 'Confirmed Bookings' && isAuthorizedForOps(l)).length;
-    
     const countUpcoming = expandedLeads.filter(l => {
         if (getTabStatus(l.rawRowStatus) !== 'Upcoming Bookings' || !isAuthorizedForOps(l)) return false;
         const travelDate = new Date(l.travelDate || l.travelDates || l.departureDate);
@@ -382,12 +401,19 @@ export default function OperationsDashboard() {
         return !isNaN(travelDate) && travelDate >= past15Days;
     }).length;
 
-    // --- MAIN ACTION HANDLERS ---
-    const handleAcknowledgeRequest = async (row) => {
-        const leadId = row.id;
-        const reqIndex = row.reqIndex;
+    const handleOpenAssignModal = (lead) => {
+        setSelectedLeadForAssign(lead);
+        setAssignTo('');
+        setIsAssignModalOpen(true);
+    };
+
+    const handleAssignSubmit = async () => {
+        if (!assignTo) { alert('Please select a team or choose self assignment.'); return; }
+        
+        const finalAssignee = assignTo === 'Self Assigned' ? loggedInUserName : assignTo;
+        const leadId = selectedLeadForAssign.id;
+        const reqIndex = selectedLeadForAssign.reqIndex;
         const targetStatus = 'Follow-Up';
-        const opsName = loggedInUserName;
 
         const originalLead = leads.find(l => l.id === leadId);
         if (!originalLead) return;
@@ -401,15 +427,15 @@ export default function OperationsDashboard() {
 
         if (parsedRequests.length > 0 && parsedRequests[reqIndex]) {
             parsedRequests[reqIndex].status = targetStatus;
-            parsedRequests[reqIndex].assignedTo = opsName;
+            parsedRequests[reqIndex].assignedTo = finalAssignee;
         }
 
         const allProcessed = parsedRequests.every(r => r.status === 'Follow-Up' || r.status === 'Customisation Ready');
 
         const updatedData = {
             customisationRequests: JSON.stringify(parsedRequests),
-            operationExecutive: opsName,
-            opsPreparedBy: opsName,
+            operationExecutive: finalAssignee,
+            opsPreparedBy: finalAssignee,
             status: allProcessed ? targetStatus : originalLead.status
         };
 
@@ -421,12 +447,13 @@ export default function OperationsDashboard() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedData),
             });
-            triggerNotification('success', `Request from ${row.customerName} acknowledged.`);
+            triggerNotification('success', `Request assigned to ${finalAssignee}.`);
             fetchLeads();
         } catch (err) {
-            triggerNotification('success', `Request acknowledged (Simulation mode).`);
+            triggerNotification('success', `Request assigned (Simulation mode).`);
         }
-        setLeadToAcknowledge(null);
+        setIsAssignModalOpen(false);
+        setSelectedLeadForAssign(null);
     };
 
     const handleSendToSalesReady = async (row) => {
@@ -472,13 +499,22 @@ export default function OperationsDashboard() {
     const updateLead = async (id, updatedData) => {
         setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updatedData } : l));
         try {
-            await fetch(`${API_BASE_URL}/leads/${id}`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updatedData),
+            const response = await fetch(`${API_BASE_URL}/leads/${id}`, {
+                method: 'PUT', 
+                headers: { 'Content-Type': 'application/json' }, 
+                body: JSON.stringify(updatedData),
             });
+            
+            // This is the CRITICAL fix that throws an error if the schema rejects the data (500)
+            if (!response.ok) {
+                throw new Error(`Server returned status: ${response.status}`);
+            }
+            
             triggerNotification('success', 'Configuration update committed!');
             fetchLeads();
         } catch (err) {
-            triggerNotification('success', 'Changes updated inside active local application stack.');
+            console.error("Save failed:", err);
+            triggerNotification('error', 'Failed to sync! Data kept locally. Ensure schema matches fields.');
         }
     };
 
@@ -541,10 +577,12 @@ export default function OperationsDashboard() {
         setSelectedLeadForEdit({ ...selectedLeadForEdit, domTransports: newTrans });
     };
 
-    const handleVendorServiceChange = (v) => {
-        const updatedLead = { ...selectedLeadForEdit, vendorService: v };
-        const newMsg = generateVendorMessage(updatedLead);
-        setSelectedLeadForEdit({ ...updatedLead, vendorMessage: newMsg });
+    const safeParseArray = (val, defaultItem) => {
+        let arr = [];
+        if (val) {
+            try { arr = typeof val === 'string' ? JSON.parse(val) : val; } catch(e){}
+        }
+        return Array.isArray(arr) && arr.length > 0 ? arr : [defaultItem];
     };
 
     const handleEditClick = (lead) => {
@@ -564,15 +602,32 @@ export default function OperationsDashboard() {
             }];
         }
 
-        const passengers = Array.isArray(lead.passengers) && lead.passengers.length > 0 ? lead.passengers : [{ fullName: '', dob: '', gender: '', aadharNumber: '', panNumber: '', passportNumber: '', passportIssueDate: '', passportExpiryDate: '', passportIssuePlace: '', mobileNumber: '', emergencyContact: '' }];
-        const intTransports = Array.isArray(lead.intTransports) && lead.intTransports.length > 0 ? lead.intTransports : [{ operatorName: '', vehicleType: '', contactPerson: '', driverName: '', vehicleNumber: '', status: '', driverContact: '', duration: '', pickupPoint: '', pickupDate: '', dropPoint: '', dropDate: '', notes: '', cost: '', markup: '', paymentDueDate: '' }];
-        const flights = Array.isArray(lead.flights) && lead.flights.length > 0 ? lead.flights : [{ flightType: '', flightResponsibility: '', bookingStatus: '', airline: '', pnr: '', bookedThrough: '', category: '', departureDateTime: '', boardingPoint: '', ticketShared: '', ticketSharedDate: '', deboardingPoint: '', flightCost: '', markupCost: '', driveLink: '' }];
-        const visas = Array.isArray(lead.visas) && lead.visas.length > 0 ? lead.visas : [{ destination: '', visaType: '', transitVisaReq: '', arrivalCardApplicable: '', arrivalCardDetails: '', appliedBy: '', docsPending: '', visaStatus: '', visaCopyShared: '', visaApprovalDate: '', visaExpiryDate: '', visaCost: '', markupCost: '' }];
-        const domTransports = Array.isArray(lead.domTransports) && lead.domTransports.length > 0 ? lead.domTransports : [{ transportType: '', bookedBy: '', bookingStatus: '', ticketSharedToClient: '', sharedDate: '', flight: { onward: { airline: '', pnr: '', bookingDate: '', flightCost: '', markupCost: '', depDateTime: '', from: '', attachTicket: '', notes: '', to: '' }, return: null }, train: { onward: { trainName: '', trainNo: '', bookingDate: '', boardingStation: '', destination: '', trainStartTime: '', cost: '', markupCost: '', trainReachingTime: '', seatDetails: '', trainClass: '', attachTicketLink: '', meals: '' }, return: null }, bus: { onward: { serviceProvider: '', bookingDate: '', destination: '', boardingPoint: '', travelDateTime: '', seatDetails: '', cost: '', markupCost: '', attachTicketLink: '' }, return: null } }];
-        const intHotels = Array.isArray(lead.intHotels) && lead.intHotels.length > 0 ? intHotels : [{ location: '', hotelName: '', hotelCategory: '', bookedBy: '', refNo: '', status: '', roomCategory: '', noOfRooms: '', addMattress: '', specifications: '', mealPlan: '', earlyCheckIn: '', checkInDateTime: '', checkOutDateTime: '', refreshmentRoom: '', cost: '', paymentDueDate: '', attachVoucher: '', specialArrangements: '', notes: '' }];
-        const domHotels = Array.isArray(lead.domHotels) && lead.domHotels.length > 0 ? domHotels : [{ location: '', hotelName: '', hotelCategory: '', bookedBy: '', refNo: '', status: '', roomCategory: '', noOfRooms: '', addMattress: '', specifications: '', mealPlan: '', earlyCheckIn: '', checkInDateTime: '', checkOutDateTime: '', refreshmentRoom: '', cost: '', markup: '', paymentDueDate: '', attachVoucher: '', specialArrangements: '', notes: '' }];
-        const domLocalTransports = Array.isArray(lead.domLocalTransports) && lead.domLocalTransports.length > 0 ? domLocalTransports : [{ serviceProvider: '', vehicleType: '', contactPerson: '', driverName: '', vehicleNumber: '', status: '', pickupPoint: '', pickupDate: '', duration: '', dropPoint: '', dropDate: '', tollParking: '', cost: '', markup: '', paymentDueDate: '', notes: '' }];
-        const paymentRequests = Array.isArray(lead.paymentRequests) && lead.paymentRequests.length > 0 ? paymentRequests : [{ service: '', providerName: '', paymentDueDate: '', serviceCost: '', paymentType: '', amountToPay: '', paymentAccountDetails: '' }];
+        let parsedVendorRequests = [];
+        if (lead.vendorRequests) {
+            try { parsedVendorRequests = typeof lead.vendorRequests === 'string' ? JSON.parse(lead.vendorRequests) : lead.vendorRequests; } catch(e){}
+        }
+        if (!parsedVendorRequests || parsedVendorRequests.length === 0) {
+            if (lead.vendorService || lead.vendorDmcName || lead.vendorName) {
+                parsedVendorRequests = [{
+                    vendorService: lead.vendorService || '',
+                    vendorDmcName: lead.vendorDmcName || lead.vendorName || '',
+                    vendorContactPerson: lead.vendorContactPerson || '',
+                    contactMethod: lead.contactMethod || '',
+                    vendorVisaType: lead.vendorVisaType || '',
+                    vendorMessage: lead.vendorMessage || ''
+                }];
+            } else {
+                parsedVendorRequests = [{ vendorService: '', vendorDmcName: '', vendorContactPerson: '', contactMethod: '', vendorVisaType: '', vendorMessage: '' }];
+            }
+        }
+
+        const passengers = safeParseArray(lead.passengers, { fullName: '', dob: '', gender: '', aadharNumber: '', panNumber: '', passportNumber: '', passportIssueDate: '', passportExpiryDate: '', passportIssuePlace: '', mobileNumber: '', emergencyContact: '' });
+        const flights = safeParseArray(lead.flights, { flightType: '', flightResponsibility: '', bookingStatus: '', airline: '', pnr: '', bookedThrough: '', category: '', departureDateTime: '', boardingPoint: '', ticketShared: '', ticketSharedDate: '', deboardingPoint: '', flightCost: '', markupCost: '', driveLink: '' });
+        const visas = safeParseArray(lead.visas, { destination: '', visaType: '', transitVisaReq: '', arrivalCardApplicable: '', arrivalCardDetails: '', appliedBy: '', docsPending: '', visaStatus: '', visaCopyShared: '', visaApprovalDate: '', visaExpiryDate: '', visaCost: '', markupCost: '' });
+        const domTransports = safeParseArray(lead.domTransports, { transportType: '', bookedBy: '', bookingStatus: '', ticketSharedToClient: '', sharedDate: '', flight: { onward: {}, return: null }, train: { onward: {}, return: null }, bus: { onward: {}, return: null } });
+        const domHotels = safeParseArray(lead.domHotels, { location: '', hotelName: '', hotelCategory: '', bookedBy: '', refNo: '', status: '', roomCategory: '', noOfRooms: '', addMattress: '', specifications: '', mealPlan: '', earlyCheckIn: '', checkInDateTime: '', checkOutDateTime: '', refreshmentRoom: '', cost: '', markup: '', paymentDueDate: '', attachVoucher: '', specialArrangements: '', notes: '' });
+        const domLocalTransports = safeParseArray(lead.domLocalTransports, { serviceProvider: '', vehicleType: '', contactPerson: '', driverName: '', vehicleNumber: '', status: '', pickupPoint: '', pickupDate: '', duration: '', dropPoint: '', dropDate: '', tollParking: '', cost: '', markup: '', paymentDueDate: '', notes: '' });
+        const paymentRequests = safeParseArray(lead.paymentRequests, { service: '', providerName: '', paymentDueDate: '', serviceCost: '', paymentType: '', amountToPay: '', paymentAccountDetails: '' });
 
         let calculatedPriority = lead.priority || 'Low';
         const today = new Date(); today.setHours(0,0,0,0);
@@ -600,6 +655,7 @@ export default function OperationsDashboard() {
         setSelectedLeadForEdit({
             ...lead,
             customisationRequests: parsedCustomisationRequests,
+            vendorRequests: parsedVendorRequests,
             customisationType: lead.customisationType || '', customerName: lead.customerName || lead.profileName || '', mobileNumber: lead.phone || lead.mobileNumber || '', salesExecutive: lead.salesExecutive || '',
             destinationRequest: lead.destinationRequest || '', tourType: getOperationTourType(lead), duration: lead.duration || '', noOfAdults: lead.noOfAdults || '', noOfChildren: lead.noOfChildren || '', hotelCategory: lead.hotelCategory || '',
             travelDate: lead.travelDate || lead.travelDates || '', travelMonth: lead.travelMonth || '', budget: lead.budget || lead.amount || '', readymadePackageDetails: lead.readymadePackageDetails || '',
@@ -607,20 +663,14 @@ export default function OperationsDashboard() {
             priority: calculatedPriority, status: lead.status || '', activityType: lead.activityType || '', activityOutcome: lead.activityOutcome || '', notes: lead.notes || '',
             nextActionRequired: lead.nextActionRequired || '', nextActionDate: lead.nextActionDate || '', 
             
-            vendorService: lead.vendorService || '', vendorDmcName: lead.vendorDmcName || lead.dmcName || '', vendorContactPerson: lead.vendorContactPerson || '', vendorVisaType: lead.vendorVisaType || '', vendorMessage: lead.vendorMessage || '',
-            vendorName: lead.vendorName || '', contactMethod: lead.contactMethod || '', contactDate: lead.contactDate || '', vendorResponseStatus: lead.vendorResponseStatus || '', vendorRemarks: lead.vendorRemarks || '', 
-            
-            nextFollowType: lead.nextFollowType || '', followUpType: lead.followUpType || '',
             preparationMethod: lead.preparationMethod || '', itineraryVersion: lead.itineraryVersion || '', workingNotes: lead.workingNotes || '', itineraryPrepDate: lead.itineraryPrepDate || '',
             qcStatus: lead.qcStatus || '', qcRemarks: lead.qcRemarks || '', reviewedBy: lead.reviewedBy || '', qcDate: lead.qcDate || '', salesAcknowledged: lead.salesAcknowledged || '', finalStatus: lead.finalStatus || '',
             salesFunnelLeadStatus: lead.salesFunnelLeadStatus || 'Pipeline Active', salesFunnelNotes: lead.salesFunnelNotes || '', localVoiceRecordings: lead.localVoiceRecordings || [], bookingDate: lead.bookingDate || '',
             packageCost: lead.packageCost || lead.amount || '', confirmationDate: lead.confirmationDate || '', 
-            passengers, intTransports, flights, visas, domTransports, domHotels, intHotels, domLocalTransports, paymentRequests,
+            passengers, flights, visas, domTransports, domHotels, domLocalTransports, paymentRequests,
             docAadhar: lead.docAadhar || '', docPan: lead.docPan || '', docPhoto: lead.docPhoto || '', docPassport: lead.docPassport || '', docDriveLink: lead.docDriveLink || '', documentStatus: lead.documentStatus || '', docRemarks: lead.docRemarks || '',
             domTransportType: lead.domTransportType || lead.transportMode || '', specialOffers: lead.specialOffers || lead.offers || '', arrivalDate: lead.arrivalDate || '', departureDate: lead.departureDate || '', returnDate: lead.returnDate || '',
             insRequired: lead.insRequired || '', insProvider: lead.insProvider || '', insPolicyNo: lead.insPolicyNo || '', insCost: lead.insCost || '', insMarkup: lead.insMarkup || '', insStatus: lead.insStatus || '', insPolicyShared: lead.insPolicyShared || '',
-            dmcName: lead.dmcName || '', dmcContactPerson: lead.dmcContactPerson || '', dmcPackageType: lead.dmcPackageType || '', dmcWhatsapp: lead.dmcWhatsapp || '', dmcEmail: lead.dmcEmail || '', dmcStatus: lead.dmcStatus || '',
-            dmcRefNo: lead.dmcRefNo || '', dmcPackageCost: lead.dmcPackageCost || '', dmcMarkupCost: lead.dmcMarkupCost || '', dmcVoucherReceived: lead.dmcVoucherReceived || '', dmcDeliverables: lead.dmcDeliverables || '',
             reqVeg: lead.reqVeg || false, reqWheelchair: lead.reqWheelchair || false, reqSenior: lead.reqSenior || false, reqHoneymoon: lead.reqHoneymoon || false, reqCandlelight: lead.reqCandlelight || false,
             reqFloating: lead.reqFloating || false, reqDecor: lead.reqDecor || false, reqBirthday: lead.reqBirthday || false, reqAnniversary: lead.reqAnniversary || false, reqManualAdd: lead.reqManualAdd || false
         });
@@ -638,6 +688,15 @@ export default function OperationsDashboard() {
 
         const payloadToSave = { 
             ...selectedLeadForEdit, 
+            vendorRequests: JSON.stringify(selectedLeadForEdit.vendorRequests),
+            passengers: JSON.stringify(selectedLeadForEdit.passengers),
+            flights: JSON.stringify(selectedLeadForEdit.flights),
+            visas: JSON.stringify(selectedLeadForEdit.visas),
+            domTransports: JSON.stringify(selectedLeadForEdit.domTransports),
+            domHotels: JSON.stringify(selectedLeadForEdit.domHotels),
+            domLocalTransports: JSON.stringify(selectedLeadForEdit.domLocalTransports),
+            paymentRequests: JSON.stringify(selectedLeadForEdit.paymentRequests),
+            customisationRequests: JSON.stringify(selectedLeadForEdit.customisationRequests),
             history: JSON.stringify(updatedHistory)
         };
         
@@ -690,314 +749,349 @@ export default function OperationsDashboard() {
     const uniqueDestinations = selectedLeadForEdit ? [...new Set((selectedLeadForEdit.customisationRequests || []).map(req => req.destination).filter(Boolean))] : [];
     const destinationOptions = uniqueDestinations.length > 0 ? uniqueDestinations : ['Singapore', 'Dubai', 'Thailand', 'Malaysia', 'Japan', { value: 'UK', label: 'United Kingdom' }, 'India'];
 
+    // ─── DYNAMIC DMC & CONTACT PERSON MAP BUILDER ────────────────────────────────
+    const dmcToContactsMap = {};
     const baseVendorOptions = ['Bali DMC', 'Dubai DMC', 'Thai DMC', 'Singapore DMC', 'Vendor A', 'Vendor B'];
-    const leadsVendorOptions = leads
-        .filter(l => l.vendorContactPerson && l.destination)
-        .map(l => `${l.vendorContactPerson} - ${l.destination}`);
-    
-    let dynamicVendorOptions = [...new Set([...baseVendorOptions, ...leadsVendorOptions])];
-    
-    if (selectedLeadForEdit?.vendorContactPerson && selectedLeadForEdit?.destination) {
-        const combo = `${selectedLeadForEdit.vendorContactPerson} - ${selectedLeadForEdit.destination}`;
-        if (!dynamicVendorOptions.includes(combo)) {
-            dynamicVendorOptions.push(combo);
+    baseVendorOptions.forEach(dmc => { dmcToContactsMap[dmc] = new Set(); });
+
+    leads.forEach(l => {
+        const legacyDMC = l.vendorDmcName || l.vendorName || l.dmcName;
+        const legacyContact = l.vendorContactPerson || l.dmcContactPerson;
+        if (legacyDMC) {
+            if (!dmcToContactsMap[legacyDMC]) dmcToContactsMap[legacyDMC] = new Set();
+            if (legacyContact) dmcToContactsMap[legacyDMC].add(legacyContact);
         }
+        
+        if (l.vendorRequests) {
+            let reqs = [];
+            try { reqs = typeof l.vendorRequests === 'string' ? JSON.parse(l.vendorRequests) : l.vendorRequests; } catch(e){}
+            if (Array.isArray(reqs)) {
+                reqs.forEach(req => {
+                    const dReq = req.vendorDmcName;
+                    const cReq = req.vendorContactPerson;
+                    if (dReq) {
+                        if (!dmcToContactsMap[dReq]) dmcToContactsMap[dReq] = new Set();
+                        if (cReq && cReq !== '') dmcToContactsMap[dReq].add(cReq);
+                    }
+                });
+            }
+        }
+    });
+
+    if (selectedLeadForEdit && selectedLeadForEdit.vendorRequests) {
+        selectedLeadForEdit.vendorRequests.forEach(req => {
+            const dReq = req.vendorDmcName;
+            const cReq = req.vendorContactPerson;
+            if (dReq) {
+                if (!dmcToContactsMap[dReq]) dmcToContactsMap[dReq] = new Set();
+                if (cReq && cReq !== '') dmcToContactsMap[dReq].add(cReq);
+            }
+        });
     }
+
+    const finalDmcOptions = Object.keys(dmcToContactsMap);
+    const getContactsForDMC = (dmcName) => {
+        if (!dmcName || !dmcToContactsMap[dmcName]) return [];
+        return Array.from(dmcToContactsMap[dmcName]).filter(Boolean);
+    };
 
     return (
         <div ref={mainRef} className="w-full bg-[#0f172a] min-h-screen font-sans text-white overflow-y-auto relative" style={{ height: '100vh' }}>
             <style>{`.custom-date-input::-webkit-calendar-picker-indicator { opacity: 0; position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: pointer; }`}</style>
             
-            <div className="p-4 sm:p-6">
-                {notification.show && (
-                    <div className={`fixed top-5 left-1/2 -translate-x-1/2 z-[150] flex items-center gap-3 px-4 py-2.5 rounded-xl border shadow-2xl text-xs font-bold bg-[#0d233e] tracking-wide animate-in fade-in slide-in-from-top-4 ${notification.type === 'success' ? 'border-emerald-500 text-emerald-400' : 'border-cyan-500 text-cyan-400'}`}>
-                        {notification.type === 'success' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
-                        <span>{notification.message}</span>
-                    </div>
-                )}
-
-                <div className="py-12 mb-0 sm:mb-8">
-                    <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Operations Dashboard</h1>
-                    <p className="text-slate-400 text-sm sm:text-base mt-1">Manage, allocate, and process active operational pipeline handovers.</p>
+            {/* Global Notifications */}
+            {notification.show && (
+                <div className={`fixed top-5 left-1/2 -translate-x-1/2 z-[150] flex items-center gap-3 px-4 py-2.5 rounded-xl border shadow-2xl text-xs font-bold bg-[#0d233e] tracking-wide animate-in fade-in slide-in-from-top-4 ${notification.type === 'success' ? 'border-emerald-500 text-emerald-400' : 'border-cyan-500 text-cyan-400'}`}>
+                    {notification.type === 'success' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+                    <span>{notification.message}</span>
                 </div>
+            )}
 
-                <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    {categories.map((cat) => {
-                        const Icon = cat.icon;
-                        const isActive = activeTab === cat.id;
-                        return (
-                            <div key={cat.id} onClick={() => handleTabChange(cat.id)} className={`relative p-5 rounded-xl cursor-pointer transition-all duration-200 border shadow-sm hover:shadow-md ${isActive ? 'ring-2 ring-offset-2 border-slate-500 bg-[#07202a] text-white' : 'bg-transparent border-slate-700/20 text-slate-200'}`}>
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className={`p-3 rounded-lg ${isActive ? 'bg-slate-700 text-white' : 'bg-slate-800/20 text-slate-300'}`}><Icon size={24} strokeWidth={2} /></div>
-                                    <span className={`text-xl font-bold ${isActive ? 'text-white' : 'text-slate-200'}`}>{cat.count}</span>
-                                </div>
-                                <h3 className={`font-semibold text-base ${isActive ? 'text-white' : 'text-slate-200'}`}>{cat.label}</h3>
-                                {isActive && <div className="absolute bottom-0 left-0 w-full h-1 rounded-b-xl bg-slate-700" />}
-                            </div>
-                        );
-                    })}
-                </div>
-
-                <div className="flex items-center gap-1 mb-6 md:hidden">
-                    <button type="button" onClick={() => scrollTabs(-1)} className="flex-shrink-0 p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 active:bg-slate-700 cursor-pointer" aria-label="Scroll tabs left"><ChevronLeft size={16} /></button>
-                    <div ref={tabScrollRef} className="flex gap-2 overflow-x-auto flex-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
-                        {categories.map((cat) => {
-                            const Icon = cat.icon;
-                            const isActive = activeTab === cat.id;
-                            return (
-                                <div key={cat.id} onClick={() => handleTabChange(cat.id)} className={`relative flex-shrink-0 flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 border ${isActive ? 'ring-1 ring-cyan-500 border-cyan-700 bg-[#07202a] text-white' : 'bg-slate-800/30 border-slate-700/30 text-slate-300'}`} style={{ minWidth: '148px' }}>
-                                    <div className={`p-1.5 rounded-md flex-shrink-0 ${isActive ? 'bg-slate-700 text-cyan-400' : 'bg-slate-800 text-slate-400'}`}><Icon size={16} strokeWidth={2} /></div>
-                                    <div className="flex flex-col min-w-0">
-                                        <span className={`text-xs font-semibold leading-tight truncate ${isActive ? 'text-white' : 'text-slate-300'}`}>{cat.label}</span>
-                                        <span className={`text-base font-bold leading-tight ${isActive ? 'text-cyan-400' : 'text-slate-400'}`}>{cat.count}</span>
-                                    </div>
-                                    {isActive && <div className="absolute bottom-0 left-0 w-full h-0.5 rounded-b-xl bg-cyan-500" />}
-                                </div>
-                            );
-                        })}
-                    </div>
-                    <button type="button" onClick={() => scrollTabs(1)} className="flex-shrink-0 p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 active:bg-slate-700 cursor-pointer" aria-label="Scroll tabs right"><ChevronRight size={16} /></button>
-                </div>
-
-                <div className="bg-transparent border border-slate-700/30 rounded-xl shadow-sm overflow-hidden">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 sm:p-5 border-b border-slate-700/20 gap-3">
-                        <h2 className="text-base sm:text-lg font-bold text-white">
-                            {categories.find(c => c.id === activeTab)?.label || activeTab}
-                            <span className="text-slate-400 font-normal text-sm ml-2">({filtered.length} records)</span>
-                        </h2>
-                        <div className="flex items-center gap-2 w-full sm:w-auto relative">
-                            <div className="relative flex-1 sm:w-64">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-                                <input type="text" placeholder=" " value={searchQuery} onChange={(e) => handleSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 text-sm bg-transparent border border-slate-600 rounded-lg focus:outline-none text-slate-100 placeholder-slate-500" />
-                            </div>
-                            <button onClick={() => setIsFilterOpen(!isFilterOpen)} className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors border flex-shrink-0 ${isFilterOpen || selectedPlatform !== 'All' ? 'bg-slate-700/30 text-white border-slate-600' : 'text-slate-200 bg-transparent border-slate-700/20 hover:bg-slate-800/30'}`}>
-                                <SlidersHorizontal size={15} />
-                                <span className="hidden sm:inline">{selectedPlatform !== 'All' ? selectedPlatform : 'Source'}</span>
-                            </button>
-                            {isFilterOpen && (
-                                <div className="absolute top-11 right-0 w-44 bg-[#07202a] border border-slate-700/30 rounded-lg shadow-lg z-10 p-2">
-                                    {['All', 'Website', 'Instagram', 'Facebook', 'Referral'].map(p => (
-                                        <button key={p} onClick={() => { setSelectedPlatform(p); setIsFilterOpen(false); }} className="w-full text-left px-3 py-2 text-sm rounded-md transition-colors border-none cursor-pointer bg-transparent text-slate-400 hover:bg-slate-800/30 hover:text-white">{p}</button>
-                                    ))}
-                                </div>
-                            )}
+            {!selectedLeadForEdit ? (
+                <>
+                    <div className="p-4 sm:p-6">
+                        <div className="py-12 mb-0 sm:mb-8">
+                            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Operations Dashboard</h1>
+                            <p className="text-slate-400 text-sm sm:text-base mt-1">Manage, allocate, and process active operational pipeline handovers.</p>
                         </div>
-                    </div>
 
-                    <div className="hidden sm:block overflow-x-auto">
-                        <table className="w-full text-left text-sm text-slate-200 min-w-[900px]">
-                            <thead className="bg-transparent border-b border-slate-700/20 text-xs uppercase tracking-wider text-slate-400 font-semibold">
-                                <tr>
-                                    {activeTab === 'Confirmed Bookings' ? (
-                                        <>
-                                            <th className="px-6 py-4">Job Id</th>
-                                            <th className="px-6 py-4">Lead Info</th>
-                                            <th className="px-6 py-4">Tour Details</th>
-                                            <th className="px-6 py-4">Confirmed Date</th>
-                                            <th className="px-6 py-4">Confirmed Method</th>
-                                            <th className="px-6 py-4">Value</th>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <th className="px-6 py-4">Job ID</th>
-                                            <th className="px-6 py-4">Client</th>
-                                            <th className="px-6 py-4">Destination</th>
-                                            <th className="px-6 py-4">Work / Priority</th>
-                                            {activeTab === 'Follow-Up' && <th className="px-6 py-4">Vendor</th>}
-                                            {activeTab === 'Upcoming Bookings' && <th className="px-6 py-4">Status</th>}
-                                        </>
+                        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                            {categories.map((cat) => {
+                                const Icon = cat.icon;
+                                const isActive = activeTab === cat.id;
+                                return (
+                                    <div key={cat.id} onClick={() => handleTabChange(cat.id)} className={`relative p-5 rounded-xl cursor-pointer transition-all duration-200 border shadow-sm hover:shadow-md ${isActive ? 'ring-2 ring-offset-2 border-slate-500 bg-[#07202a] text-white' : 'bg-transparent border-slate-700/20 text-slate-200'}`}>
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div className={`p-3 rounded-lg ${isActive ? 'bg-slate-700 text-white' : 'bg-slate-800/20 text-slate-300'}`}><Icon size={24} strokeWidth={2} /></div>
+                                            <span className={`text-xl font-bold ${isActive ? 'text-white' : 'text-slate-200'}`}>{cat.count}</span>
+                                        </div>
+                                        <h3 className={`font-semibold text-base ${isActive ? 'text-white' : 'text-slate-200'}`}>{cat.label}</h3>
+                                        {isActive && <div className="absolute bottom-0 left-0 w-full h-1 rounded-b-xl bg-slate-700" />}
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex items-center gap-1 mb-6 md:hidden">
+                            <button type="button" onClick={() => scrollTabs(-1)} className="flex-shrink-0 p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 active:bg-slate-700 cursor-pointer" aria-label="Scroll tabs left"><ChevronLeft size={16} /></button>
+                            <div ref={tabScrollRef} className="flex gap-2 overflow-x-auto flex-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                                {categories.map((cat) => {
+                                    const Icon = cat.icon;
+                                    const isActive = activeTab === cat.id;
+                                    return (
+                                        <div key={cat.id} onClick={() => handleTabChange(cat.id)} className={`relative flex-shrink-0 flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer transition-all duration-200 border ${isActive ? 'ring-1 ring-cyan-500 border-cyan-700 bg-[#07202a] text-white' : 'bg-slate-800/30 border-slate-700/30 text-slate-300'}`} style={{ minWidth: '148px' }}>
+                                            <div className={`p-1.5 rounded-md flex-shrink-0 ${isActive ? 'bg-slate-700 text-cyan-400' : 'bg-slate-800 text-slate-400'}`}><Icon size={16} strokeWidth={2} /></div>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className={`text-xs font-semibold leading-tight truncate ${isActive ? 'text-white' : 'text-slate-300'}`}>{cat.label}</span>
+                                                <span className={`text-base font-bold leading-tight ${isActive ? 'text-cyan-400' : 'text-slate-400'}`}>{cat.count}</span>
+                                            </div>
+                                            {isActive && <div className="absolute bottom-0 left-0 w-full h-0.5 rounded-b-xl bg-cyan-500" />}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <button type="button" onClick={() => scrollTabs(1)} className="flex-shrink-0 p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 active:bg-slate-700 cursor-pointer" aria-label="Scroll tabs right"><ChevronRight size={16} /></button>
+                        </div>
+
+                        <div className="bg-transparent border border-slate-700/30 rounded-xl shadow-sm overflow-hidden">
+                            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 sm:p-5 border-b border-slate-700/20 gap-3">
+                                <h2 className="text-base sm:text-lg font-bold text-white">
+                                    {categories.find(c => c.id === activeTab)?.label || activeTab}
+                                    <span className="text-slate-400 font-normal text-sm ml-2">({filtered.length} records)</span>
+                                </h2>
+                                <div className="flex items-center gap-2 w-full sm:w-auto relative">
+                                    <div className="relative flex-1 sm:w-64">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                                        <input type="text" value={searchQuery} onChange={(e) => handleSearch(e.target.value)} className="w-full pl-9 pr-4 py-2 text-sm bg-transparent border border-slate-600 rounded-lg focus:outline-none text-slate-100" />
+                                    </div>
+                                    <button onClick={() => setIsFilterOpen(!isFilterOpen)} className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors border flex-shrink-0 ${isFilterOpen || selectedPlatform !== 'All' ? 'bg-slate-700/30 text-white border-slate-600' : 'text-slate-200 bg-transparent border-slate-700/20 hover:bg-slate-800/30'}`}>
+                                        <SlidersHorizontal size={15} />
+                                        <span className="hidden sm:inline">{selectedPlatform !== 'All' ? selectedPlatform : 'Source'}</span>
+                                    </button>
+                                    {isFilterOpen && (
+                                        <div className="absolute top-11 right-0 w-44 bg-[#07202a] border border-slate-700/30 rounded-lg shadow-lg z-10 p-2">
+                                            {['All', 'Website', 'Instagram', 'Facebook', 'Referral'].map(p => (
+                                                <button key={p} onClick={() => { setSelectedPlatform(p); setIsFilterOpen(false); }} className="w-full text-left px-3 py-2 text-sm rounded-md transition-colors border-none cursor-pointer bg-transparent text-slate-400 hover:bg-slate-800/30 hover:text-white">{p}</button>
+                                            ))}
+                                        </div>
                                     )}
-                                    <th className="px-6 py-4 text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-700/20">
-                                {isLoading ? (
-                                    <tr><td colSpan="11" className="px-6 py-12 text-center text-slate-500">Querying database records...</td></tr>
-                                ) : paginated.length > 0 ? paginated.map(row => (
-                                    <tr key={row.uniqueKey} className="hover:bg-slate-800/30 transition-colors">
-                                        {activeTab === 'Confirmed Bookings' ? (
-                                            <>
-                                                <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-white font-bold">{row.customerName || row.profileName || 'N/A'}</span>
-                                                        <span className="text-xs text-slate-400">📞 {row.phone || row.mobileNo || 'N/A'}</span>
-                                                        <span className="text-xs text-slate-500 truncate max-w-[150px]">{row.email || 'N/A'}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col text-sm">
-                                                        <span className="text-emerald-400 font-medium">{row.destination || 'Bali'}</span>
-                                                        <span className="text-xs text-slate-400">📅 {row.travelDates || row.travelDate || 'TBD'}</span>
-                                                        <span className="text-xs text-slate-500">{row.noOfPax || row.travellerCount || '0'} pax</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="text-sm text-slate-300">{row.confirmedDate || '—'}</span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="text-sm text-slate-300">{row.confirmedMethod || '—'}</span>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <span className="text-sm font-bold text-emerald-400">{row.finalPackageValue ? `₹${row.finalPackageValue}` : '—'}</span>
-                                                </td>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col">
-                                                        <span className="text-white font-bold">{row.customerName || row.profileName || 'N/A'}</span>
-                                                        <span className="text-xs text-slate-400">📞 {row.phone || row.mobileNo || 'N/A'}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col text-sm">
-                                                        <span className="text-emerald-400 font-medium flex items-center gap-1"><MapPin size={12} />{row.destination}</span>
-                                                        <span className="text-xs text-slate-400">📅 {row.travelDates || row.date}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <div className="flex flex-col text-sm items-start gap-1">
-                                                        <span className="px-1.5 py-0.5 rounded bg-purple-950/40 text-purple-300 border border-purple-900/40 text-xs font-bold">{row.workType || 'FIT'}</span>
-                                                        <span className={`text-xs px-2 py-0.5 rounded font-medium ${row.priority === 'High' ? 'bg-red-950 text-red-400' : 'bg-blue-950 text-blue-400'}`}>{row.priority || 'Normal'}</span>
-                                                    </div>
-                                                </td>
-                                                {activeTab === 'Follow-Up' && (
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex flex-col text-xs gap-0.5 text-slate-400">
-                                                            <span>Vendor: <strong className="text-slate-200">{row.vendorDmcName || row.vendorName || 'Internal'}</strong></span>
-                                                            <span>Next: <strong className="text-amber-400">{row.nextFollowUp || 'TBD'}</strong></span>
-                                                        </div>
-                                                    </td>
+                                </div>
+                            </div>
+
+                            <div className="hidden sm:block overflow-x-auto">
+                                <table className="w-full text-left text-sm text-slate-200 min-w-[900px]">
+                                    <thead className="bg-transparent border-b border-slate-700/20 text-xs uppercase tracking-wider text-slate-400 font-semibold">
+                                        <tr>
+                                            {activeTab === 'Confirmed Bookings' ? (
+                                                <>
+                                                    <th className="px-6 py-4">Job Id</th>
+                                                    <th className="px-6 py-4">Lead Info</th>
+                                                    <th className="px-6 py-4">Tour Details</th>
+                                                    <th className="px-6 py-4">Confirmed Date</th>
+                                                    <th className="px-6 py-4">Confirmed Method</th>
+                                                    <th className="px-6 py-4">Value</th>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <th className="px-6 py-4">Job ID</th>
+                                                    <th className="px-6 py-4">Client</th>
+                                                    <th className="px-6 py-4">Destination</th>
+                                                    <th className="px-6 py-4">Work / Priority</th>
+                                                    {activeTab === 'Follow-Up' && <th className="px-6 py-4">Vendor</th>}
+                                                    {activeTab === 'Upcoming Bookings' && <th className="px-6 py-4">Status</th>}
+                                                </>
+                                            )}
+                                            <th className="px-6 py-4 text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-700/20">
+                                        {isLoading ? (
+                                            <tr><td colSpan="11" className="px-6 py-12 text-center text-slate-500">Querying database records...</td></tr>
+                                        ) : paginated.length > 0 ? paginated.map(row => (
+                                            <tr key={row.uniqueKey} className="hover:bg-slate-800/30 transition-colors">
+                                                {activeTab === 'Confirmed Bookings' ? (
+                                                    <>
+                                                        <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-white font-bold">{row.customerName || row.profileName || 'N/A'}</span>
+                                                                <span className="text-xs text-slate-400">📞 {row.phone || row.mobileNo || 'N/A'}</span>
+                                                                <span className="text-xs text-slate-500 truncate max-w-[150px]">{row.email || 'N/A'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col text-sm">
+                                                                <span className="text-emerald-400 font-medium">{row.destination || 'Bali'}</span>
+                                                                <span className="text-xs text-slate-400">📅 {row.travelDates || row.travelDate || 'TBD'}</span>
+                                                                <span className="text-xs text-slate-500">{row.noOfPax || row.travellerCount || '0'} pax</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="text-sm text-slate-300">{row.confirmedDate || '—'}</span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="text-sm text-slate-300">{row.confirmedMethod || '—'}</span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="text-sm font-bold text-emerald-400">{row.finalPackageValue ? `₹${row.finalPackageValue}` : '—'}</span>
+                                                        </td>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-white font-bold">{row.customerName || row.profileName || 'N/A'}</span>
+                                                                <span className="text-xs text-slate-400">📞 {row.phone || row.mobileNo || 'N/A'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col text-sm">
+                                                                <span className="text-emerald-400 font-medium flex items-center gap-1"><MapPin size={12} />{row.destination}</span>
+                                                                <span className="text-xs text-slate-400">📅 {row.travelDates || row.date}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col text-sm items-start gap-1">
+                                                                <span className="px-1.5 py-0.5 rounded bg-purple-950/40 text-purple-300 border border-purple-900/40 text-xs font-bold">{row.workType || 'FIT'}</span>
+                                                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${row.priority === 'High' ? 'bg-red-950 text-red-400' : 'bg-blue-950 text-blue-400'}`}>{row.priority || 'Normal'}</span>
+                                                            </div>
+                                                        </td>
+                                                        {activeTab === 'Follow-Up' && (
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex flex-col text-xs gap-0.5 text-slate-400">
+                                                                    <span>Vendor: <strong className="text-slate-200">{row.vendorDmcName || row.vendorName || 'Internal'}</strong></span>
+                                                                    <span>Next: <strong className="text-amber-400">{row.nextFollowUp || 'TBD'}</strong></span>
+                                                                </div>
+                                                            </td>
+                                                        )}
+                                                        {activeTab === 'Upcoming Bookings' && (
+                                                            <td className="px-6 py-4">
+                                                                <span className="text-cyan-400 font-bold text-xs bg-cyan-950 border border-cyan-800 px-2 py-0.5 rounded">{row.voucherStatus || 'Vouchered'}</span>
+                                                            </td>
+                                                        )}
+                                                    </>
                                                 )}
-                                                {activeTab === 'Upcoming Bookings' && (
-                                                    <td className="px-6 py-4">
-                                                        <span className="text-cyan-400 font-bold text-xs bg-cyan-950 border border-cyan-800 px-2 py-0.5 rounded">{row.voucherStatus || 'Vouchered'}</span>
-                                                    </td>
-                                                )}
-                                            </>
+                                                <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        {activeTab === 'New Requests' ? (
+                                                            <button type="button" onClick={() => handleOpenAssignModal(row)} className="p-1.5 text-slate-400 hover:text-orange-400 hover:bg-orange-900/30 rounded-md transition-colors" title="Assign">
+                                                                <CheckSquare size={18} />
+                                                            </button>
+                                                        ) : (
+                                                            <>
+                                                                <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 hover:bg-blue-900/30 rounded-md transition-colors" title="View Profile"><Eye size={18} /></button>
+                                                                <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-yellow-900/20 rounded-md transition-colors" title="Edit"><Pencil size={18} /></button>
+                                                                
+                                                                {activeTab === 'Follow-Up' && (
+                                                                    <button type="button" onClick={() => handleSendToSalesReady(row)} className="p-1.5 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/30 rounded-md transition-colors border border-transparent hover:border-emerald-800" title="Send to Sales (Customisation Ready)">
+                                                                        <Send size={16} />
+                                                                    </button>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                        {activeTab !== 'Upcoming Bookings' && (
+                                                            <button type="button" onClick={() => setLeadToFulfill(row)} className="p-1.5 text-slate-400 hover:text-orange-400 hover:bg-orange-900/30 rounded-md transition-colors" title="Send to Fulfillment">
+                                                                <Send size={18} className="text-orange-400" />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )) : (
+                                            <tr>
+                                                <td colSpan="11" className="px-6 py-12 text-center text-slate-500">
+                                                    <div className="flex flex-col items-center justify-center gap-2">
+                                                        <Target size={32} className="text-slate-600 mb-2" />
+                                                        <p className="text-sm font-medium text-slate-400">No records in this section.</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
                                         )}
-                                        <td className="px-6 py-4 text-right whitespace-nowrap">
-                                            <div className="flex items-center justify-end gap-2">
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div className="sm:hidden divide-y divide-slate-700/20">
+                                {isLoading ? (
+                                    <div className="px-4 py-10 text-center text-slate-500 text-sm">Loading records...</div>
+                                ) : paginated.length > 0 ? paginated.map(row => (
+                                    <div key={row.uniqueKey} className="p-4 hover:bg-slate-800/20 transition-colors">
+                                        <div className="flex items-start justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-mono font-bold text-slate-300 text-sm">LMN{row.id}</span>
+                                                <span className="px-1.5 py-0.5 rounded bg-purple-950/40 text-purple-300 border border-purple-900/40 text-xs font-bold">{row.workType || 'FIT'}</span>
+                                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${row.priority === 'High' ? 'bg-red-950 text-red-400' : 'bg-blue-950 text-blue-400'}`}>{row.priority || 'Normal'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
                                                 {activeTab === 'New Requests' ? (
-                                                    <button type="button" onClick={() => setLeadToAcknowledge(row)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-cyan-500 hover:bg-cyan-600 text-slate-900 rounded-md transition-colors border-none cursor-pointer uppercase tracking-wider">
-                                                        <CheckSquare size={13} /> Acknowledge
+                                                    <button type="button" onClick={() => handleOpenAssignModal(row)} className="p-1.5 text-slate-400 hover:text-orange-400 bg-slate-800 rounded-md border border-slate-700" title="Assign">
+                                                        <CheckSquare size={15} />
                                                     </button>
                                                 ) : (
                                                     <>
-                                                        <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 hover:bg-blue-900/30 rounded-md transition-colors" title="View Profile"><Eye size={18} /></button>
-                                                        <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-yellow-900/20 rounded-md transition-colors" title="Edit"><Pencil size={18} /></button>
+                                                        <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 bg-slate-800 rounded-md border border-slate-700" title="View"><Eye size={15} /></button>
+                                                        <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 bg-slate-800 rounded-md border border-slate-700" title="Edit"><Pencil size={15} /></button>
                                                         
                                                         {activeTab === 'Follow-Up' && (
-                                                            <button type="button" onClick={() => handleSendToSalesReady(row)} className="p-1.5 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/30 rounded-md transition-colors border border-transparent hover:border-emerald-800" title="Send to Sales (Customisation Ready)">
-                                                                <Send size={16} />
+                                                            <button type="button" onClick={() => handleSendToSalesReady(row)} className="p-1.5 text-emerald-400 bg-emerald-950/40 rounded-md border border-emerald-900/50" title="Send to Sales (Customisation Ready)">
+                                                                <Send size={15} />
                                                             </button>
                                                         )}
                                                     </>
                                                 )}
                                                 {activeTab !== 'Upcoming Bookings' && (
-                                                    <button type="button" onClick={() => setLeadToFulfill(row)} className="p-1.5 text-slate-400 hover:text-orange-400 hover:bg-orange-900/30 rounded-md transition-colors" title="Send to Fulfillment">
-                                                        <Send size={18} className="text-orange-400" />
+                                                    <button type="button" onClick={() => setLeadToFulfill(row)} className="p-1.5 bg-slate-800 rounded-md border border-slate-700" title="Fulfillment">
+                                                        <Send size={15} className="text-orange-400" />
                                                     </button>
                                                 )}
                                             </div>
-                                        </td>
-                                    </tr>
+                                        </div>
+
+                                        <div className="flex flex-col gap-1 mb-2">
+                                            <div className="flex items-center justify-between">
+                                                <span className="text-white font-semibold text-sm">{row.customerName || row.profileName || 'N/A'}</span>
+                                                <span className="text-slate-400 text-xs">📞 {row.phone || row.mobileNo || 'N/A'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-emerald-400 text-xs font-medium flex items-center gap-1"><MapPin size={11} />{row.destination}</span>
+                                                <span className="text-slate-500 text-xs">📅 {row.travelDates || row.date}</span>
+                                            </div>
+                                        </div>
+
+                                        {activeTab === 'Follow-Up' && (
+                                            <div className="text-xs text-slate-400 bg-slate-800/30 rounded px-2.5 py-1.5 mt-1">
+                                                Vendor: <strong className="text-slate-200">{row.vendorDmcName || row.vendorName || 'Internal'}</strong>
+                                                <span className="mx-2">·</span>
+                                                Next: <strong className="text-amber-400">{row.nextFollowUp || 'TBD'}</strong>
+                                            </div>
+                                        )}
+                                        {activeTab === 'Confirmed Bookings' && (
+                                            <span className="inline-block mt-1 text-emerald-400 font-black font-mono text-sm">{row.amount || '₹2,50,000'}</span>
+                                        )}
+                                        {activeTab === 'Upcoming Bookings' && (
+                                            <span className="inline-block mt-1 text-cyan-400 font-bold text-xs bg-cyan-950 border border-cyan-800 px-2 py-0.5 rounded">{row.voucherStatus || 'Vouchered'}</span>
+                                        )}
+                                    </div>
                                 )) : (
-                                    <tr>
-                                        <td colSpan="11" className="px-6 py-12 text-center text-slate-500">
-                                            <div className="flex flex-col items-center justify-center gap-2">
-                                                <Target size={32} className="text-slate-600 mb-2" />
-                                                <p className="text-sm font-medium text-slate-400">No records in this section.</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div className="sm:hidden divide-y divide-slate-700/20">
-                        {isLoading ? (
-                            <div className="px-4 py-10 text-center text-slate-500 text-sm">Loading records...</div>
-                        ) : paginated.length > 0 ? paginated.map(row => (
-                            <div key={row.uniqueKey} className="p-4 hover:bg-slate-800/20 transition-colors">
-                                <div className="flex items-start justify-between mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-mono font-bold text-slate-300 text-sm">LMN{row.id}</span>
-                                        <span className="px-1.5 py-0.5 rounded bg-purple-950/40 text-purple-300 border border-purple-900/40 text-xs font-bold">{row.workType || 'FIT'}</span>
-                                        <span className={`text-xs px-2 py-0.5 rounded font-medium ${row.priority === 'High' ? 'bg-red-950 text-red-400' : 'bg-blue-950 text-blue-400'}`}>{row.priority || 'Normal'}</span>
+                                    <div className="px-4 py-10 text-center">
+                                        <Target size={28} className="text-slate-600 mx-auto mb-2" />
+                                        <p className="text-sm text-slate-400">No records in this section.</p>
                                     </div>
-                                    <div className="flex items-center gap-1.5">
-                                        {activeTab === 'New Requests' ? (
-                                            <button type="button" onClick={() => setLeadToAcknowledge(row)} className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-bold bg-cyan-500 hover:bg-cyan-600 text-slate-900 rounded-md border-none cursor-pointer">
-                                                <CheckSquare size={12} /> Ack
-                                            </button>
-                                        ) : (
-                                            <>
-                                                <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 bg-slate-800 rounded-md border border-slate-700" title="View"><Eye size={15} /></button>
-                                                <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 bg-slate-800 rounded-md border border-slate-700" title="Edit"><Pencil size={15} /></button>
-                                                
-                                                {activeTab === 'Follow-Up' && (
-                                                    <button type="button" onClick={() => handleSendToSalesReady(row)} className="p-1.5 text-emerald-400 bg-emerald-950/40 rounded-md border border-emerald-900/50" title="Send to Sales (Customisation Ready)">
-                                                        <Send size={15} />
-                                                    </button>
-                                                )}
-                                            </>
-                                        )}
-                                        {activeTab !== 'Upcoming Bookings' && (
-                                            <button type="button" onClick={() => setLeadToFulfill(row)} className="p-1.5 bg-slate-800 rounded-md border border-slate-700" title="Fulfillment">
-                                                <Send size={15} className="text-orange-400" />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="flex flex-col gap-1 mb-2">
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-white font-semibold text-sm">{row.customerName || row.profileName || 'N/A'}</span>
-                                        <span className="text-slate-400 text-xs">📞 {row.phone || row.mobileNo || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-emerald-400 text-xs font-medium flex items-center gap-1"><MapPin size={11} />{row.destination}</span>
-                                        <span className="text-slate-500 text-xs">📅 {row.travelDates || row.date}</span>
-                                    </div>
-                                </div>
-
-                                {activeTab === 'Follow-Up' && (
-                                    <div className="text-xs text-slate-400 bg-slate-800/30 rounded px-2.5 py-1.5 mt-1">
-                                        Vendor: <strong className="text-slate-200">{row.vendorDmcName || row.vendorName || 'Internal'}</strong>
-                                        <span className="mx-2">·</span>
-                                        Next: <strong className="text-amber-400">{row.nextFollowUp || 'TBD'}</strong>
-                                    </div>
-                                )}
-                                {activeTab === 'Confirmed Bookings' && (
-                                    <span className="inline-block mt-1 text-emerald-400 font-black font-mono text-sm">{row.amount || '₹2,50,000'}</span>
-                                )}
-                                {activeTab === 'Upcoming Bookings' && (
-                                    <span className="inline-block mt-1 text-cyan-400 font-bold text-xs bg-cyan-950 border border-cyan-800 px-2 py-0.5 rounded">{row.voucherStatus || 'Vouchered'}</span>
                                 )}
                             </div>
-                        )) : (
-                            <div className="px-4 py-10 text-center">
-                                <Target size={28} className="text-slate-600 mx-auto mb-2" />
-                                <p className="text-sm text-slate-400">No records in this section.</p>
-                            </div>
-                        )}
+
+                            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} totalEntries={filtered.length} entriesPerPage={entriesPerPage} />
+                        </div>
                     </div>
 
-                    <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} totalEntries={filtered.length} entriesPerPage={entriesPerPage} />
-                </div>
-            </div>
-
-            <button type="button" onClick={scrollToTop} aria-label="Scroll to top" className={`fixed bottom-6 right-5 z-40 p-3 rounded-full bg-slate-800 border border-slate-600 text-slate-300 shadow-lg transition-all duration-300 cursor-pointer hover:bg-slate-700 hover:text-white ${showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
-                <ArrowUp size={18} />
-            </button>
-
-            {/* ─── EDIT MODAL ─────────────────────────────────────────────────────── */}
-            {selectedLeadForEdit && (
-                <div className="absolute inset-0 bg-[#0f172a] z-50 overflow-hidden flex flex-col w-full h-full text-slate-100">
+                    <button type="button" onClick={scrollToTop} aria-label="Scroll to top" className={`fixed bottom-6 right-5 z-40 p-3 rounded-full bg-slate-800 border border-slate-600 text-slate-300 shadow-lg transition-all duration-300 cursor-pointer hover:bg-slate-700 hover:text-white ${showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+                        <ArrowUp size={18} />
+                    </button>
+                </>
+            ) : (
+                /* ─── CRM HANDOVER SHEET (FULL SCREEN REPLACEMENT) ──────────────────── */
+                <div className="bg-[#0f172a] flex flex-col w-full min-h-screen text-slate-100 relative z-50">
                     <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] z-20 flex-shrink-0 shadow-md">
                         <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2 truncate pr-4">
                             <FileText size={20} className="text-cyan-400 flex-shrink-0" />
@@ -1017,7 +1111,14 @@ export default function OperationsDashboard() {
                     </div>
 
                     <div className="overflow-y-auto flex-1 custom-scrollbar w-full relative">
-                        <form id="edit-ops-form" onSubmit={handleEditSubmit} className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 w-full">
+                        <form id="edit-ops-form" 
+                              onSubmit={handleEditSubmit} 
+                              onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+                                      e.preventDefault();
+                                  }
+                              }}
+                              className="px-4 sm:px-6 lg:px-8 py-6 space-y-6 w-full">
 
                                 {activeTab === 'Confirmed Bookings' ? (
                                     selectedLeadForEdit.tourType === 'International Tour' ? (
@@ -1097,41 +1198,41 @@ export default function OperationsDashboard() {
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Flight Type</label>
-                                                                    <CustomSelect value={flight.flightType} onChange={(v) => handleArrayChange('flights', index, 'flightType', v)} className={selectCls} placeholder="" options={['One Way', 'Round Trip', 'Multi City']} />
+                                                                    <CustomSelect value={flight.flightType} onChange={(v) => handleArrayChange('flights', index, 'flightType', v)} className={selectCls} options={['One Way', 'Round Trip', 'Multi City']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Flight Responsibility</label>
-                                                                    <CustomSelect value={flight.flightResponsibility} onChange={(v) => handleArrayChange('flights', index, 'flightResponsibility', v)} className={selectCls} placeholder="" options={['Agency', 'Client']} />
+                                                                    <CustomSelect value={flight.flightResponsibility} onChange={(v) => handleArrayChange('flights', index, 'flightResponsibility', v)} className={selectCls} options={['Agency', 'Client']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booking Status</label>
-                                                                    <CustomSelect value={flight.bookingStatus} onChange={(v) => handleArrayChange('flights', index, 'bookingStatus', v)} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
+                                                                    <CustomSelect value={flight.bookingStatus} onChange={(v) => handleArrayChange('flights', index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Confirmed', 'Cancelled']} />
                                                                 </div>
 
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Airline</label><input type="text" value={flight.airline} onChange={(e) => handleArrayChange('flights', index, 'airline', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">PNR No.</label><input type="text" value={flight.pnr} onChange={(e) => handleArrayChange('flights', index, 'pnr', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booked Through</label>
-                                                                    <CustomSelect value={flight.bookedThrough} onChange={(v) => handleArrayChange('flights', index, 'bookedThrough', v)} className={selectCls} placeholder="" options={['Internal Team', 'DMC', 'Direct Client']} />
+                                                                    <CustomSelect value={flight.bookedThrough} onChange={(v) => handleArrayChange('flights', index, 'bookedThrough', v)} className={selectCls} options={['Internal Team', 'DMC', 'Direct Client']} />
                                                                 </div>
 
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Category</label>
-                                                                    <CustomSelect value={flight.category} onChange={(v) => handleArrayChange('flights', index, 'category', v)} className={selectCls} placeholder="" options={['Economy', 'Premium Economy', 'Business', 'First Class']} />
+                                                                    <CustomSelect value={flight.category} onChange={(v) => handleArrayChange('flights', index, 'category', v)} className={selectCls} options={['Economy', 'Premium Economy', 'Business', 'First Class']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Flight Departure Date & Time</label><DatePickerField type="datetime-local" value={flight.departureDateTime} onChange={(e) => handleArrayChange('flights', index, 'departureDateTime', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Boarding Point</label><input type="text" value={flight.boardingPoint} onChange={(e) => handleArrayChange('flights', index, 'boardingPoint', e.target.value)} className={inputCls} /></div>
 
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Ticket Shared</label>
-                                                                    <CustomSelect value={flight.ticketShared} onChange={(v) => handleArrayChange('flights', index, 'ticketShared', v)} className={selectCls} placeholder="" options={['Yes', 'No']} />
+                                                                    <CustomSelect value={flight.ticketShared} onChange={(v) => handleArrayChange('flights', index, 'ticketShared', v)} className={selectCls} options={['Yes', 'No']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Ticket Shared Date</label><DatePickerField type="date" value={flight.ticketSharedDate} onChange={(e) => handleArrayChange('flights', index, 'ticketSharedDate', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Deboarding Point</label><input type="text" value={flight.deboardingPoint} onChange={(e) => handleArrayChange('flights', index, 'deboardingPoint', e.target.value)} className={inputCls} /></div>
 
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Flight Cost</label><input type="text" value={flight.flightCost} onChange={(e) => handleArrayChange('flights', index, 'flightCost', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Markup Cost</label><input type="text" value={flight.markupCost || ''} onChange={(e) => handleArrayChange('flights', index, 'markupCost', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Drive Link</label><input type="text" placeholder="" value={flight.driveLink} onChange={(e) => handleArrayChange('flights', index, 'driveLink', e.target.value)} className={inputCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Drive Link</label><input type="text" value={flight.driveLink} onChange={(e) => handleArrayChange('flights', index, 'driveLink', e.target.value)} className={inputCls} /></div>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -1149,7 +1250,7 @@ export default function OperationsDashboard() {
                                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                     <div>
                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Insurance Required (yes/no)</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insRequired} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insRequired: v })} className={selectCls} placeholder="" options={['Yes', 'No']} />
+                                                        <CustomSelect value={selectedLeadForEdit.insRequired} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insRequired: v })} className={selectCls} options={['Yes', 'No']} />
                                                     </div>
                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Provider</label><input type="text" value={selectedLeadForEdit.insProvider} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insProvider: e.target.value })} className={inputCls} /></div>
                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Policy Number</label><input type="text" value={selectedLeadForEdit.insPolicyNo} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insPolicyNo: e.target.value })} className={inputCls} /></div>
@@ -1157,11 +1258,11 @@ export default function OperationsDashboard() {
                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Cost</label><input type="text" value={selectedLeadForEdit.insCost} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insCost: e.target.value })} className={inputCls} /></div>
                                                     <div>
                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Status (Pending / Issued)</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insStatus: v })} className={selectCls} placeholder="" options={['Pending', 'Issued']} />
+                                                        <CustomSelect value={selectedLeadForEdit.insStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insStatus: v })} className={selectCls} options={['Pending', 'Issued']} />
                                                     </div>
                                                     <div>
                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Policy Shared (Yes / no)</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insPolicyShared} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insPolicyShared: v })} className={selectCls} placeholder="" options={['Yes', 'No']} />
+                                                        <CustomSelect value={selectedLeadForEdit.insPolicyShared} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insPolicyShared: v })} className={selectCls} options={['Yes', 'No']} />
                                                     </div>
 
                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Markup Cost</label><input type="text" value={selectedLeadForEdit.insMarkup || ''} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insMarkup: e.target.value })} className={inputCls} /></div>
@@ -1181,28 +1282,28 @@ export default function OperationsDashboard() {
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Destination</label><input type="text" value={visa.destination} onChange={(e) => handleArrayChange('visas', index, 'destination', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">VISA Type</label>
-                                                                    <CustomSelect value={visa.visaType} onChange={v => handleArrayChange('visas', index, 'visaType', v)} className={selectCls} placeholder="" options={['Tourist', 'Business', 'Transit', 'e-Visa', 'Visa on Arrival']} />
+                                                                    <CustomSelect value={visa.visaType} onChange={v => handleArrayChange('visas', index, 'visaType', v)} className={selectCls} options={['Tourist', 'Business', 'Transit', 'e-Visa', 'Visa on Arrival']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Transit VISA Required</label>
-                                                                    <CustomSelect value={visa.transitVisaReq} onChange={v => handleArrayChange('visas', index, 'transitVisaReq', v)} className={selectCls} placeholder="" options={['Yes', 'No']} />
+                                                                    <CustomSelect value={visa.transitVisaReq} onChange={v => handleArrayChange('visas', index, 'transitVisaReq', v)} className={selectCls} options={['Yes', 'No']} />
                                                                 </div>
 
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Arrival Card Applicable</label>
-                                                                    <CustomSelect value={visa.arrivalCardApplicable} onChange={v => handleArrayChange('visas', index, 'arrivalCardApplicable', v)} className={selectCls} placeholder="" options={['Yes', 'No']} />
+                                                                    <CustomSelect value={visa.arrivalCardApplicable} onChange={v => handleArrayChange('visas', index, 'arrivalCardApplicable', v)} className={selectCls} options={['Yes', 'No']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Arrival Card Details</label><input type="text" value={visa.arrivalCardDetails} onChange={e => handleArrayChange('visas', index, 'arrivalCardDetails', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Applied by</label>
-                                                                    <CustomSelect value={visa.appliedBy} onChange={v => handleArrayChange('visas', index, 'appliedBy', v)} className={selectCls} placeholder="" options={['Client', 'Vendor', 'Team']} />
+                                                                    <CustomSelect value={visa.appliedBy} onChange={v => handleArrayChange('visas', index, 'appliedBy', v)} className={selectCls} options={['Client', 'Vendor', 'Team']} />
                                                                 </div>
 
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Documents Pending</label><input type="text" value={visa.docsPending} onChange={e => handleArrayChange('visas', index, 'docsPending', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Status</label><input type="text" value={visa.visaStatus} onChange={e => handleArrayChange('visas', index, 'visaStatus', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">VISA Copy Shared</label>
-                                                                    <CustomSelect value={visa.visaCopyShared} onChange={v => handleArrayChange('visas', index, 'visaCopyShared', v)} className={selectCls} placeholder="" options={['Yes', 'No']} />
+                                                                    <CustomSelect value={visa.visaCopyShared} onChange={v => handleArrayChange('visas', index, 'visaCopyShared', v)} className={selectCls} options={['Yes', 'No']} />
                                                                 </div>
 
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Approval Date</label><DatePickerField type="date" value={visa.visaApprovalDate} onChange={(e) => handleArrayChange('visas', index, 'visaApprovalDate', e.target.value)} className={inputCls} /></div>
@@ -1317,19 +1418,19 @@ export default function OperationsDashboard() {
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Transport Type</label>
-                                                                    <CustomSelect value={trans.transportType} onChange={(v) => updateDomTransport(index, 'transportType', v)} className={selectCls} placeholder="" options={['Flight', 'Train', 'Bus']} />
+                                                                    <CustomSelect value={trans.transportType} onChange={(v) => updateDomTransport(index, 'transportType', v)} className={selectCls} options={['Flight', 'Train', 'Bus']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booked By</label>
-                                                                    <CustomSelect value={trans.bookedBy} onChange={(v) => updateDomTransport(index, 'bookedBy', v)} className={selectCls} placeholder="" options={['Internal Team', 'Customer']} />
+                                                                    <CustomSelect value={trans.bookedBy} onChange={(v) => updateDomTransport(index, 'bookedBy', v)} className={selectCls} options={['Internal Team', 'Customer']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booking Status</label>
-                                                                    <CustomSelect value={trans.bookingStatus} onChange={(v) => updateDomTransport(index, 'bookingStatus', v)} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
+                                                                    <CustomSelect value={trans.bookingStatus} onChange={(v) => updateDomTransport(index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Confirmed', 'Cancelled']} />
                                                                 </div>
                                                                 <div className="sm:col-start-2">
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Ticket Shared to Client</label>
-                                                                    <CustomSelect value={trans.ticketSharedToClient || ''} onChange={(v) => updateDomTransport(index, 'ticketSharedToClient', v)} className={selectCls} placeholder="" options={['Yes', 'No']} />
+                                                                    <CustomSelect value={trans.ticketSharedToClient || ''} onChange={(v) => updateDomTransport(index, 'ticketSharedToClient', v)} className={selectCls} options={['Yes', 'No']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Shared Date</label>
@@ -1351,7 +1452,7 @@ export default function OperationsDashboard() {
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Booking Date</label><DatePickerField type="date" value={trans.flight?.[leg]?.bookingDate || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'bookingDate', e.target.value)} className={inputCls} /></div>
                                                                                     <div>
                                                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Booked Through</label>
-                                                                                        <CustomSelect value={trans.flight?.[leg]?.bookedThrough || ''} onChange={(v) => updateDomTransportNested(index, 'flight', leg, 'bookedThrough', v)} className={selectCls} placeholder="" options={['Internal', 'DMC', 'Direct']} />
+                                                                                        <CustomSelect value={trans.flight?.[leg]?.bookedThrough || ''} onChange={(v) => updateDomTransportNested(index, 'flight', leg, 'bookedThrough', v)} className={selectCls} options={['Internal', 'DMC', 'Direct']} />
                                                                                     </div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Departure Date & Time</label><DatePickerField type="datetime-local" value={trans.flight?.[leg]?.depDateTime || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'depDateTime', e.target.value)} className={inputCls} /></div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">From</label><input type="text" value={trans.flight?.[leg]?.from || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'from', e.target.value)} className={inputCls} /></div>
@@ -1396,7 +1497,7 @@ export default function OperationsDashboard() {
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Seat Details</label><input type="text" value={trans.train?.[leg]?.seatDetails || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'seatDetails', e.target.value)} className={inputCls} /></div>
                                                                                     <div>
                                                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Train Class</label>
-                                                                                        <CustomSelect value={trans.train?.[leg]?.trainClass || ''} onChange={(v) => updateDomTransportNested(index, 'train', leg, 'trainClass', v)} className={selectCls} placeholder="" options={['1A', '2A', '3A', 'SL', 'CC', 'EC']} />
+                                                                                        <CustomSelect value={trans.train?.[leg]?.trainClass || ''} onChange={(v) => updateDomTransportNested(index, 'train', leg, 'trainClass', v)} className={selectCls} options={['1A', '2A', '3A', 'SL', 'CC', 'EC']} />
                                                                                     </div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Ticket Link</label><input type="text" value={trans.train?.[leg]?.attachTicketLink || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'attachTicketLink', e.target.value)} className={inputCls} /></div>
                                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Meals</label><input type="text" value={trans.train?.[leg]?.meals || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'meals', e.target.value)} className={inputCls} /></div>
@@ -1464,33 +1565,33 @@ export default function OperationsDashboard() {
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Hotel Category</label><input type="text" value={hotel.hotelCategory} onChange={(e) => handleArrayChange('domHotels', index, 'hotelCategory', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booked By</label>
-                                                                    <CustomSelect value={hotel.bookedBy} onChange={(v) => handleArrayChange('domHotels', index, 'bookedBy', v)} className={selectCls} placeholder="" options={['Operations Desk 1', 'Operations Desk 2', 'Ground Vendor']} />
+                                                                    <CustomSelect value={hotel.bookedBy} onChange={(v) => handleArrayChange('domHotels', index, 'bookedBy', v)} className={selectCls} options={['Operations Desk 1', 'Operations Desk 2', 'Ground Vendor']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Reference No./ Booking Id</label><input type="text" value={hotel.refNo} onChange={(e) => handleArrayChange('domHotels', index, 'refNo', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
-                                                                    <CustomSelect value={hotel.status} onChange={(v) => handleArrayChange('domHotels', index, 'status', v)} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
+                                                                    <CustomSelect value={hotel.status} onChange={(v) => handleArrayChange('domHotels', index, 'status', v)} className={selectCls} options={['Pending', 'Confirmed', 'Cancelled']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Room Category</label><input type="text" value={hotel.roomCategory} onChange={(e) => handleArrayChange('domHotels', index, 'roomCategory', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">No. Of Rooms</label><input type="text" value={hotel.noOfRooms} onChange={(e) => handleArrayChange('domHotels', index, 'noOfRooms', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Additional Mattress</label><input type="text" value={hotel.addMattress} onChange={(e) => handleArrayChange('domHotels', index, 'addMattress', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Specifications</label>
-                                                                    <CustomSelect value={hotel.specifications} onChange={(v) => handleArrayChange('domHotels', index, 'specifications', v)} className={selectCls} placeholder="" options={['Standard', 'Sea View', 'City View']} />
+                                                                    <CustomSelect value={hotel.specifications} onChange={(v) => handleArrayChange('domHotels', index, 'specifications', v)} className={selectCls} options={['Standard', 'Sea View', 'City View']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Meal Plan</label>
-                                                                    <CustomSelect value={hotel.mealPlan} onChange={(v) => handleArrayChange('domHotels', index, 'mealPlan', v)} className={selectCls} placeholder="" options={['EP', 'CP', 'MAP', 'AP']} />
+                                                                    <CustomSelect value={hotel.mealPlan} onChange={(v) => handleArrayChange('domHotels', index, 'mealPlan', v)} className={selectCls} options={['EP', 'CP', 'MAP', 'AP']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Early Check-In / Late</label>
-                                                                    <CustomSelect value={hotel.earlyCheckIn} onChange={(v) => handleArrayChange('domHotels', index, 'earlyCheckIn', v)} className={selectCls} placeholder="" options={['None', 'Early Check-In', 'Late Check-Out']} />
+                                                                    <CustomSelect value={hotel.earlyCheckIn} onChange={(v) => handleArrayChange('domHotels', index, 'earlyCheckIn', v)} className={selectCls} options={['None', 'Early Check-In', 'Late Check-Out']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Check-In Date & Time</label><DatePickerField type="datetime-local" value={hotel.checkInDateTime} onChange={(e) => handleArrayChange('domHotels', index, 'checkInDateTime', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Check-Out Date & Time</label><DatePickerField type="datetime-local" value={hotel.checkOutDateTime} onChange={(e) => handleArrayChange('domHotels', index, 'checkOutDateTime', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Refreshment Room Required</label>
-                                                                    <CustomSelect value={hotel.refreshmentRoom} onChange={(v) => handleArrayChange('domHotels', index, 'refreshmentRoom', v)} className={selectCls} placeholder="Select" options={['Yes', 'No']} />
+                                                                    <CustomSelect value={hotel.refreshmentRoom} onChange={(v) => handleArrayChange('domHotels', index, 'refreshmentRoom', v)} className={selectCls} options={['Yes', 'No']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Cost</label><input type="text" value={hotel.cost} onChange={(e) => handleArrayChange('domHotels', index, 'cost', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={hotel.paymentDueDate} onChange={(e) => handleArrayChange('domHotels', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
@@ -1523,16 +1624,16 @@ export default function OperationsDashboard() {
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Vehicle Number</label><input type="text" value={trans.vehicleNumber} onChange={(e) => handleArrayChange('domLocalTransports', index, 'vehicleNumber', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
-                                                                    <CustomSelect value={trans.status} onChange={(v) => handleArrayChange('domLocalTransports', index, 'status', v)} className={selectCls} placeholder="" options={['Pending', 'Confirmed', 'Cancelled']} />
+                                                                    <CustomSelect value={trans.status} onChange={(v) => handleArrayChange('domLocalTransports', index, 'status', v)} className={selectCls} options={['Pending', 'Confirmed', 'Cancelled']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Driver Contact Number</label><input type="text" value={trans.driverContact || ''} onChange={(e) => handleArrayChange('domLocalTransports', index, 'driverContact', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Toll Parking & Other State Permit</label>
-                                                                    <CustomSelect value={trans.tollPermit || trans.tollParking || ''} onChange={(v) => handleArrayChange('domLocalTransports', index, 'tollPermit', v)} className={selectCls} placeholder="Select" options={['Included', 'Excluded']} />
+                                                                    <CustomSelect value={trans.tollPermit || trans.tollParking || ''} onChange={(v) => handleArrayChange('domLocalTransports', index, 'tollPermit', v)} className={selectCls} options={['Included', 'Excluded']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Duration</label>
-                                                                    <CustomSelect value={trans.duration} onChange={(v) => handleArrayChange('domLocalTransports', index, 'duration', v)} className={selectCls} placeholder="" options={['Half Day', 'Full Day', 'Multi Day']} />
+                                                                    <CustomSelect value={trans.duration} onChange={(v) => handleArrayChange('domLocalTransports', index, 'duration', v)} className={selectCls} options={['Half Day', 'Full Day', 'Multi Day']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Pickup Point</label><input type="text" value={trans.pickupPoint} onChange={(e) => handleArrayChange('domLocalTransports', index, 'pickupPoint', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Pickup Date</label><DatePickerField type="date" value={trans.pickupDate} onChange={(e) => handleArrayChange('domLocalTransports', index, 'pickupDate', e.target.value)} className={inputCls} /></div>
@@ -1590,17 +1691,17 @@ export default function OperationsDashboard() {
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Service</label>
-                                                                    <CustomSelect value={req.service} onChange={(v) => handleArrayChange('paymentRequests', index, 'service', v)} className={selectCls} placeholder="" options={['Transport', 'Hotel', 'Local Vehicle Operator']} />
+                                                                    <CustomSelect value={req.service} onChange={(v) => handleArrayChange('paymentRequests', index, 'service', v)} className={selectCls} options={['Transport', 'Hotel', 'Local Vehicle Operator']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Provider Name </label>
-                                                                    <input type="text" value={req.providerName} readOnly className={readonlyCls} placeholder="" />
+                                                                    <input type="text" value={req.providerName} readOnly className={readonlyCls} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={req.paymentDueDate} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Service Cost</label><input type="text" value={req.serviceCost} onChange={(e) => handleArrayChange('paymentRequests', index, 'serviceCost', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Payment Type</label>
-                                                                    <CustomSelect value={req.paymentType} onChange={(v) => handleArrayChange('paymentRequests', index, 'paymentType', v)} className={selectCls} placeholder="" options={['Full Payment', 'Advance', 'Balance']} />
+                                                                    <CustomSelect value={req.paymentType} onChange={(v) => handleArrayChange('paymentRequests', index, 'paymentType', v)} className={selectCls} options={['Full Payment', 'Advance', 'Balance']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Amount to Pay</label><input type="text" value={req.amountToPay} onChange={(e) => handleArrayChange('paymentRequests', index, 'amountToPay', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Account Details</label><input type="text" value={req.paymentAccountDetails} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentAccountDetails', e.target.value)} className={inputCls} /></div>
@@ -1677,15 +1778,15 @@ export default function OperationsDashboard() {
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-2">
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1.5">Destinations</label>
-                                                    <CustomSelect value={selectedLeadForEdit.destination} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, destination: v })} className={selectCls} placeholder="Select Destination" options={destinationOptions} />
+                                                    <CustomSelect value={selectedLeadForEdit.destination} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, destination: v })} className={selectCls} options={destinationOptions} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1.5">Destination Type</label>
-                                                    <CustomSelect value={selectedLeadForEdit.tourType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, tourType: v })} className={selectCls} placeholder="Select Type" options={['Domestic', 'International']} />
+                                                    <CustomSelect value={selectedLeadForEdit.tourType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, tourType: v })} className={selectCls} options={['Domestic', 'International']} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1.5">Work Type</label>
-                                                    <CustomSelect value={selectedLeadForEdit.workType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, workType: v })} className={selectCls} placeholder="Select Work Type" options={['FIT', 'Vendor Assistance', 'Group Departure']} />
+                                                    <CustomSelect value={selectedLeadForEdit.workType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, workType: v })} className={selectCls} options={['FIT', 'Vendor Assistance', 'Group Departure']} />
                                                 </div>
                                             </div>
                                         </div>
@@ -1697,82 +1798,112 @@ export default function OperationsDashboard() {
                                                     <span className="font-bold uppercase tracking-wider">VENDOR ASSISTANCE {(selectedLeadForEdit.tourType === 'International' || selectedLeadForEdit.tourType === 'International Tour') ? '(INTERNATIONAL)' : '(DOMESTIC)'}</span>
                                                 </h3>
                                                 
-                                                {(selectedLeadForEdit.tourType === 'International' || selectedLeadForEdit.tourType === 'International Tour') ? (
-                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-400 mb-1.5">Destination</label>
-                                                            <input type="text" readOnly value={selectedLeadForEdit.destination} className={readonlyCls} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-300 mb-1.5">Services</label>
-                                                            <CustomSelect value={selectedLeadForEdit.vendorService} onChange={handleVendorServiceChange} className={selectCls} placeholder="Select Service" options={['Complete Package', 'Land Only', 'VISA', 'Insurance', 'Others']} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-300 mb-1.5">DMC Name</label>
-                                                            <CustomSelect value={selectedLeadForEdit.vendorDmcName} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorDmcName: v })} className={selectCls} placeholder="Select DMC" options={dynamicVendorOptions} />
-                                                        </div>
-
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-300 mb-1.5">Contact Person</label>
-                                                            <input type="text" value={selectedLeadForEdit.vendorContactPerson} onChange={e => {
-                                                                const updated = { ...selectedLeadForEdit, vendorContactPerson: e.target.value };
-                                                                setSelectedLeadForEdit({...updated, vendorMessage: generateVendorMessage(updated)});
-                                                            }} className={inputCls} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-300 mb-1.5">Contact Method</label>
-                                                            <CustomSelect value={selectedLeadForEdit.contactMethod} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, contactMethod: v })} className={selectCls} placeholder="Select Method" options={['Email Platform', 'WhatsApp API', 'B2B Portal Integration', 'Verbal Call']} />
-                                                        </div>
-                                                        <div>
-                                                            {selectedLeadForEdit.vendorService === 'VISA' ? (
-                                                                <>
-                                                                    <label className="block text-xs font-bold text-slate-300 mb-1.5">VISA Type</label>
-                                                                    <CustomSelect value={selectedLeadForEdit.vendorVisaType} onChange={v => {
-                                                                        const updated = { ...selectedLeadForEdit, vendorVisaType: v };
-                                                                        setSelectedLeadForEdit({...updated, vendorMessage: generateVendorMessage(updated)});
-                                                                    }} className={selectCls} placeholder="Select VISA" options={['Tourist', 'Business', 'Transit', 'e-Visa']} />
-                                                                </>
-                                                            ) : <div className="hidden sm:block"></div>}
-                                                        </div>
-
-                                                        <div className="sm:col-span-3 mt-1 flex justify-end">
-                                                            <button type="button" className="text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md px-4 py-2 transition-colors flex items-center gap-1.5"><Plus size={14}/> Add Another Vendor</button>
-                                                        </div>
-
-                                                        {selectedLeadForEdit.vendorMessage && (
-                                                            <div className="sm:col-span-3 mt-2 bg-[#091124] border border-slate-700/60 rounded-xl overflow-hidden shadow-inner transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
-                                                                <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700/60 bg-slate-900/50">
-                                                                    <label className="block text-sm font-bold text-slate-200">Message Format (Review & Edit) <span className="text-orange-400 ml-1">— {selectedLeadForEdit.vendorService}</span></label>
-                                                                    <button type="button" onClick={() => copyToClipboard(selectedLeadForEdit.vendorMessage)} className="px-4 py-1.5 bg-[#16D3F2]/10 hover:bg-[#16D3F2]/20 text-[#16D3F2] rounded text-xs font-bold transition-colors cursor-pointer border border-[#16D3F2]/30 flex items-center gap-1.5 shadow-sm"><Copy size={14}/> Copy </button>
-                                                                </div>
-                                                                <div className="p-1">
-                                                                    <textarea rows="16" value={selectedLeadForEdit.vendorMessage} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorMessage: e.target.value })} className="w-full bg-transparent border-none text-slate-300 text-[13px] leading-relaxed p-4 focus:ring-0 outline-none custom-scrollbar resize-y" spellCheck="false" />
-                                                                </div>
-                                                            </div>
+                                                {selectedLeadForEdit.vendorRequests?.map((req, index) => (
+                                                    <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative mb-4 mt-2">
+                                                        {selectedLeadForEdit.vendorRequests.length > 1 && (
+                                                            <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-cyan-400 border border-slate-700 rounded">VENDOR {index + 1}</span>
                                                         )}
+                                                        {index > 0 && (
+                                                            <button type="button" onClick={() => removeArrayItem('vendorRequests', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>
+                                                        )}
+                                                        
+                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-2">
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-slate-400 mb-1.5">Destination</label>
+                                                                <input type="text" readOnly value={selectedLeadForEdit.destination} className={readonlyCls} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-slate-300 mb-1.5">Services</label>
+                                                                <CustomSelect 
+                                                                    value={req.vendorService} 
+                                                                    onChange={v => {
+                                                                        const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                        newReqs[index].vendorService = v;
+                                                                        newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                        setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                    }} 
+                                                                    className={selectCls} 
+                                                                    options={(selectedLeadForEdit.tourType === 'International' || selectedLeadForEdit.tourType === 'International Tour') 
+                                                                        ? ['Complete Package', 'Land Only', 'VISA', 'Insurance', 'Others']
+                                                                        : ['Hotel', 'Transport', 'Activities', 'Full Package', 'Others']
+                                                                    } 
+                                                                    hideDefaultManual={true}
+                                                                    manualTrigger="Others"
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-slate-300 mb-1.5">DMC Name</label>
+                                                                <CustomSelect 
+                                                                    value={req.vendorDmcName} 
+                                                                    onChange={v => handleArrayChange('vendorRequests', index, 'vendorDmcName', v)} 
+                                                                    className={selectCls} 
+                                                                    options={finalDmcOptions} 
+                                                                />
+                                                            </div>
+
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-slate-300 mb-1.5">Contact Person</label>
+                                                                <CustomSelect 
+                                                                    value={req.vendorContactPerson} 
+                                                                    onChange={v => {
+                                                                        const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                        newReqs[index].vendorContactPerson = v;
+                                                                        newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                        setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                    }} 
+                                                                    className={selectCls} 
+                                                                    options={getContactsForDMC(req.vendorDmcName)} 
+                                                                />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-bold text-slate-300 mb-1.5">Contact Method</label>
+                                                                <CustomSelect 
+                                                                    value={req.contactMethod} 
+                                                                    onChange={v => handleArrayChange('vendorRequests', index, 'contactMethod', v)} 
+                                                                    className={selectCls} 
+                                                                    options={['Email Platform', 'WhatsApp API', 'B2B Portal Integration', 'Verbal Call']} 
+                                                                />
+                                                            </div>
+                                                            
+                                                            <div>
+                                                                {(selectedLeadForEdit.tourType === 'International' || selectedLeadForEdit.tourType === 'International Tour') && req.vendorService === 'VISA' ? (
+                                                                    <>
+                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">VISA Type</label>
+                                                                        <CustomSelect 
+                                                                            value={req.vendorVisaType} 
+                                                                            onChange={v => {
+                                                                                const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                                newReqs[index].vendorVisaType = v;
+                                                                                newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                                setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                            }} 
+                                                                            className={selectCls} 
+                                                                            options={['Tourist', 'Business', 'Transit', 'e-Visa']} 
+                                                                        />
+                                                                    </>
+                                                                ) : <div className="hidden sm:block"></div>}
+                                                            </div>
+
+                                                            {req.vendorMessage && (
+                                                                <div className="sm:col-span-3 mt-2 bg-[#091124] border border-slate-700/60 rounded-xl overflow-hidden shadow-inner transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
+                                                                    <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700/60 bg-slate-900/50">
+                                                                        <label className="block text-sm font-bold text-slate-200">Message Format (Review & Edit) <span className="text-orange-400 ml-1">— {req.vendorService || 'Custom'}</span></label>
+                                                                        <button type="button" onClick={() => copyToClipboard(req.vendorMessage)} className="px-4 py-1.5 bg-[#16D3F2]/10 hover:bg-[#16D3F2]/20 text-[#16D3F2] rounded text-xs font-bold transition-colors cursor-pointer border border-[#16D3F2]/30 flex items-center gap-1.5 shadow-sm"><Copy size={14}/> Copy </button>
+                                                                    </div>
+                                                                    <div className="p-1">
+                                                                        <textarea rows="16" value={req.vendorMessage} onChange={e => handleArrayChange('vendorRequests', index, 'vendorMessage', e.target.value)} className="w-full bg-transparent border-none text-slate-300 text-[13px] leading-relaxed p-4 focus:ring-0 outline-none custom-scrollbar resize-y" spellCheck="false" />
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                ) : (
-                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-                                                        <div><label className="block text-xs font-bold text-slate-300 mb-1.5">Destination</label><input type="text" readOnly value={selectedLeadForEdit.destination} className={readonlyCls} /></div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-300 mb-1.5">Services</label>
-                                                            <CustomSelect value={selectedLeadForEdit.service || ''} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, service: v })} className={selectCls} placeholder="Select Service" options={['Hotel', 'Transport', 'Activities', 'Full Package']} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-300 mb-1.5">Vendor Name</label>
-                                                            <CustomSelect value={selectedLeadForEdit.vendorName} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorName: v })} className={selectCls} placeholder="Select Vendor" options={dynamicVendorOptions} />
-                                                        </div>
-                                                        <div><label className="block text-xs font-bold text-slate-300 mb-1.5">Contact Person</label><input type="text" value={selectedLeadForEdit.vendorContactPerson} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorContactPerson: e.target.value })} className={inputCls} /></div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-300 mb-1.5">Contact Method</label>
-                                                            <CustomSelect value={selectedLeadForEdit.contactMethod} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, contactMethod: v })} className={selectCls} placeholder="Select Method" options={['Email Platform', 'WhatsApp API', 'B2B Portal Integration', 'Verbal Call']} />
-                                                        </div>
-                                                        <div></div>
-                                                        <div className="sm:col-span-3 mt-2 flex justify-end">
-                                                            <button type="button" className="text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md px-4 py-2 transition-colors flex items-center gap-1.5"><Plus size={14}/> Add Another Vendor</button>
-                                                        </div>
-                                                    </div>
-                                                )}
+                                                ))}
+
+                                                <div className="sm:col-span-3 mt-4 flex justify-end">
+                                                    <button type="button" onClick={() => addArrayItem('vendorRequests', { vendorService: '', vendorDmcName: '', vendorContactPerson: '', contactMethod: '', vendorVisaType: '', vendorMessage: '' })} className="text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md px-4 py-2 transition-colors flex items-center gap-1.5 cursor-pointer">
+                                                        <Plus size={14}/> Add Another Vendor
+                                                    </button>
+                                                </div>
                                             </div>
                                         )}
 
@@ -1788,11 +1919,11 @@ export default function OperationsDashboard() {
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">Preparation Method</label>
-                                                    <CustomSelect value={selectedLeadForEdit.preparationMethod} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, preparationMethod: v })} className={selectCls} placeholder="" options={['Portal Designer v2', 'Manual Template Excel Sheet', 'External API Integrator Suite']} />
+                                                    <CustomSelect value={selectedLeadForEdit.preparationMethod} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, preparationMethod: v })} className={selectCls} options={['Portal Designer v2', 'Manual Template Excel Sheet', 'External API Integrator Suite']} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">Itinerary Version</label>
-                                                    <CustomSelect value={selectedLeadForEdit.itineraryVersion} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, itineraryVersion: v })} className={selectCls} placeholder="" options={['1.0.0', '1.1.0', '2.0.0']} />
+                                                    <CustomSelect value={selectedLeadForEdit.itineraryVersion} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, itineraryVersion: v })} className={selectCls} options={['1.0.0', '1.1.0', '2.0.0']} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">Working Notes</label>
@@ -1817,7 +1948,7 @@ export default function OperationsDashboard() {
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">QC Status</label>
-                                                    <CustomSelect value={selectedLeadForEdit.qcStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, qcStatus: v })} className={selectCls} placeholder="" options={['Pending Review', 'Approved', 'Correction Needed']} />
+                                                    <CustomSelect value={selectedLeadForEdit.qcStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, qcStatus: v })} className={selectCls} options={['Pending Review', 'Approved', 'Correction Needed']} />
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1">QC Remarks</label>
@@ -1851,6 +1982,49 @@ export default function OperationsDashboard() {
                     <div className="px-4 sm:px-6 py-4 border-t border-slate-800 bg-[#0b1329] z-20 flex justify-end gap-3 flex-shrink-0">
                         <button type="button" onClick={() => setSelectedLeadForEdit(null)} className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-transparent border border-cyan-500 hover:bg-slate-800 cursor-pointer text-cyan-400 text-sm sm:text-base font-semibold rounded-lg sm:rounded transition-colors uppercase tracking-wider order-2 sm:order-1">CANCEL</button>
                         <button type="submit" form="edit-ops-form" className="w-full sm:w-auto px-10 py-3 sm:py-2.5 bg-[#16D3F2] hover:bg-cyan-400 active:bg-cyan-600 border-none cursor-pointer text-[#0f172a] text-sm sm:text-base font-bold rounded-lg sm:rounded shadow transition-colors uppercase tracking-wider order-1 sm:order-2">SUBMIT</button>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── ASSIGN MODAL ────────────────────────────────────────────────────── */}
+            {isAssignModalOpen && selectedLeadForAssign && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[150] p-4">
+                    <div className="bg-[#1e293b] border border-slate-700/60 rounded-xl shadow-2xl w-full max-w-md relative flex flex-col max-h-[90vh]">
+                        <div className="px-6 pt-5 sm:pt-6 pb-2 flex-shrink-0">
+                            <button type="button" onClick={() => setIsAssignModalOpen(false)} className="absolute top-4 right-4 text-slate-400 border-none bg-transparent cursor-pointer hover:text-white transition-colors p-1.5 hover:bg-slate-800 rounded-lg">
+                                <X size={20} />
+                            </button>
+                            <h2 className="text-lg sm:text-xl font-bold text-white mb-4 sm:mb-6 tracking-tight pr-6 truncate">Assign Operation</h2>
+                        </div>
+                        <div className="px-6 pb-6 space-y-4 text-sm overflow-y-auto custom-scrollbar flex-1">
+                            <div>
+                                <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-[11px] sm:text-xs">Job ID</label>
+                                <input type="text" readOnly value={`LMN${selectedLeadForAssign.id}`}
+                                    className="w-full px-3 py-2.5 sm:py-2 bg-slate-900 border border-slate-700 rounded-lg sm:rounded-md text-slate-300 outline-none font-medium" />
+                            </div>
+                            <div>
+                                <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-[11px] sm:text-xs">Self Assignment</label>
+                                <button type="button" onClick={() => setAssignTo('Self Assigned')}
+                                    className={`w-full py-3 sm:py-2.5 rounded-lg sm:rounded-md font-semibold cursor-pointer text-center border transition-all ${assignTo === 'Self Assigned' ? 'bg-emerald-600/20 border-emerald-500 text-emerald-400' : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800/60'}`}>
+                                    {assignTo === 'Self Assigned' ? '✓ Claimed by Me' : 'Assign to Myself'}
+                                </button>
+                            </div>
+                            <div>
+                                <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-[11px] sm:text-xs">Assigned To (Operations Team)</label>
+                                <select 
+                                    value={assignTo !== 'Self Assigned' ? assignTo : ''} 
+                                    onChange={(e) => setAssignTo(e.target.value)} 
+                                    className={`w-full px-3 py-3 sm:py-2.5 border rounded-lg sm:rounded-md bg-slate-900 text-white focus:outline-none transition-colors ${assignTo && assignTo !== 'Self Assigned' ? 'border-orange-500 focus:border-orange-500' : 'border-slate-700 focus:border-orange-500'}`}
+                                >
+                                    <option value="" disabled hidden></option>
+                                    {operationsStaff.map((opt, idx) => <option key={idx} value={opt}>{opt}</option>)}
+                                </select>
+                            </div>
+                            <div className="flex flex-col sm:flex-row items-center gap-3 mt-6 pt-2">
+                                <button type="button" onClick={handleAssignSubmit} className="w-full sm:flex-1 py-2.5 sm:py-2 bg-orange-500 border-none cursor-pointer hover:bg-orange-600 text-white font-bold rounded-lg sm:rounded shadow transition-colors order-1 sm:order-2">Submit</button>
+                                <button type="button" onClick={() => setIsAssignModalOpen(false)} className="w-full sm:flex-1 py-2.5 sm:py-2 bg-transparent cursor-pointer border border-slate-700 hover:bg-slate-800 text-slate-300 font-medium rounded-lg sm:rounded transition-colors order-2 sm:order-1">Cancel</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
@@ -1934,20 +2108,6 @@ export default function OperationsDashboard() {
                         </div>
                         <div className="p-4 border-t border-slate-700 bg-[#0b1329] flex justify-end">
                             <button type="button" onClick={() => setActiveModal(null)} className="px-5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-xs font-bold rounded shadow transition-colors cursor-pointer tracking-wide uppercase">Close</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ─── ACKNOWLEDGE MODAL ──────────────────────────────────────────────── */}
-            {leadToAcknowledge && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[150] p-4">
-                    <div className="bg-[#1e293b] border-0 rounded-xl shadow-2xl w-full max-w-sm text-center p-6">
-                        <h3 className="text-base font-bold text-white uppercase tracking-wider mb-2">Acknowledge Request</h3>
-                        <p className="text-slate-400 mb-5 text-xs leading-relaxed">Acknowledge customisation request for <strong>{leadToAcknowledge.destination}</strong> (LMN{leadToAcknowledge.id})? This will move it to your Follow-Up workspace.</p>
-                        <div className="flex items-center justify-center gap-2">
-                            <button type="button" onClick={() => setLeadToAcknowledge(null)} className="flex-1 py-2 rounded bg-slate-900 text-slate-300 border border-slate-700 font-bold text-xs uppercase tracking-wider cursor-pointer">Abort</button>
-                            <button type="button" onClick={async () => { await handleAcknowledgeRequest(leadToAcknowledge); }} className="flex-1 py-2 rounded bg-cyan-500 text-slate-900 font-black text-xs uppercase tracking-wider cursor-pointer">Confirm</button>
                         </div>
                     </div>
                 </div>
