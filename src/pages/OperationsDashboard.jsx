@@ -31,27 +31,33 @@ const getOperationTourType = (lead) => {
 
 // ─── DYNAMIC MESSAGE GENERATOR FOR VENDOR ASSISTANCE ──────────────────────────
 const generateVendorMessage = (req, lead) => {
-    const contact = req.vendorContactPerson || '[Contact Person]';
-    const dest = lead.destination || '[Destination]';
-    const pkg = lead.packageType || lead.tourType || '[Package Type]';
-    const tDate = lead.travelDate || lead.travelDates || '[Travel Date]';
-    const dur = lead.duration || '[Duration]';
-    const paxA = lead.noOfAdults || '0';
-    const paxC = lead.noOfChildren || '0';
-    const hotel = lead.hotelCategory || '[Hotel Category]';
+    const contact = req.vendorContactPerson || '[Contact Person - Vendor Assistance]';
+    const dest = lead.destination || '[Destination - Vendor Assistance]';
+    const pkg = lead.packageType || lead.tourType || '[Package Type - Lead Info]';
+    const tDate = lead.travelDate || lead.travelDates || '[Travel Date - Destination Request]';
+    const dur = lead.duration || '[Duration - Destination Request]';
+    const paxA = lead.noOfAdults || '[No. of Adults - Destination Request]';
+    const paxC = lead.noOfChildren || '[No. of Children - Destination Request]';
+    const hotel = lead.hotelCategory || '[Hotel Category - Destination Request]';
     const vType = req.vendorVisaType || '[VISA Type]';
     const srv = req.vendorService;
+
+    // New specific fields
+    const checkIn = req.vendorCheckInDate || '[Check-in Date - Vendor Assistance]';
+    const checkOut = req.vendorCheckOutDate || '[Check-out Date - Vendor Assistance]';
+    const roomsReq = req.vendorRoomsRequired || '[Rooms Required - Vendor Assistance]';
+    const vehType = req.vendorVehicleType || '[Vehicle Type]';
+    const pickup = req.vendorPickupLocation || '[Pickup Location]';
+    const drop = req.vendorDropLocation || '[Drop Location]';
 
     if (!srv) return '';
 
     let msg = `Hi ${contact},\n\nGreetings from iTour!\n\n`;
 
-    const isVisa = srv === 'VISA';
-    const isInsurance = srv === 'Insurance';
-    const isLandOnly = srv === 'Land Only';
-    const isCompleteOrOther = !isVisa && !isInsurance; 
+    const pTypeLower = pkg.toLowerCase();
+    const isCorporate = pTypeLower.includes('corporate') || pTypeLower.includes('mice');
 
-    if (isCompleteOrOther) {
+    if (srv === 'Complete Package') {
         msg += `Please share your best quotation for the following travel requirement.\n\n`;
         msg += `TRAVEL REQUIREMENTS\n\n`;
         msg += `Destination: ${dest}\n`;
@@ -59,31 +65,38 @@ const generateVendorMessage = (req, lead) => {
         msg += `Travel Dates: ${tDate}\n`;
         msg += `Duration: ${dur}\n`;
         msg += `Travellers: ${paxA} Adults | ${paxC} Children\n`;
-        if (!isLandOnly) {
-            msg += `Hotel Category: ${hotel}\n`;
-        }
-        msg += `\n`;
+        msg += `Hotel Category: ${hotel}\n\n`;
 
         msg += `Please provide a complete package excluding flights, including:\n`;
-        if (!isLandOnly) {
-            msg += `• Airport Transfers\n• Hotel Accommodation\n• Local Transfers\n• Sightseeing\n• Applicable Taxes (if any)\n\n`;
-        } else {
-            msg += `• Airport Transfers\n• Local Transfers\n• Sightseeing\n• Applicable Taxes (if any)\n\n`;
-        }
+        msg += `• Airport Transfers\n• Hotel Accommodation\n• Local Transfers\n`;
+        msg += isCorporate ? `• Sightseeing / Business Transfers (as applicable)\n` : `• Sightseeing\n`;
+        msg += `• Applicable Taxes (if any)\n\n`;
 
-        if (!isLandOnly) {
-            const pTypeLower = pkg.toLowerCase();
-            if (pTypeLower.includes('honeymoon')) {
-                msg += `HONEYMOON PREFERENCES\n\nKindly suggest honeymoon-friendly hotels/resorts and include honeymoon inclusions wherever available, such as:\n\n• Honeymoon Room Decoration\n• Candlelight Dinner\n• Honeymoon Cake\n• Complimentary Honeymoon Benefits\n• Romantic Experiences (if available)\n\nPlease mention any complimentary inclusions or paid upgrade options separately.\n\n`;
-            } else if (pTypeLower.includes('family')) {
-                msg += `FAMILY PREFERENCES\n\nKindly suggest family-friendly hotels and include suitable room options for the mentioned travellers. Consider\n\n• Family-friendly accommodation\n• Interconnecting / Family Rooms (if available)\n• Child-friendly sightseeing and activities (if applicable)\n• Comfortable transfers suitable for the group\n• Hotels with good amenities for families\n\nPlease mention any complimentary inclusions or paid upgrade options separately.\n\n`;
-            } else if (pTypeLower.includes('corporate') || pTypeLower.includes('mice')) {
-                msg += `CORPORATE REQUIREMENTS\n\nKindly suggest family-friendly hotels and include suitable room options for the mentioned travellers. Consider\n\n• Business hotels in convenient locations\n• Early Check-in / Late Check-out (subject to availability)\n• Reliable airport and local transfers\n• Flexible cancellation or amendment policy (if available)\n\nPlease mention any complimentary inclusions or paid upgrade options separately.\n\n`;
-            }
+        if (pTypeLower.includes('honeymoon')) {
+            msg += `HONEYMOON PREFERENCES\n\nKindly suggest honeymoon-friendly hotels/resorts and include honeymoon inclusions wherever available, such as:\n\n• Honeymoon Room Decoration\n• Candlelight Dinner\n• Honeymoon Cake\n• Complimentary Honeymoon Benefits\n• Romantic Experiences (if available)\n\nPlease mention any complimentary inclusions or paid upgrade options separately.\n\n`;
+        } else if (pTypeLower.includes('family')) {
+            msg += `FAMILY PREFERENCES\n\nKindly suggest family-friendly hotels and include suitable room options for the mentioned travellers. Consider\n\n• Family-friendly accommodation\n• Interconnecting / Family Rooms (if available)\n• Child-friendly sightseeing and activities (if applicable)\n• Comfortable transfers suitable for the group\n• Hotels with good amenities for families\n\nPlease mention any complimentary inclusions or paid upgrade options separately.\n\n`;
+        } else if (isCorporate) {
+            msg += `CORPORATE REQUIREMENTS\n\nKindly suggest family-friendly hotels and include suitable room options for the mentioned travellers. Consider\n\n• Business hotels in convenient locations\n• Early Check-in / Late Check-out (subject to availability)\n• Reliable airport and local transfers\n• Flexible cancellation or amendment policy (if available)\n\nPlease mention any complimentary inclusions or paid upgrade options separately.\n\n`;
         }
 
         msg += `Kindly Share\n\n• Detailed Day-wise Itinerary\n• Hotel Options\n• Package Inclusions\n• Package Exclusions\n• Cancellation Policy\n• Quotation\n\n`;
-    } else if (isVisa) {
+
+    } else if (srv === 'Land Only') {
+        msg += `Please share your best quotation for the following travel requirement.\n\n`;
+        msg += `TRAVEL REQUIREMENTS\n\n`;
+        msg += `Destination: ${dest}\n`;
+        msg += `Package Type: ${pkg}\n`;
+        msg += `Travel Dates: ${tDate}\n`;
+        msg += `Duration: ${dur}\n`;
+        msg += `Travellers: ${paxA} Adults | ${paxC} Children\n\n`;
+
+        msg += `Please provide a complete package excluding flights, including:\n`;
+        msg += `• Airport Transfers\n• Local Transfers\n• Sightseeing\n• Applicable Taxes (if any)\n\n`;
+
+        msg += `Kindly Share\n\n• Detailed Day-wise Itinerary\n• Hotel Options\n• Package Inclusions\n• Package Exclusions\n• Cancellation Policy\n• Quotation\n\n`;
+
+    } else if (srv === 'VISA') {
         msg += `Please share your best quotation for the following VISA requirement.\n\n`;
         msg += `Destination: ${dest}\n\n`;
         msg += `VISA Type: ${vType}\n\n`;
@@ -91,13 +104,51 @@ const generateVendorMessage = (req, lead) => {
         msg += `Travel Dates: ${tDate}\n\n`;
         msg += `Travellers: ${paxA} Adults | ${paxC} Children\n\n`;
         msg += `Kindly Share:\n\n• VISA Charges\n• Required Documents\n• Processing Time\n• Validity\n• Appointment Requirement (if applicable)\n• Terms & Conditions\n\n`;
-    } else if (isInsurance) {
+
+    } else if (srv === 'Insurance') {
         msg += `Please share your best quotation for Travel Insurance for below requirement.\n\n`;
         msg += `Destination: ${dest}\n\n`;
         msg += `Duration: ${dur}\n\n`;
         msg += `Travel Dates: ${tDate}\n\n`;
         msg += `Travellers: ${paxA} Adults | ${paxC} Children\n\n`;
         msg += `Kindly Share:\n\n• Insurance Plan Details\n• Coverage\n• Premium Amount\n• Policy Validity\n• Claim Process\n\n`;
+
+    } else if (srv === 'Hotel Only') {
+        msg += `Please share your best quotation for the following hotel requirement.\n\n`;
+        msg += `HOTEL REQUIREMENTS\n\n`;
+        msg += `Destination: ${dest}\n`;
+        msg += `Package Type: ${pkg}\n`;
+        msg += `Check-in Date: ${checkIn}\n`;
+        msg += `Check-out Date: ${checkOut}\n`;
+        msg += `Duration: ${dur}\n`;
+        msg += `Travellers: ${paxA} Adults\n`;
+        msg += `Hotel Category: ${hotel}\n`;
+        msg += `Rooms Required: ${roomsReq}\n\n`;
+
+        msg += `Kindly Share\n\n• Hotel Name & Category\n• Room Type\n• Meal Plan\n• Room Inclusions\n• Check-in & Check-out Time\n• Cancellation Policy\n• B2B Net Rate\n• Payment Terms\n\n`;
+        msg += `Please mention any complimentary inclusions or paid upgrade options separately.\n\n`;
+
+    } else if (srv === 'Vehicle Only') {
+        msg += `Please share your best quotation for the following travel requirement.\n\n`;
+        msg += `TRAVEL REQUIREMENTS\n\n`;
+        msg += `Destination: ${dest}\n`;
+        msg += `Package Type: ${pkg}\n`;
+        msg += `Travel Dates: ${tDate}\n`;
+        msg += `Duration: ${dur}\n`;
+        msg += `Travellers: ${paxA} Adults\n\n`;
+        msg += `Vehicle Type: ${vehType}\n`;
+        msg += `Pickup Location: ${pickup}\n`;
+        msg += `Drop Location: ${drop}\n\n`;
+
+        msg += `Kindly Share\n\n• Vehicle Type & Model\n• Vehicle Capacity\n• Service Type (Private / SIC)\n• Airport Transfer / Disposal Details (if applicable)\n• Driver Allowance (if applicable)\n• Toll & Parking Charges (if applicable)\n• Inclusions & Exclusions\n• Cancellation Policy\n• B2B Quotation\n\n`;
+    
+    } else if (srv === 'Others') {
+        msg += `Please share your best quotation for the following custom travel requirement.\n\n`;
+        msg += `Destination: ${dest}\n`;
+        msg += `Travel Dates: ${tDate}\n`;
+        msg += `Duration: ${dur}\n`;
+        msg += `Travellers: ${paxA} Adults | ${paxC} Children\n\n`;
+        msg += `REQUIREMENTS:\n• [Enter custom requirements here]\n\n`;
     }
 
     msg += `Kindly share your best available rates at the earliest.\n\nThank you.\n\nRegards,`;
@@ -505,7 +556,6 @@ export default function OperationsDashboard() {
                 body: JSON.stringify(updatedData),
             });
             
-            // This is the CRITICAL fix that throws an error if the schema rejects the data (500)
             if (!response.ok) {
                 throw new Error(`Server returned status: ${response.status}`);
             }
@@ -614,10 +664,20 @@ export default function OperationsDashboard() {
                     vendorContactPerson: lead.vendorContactPerson || '',
                     contactMethod: lead.contactMethod || '',
                     vendorVisaType: lead.vendorVisaType || '',
+                    vendorCheckInDate: '',
+                    vendorCheckOutDate: '',
+                    vendorRoomsRequired: '',
+                    vendorVehicleType: '',
+                    vendorPickupLocation: '',
+                    vendorDropLocation: '',
                     vendorMessage: lead.vendorMessage || ''
                 }];
             } else {
-                parsedVendorRequests = [{ vendorService: '', vendorDmcName: '', vendorContactPerson: '', contactMethod: '', vendorVisaType: '', vendorMessage: '' }];
+                parsedVendorRequests = [{ 
+                    vendorService: '', vendorDmcName: '', vendorContactPerson: '', contactMethod: '', vendorVisaType: '',
+                    vendorCheckInDate: '', vendorCheckOutDate: '', vendorRoomsRequired: '', vendorVehicleType: '', vendorPickupLocation: '', vendorDropLocation: '', 
+                    vendorMessage: '' 
+                }];
             }
         }
 
@@ -701,7 +761,7 @@ export default function OperationsDashboard() {
         };
         
         updateLead(selectedLeadForEdit.id, payloadToSave);
-        setSelectedLeadForEdit(null);
+        setSelectedLeadForEdit(null); // RE-ADDED: Closes the form and returns to the jobs dashboard
     };
 
     // --- FILTER & DISPLAY DATA ---
@@ -1092,7 +1152,7 @@ export default function OperationsDashboard() {
             ) : (
                 /* ─── CRM HANDOVER SHEET (FULL SCREEN REPLACEMENT) ──────────────────── */
                 <div className="bg-[#0f172a] flex flex-col w-full min-h-screen text-slate-100 relative z-50">
-                    <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] z-20 flex-shrink-0 shadow-md">
+                  <div className="sticky top-0 px-4 sm:px-6 lg:px-8 py-4 sm:py-5 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] z-50 flex-shrink-0 shadow-md">
                         <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2 truncate pr-4">
                             <FileText size={20} className="text-cyan-400 flex-shrink-0" />
                             <span className="truncate hidden sm:inline">
@@ -1110,7 +1170,7 @@ export default function OperationsDashboard() {
                         </button>
                     </div>
 
-                    <div className="overflow-y-auto flex-1 custom-scrollbar w-full relative">
+                   <div className="flex-1 w-full relative pb-10">
                         <form id="edit-ops-form" 
                               onSubmit={handleEditSubmit} 
                               onKeyDown={(e) => {
@@ -1775,15 +1835,18 @@ export default function OperationsDashboard() {
                                                     <button type="button" className="hover:text-cyan-400 cursor-pointer transition-colors bg-transparent border-none p-0">Edit</button>
                                                 </div>
                                             </div>
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-2">
+                                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-2">
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1.5">Destinations</label>
-                                                    <CustomSelect value={selectedLeadForEdit.destination} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, destination: v })} className={selectCls} options={destinationOptions} />
+                                                    <CustomSelect 
+                                                        value={selectedLeadForEdit.destination} 
+                                                        onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, destination: v })} 
+                                                        className={selectCls} 
+                                                        options={destinationOptions} 
+                                                        placeholder=" "
+                                                    />
                                                 </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1.5">Destination Type</label>
-                                                    <CustomSelect value={selectedLeadForEdit.tourType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, tourType: v })} className={selectCls} options={['Domestic', 'International']} />
-                                                </div>
+                                              
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-300 mb-1.5">Work Type</label>
                                                     <CustomSelect value={selectedLeadForEdit.workType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, workType: v })} className={selectCls} options={['FIT', 'Vendor Assistance', 'Group Departure']} />
@@ -1795,7 +1858,7 @@ export default function OperationsDashboard() {
                                         {selectedLeadForEdit.workType === 'Vendor Assistance' && (
                                             <div className={sectionCls}>
                                                 <h3 className={sectionHeadCls} style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
-                                                    <span className="font-bold uppercase tracking-wider">VENDOR ASSISTANCE {(selectedLeadForEdit.tourType === 'International' || selectedLeadForEdit.tourType === 'International Tour') ? '(INTERNATIONAL)' : '(DOMESTIC)'}</span>
+                                                    <span className="font-bold uppercase tracking-wider">VENDOR ASSISTANCE</span>
                                                 </h3>
                                                 
                                                 {selectedLeadForEdit.vendorRequests?.map((req, index) => (
@@ -1823,10 +1886,7 @@ export default function OperationsDashboard() {
                                                                         setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
                                                                     }} 
                                                                     className={selectCls} 
-                                                                    options={(selectedLeadForEdit.tourType === 'International' || selectedLeadForEdit.tourType === 'International Tour') 
-                                                                        ? ['Complete Package', 'Land Only', 'VISA', 'Insurance', 'Others']
-                                                                        : ['Hotel', 'Transport', 'Activities', 'Full Package', 'Others']
-                                                                    } 
+                                                                    options={['Complete Package', 'Land Only', 'VISA', 'Insurance', 'Hotel Only', 'Vehicle Only', 'Others']} 
                                                                     hideDefaultManual={true}
                                                                     manualTrigger="Others"
                                                                 />
@@ -1861,29 +1921,96 @@ export default function OperationsDashboard() {
                                                                     value={req.contactMethod} 
                                                                     onChange={v => handleArrayChange('vendorRequests', index, 'contactMethod', v)} 
                                                                     className={selectCls} 
-                                                                    options={['Email Platform', 'WhatsApp API', 'B2B Portal Integration', 'Verbal Call']} 
+                                                                    options={['Email ', 'WhatsApp ', ' Call']} 
                                                                 />
                                                             </div>
-                                                            
-                                                            <div>
-                                                                {(selectedLeadForEdit.tourType === 'International' || selectedLeadForEdit.tourType === 'International Tour') && req.vendorService === 'VISA' ? (
-                                                                    <>
-                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">VISA Type</label>
+
+                                                            {req.vendorService === 'VISA' && (
+                                                                <div>
+                                                                    <label className="block text-xs font-bold text-slate-300 mb-1.5">VISA Type</label>
+                                                                    <CustomSelect 
+                                                                        value={req.vendorVisaType || ''} 
+                                                                        onChange={v => {
+                                                                            const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                            newReqs[index].vendorVisaType = v;
+                                                                            newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                            setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                        }} 
+                                                                        className={selectCls} 
+                                                                        options={['Tourist', 'Business', 'Transit', 'e-Visa']} 
+                                                                    />
+                                                                </div>
+                                                            )}
+
+                                                            {req.vendorService === 'Hotel Only' && (
+                                                                <>
+                                                                    <div>
+                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Check-in Date</label>
+                                                                        <DatePickerField type="date" value={req.vendorCheckInDate || ''} onChange={e => {
+                                                                            const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                            newReqs[index].vendorCheckInDate = e.target.value;
+                                                                            newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                            setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                        }} className={inputCls} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Check-out Date</label>
+                                                                        <DatePickerField type="date" value={req.vendorCheckOutDate || ''} onChange={e => {
+                                                                            const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                            newReqs[index].vendorCheckOutDate = e.target.value;
+                                                                            newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                            setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                        }} className={inputCls} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Rooms Required</label>
                                                                         <CustomSelect 
-                                                                            value={req.vendorVisaType} 
+                                                                            value={req.vendorRoomsRequired || ''} 
                                                                             onChange={v => {
                                                                                 const newReqs = [...selectedLeadForEdit.vendorRequests];
-                                                                                newReqs[index].vendorVisaType = v;
+                                                                                newReqs[index].vendorRoomsRequired = v;
                                                                                 newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
                                                                                 setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
                                                                             }} 
                                                                             className={selectCls} 
-                                                                            options={['Tourist', 'Business', 'Transit', 'e-Visa']} 
+                                                                            options={['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']} 
                                                                         />
-                                                                    </>
-                                                                ) : <div className="hidden sm:block"></div>}
-                                                            </div>
+                                                                    </div>
+                                                                </>
+                                                            )}
 
+                                                            {req.vendorService === 'Vehicle Only' && (
+                                                                <>
+                                                                    <div>
+                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Vehicle Type</label>
+                                                                        <CustomSelect value={req.vendorVehicleType || ''} onChange={v => {
+                                                                            const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                            newReqs[index].vendorVehicleType = v;
+                                                                            newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                            setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                        }} className={selectCls} options={['Sedan', 'SUV', 'Minivan', 'Coach']} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Pickup Location</label>
+                                                                        <input type="text" value={req.vendorPickupLocation || ''} onChange={e => {
+                                                                            const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                            newReqs[index].vendorPickupLocation = e.target.value;
+                                                                            newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                            setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                        }} className={inputCls} />
+                                                                    </div>
+                                                                    <div>
+                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Drop Location</label>
+                                                                        <input type="text" value={req.vendorDropLocation || ''} onChange={e => {
+                                                                            const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                            newReqs[index].vendorDropLocation = e.target.value;
+                                                                            newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                            setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                        }} className={inputCls} />
+                                                                    </div>
+                                                                </>
+                                                            )}
+                                                            
                                                             {req.vendorMessage && (
                                                                 <div className="sm:col-span-3 mt-2 bg-[#091124] border border-slate-700/60 rounded-xl overflow-hidden shadow-inner transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
                                                                     <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700/60 bg-slate-900/50">
@@ -1979,7 +2106,7 @@ export default function OperationsDashboard() {
                         </form>
                     </div>
 
-                    <div className="px-4 sm:px-6 py-4 border-t border-slate-800 bg-[#0b1329] z-20 flex justify-end gap-3 flex-shrink-0">
+                  <div className="sticky bottom-0 px-4 sm:px-6 py-4 border-t border-slate-800 bg-[#0b1329] z-50 flex justify-end gap-3 flex-shrink-0 shadow-[0_-10px_15px_-3px_rgba(0,0,0,0.3)]">
                         <button type="button" onClick={() => setSelectedLeadForEdit(null)} className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-transparent border border-cyan-500 hover:bg-slate-800 cursor-pointer text-cyan-400 text-sm sm:text-base font-semibold rounded-lg sm:rounded transition-colors uppercase tracking-wider order-2 sm:order-1">CANCEL</button>
                         <button type="submit" form="edit-ops-form" className="w-full sm:w-auto px-10 py-3 sm:py-2.5 bg-[#16D3F2] hover:bg-cyan-400 active:bg-cyan-600 border-none cursor-pointer text-[#0f172a] text-sm sm:text-base font-bold rounded-lg sm:rounded shadow transition-colors uppercase tracking-wider order-1 sm:order-2">SUBMIT</button>
                     </div>
