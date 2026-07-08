@@ -746,6 +746,37 @@ export default function OperationsDashboard() {
         } catch(err){}
         const updatedHistory = [{ date: timestamp, action: 'Operations Profile Updated', note: 'Data synchronized and saved from Operations Dashboard.' }, ...currentHistory];
 
+        // ─── SAFE AUTO-SAVE TO LOCAL STORAGE (RUNS ONLY ON SUBMIT) ───
+        try {
+            const stored = localStorage.getItem('saved_vendor_directory');
+            let directory = stored ? JSON.parse(stored) : {};
+            let changed = false;
+
+            selectedLeadForEdit.vendorRequests.forEach(req => {
+                const dmc = req.vendorDmcName?.trim();
+                const contact = req.vendorContactPerson?.trim();
+                
+                // Added a length check > 1 to prevent saving single random letters
+                if (dmc && dmc.length > 1) { 
+                    if (!directory[dmc]) { 
+                        directory[dmc] = []; 
+                        changed = true; 
+                    }
+                    if (contact && contact.length > 1 && !directory[dmc].includes(contact)) {
+                        directory[dmc].push(contact);
+                        changed = true;
+                    }
+                }
+            });
+
+            if (changed) {
+                localStorage.setItem('saved_vendor_directory', JSON.stringify(directory));
+            }
+        } catch(e) {
+            console.warn("Failed to save vendor directory to local storage");
+        }
+        // ─────────────────────────────────────────────────────────────
+
         const payloadToSave = { 
             ...selectedLeadForEdit, 
             vendorRequests: JSON.stringify(selectedLeadForEdit.vendorRequests),
@@ -811,9 +842,10 @@ export default function OperationsDashboard() {
 
     // ─── DYNAMIC DMC & CONTACT PERSON MAP BUILDER ────────────────────────────────
     const dmcToContactsMap = {};
-    const baseVendorOptions = ['Bali DMC', 'Dubai DMC', 'Thai DMC', 'Singapore DMC', 'Vendor A', 'Vendor B'];
+    const baseVendorOptions = ['Bali DMC', 'Dubai DMC', 'Thai DMC', 'Singapore DMC'];
     baseVendorOptions.forEach(dmc => { dmcToContactsMap[dmc] = new Set(); });
 
+    // 1. Extract from existing database leads
     leads.forEach(l => {
         const legacyDMC = l.vendorDmcName || l.vendorName || l.dmcName;
         const legacyContact = l.vendorContactPerson || l.dmcContactPerson;
@@ -838,6 +870,16 @@ export default function OperationsDashboard() {
         }
     });
 
+    // 2. Extract from Local Storage (Persisted manual entries)
+    try {
+        const storedDirectory = JSON.parse(localStorage.getItem('saved_vendor_directory') || '{}');
+        Object.keys(storedDirectory).forEach(dmc => {
+            if (!dmcToContactsMap[dmc]) dmcToContactsMap[dmc] = new Set();
+            storedDirectory[dmc].forEach(c => dmcToContactsMap[dmc].add(c));
+        });
+    } catch(e) {}
+
+    // 3. Extract from Current Form Session (Immediate UI updates)
     if (selectedLeadForEdit && selectedLeadForEdit.vendorRequests) {
         selectedLeadForEdit.vendorRequests.forEach(req => {
             const dReq = req.vendorDmcName;
@@ -849,10 +891,11 @@ export default function OperationsDashboard() {
         });
     }
 
-    const finalDmcOptions = Object.keys(dmcToContactsMap);
+    const finalDmcOptions = Object.keys(dmcToContactsMap).sort();
+
     const getContactsForDMC = (dmcName) => {
         if (!dmcName || !dmcToContactsMap[dmcName]) return [];
-        return Array.from(dmcToContactsMap[dmcName]).filter(Boolean);
+        return Array.from(dmcToContactsMap[dmcName]).filter(Boolean).sort();
     };
 
     return (
