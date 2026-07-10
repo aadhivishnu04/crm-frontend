@@ -2130,8 +2130,8 @@ export default function OperationsDashboard() {
                                                                 value={selectedLeadForEdit.rateSource || ''} 
                                                                 onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, rateSource: v })} 
                                                                 className={selectCls} 
-                                                                options={['DMC', 'B2B Portal', 'Direct Hotel']} 
-                                                                placeholder="Select Rate Source"
+                                                                options={['Existing Rate Available', 'Vendor Verification Required' ]} 
+                                                                placeholder=" "
                                                             />
                                                         </div>
                                                     )}
