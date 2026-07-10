@@ -156,6 +156,34 @@ const generateVendorMessage = (req, lead) => {
 
         msg += `Kindly Share\n\n• Vehicle Type & Model\n• Vehicle Capacity\n• Service Type (Private / SIC)\n• Airport Transfer / Disposal Details (if applicable)\n• Driver Allowance (if applicable)\n• Toll & Parking Charges (if applicable)\n• Inclusions & Exclusions\n• Cancellation Policy\n• B2B Quotation\n\n`;
     
+    } else if (srv === 'Rate Modification') {
+        msg += `We have an existing itinerary for the below travel requirement. Kindly verify the availability and share your best updated B2B rates for the same itinerary.\n\n`;
+        
+        msg += `TRAVEL REQUIREMENTS\n\n`;
+        msg += `Destination: ${dest}\n`;
+        msg += `Package Type: ${pkg}\n`;
+        msg += `Travel Dates: ${tDate}\n`;
+        msg += `Duration: ${dur}\n`;
+        msg += `Travellers: ${paxA} Adults\n`;
+        msg += `Hotel Category: ${hotel}\n\n`;
+
+        msg += `RATE VERIFICATION\n\n`;
+        msg += `The ready-made itinerary is attached for your reference. Kindly verify the availability and share your best updated B2B rates for the same itinerary.\n\n`;
+        msg += `Please verify:\n\n`;
+        msg += `• Hotel availability for the requested travel dates\n`;
+        msg += `• Current hotel rates\n`;
+        msg += `• Airport and local transfer rates\n`;
+        msg += `• Sightseeing rates\n`;
+        msg += `• Any seasonal or date-specific surcharges\n`;
+        msg += `• Validity of the existing package inclusions\n\n`;
+        
+        msg += `If any hotel or service mentioned in the attached itinerary is unavailable, kindly suggest a suitable alternative separately.\n\n`;
+        msg += `Kindly Share\n\n`;
+        msg += `• Updated B2B Quotation\n`;
+        msg += `• Availability Status\n`;
+        msg += `• Applicable Surcharges, if any\n`;
+        msg += `• Changes in Existing Inclusions or Exclusions, if any\n\n`;
+        
     } else if (srv === 'Others') {
         msg += `Please share your best quotation for the following custom travel requirement.\n\n`;
         msg += `Destination: ${dest}\n`;
@@ -828,7 +856,7 @@ export default function OperationsDashboard() {
             destinationRequest: lead.destinationRequest || '', tourType: getOperationTourType(lead), duration: lead.duration || '', noOfAdults: lead.noOfAdults || '', noOfChildren: lead.noOfChildren || '', hotelCategory: lead.hotelCategory || '',
             travelDate: lead.travelDate || lead.travelDates || '', travelMonth: lead.travelMonth || '', budget: lead.budget || lead.amount || '', readymadePackageDetails: lead.readymadePackageDetails || '',
             turnaroundTime: lead.turnaroundTime || '', salesRemarks: lead.salesRemarks || '', voiceNote: lead.voiceNote || '', destination: lead.destination || '', workType: lead.workType || '',
-            priority: calculatedPriority, status: lead.status || '', activityType: lead.activityType || '', activityOutcome: lead.activityOutcome || '', notes: lead.notes || '',
+            rateSource: lead.rateSource || '', priority: calculatedPriority, status: lead.status || '', activityType: lead.activityType || '', activityOutcome: lead.activityOutcome || '', notes: lead.notes || '',
             nextActionRequired: lead.nextActionRequired || '', nextActionDate: lead.nextActionDate || '', 
             
             preparationMethod: lead.preparationMethod || '', itineraryVersion: lead.itineraryVersion || '', workingNotes: lead.workingNotes || '', itineraryPrepDate: lead.itineraryPrepDate || '',
@@ -2092,8 +2120,21 @@ export default function OperationsDashboard() {
                                                 
                                                     <div>
                                                         <label className="block text-xs font-bold text-slate-300 mb-1.5">Work Type</label>
-                                                        <CustomSelect value={selectedLeadForEdit.workType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, workType: v })} className={selectCls} options={[  'Vendor Assistance', 'Self Preparation','Only Price']} />
+                                                        <CustomSelect value={selectedLeadForEdit.workType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, workType: v })} className={selectCls} options={[  'Vendor Assistance', 'Self Preparation','Rate Modification']} />
                                                     </div>
+
+                                                    {selectedLeadForEdit.workType === 'Rate Modification' && (
+                                                        <div>
+                                                            <label className="block text-xs font-bold text-slate-300 mb-1.5">Rate Source</label>
+                                                            <CustomSelect 
+                                                                value={selectedLeadForEdit.rateSource || ''} 
+                                                                onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, rateSource: v })} 
+                                                                className={selectCls} 
+                                                                options={['DMC', 'B2B Portal', 'Direct Hotel']} 
+                                                                placeholder="Select Rate Source"
+                                                            />
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>
@@ -2209,7 +2250,7 @@ export default function OperationsDashboard() {
                                         </div>
 
                                         {/* Section 4: VENDOR ASSISTANCE */}
-                                        {selectedLeadForEdit.workType === 'Vendor Assistance' && (
+                                        {(selectedLeadForEdit.workType === 'Vendor Assistance' || selectedLeadForEdit.workType === 'Rate Modification') && (
                                             <div className={sectionCls}>
                                                 <h3 className={`${sectionHeadCls} cursor-pointer hover:text-white transition-colors`} 
                                                     style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}
@@ -2247,7 +2288,7 @@ export default function OperationsDashboard() {
                                                                                 setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
                                                                             }} 
                                                                             className={selectCls} 
-                                                                            options={['Complete Package', 'Land Only', 'VISA', 'Insurance', 'Hotel Only', 'Vehicle Only', 'Others']} 
+                                                                            options={['Complete Package', 'Land Only', 'VISA', 'Insurance', 'Hotel Only', 'Vehicle Only','Rate Modification', 'Others']} 
                                                                             hideDefaultManual={true}
                                                                             manualTrigger="Others"
                                                                         />
@@ -2375,7 +2416,7 @@ export default function OperationsDashboard() {
                                                                     {req.vendorMessage && (
                                                                         <div className="sm:col-span-3 mt-2 bg-[#091124] border border-slate-700/60 rounded-xl overflow-hidden shadow-inner transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
                                                                             <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700/60 bg-slate-900/50">
-                                                                                <label className="block text-sm font-bold text-slate-200">Message Format Review & Edit <span className="text-orange-100 ml-1"> ({req.vendorService || 'Custom'})</span></label>
+                                                                                <label className="block text-sm font-bold text-slate-200">  <label htmlFor="">Note: Attach the ready-made itinerary before sharing</label><span className="text-orange-100 ml-1"> ({req.vendorService || 'Custom'})</span></label>
                                                                                 <button type="button" onClick={() => copyToClipboard(req.vendorMessage)} className="px-4 py-1.5 bg-[#16D3F2]/10 hover:bg-[#16D3F2]/20 text-[#16D3F2] rounded text-xs font-bold transition-colors cursor-pointer border border-[#16D3F2]/30 flex items-center gap-1.5 shadow-sm"><Copy size={14}/> Copy </button>
                                                                             </div>
                                                                             <div className="p-1">
@@ -2397,77 +2438,10 @@ export default function OperationsDashboard() {
                                             </div>
                                         )}
 
-                                        {/* Section 5: Itinerary Preparation */}
-                                        <div className={sectionCls}>
-                                            <h3 className={`${sectionHeadCls} cursor-pointer hover:text-white transition-colors`} 
-                                                style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}
-                                                onClick={(e) => handleHeaderClick(e, 'itineraryPreparation')}>
-                                                <span className="font-bold flex items-center gap-2">
-                                                    Itinerary Preparation
-                                                    <ChevronDown size={16} className={`transition-transform duration-200 ${openSections.itineraryPreparation ? 'rotate-180' : ''}`} />
-                                                </span>
-                                                <div className="flex items-center gap-1.5">
-                                                    <button type="button" onClick={() => setActiveModal({ type: 'view', section: 'Itinerary Preparation' })} className="flex items-center gap-1 px-2.5 py-1 bg-slate-800/50 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-[10px] uppercase font-bold transition-colors cursor-pointer"><Eye size={12} /> View</button>
-                                                    <button type="button" className="flex items-center gap-1 px-2.5 py-1 bg-slate-800/50 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-[10px] uppercase font-bold transition-colors cursor-pointer"><Pencil size={12} /> Edit</button>
-                                                </div>
-                                            </h3>   
-                                            {openSections.itineraryPreparation && (
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4 animate-in slide-in-from-top-2 fade-in">
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Preparation Method</label>
-                                                        <CustomSelect value={selectedLeadForEdit.preparationMethod} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, preparationMethod: v })} className={selectCls} options={['Portal Designer v2', 'Manual Template Excel Sheet', 'External API Integrator Suite']} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Itinerary Version</label>
-                                                        <CustomSelect value={selectedLeadForEdit.itineraryVersion} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, itineraryVersion: v })} className={selectCls} options={['1.0.0', '1.1.0', '2.0.0']} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Working Notes</label>
-                                                        <textarea rows="1" value={selectedLeadForEdit.workingNotes} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, workingNotes: e.target.value })} className={inputCls} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Date & Time</label>
-                                                        <DatePickerField type="datetime-local" value={selectedLeadForEdit.itineraryPrepDate} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, itineraryPrepDate: e.target.value })} className={inputCls} />
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
+                     
 
                                         {/* Section 6: Quality Check */}
-                                        <div className={sectionCls}>
-                                            <h3 className={`${sectionHeadCls} cursor-pointer hover:text-white transition-colors`} 
-                                                style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}
-                                                onClick={(e) => handleHeaderClick(e, 'qualityCheck')}>
-                                                <span className="font-bold flex items-center gap-2">
-                                                    Quality Check
-                                                    <ChevronDown size={16} className={`transition-transform duration-200 ${openSections.qualityCheck ? 'rotate-180' : ''}`} />
-                                                </span>
-                                                <div className="flex items-center gap-1.5">
-                                                    <button type="button" onClick={() => setActiveModal({ type: 'view', section: 'Quality Check' })} className="flex items-center gap-1 px-2.5 py-1 bg-slate-800/50 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-[10px] uppercase font-bold transition-colors cursor-pointer"><Eye size={12} /> View</button>
-                                                    <button type="button" className="flex items-center gap-1 px-2.5 py-1 bg-slate-800/50 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-[10px] uppercase font-bold transition-colors cursor-pointer"><Pencil size={12} /> Edit</button>
-                                                </div>
-                                            </h3>
-                                            {openSections.qualityCheck && (
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4 animate-in slide-in-from-top-2 fade-in">
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1">QC Status</label>
-                                                        <CustomSelect value={selectedLeadForEdit.qcStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, qcStatus: v })} className={selectCls} options={['Pending Review', 'Approved', 'Correction Needed']} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1">QC Remarks</label>
-                                                        <textarea rows="1" value={selectedLeadForEdit.qcRemarks} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, qcRemarks: e.target.value })} className={inputCls} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Reviewed By</label>
-                                                        <input type="text" value={selectedLeadForEdit.reviewedBy} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, reviewedBy: e.target.value })} className={inputCls} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Date & Time</label>
-                                                        <DatePickerField type="datetime-local" value={selectedLeadForEdit.qcDate} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, qcDate: e.target.value })} className={inputCls} />
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
+                                      
 
                                     </div>
                                 )}
