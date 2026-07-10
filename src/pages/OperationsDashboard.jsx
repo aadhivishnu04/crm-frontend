@@ -5,7 +5,7 @@ import {
     ShoppingCart, Target, X, Send, AlertCircle, CheckCircle2,
     Mic, Trash2, Layers, BookmarkCheck, PlaneTakeoff, Info,
     Briefcase, FileText, Activity, ShieldCheck, Share2, Play, Square, Plus,
-    ChevronLeft, ChevronRight, ArrowUp, Copy
+    ChevronLeft, ChevronRight, ArrowUp, Copy, ChevronDown
 } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
 
@@ -329,6 +329,26 @@ export default function OperationsDashboard() {
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [assignTo, setAssignTo] = useState('');
     const [selectedLeadForAssign, setSelectedLeadForAssign] = useState(null);
+
+    // Accordion State for Operations Pipeline Edit
+    const [openSections, setOpenSections] = useState({
+        leadInfo: false,
+        destinationRequest: false,
+        operationsActivity: true, // Open by default
+        vendorAssistance: false,
+        itineraryPreparation: false,
+        qualityCheck: false,
+        clientStatus: false
+    });
+
+    const toggleSection = (sectionKey) => {
+        setOpenSections(prev => ({ ...prev, [sectionKey]: !prev[sectionKey] }));
+    };
+
+    const handleHeaderClick = (e, sectionKey) => {
+        if (e.target.closest('button')) return;
+        toggleSection(sectionKey);
+    };
 
     const [activeModal, setActiveModal] = useState(null); 
     const [showScrollTop, setShowScrollTop] = useState(false);
@@ -756,7 +776,6 @@ export default function OperationsDashboard() {
                 const dmc = req.vendorDmcName?.trim();
                 const contact = req.vendorContactPerson?.trim();
                 
-                // Added a length check > 1 to prevent saving single random letters
                 if (dmc && dmc.length > 1) { 
                     if (!directory[dmc]) { 
                         directory[dmc] = []; 
@@ -792,7 +811,7 @@ export default function OperationsDashboard() {
         };
         
         updateLead(selectedLeadForEdit.id, payloadToSave);
-        setSelectedLeadForEdit(null); // RE-ADDED: Closes the form and returns to the jobs dashboard
+        setSelectedLeadForEdit(null); 
     };
 
     // --- FILTER & DISPLAY DATA ---
@@ -1824,325 +1843,378 @@ export default function OperationsDashboard() {
                                     <div className="space-y-6">
                                         {/* Section 1: LEAD INFO */}
                                         <div className={sectionCls} style={{ borderColor: 'rgba(51,65,85,0.8)' }}>
-                                            <h3 className={sectionHeadCls} style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
-                                                <span className="font-bold">LEAD INFO</span>
+                                            <h3 className={`${sectionHeadCls} cursor-pointer hover:text-white transition-colors`} 
+                                                style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}
+                                                onClick={(e) => handleHeaderClick(e, 'leadInfo')}>
+                                                <span className="font-bold flex items-center gap-2">
+                                                    LEAD INFO 
+                                                    <ChevronDown size={16} className={`transition-transform duration-200 ${openSections.leadInfo ? 'rotate-180' : ''}`} />
+                                                </span>
                                             </h3>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Date</label><input type="text" readOnly value={selectedLeadForEdit.dateAdded || selectedLeadForEdit.createdAt || selectedLeadForEdit.date || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Source</label><input type="text" readOnly value={selectedLeadForEdit.platform || selectedLeadForEdit.leadSource || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Campaign</label><input type="text" readOnly value={selectedLeadForEdit.campaign || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Name</label><input type="text" readOnly value={selectedLeadForEdit.customerName || selectedLeadForEdit.leadName || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Mobile Number</label><input type="text" readOnly value={selectedLeadForEdit.mobileNumber || selectedLeadForEdit.phone || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Email Address</label><input type="text" readOnly value={selectedLeadForEdit.emailAddress || selectedLeadForEdit.email || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Package Type</label><input type="text" readOnly value={selectedLeadForEdit.packageType || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Budget</label><input type="text" readOnly value={selectedLeadForEdit.budget || selectedLeadForEdit.amount || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Message From Lead</label><input type="text" readOnly value={selectedLeadForEdit.messageFromLead || selectedLeadForEdit.leadMessage || selectedLeadForEdit.message || ''} className={readonlyCls} /></div>
-                                            </div>
+                                            {openSections.leadInfo && (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4 animate-in slide-in-from-top-2 fade-in">
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Date</label><input type="text" readOnly value={selectedLeadForEdit.dateAdded || selectedLeadForEdit.createdAt || selectedLeadForEdit.date || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Source</label><input type="text" readOnly value={selectedLeadForEdit.platform || selectedLeadForEdit.leadSource || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Campaign</label><input type="text" readOnly value={selectedLeadForEdit.campaign || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Name</label><input type="text" readOnly value={selectedLeadForEdit.customerName || selectedLeadForEdit.leadName || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Mobile Number</label><input type="text" readOnly value={selectedLeadForEdit.mobileNumber || selectedLeadForEdit.phone || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Email Address</label><input type="text" readOnly value={selectedLeadForEdit.emailAddress || selectedLeadForEdit.email || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Package Type</label><input type="text" readOnly value={selectedLeadForEdit.packageType || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Budget</label><input type="text" readOnly value={selectedLeadForEdit.budget || selectedLeadForEdit.amount || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Message From Lead</label><input type="text" readOnly value={selectedLeadForEdit.messageFromLead || selectedLeadForEdit.leadMessage || selectedLeadForEdit.message || ''} className={readonlyCls} /></div>
+                                                </div>
+                                            )}
                                         </div>
 
                                         {/* Section 2: DESTINATION REQUEST */}
                                         <div className={sectionCls} style={{ borderColor: 'rgba(51,65,85,0.8)' }}>
-                                            <h3 className={sectionHeadCls} style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
-                                                <div className="flex items-center gap-2"><span className="font-bold">DESTINATION REQUEST</span></div>
+                                            <h3 className={`${sectionHeadCls} cursor-pointer hover:text-white transition-colors`} 
+                                                style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}
+                                                onClick={(e) => handleHeaderClick(e, 'destinationRequest')}>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-bold flex items-center gap-2">
+                                                        DESTINATION REQUEST
+                                                        <ChevronDown size={16} className={`transition-transform duration-200 ${openSections.destinationRequest ? 'rotate-180' : ''}`} />
+                                                    </span>
+                                                </div>
                                                 <div className="flex items-center gap-2">
                                                     <button type="button" onClick={() => setActiveModal({ type: 'view', section: 'Destination Request' })} className="flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded text-xs font-bold transition-colors cursor-pointer"><Eye size={14} /> View</button>
                                                 </div>
                                             </h3>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Destination</label><input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.destination || selectedLeadForEdit.destination || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Customisation Type</label><input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.customisationType || selectedLeadForEdit.customisationType || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Required By</label><input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.requiredByDate || selectedLeadForEdit.customisationRequests?.[0]?.turnaroundTime || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Package Type</label><input type="text" readOnly value={selectedLeadForEdit.tourType || selectedLeadForEdit.packageType || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Travel Date</label><DatePickerField type="date" readOnly value={selectedLeadForEdit.travelDate || selectedLeadForEdit.travelDates || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Duration</label><input type="text" readOnly value={selectedLeadForEdit.duration || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">No. Of Pax</label><input type="text" readOnly value={`${selectedLeadForEdit.noOfAdults || '0'} Adults, ${selectedLeadForEdit.noOfChildren || '0'} Children`} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Hotel Category</label><input type="text" readOnly value={selectedLeadForEdit.hotelCategory || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Budget</label><input type="text" readOnly value={selectedLeadForEdit.travelBudget || selectedLeadForEdit.budget || selectedLeadForEdit.amount || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Service</label><input type="text" readOnly value={selectedLeadForEdit.services || selectedLeadForEdit.service || ''} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-bold text-slate-400 mb-1">Departure City</label><input type="text" readOnly value={selectedLeadForEdit.departureCity || ''} className={readonlyCls} /></div>
-                                                <div className="hidden md:block"></div> 
-                                                <div className="md:col-span-3">
-                                                    <label className="block text-xs font-bold text-slate-400 mb-1">Requirements</label>
-                                                    <textarea readOnly rows={2} value={selectedLeadForEdit.customisationRequests?.[0]?.requirements || selectedLeadForEdit.requirements || ''} className={`${readonlyCls} resize-none`} />
+                                            {openSections.destinationRequest && (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4 animate-in slide-in-from-top-2 fade-in">
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Destination</label><input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.destination || selectedLeadForEdit.destination || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Customisation Type</label><input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.customisationType || selectedLeadForEdit.customisationType || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Required By</label><input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.requiredByDate || selectedLeadForEdit.customisationRequests?.[0]?.turnaroundTime || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Package Type</label><input type="text" readOnly value={selectedLeadForEdit.tourType || selectedLeadForEdit.packageType || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Travel Date</label><DatePickerField type="date" readOnly value={selectedLeadForEdit.travelDate || selectedLeadForEdit.travelDates || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Duration</label><input type="text" readOnly value={selectedLeadForEdit.duration || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">No. Of Pax</label><input type="text" readOnly value={`${selectedLeadForEdit.noOfAdults || '0'} Adults, ${selectedLeadForEdit.noOfChildren || '0'} Children`} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Hotel Category</label><input type="text" readOnly value={selectedLeadForEdit.hotelCategory || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Budget</label><input type="text" readOnly value={selectedLeadForEdit.travelBudget || selectedLeadForEdit.budget || selectedLeadForEdit.amount || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Service</label><input type="text" readOnly value={selectedLeadForEdit.services || selectedLeadForEdit.service || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Departure City</label><input type="text" readOnly value={selectedLeadForEdit.departureCity || ''} className={readonlyCls} /></div>
+                                                    <div className="hidden md:block"></div> 
+                                                    <div className="md:col-span-3">
+                                                        <label className="block text-xs font-bold text-slate-400 mb-1">Requirements</label>
+                                                        <textarea readOnly rows={2} value={selectedLeadForEdit.customisationRequests?.[0]?.requirements || selectedLeadForEdit.requirements || ''} className={`${readonlyCls} resize-none`} />
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            )}
                                         </div>
 
                                         {/* Section 3: OPERATIONS ACTIVITY */}
                                         <div className={sectionCls}>
-                                            <div className="flex justify-between items-center mb-5 border-b border-slate-800/60 pb-3">
-                                                <h3 className="text-sm font-bold text-cyan-400 tracking-wider uppercase m-0">OPERATIONS ACTIVITY</h3>
+                                            <div className="flex justify-between items-center mb-2 border-b border-slate-800/60 pb-3 cursor-pointer hover:bg-slate-800/20 transition-colors"
+                                                 onClick={(e) => handleHeaderClick(e, 'operationsActivity')}>
+                                                <h3 className="text-sm font-bold text-cyan-400 tracking-wider uppercase m-0 flex items-center gap-2">
+                                                    OPERATIONS ACTIVITY
+                                                    <ChevronDown size={16} className={`transition-transform duration-200 ${openSections.operationsActivity ? 'rotate-180' : ''}`} />
+                                                </h3>
                                                 <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
                                                     <button type="button" onClick={() => setActiveModal({ type: 'history', section: 'Operations Activity' })} className="hover:text-cyan-400 cursor-pointer transition-colors bg-transparent border-none p-0">History</button>
                                                     <span className="text-slate-600">|</span>
                                                     <button type="button" className="hover:text-cyan-400 cursor-pointer transition-colors bg-transparent border-none p-0">Edit</button>
                                                 </div>
                                             </div>
-                                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-2">
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1.5">Destinations</label>
-                                                    <CustomSelect 
-                                                        value={selectedLeadForEdit.destination} 
-                                                        onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, destination: v })} 
-                                                        className={selectCls} 
-                                                        options={destinationOptions} 
-                                                        placeholder=" "
-                                                    />
+                                            {openSections.operationsActivity && (
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 pt-3 animate-in slide-in-from-top-2 fade-in">
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Destinations</label>
+                                                        <CustomSelect 
+                                                            value={selectedLeadForEdit.destination} 
+                                                            onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, destination: v })} 
+                                                            className={selectCls} 
+                                                            options={destinationOptions} 
+                                                            placeholder=" "
+                                                        />
+                                                    </div>
+                                                
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Work Type</label>
+                                                        <CustomSelect value={selectedLeadForEdit.workType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, workType: v })} className={selectCls} options={[  'Vendor Assistance', 'Self Preparation','Only Price']} />
+                                                    </div>
                                                 </div>
-                                              
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1.5">Work Type</label>
-                                                    <CustomSelect value={selectedLeadForEdit.workType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, workType: v })} className={selectCls} options={['FIT', 'Vendor Assistance', 'Group Departure']} />
-                                                </div>
-                                            </div>
+                                            )}
                                         </div>
 
                                         {/* Section 4: VENDOR ASSISTANCE */}
                                         {selectedLeadForEdit.workType === 'Vendor Assistance' && (
                                             <div className={sectionCls}>
-                                                <h3 className={sectionHeadCls} style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
-                                                    <span className="font-bold uppercase tracking-wider">VENDOR ASSISTANCE</span>
+                                                <h3 className={`${sectionHeadCls} cursor-pointer hover:text-white transition-colors`} 
+                                                    style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}
+                                                    onClick={(e) => handleHeaderClick(e, 'vendorAssistance')}>
+                                                    <span className="font-bold uppercase tracking-wider flex items-center gap-2">
+                                                        VENDOR ASSISTANCE
+                                                        <ChevronDown size={16} className={`transition-transform duration-200 ${openSections.vendorAssistance ? 'rotate-180' : ''}`} />
+                                                    </span>
                                                 </h3>
                                                 
-                                                {selectedLeadForEdit.vendorRequests?.map((req, index) => (
-                                                    <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative mb-4 mt-2">
-                                                        {selectedLeadForEdit.vendorRequests.length > 1 && (
-                                                            <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-cyan-400 border border-slate-700 rounded">VENDOR {index + 1}</span>
-                                                        )}
-                                                        {index > 0 && (
-                                                            <button type="button" onClick={() => removeArrayItem('vendorRequests', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>
-                                                        )}
-                                                        
-                                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-2">
-                                                            <div>
-                                                                <label className="block text-xs font-bold text-slate-400 mb-1.5">Destination</label>
-                                                                <input type="text" readOnly value={selectedLeadForEdit.destination} className={readonlyCls} />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-xs font-bold text-slate-300 mb-1.5">Services</label>
-                                                                <CustomSelect 
-                                                                    value={req.vendorService} 
-                                                                    onChange={v => {
-                                                                        const newReqs = [...selectedLeadForEdit.vendorRequests];
-                                                                        newReqs[index].vendorService = v;
-                                                                        newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
-                                                                        setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
-                                                                    }} 
-                                                                    className={selectCls} 
-                                                                    options={['Complete Package', 'Land Only', 'VISA', 'Insurance', 'Hotel Only', 'Vehicle Only', 'Others']} 
-                                                                    hideDefaultManual={true}
-                                                                    manualTrigger="Others"
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-xs font-bold text-slate-300 mb-1.5">DMC Name</label>
-                                                                <CustomSelect 
-                                                                    value={req.vendorDmcName} 
-                                                                    onChange={v => handleArrayChange('vendorRequests', index, 'vendorDmcName', v)} 
-                                                                    className={selectCls} 
-                                                                    options={finalDmcOptions} 
-                                                                />
-                                                            </div>
-
-                                                            <div>
-                                                                <label className="block text-xs font-bold text-slate-300 mb-1.5">Contact Person</label>
-                                                                <CustomSelect 
-                                                                    value={req.vendorContactPerson} 
-                                                                    onChange={v => {
-                                                                        const newReqs = [...selectedLeadForEdit.vendorRequests];
-                                                                        newReqs[index].vendorContactPerson = v;
-                                                                        newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
-                                                                        setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
-                                                                    }} 
-                                                                    className={selectCls} 
-                                                                    options={getContactsForDMC(req.vendorDmcName)} 
-                                                                />
-                                                            </div>
-                                                            <div>
-                                                                <label className="block text-xs font-bold text-slate-300 mb-1.5">Contact Method</label>
-                                                                <CustomSelect 
-                                                                    value={req.contactMethod} 
-                                                                    onChange={v => handleArrayChange('vendorRequests', index, 'contactMethod', v)} 
-                                                                    className={selectCls} 
-                                                                    options={['Email ', 'WhatsApp ', ' Call']} 
-                                                                />
-                                                            </div>
-
-                                                            {req.vendorService === 'VISA' && (
-                                                                <div>
-                                                                    <label className="block text-xs font-bold text-slate-300 mb-1.5">VISA Type</label>
-                                                                    <CustomSelect 
-                                                                        value={req.vendorVisaType || ''} 
-                                                                        onChange={v => {
-                                                                            const newReqs = [...selectedLeadForEdit.vendorRequests];
-                                                                            newReqs[index].vendorVisaType = v;
-                                                                            newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
-                                                                            setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
-                                                                        }} 
-                                                                        className={selectCls} 
-                                                                        options={['Tourist', 'Business', 'Transit', 'e-Visa']} 
-                                                                    />
-                                                                </div>
-                                                            )}
-
-                                                            {req.vendorService === 'Hotel Only' && (
-                                                                <>
+                                                {openSections.vendorAssistance && (
+                                                    <div className="animate-in slide-in-from-top-2 fade-in">
+                                                        {selectedLeadForEdit.vendorRequests?.map((req, index) => (
+                                                            <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative mb-4 mt-2">
+                                                                {selectedLeadForEdit.vendorRequests.length > 1 && (
+                                                                    <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-cyan-400 border border-slate-700 rounded">VENDOR {index + 1}</span>
+                                                                )}
+                                                                {index > 0 && (
+                                                                    <button type="button" onClick={() => removeArrayItem('vendorRequests', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>
+                                                                )}
+                                                                
+                                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-2">
                                                                     <div>
-                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Check-in Date</label>
-                                                                        <DatePickerField type="date" value={req.vendorCheckInDate || ''} onChange={e => {
-                                                                            const newReqs = [...selectedLeadForEdit.vendorRequests];
-                                                                            newReqs[index].vendorCheckInDate = e.target.value;
-                                                                            newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
-                                                                            setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
-                                                                        }} className={inputCls} />
+                                                                        <label className="block text-xs font-bold text-slate-400 mb-1.5">Destination</label>
+                                                                        <input type="text" readOnly value={selectedLeadForEdit.destination} className={readonlyCls} />
                                                                     </div>
                                                                     <div>
-                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Check-out Date</label>
-                                                                        <DatePickerField type="date" value={req.vendorCheckOutDate || ''} onChange={e => {
-                                                                            const newReqs = [...selectedLeadForEdit.vendorRequests];
-                                                                            newReqs[index].vendorCheckOutDate = e.target.value;
-                                                                            newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
-                                                                            setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
-                                                                        }} className={inputCls} />
-                                                                    </div>
-                                                                    <div>
-                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Rooms Required</label>
+                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Services</label>
                                                                         <CustomSelect 
-                                                                            value={req.vendorRoomsRequired || ''} 
+                                                                            value={req.vendorService} 
                                                                             onChange={v => {
                                                                                 const newReqs = [...selectedLeadForEdit.vendorRequests];
-                                                                                newReqs[index].vendorRoomsRequired = v;
+                                                                                newReqs[index].vendorService = v;
                                                                                 newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
                                                                                 setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
                                                                             }} 
                                                                             className={selectCls} 
-                                                                            options={['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']} 
+                                                                            options={['Complete Package', 'Land Only', 'VISA', 'Insurance', 'Hotel Only', 'Vehicle Only', 'Others']} 
+                                                                            hideDefaultManual={true}
+                                                                            manualTrigger="Others"
                                                                         />
                                                                     </div>
-                                                                </>
-                                                            )}
+                                                                    <div>
+                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">DMC Name</label>
+                                                                        <CustomSelect 
+                                                                            value={req.vendorDmcName} 
+                                                                            onChange={v => handleArrayChange('vendorRequests', index, 'vendorDmcName', v)} 
+                                                                            className={selectCls} 
+                                                                            options={finalDmcOptions} 
+                                                                        />
+                                                                    </div>
 
-                                                            {req.vendorService === 'Vehicle Only' && (
-                                                                <>
                                                                     <div>
-                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Vehicle Type</label>
-                                                                        <CustomSelect value={req.vendorVehicleType || ''} onChange={v => {
-                                                                            const newReqs = [...selectedLeadForEdit.vendorRequests];
-                                                                            newReqs[index].vendorVehicleType = v;
-                                                                            newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
-                                                                            setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
-                                                                        }} className={selectCls} options={['Sedan', 'SUV', 'Minivan', 'Coach']} />
-                                                                    </div>
-                                                                    <div>
-                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Pickup Location</label>
-                                                                        <input type="text" value={req.vendorPickupLocation || ''} onChange={e => {
-                                                                            const newReqs = [...selectedLeadForEdit.vendorRequests];
-                                                                            newReqs[index].vendorPickupLocation = e.target.value;
-                                                                            newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
-                                                                            setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
-                                                                        }} className={inputCls} />
+                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Contact Person</label>
+                                                                        <CustomSelect 
+                                                                            value={req.vendorContactPerson} 
+                                                                            onChange={v => {
+                                                                                const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                                newReqs[index].vendorContactPerson = v;
+                                                                                newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                                setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                            }} 
+                                                                            className={selectCls} 
+                                                                            options={getContactsForDMC(req.vendorDmcName)} 
+                                                                        />
                                                                     </div>
                                                                     <div>
-                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Drop Location</label>
-                                                                        <input type="text" value={req.vendorDropLocation || ''} onChange={e => {
-                                                                            const newReqs = [...selectedLeadForEdit.vendorRequests];
-                                                                            newReqs[index].vendorDropLocation = e.target.value;
-                                                                            newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
-                                                                            setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
-                                                                        }} className={inputCls} />
+                                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Contact Method</label>
+                                                                        <CustomSelect 
+                                                                            value={req.contactMethod} 
+                                                                            onChange={v => handleArrayChange('vendorRequests', index, 'contactMethod', v)} 
+                                                                            className={selectCls} 
+                                                                            options={['Email ', 'WhatsApp ', ' Call']} 
+                                                                        />
                                                                     </div>
-                                                                </>
-                                                            )}
-                                                            
-                                                            {req.vendorMessage && (
-                                                                <div className="sm:col-span-3 mt-2 bg-[#091124] border border-slate-700/60 rounded-xl overflow-hidden shadow-inner transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
-                                                                    <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700/60 bg-slate-900/50">
-                                                                        <label className="block text-sm font-bold text-slate-200">Message Format Review & Edit <span className="text-orange-100 ml-1"> ({req.vendorService || 'Custom'})</span></label>
-                                                                        <button type="button" onClick={() => copyToClipboard(req.vendorMessage)} className="px-4 py-1.5 bg-[#16D3F2]/10 hover:bg-[#16D3F2]/20 text-[#16D3F2] rounded text-xs font-bold transition-colors cursor-pointer border border-[#16D3F2]/30 flex items-center gap-1.5 shadow-sm"><Copy size={14}/> Copy </button>
-                                                                    </div>
-                                                                    <div className="p-1">
-                                                                        <textarea rows="16" value={req.vendorMessage} onChange={e => handleArrayChange('vendorRequests', index, 'vendorMessage', e.target.value)} className="w-full bg-transparent border-none text-slate-300 text-[13px] leading-relaxed p-4 focus:ring-0 outline-none custom-scrollbar resize-y" spellCheck="false" />
-                                                                    </div>
+
+                                                                    {req.vendorService === 'VISA' && (
+                                                                        <div>
+                                                                            <label className="block text-xs font-bold text-slate-300 mb-1.5">VISA Type</label>
+                                                                            <CustomSelect 
+                                                                                value={req.vendorVisaType || ''} 
+                                                                                onChange={v => {
+                                                                                    const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                                    newReqs[index].vendorVisaType = v;
+                                                                                    newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                                    setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                                }} 
+                                                                                className={selectCls} 
+                                                                                options={['Tourist', 'Business', 'Transit', 'e-Visa']} 
+                                                                            />
+                                                                        </div>
+                                                                    )}
+
+                                                                    {req.vendorService === 'Hotel Only' && (
+                                                                        <>
+                                                                            <div>
+                                                                                <label className="block text-xs font-bold text-slate-300 mb-1.5">Check-in Date</label>
+                                                                                <DatePickerField type="date" value={req.vendorCheckInDate || ''} onChange={e => {
+                                                                                    const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                                    newReqs[index].vendorCheckInDate = e.target.value;
+                                                                                    newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                                    setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                                }} className={inputCls} />
+                                                                            </div>
+                                                                            <div>
+                                                                                <label className="block text-xs font-bold text-slate-300 mb-1.5">Check-out Date</label>
+                                                                                <DatePickerField type="date" value={req.vendorCheckOutDate || ''} onChange={e => {
+                                                                                    const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                                    newReqs[index].vendorCheckOutDate = e.target.value;
+                                                                                    newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                                    setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                                }} className={inputCls} />
+                                                                            </div>
+                                                                            <div>
+                                                                                <label className="block text-xs font-bold text-slate-300 mb-1.5">Rooms Required</label>
+                                                                                <CustomSelect 
+                                                                                    value={req.vendorRoomsRequired || ''} 
+                                                                                    onChange={v => {
+                                                                                        const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                                        newReqs[index].vendorRoomsRequired = v;
+                                                                                        newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                                        setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                                    }} 
+                                                                                    className={selectCls} 
+                                                                                    options={['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']} 
+                                                                                />
+                                                                            </div>
+                                                                        </>
+                                                                    )}
+
+                                                                    {req.vendorService === 'Vehicle Only' && (
+                                                                        <>
+                                                                            <div>
+                                                                                <label className="block text-xs font-bold text-slate-300 mb-1.5">Vehicle Type</label>
+                                                                                <CustomSelect value={req.vendorVehicleType || ''} onChange={v => {
+                                                                                    const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                                    newReqs[index].vendorVehicleType = v;
+                                                                                    newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                                    setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                                }} className={selectCls} options={['Sedan', 'SUV', 'Minivan', 'Coach']} />
+                                                                            </div>
+                                                                            <div>
+                                                                                <label className="block text-xs font-bold text-slate-300 mb-1.5">Pickup Location</label>
+                                                                                <input type="text" value={req.vendorPickupLocation || ''} onChange={e => {
+                                                                                    const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                                    newReqs[index].vendorPickupLocation = e.target.value;
+                                                                                    newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                                    setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                                }} className={inputCls} />
+                                                                            </div>
+                                                                            <div>
+                                                                                <label className="block text-xs font-bold text-slate-300 mb-1.5">Drop Location</label>
+                                                                                <input type="text" value={req.vendorDropLocation || ''} onChange={e => {
+                                                                                    const newReqs = [...selectedLeadForEdit.vendorRequests];
+                                                                                    newReqs[index].vendorDropLocation = e.target.value;
+                                                                                    newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
+                                                                                    setSelectedLeadForEdit({ ...selectedLeadForEdit, vendorRequests: newReqs });
+                                                                                }} className={inputCls} />
+                                                                            </div>
+                                                                        </>
+                                                                    )}
+                                                                    
+                                                                    {req.vendorMessage && (
+                                                                        <div className="sm:col-span-3 mt-2 bg-[#091124] border border-slate-700/60 rounded-xl overflow-hidden shadow-inner transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
+                                                                            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-700/60 bg-slate-900/50">
+                                                                                <label className="block text-sm font-bold text-slate-200">Message Format Review & Edit <span className="text-orange-100 ml-1"> ({req.vendorService || 'Custom'})</span></label>
+                                                                                <button type="button" onClick={() => copyToClipboard(req.vendorMessage)} className="px-4 py-1.5 bg-[#16D3F2]/10 hover:bg-[#16D3F2]/20 text-[#16D3F2] rounded text-xs font-bold transition-colors cursor-pointer border border-[#16D3F2]/30 flex items-center gap-1.5 shadow-sm"><Copy size={14}/> Copy </button>
+                                                                            </div>
+                                                                            <div className="p-1">
+                                                                                <textarea rows="16" value={req.vendorMessage} onChange={e => handleArrayChange('vendorRequests', index, 'vendorMessage', e.target.value)} className="w-full bg-transparent border-none text-slate-300 text-[13px] leading-relaxed p-4 focus:ring-0 outline-none custom-scrollbar resize-y" spellCheck="false" />
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-                                                            )}
+                                                            </div>
+                                                        ))}
+
+                                                        <div className="sm:col-span-3 mt-4 flex justify-end">
+                                                            <button type="button" onClick={() => addArrayItem('vendorRequests', { vendorService: '', vendorDmcName: '', vendorContactPerson: '', contactMethod: '', vendorVisaType: '', vendorMessage: '' })} className="text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md px-4 py-2 transition-colors flex items-center gap-1.5 cursor-pointer">
+                                                                <Plus size={14}/> Add Another Vendor
+                                                            </button>
                                                         </div>
                                                     </div>
-                                                ))}
-
-                                                <div className="sm:col-span-3 mt-4 flex justify-end">
-                                                    <button type="button" onClick={() => addArrayItem('vendorRequests', { vendorService: '', vendorDmcName: '', vendorContactPerson: '', contactMethod: '', vendorVisaType: '', vendorMessage: '' })} className="text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md px-4 py-2 transition-colors flex items-center gap-1.5 cursor-pointer">
-                                                        <Plus size={14}/> Add Another Vendor
-                                                    </button>
-                                                </div>
+                                                )}
                                             </div>
                                         )}
 
                                         {/* Section 5: Itinerary Preparation */}
                                         <div className={sectionCls}>
-                                            <h3 className={sectionHeadCls} style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
-                                                <span className="font-bold">Itinerary Preparation</span>
+                                            <h3 className={`${sectionHeadCls} cursor-pointer hover:text-white transition-colors`} 
+                                                style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}
+                                                onClick={(e) => handleHeaderClick(e, 'itineraryPreparation')}>
+                                                <span className="font-bold flex items-center gap-2">
+                                                    Itinerary Preparation
+                                                    <ChevronDown size={16} className={`transition-transform duration-200 ${openSections.itineraryPreparation ? 'rotate-180' : ''}`} />
+                                                </span>
                                                 <div className="flex items-center gap-1.5">
                                                     <button type="button" onClick={() => setActiveModal({ type: 'view', section: 'Itinerary Preparation' })} className="flex items-center gap-1 px-2.5 py-1 bg-slate-800/50 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-[10px] uppercase font-bold transition-colors cursor-pointer"><Eye size={12} /> View</button>
                                                     <button type="button" className="flex items-center gap-1 px-2.5 py-1 bg-slate-800/50 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-[10px] uppercase font-bold transition-colors cursor-pointer"><Pencil size={12} /> Edit</button>
                                                 </div>
                                             </h3>   
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Preparation Method</label>
-                                                    <CustomSelect value={selectedLeadForEdit.preparationMethod} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, preparationMethod: v })} className={selectCls} options={['Portal Designer v2', 'Manual Template Excel Sheet', 'External API Integrator Suite']} />
+                                            {openSections.itineraryPreparation && (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4 animate-in slide-in-from-top-2 fade-in">
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Preparation Method</label>
+                                                        <CustomSelect value={selectedLeadForEdit.preparationMethod} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, preparationMethod: v })} className={selectCls} options={['Portal Designer v2', 'Manual Template Excel Sheet', 'External API Integrator Suite']} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Itinerary Version</label>
+                                                        <CustomSelect value={selectedLeadForEdit.itineraryVersion} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, itineraryVersion: v })} className={selectCls} options={['1.0.0', '1.1.0', '2.0.0']} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Working Notes</label>
+                                                        <textarea rows="1" value={selectedLeadForEdit.workingNotes} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, workingNotes: e.target.value })} className={inputCls} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Date & Time</label>
+                                                        <DatePickerField type="datetime-local" value={selectedLeadForEdit.itineraryPrepDate} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, itineraryPrepDate: e.target.value })} className={inputCls} />
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Itinerary Version</label>
-                                                    <CustomSelect value={selectedLeadForEdit.itineraryVersion} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, itineraryVersion: v })} className={selectCls} options={['1.0.0', '1.1.0', '2.0.0']} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Working Notes</label>
-                                                    <textarea rows="1" value={selectedLeadForEdit.workingNotes} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, workingNotes: e.target.value })} className={inputCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Date & Time</label>
-                                                    <DatePickerField type="datetime-local" value={selectedLeadForEdit.itineraryPrepDate} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, itineraryPrepDate: e.target.value })} className={inputCls} />
-                                                </div>
-                                            </div>
+                                            )}
                                         </div>
 
                                         {/* Section 6: Quality Check */}
                                         <div className={sectionCls}>
-                                            <h3 className={sectionHeadCls} style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
-                                                <span className="font-bold">Quality Check</span>
+                                            <h3 className={`${sectionHeadCls} cursor-pointer hover:text-white transition-colors`} 
+                                                style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}
+                                                onClick={(e) => handleHeaderClick(e, 'qualityCheck')}>
+                                                <span className="font-bold flex items-center gap-2">
+                                                    Quality Check
+                                                    <ChevronDown size={16} className={`transition-transform duration-200 ${openSections.qualityCheck ? 'rotate-180' : ''}`} />
+                                                </span>
                                                 <div className="flex items-center gap-1.5">
                                                     <button type="button" onClick={() => setActiveModal({ type: 'view', section: 'Quality Check' })} className="flex items-center gap-1 px-2.5 py-1 bg-slate-800/50 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-[10px] uppercase font-bold transition-colors cursor-pointer"><Eye size={12} /> View</button>
                                                     <button type="button" className="flex items-center gap-1 px-2.5 py-1 bg-slate-800/50 hover:bg-slate-700 border border-slate-700 text-slate-300 rounded text-[10px] uppercase font-bold transition-colors cursor-pointer"><Pencil size={12} /> Edit</button>
                                                 </div>
                                             </h3>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">QC Status</label>
-                                                    <CustomSelect value={selectedLeadForEdit.qcStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, qcStatus: v })} className={selectCls} options={['Pending Review', 'Approved', 'Correction Needed']} />
+                                            {openSections.qualityCheck && (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4 animate-in slide-in-from-top-2 fade-in">
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-300 mb-1">QC Status</label>
+                                                        <CustomSelect value={selectedLeadForEdit.qcStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, qcStatus: v })} className={selectCls} options={['Pending Review', 'Approved', 'Correction Needed']} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-300 mb-1">QC Remarks</label>
+                                                        <textarea rows="1" value={selectedLeadForEdit.qcRemarks} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, qcRemarks: e.target.value })} className={inputCls} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Reviewed By</label>
+                                                        <input type="text" value={selectedLeadForEdit.reviewedBy} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, reviewedBy: e.target.value })} className={inputCls} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-300 mb-1">Date & Time</label>
+                                                        <DatePickerField type="datetime-local" value={selectedLeadForEdit.qcDate} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, qcDate: e.target.value })} className={inputCls} />
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">QC Remarks</label>
-                                                    <textarea rows="1" value={selectedLeadForEdit.qcRemarks} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, qcRemarks: e.target.value })} className={inputCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Reviewed By</label>
-                                                    <input type="text" value={selectedLeadForEdit.reviewedBy} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, reviewedBy: e.target.value })} className={inputCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-300 mb-1">Date & Time</label>
-                                                    <DatePickerField type="datetime-local" value={selectedLeadForEdit.qcDate} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, qcDate: e.target.value })} className={inputCls} />
-                                                </div>
-                                            </div>
+                                            )}
                                         </div>
 
                                         {/* Section 7: Client Status */}
                                         <div className={sectionCls}>
-                                            <h3 className={sectionHeadCls}>Client Status</h3>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-                                                <div><label className="block text-xs font-medium text-slate-500 mb-1">Lead Status</label><input type="text" readOnly value={selectedLeadForEdit.status || selectedLeadForEdit.leadStatus} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-medium text-slate-500 mb-1">Sales Funnel Lead Status</label><input type="text" readOnly value={selectedLeadForEdit.salesFunnelLeadStatus} className={readonlyCls} /></div>
-                                                <div><label className="block text-xs font-medium text-slate-500 mb-1">Sales Remarks</label><input type="text" readOnly value={selectedLeadForEdit.salesRemarks} className={readonlyCls} /></div>
-                                            </div>
+                                            <h3 className={`${sectionHeadCls} cursor-pointer hover:text-white transition-colors`} 
+                                                onClick={(e) => handleHeaderClick(e, 'clientStatus')}>
+                                                <span className="font-bold flex items-center gap-2">
+                                                    Client Status
+                                                    <ChevronDown size={16} className={`transition-transform duration-200 ${openSections.clientStatus ? 'rotate-180' : ''}`} />
+                                                </span>
+                                            </h3>
+                                            {openSections.clientStatus && (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4 animate-in slide-in-from-top-2 fade-in">
+                                                    <div><label className="block text-xs font-medium text-slate-500 mb-1">Lead Status</label><input type="text" readOnly value={selectedLeadForEdit.status || selectedLeadForEdit.leadStatus} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-medium text-slate-500 mb-1">Sales Funnel Lead Status</label><input type="text" readOnly value={selectedLeadForEdit.salesFunnelLeadStatus} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-medium text-slate-500 mb-1">Sales Remarks</label><input type="text" readOnly value={selectedLeadForEdit.salesRemarks} className={readonlyCls} /></div>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 )}
