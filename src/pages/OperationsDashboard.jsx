@@ -5,7 +5,7 @@ import {
     ShoppingCart, Target, X, Send, AlertCircle, CheckCircle2,
     Mic, Trash2, Layers, BookmarkCheck, PlaneTakeoff, Info,
     Briefcase, FileText, Activity, ShieldCheck, Share2, Play, Square, Plus,
-    ChevronLeft, ChevronRight, ArrowUp, Copy, ChevronDown
+    ChevronLeft, ChevronRight, ArrowUp, Copy, ChevronDown, Repeat
 } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
 
@@ -29,6 +29,21 @@ const getOperationTourType = (lead) => {
     return lead.tourType || 'International Tour';
 };
 
+const getDaysToDeparture = (dateString) => {
+    if (!dateString) return 'N/A';
+    const depDate = new Date(dateString);
+    if (isNaN(depDate)) return 'Invalid Date';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    depDate.setHours(0, 0, 0, 0);
+    const diffTime = depDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays < 0) return 'Departed';
+    if (diffDays === 0) return 'Today';
+    return `${diffDays} Days`;
+};
+
 // ─── DYNAMIC MESSAGE GENERATOR FOR VENDOR ASSISTANCE ──────────────────────────
 const generateVendorMessage = (req, lead) => {
     const contact = req.vendorContactPerson || '[Contact Person - Vendor Assistance]';
@@ -42,7 +57,6 @@ const generateVendorMessage = (req, lead) => {
     const vType = req.vendorVisaType || '[VISA Type]';
     const srv = req.vendorService;
 
-    // New specific fields
     const checkIn = req.vendorCheckInDate || '[Check-in Date - Vendor Assistance]';
     const checkOut = req.vendorCheckOutDate || '[Check-out Date - Vendor Assistance]';
     const roomsReq = req.vendorRoomsRequired || '[Rooms Required - Vendor Assistance]';
@@ -938,6 +952,7 @@ export default function OperationsDashboard() {
     const totalPages = Math.max(1, Math.ceil(filtered.length / entriesPerPage));
     const paginated = filtered.slice((currentPage - 1) * entriesPerPage, currentPage * entriesPerPage);
 
+    // Categories Updated to Match Screenshot Labels
     const categories = [
         { id: 'New Requests', label: 'Jobs', icon: ShoppingCart, count: countNew },
         { id: 'Follow-Up', label: 'My Jobs', icon: Target, count: countFollow },
@@ -1099,125 +1114,190 @@ export default function OperationsDashboard() {
                                 <table className="w-full text-left text-sm text-slate-200 min-w-[900px]">
                                     <thead className="bg-transparent border-b border-slate-700/20 text-xs uppercase tracking-wider text-slate-400 font-semibold">
                                         <tr>
-                                            {activeTab === 'Confirmed Bookings' ? (
-                                                <>
-                                                    <th className="px-6 py-4">Job Id</th>
-                                                    <th className="px-6 py-4">Lead Info</th>
-                                                    <th className="px-6 py-4">Tour Details</th>
-                                                    <th className="px-6 py-4">Confirmed Date</th>
-                                                    <th className="px-6 py-4">Confirmed Method</th>
-                                                    <th className="px-6 py-4">Value</th>
-                                                </>
-                                            ) : (
+                                            {activeTab === 'New Requests' && (
                                                 <>
                                                     <th className="px-6 py-4">Job ID</th>
-                                                    <th className="px-6 py-4">Client</th>
-                                                    <th className="px-6 py-4">Destination</th>
-                                                    <th className="px-6 py-4">Work / Priority</th>
-                                                    {activeTab === 'Follow-Up' && <th className="px-6 py-4">Vendor</th>}
-                                                    {activeTab === 'Upcoming Bookings' && <th className="px-6 py-4">Status</th>}
+                                                    <th className="px-6 py-4">Lead Name</th>
+                                                    <th className="px-6 py-4">Travel Details</th>
+                                                    <th className="px-6 py-4">Customisation Type</th>
+                                                    <th className="px-6 py-4">Sale Executive</th>
+                                                    <th className="px-6 py-4">Received On</th>
+                                                    <th className="px-6 py-4 text-right">Action</th>
                                                 </>
                                             )}
-                                            <th className="px-6 py-4 text-right">Actions</th>
+                                            {activeTab === 'Follow-Up' && (
+                                                <>
+                                                    <th className="px-6 py-4">Job ID</th>
+                                                    <th className="px-6 py-4">Lead Name</th>
+                                                    <th className="px-6 py-4">Travel Details</th>
+                                                    <th className="px-6 py-4">Work Details</th>
+                                                    <th className="px-6 py-4">Expected By</th>
+                                                    <th className="px-6 py-4">Sale Executive</th>
+                                                    <th className="px-6 py-4 text-right">Action</th>
+                                                </>
+                                            )}
+                                            {activeTab === 'Confirmed Bookings' && (
+                                                <>
+                                                    <th className="px-6 py-4">Job ID</th>
+                                                    <th className="px-6 py-4">Lead Details</th>
+                                                    <th className="px-6 py-4">Travel Details</th>
+                                                    <th className="px-6 py-4">Travel Dates</th>
+                                                    <th className="px-6 py-4">Services</th>
+                                                    <th className="px-6 py-4">Sale Executive</th>
+                                                    <th className="px-6 py-4 text-right">Action</th>
+                                                </>
+                                            )}
+                                            {activeTab === 'Upcoming Bookings' && (
+                                                <>
+                                                    <th className="px-6 py-4">Job ID</th>
+                                                    <th className="px-6 py-4">Lead Details</th>
+                                                    <th className="px-6 py-4">Travel Details</th>
+                                                    <th className="px-6 py-4">Travel Dates</th>
+                                                    <th className="px-6 py-4">Days to Departure</th>
+                                                    <th className="px-6 py-4">Sale Executive</th>
+                                                    <th className="px-6 py-4 text-right">Action</th>
+                                                </>
+                                            )}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-700/20">
                                         {isLoading ? (
-                                            <tr><td colSpan="11" className="px-6 py-12 text-center text-slate-500">Querying database records...</td></tr>
+                                            <tr><td colSpan="7" className="px-6 py-12 text-center text-slate-500">Querying database records...</td></tr>
                                         ) : paginated.length > 0 ? paginated.map(row => (
                                             <tr key={row.uniqueKey} className="hover:bg-slate-800/30 transition-colors">
-                                                {activeTab === 'Confirmed Bookings' ? (
+                                                
+                                                {/* ===================== TAB 1: JOBS (New Requests) ===================== */}
+                                                {activeTab === 'New Requests' && (
                                                     <>
                                                         <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="flex flex-col">
-                                                                <span className="text-white font-bold">{row.customerName || row.profileName || 'N/A'}</span>
-                                                                <span className="text-xs text-slate-400">📞 {row.phone || row.mobileNo || 'N/A'}</span>
-                                                                <span className="text-xs text-slate-500 truncate max-w-[150px]">{row.email || 'N/A'}</span>
-                                                            </div>
-                                                        </td>
+                                                        <td className="px-6 py-4 font-bold text-white">{row.customerName || row.profileName || 'N/A'}</td>
                                                         <td className="px-6 py-4">
                                                             <div className="flex flex-col text-sm">
-                                                                <span className="text-emerald-400 font-medium">{row.destination || 'Bali'}</span>
-                                                                <span className="text-xs text-slate-400">📅 {row.travelDates || row.travelDate || 'TBD'}</span>
-                                                                <span className="text-xs text-slate-500">{row.noOfPax || row.travellerCount || '0'} pax</span>
+                                                                <span className="text-emerald-400 font-medium">{row.destination || 'N/A'}</span>
+                                                                <span className="text-xs text-slate-400">{row.travelDates || row.travelDate || 'TBD'}</span>
+                                                                <span className="text-xs text-slate-500">{row.duration || 'N/A'}</span>
                                                             </div>
                                                         </td>
-                                                        <td className="px-6 py-4">
-                                                            <span className="text-sm text-slate-300">{row.confirmedDate || '—'}</span>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <span className="text-sm text-slate-300">{row.confirmedMethod || '—'}</span>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <span className="text-sm font-bold text-emerald-400">{row.finalPackageValue ? `₹${row.finalPackageValue}` : '—'}</span>
-                                                        </td>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="flex flex-col">
-                                                                <span className="text-white font-bold">{row.customerName || row.profileName || 'N/A'}</span>
-                                                                <span className="text-xs text-slate-400">📞 {row.phone || row.mobileNo || 'N/A'}</span>
+                                                        <td className="px-6 py-4 text-sm">{row.customisationType || 'N/A'}</td>
+                                                        <td className="px-6 py-4 text-sm">{row.salesExecutive || 'N/A'}</td>
+                                                        <td className="px-6 py-4 text-sm text-slate-400">{row.createdAt ? new Date(row.createdAt).toLocaleString('en-IN') : 'N/A'}</td>
+                                                        <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 hover:bg-blue-900/30 rounded-md transition-colors flex flex-col items-center" title="View"><Eye size={16} /><span className="text-[10px]">View</span></button>
+                                                                <button type="button" onClick={() => handleOpenAssignModal(row)} className="p-1.5 text-slate-400 hover:text-orange-400 hover:bg-orange-900/30 rounded-md transition-colors flex flex-col items-center" title="Assign"><CheckSquare size={16} /><span className="text-[10px]">Assign</span></button>
                                                             </div>
                                                         </td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="flex flex-col text-sm">
-                                                                <span className="text-emerald-400 font-medium flex items-center gap-1"><MapPin size={12} />{row.destination}</span>
-                                                                <span className="text-xs text-slate-400">📅 {row.travelDates || row.date}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="flex flex-col text-sm items-start gap-1">
-                                                                <span className="px-1.5 py-0.5 rounded bg-purple-950/40 text-purple-300 border border-purple-900/40 text-xs font-bold">{row.workType || 'FIT'}</span>
-                                                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${row.priority === 'High' ? 'bg-red-950 text-red-400' : 'bg-blue-950 text-blue-400'}`}>{row.priority || 'Normal'}</span>
-                                                            </div>
-                                                        </td>
-                                                        {activeTab === 'Follow-Up' && (
-                                                            <td className="px-6 py-4">
-                                                                <div className="flex flex-col text-xs gap-0.5 text-slate-400">
-                                                                    <span>Vendor: <strong className="text-slate-200">{row.vendorDmcName || row.vendorName || 'Internal'}</strong></span>
-                                                                    <span>Next: <strong className="text-amber-400">{row.nextFollowUp || 'TBD'}</strong></span>
-                                                                </div>
-                                                            </td>
-                                                        )}
-                                                        {activeTab === 'Upcoming Bookings' && (
-                                                            <td className="px-6 py-4">
-                                                                <span className="text-cyan-400 font-bold text-xs bg-cyan-950 border border-cyan-800 px-2 py-0.5 rounded">{row.voucherStatus || 'Vouchered'}</span>
-                                                            </td>
-                                                        )}
                                                     </>
                                                 )}
-                                                <td className="px-6 py-4 text-right whitespace-nowrap">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        {activeTab === 'New Requests' ? (
-                                                            <button type="button" onClick={() => handleOpenAssignModal(row)} className="p-1.5 text-slate-400 hover:text-orange-400 hover:bg-orange-900/30 rounded-md transition-colors" title="Assign">
-                                                                <CheckSquare size={18} />
-                                                            </button>
-                                                        ) : (
-                                                            <>
-                                                                <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 hover:bg-blue-900/30 rounded-md transition-colors" title="View Profile"><Eye size={18} /></button>
-                                                                <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-yellow-900/20 rounded-md transition-colors" title="Edit"><Pencil size={18} /></button>
-                                                                
-                                                                {activeTab === 'Follow-Up' && (
-                                                                    <button type="button" onClick={() => handleSendToSalesReady(row)} className="p-1.5 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-900/30 rounded-md transition-colors border border-transparent hover:border-emerald-800" title="Send to Sales (Customisation Ready)">
-                                                                        <Send size={16} />
-                                                                    </button>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                        {activeTab !== 'Upcoming Bookings' && (
-                                                            <button type="button" onClick={() => setLeadToFulfill(row)} className="p-1.5 text-slate-400 hover:text-orange-400 hover:bg-orange-900/30 rounded-md transition-colors" title="Send to Fulfillment">
-                                                                <Send size={18} className="text-orange-400" />
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </td>
+
+                                                {/* ===================== TAB 2: MY JOBS (Follow-Up) ===================== */}
+                                                {activeTab === 'Follow-Up' && (
+                                                    <>
+                                                        <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
+                                                        <td className="px-6 py-4 font-bold text-white">{row.customerName || row.profileName || 'N/A'}</td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col text-sm">
+                                                                <span className="text-emerald-400 font-medium">{row.destination || 'N/A'}</span>
+                                                                <span className="text-xs text-slate-400">{row.travelDates || row.travelDate || 'TBD'}</span>
+                                                                <span className="text-xs text-slate-500">{row.duration || 'N/A'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col text-sm">
+                                                                <span className="text-cyan-400">{row.workType || 'N/A'}</span>
+                                                                <span className="text-xs text-slate-400">{row.opsCustomisationStatus || 'N/A'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-sm text-amber-400">
+                                                            {row.opsExpectedCompletionDate ? `${row.opsExpectedCompletionDate} ${row.opsExpectedCompletionTime || ''}` : 'Not Set'}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-sm">{row.salesExecutive || 'N/A'}</td>
+                                                        <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 hover:bg-blue-900/30 rounded-md transition-colors flex flex-col items-center" title="View"><Eye size={16} /><span className="text-[10px]">View</span></button>
+                                                                <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-yellow-900/20 rounded-md transition-colors flex flex-col items-center" title="Edit"><Pencil size={16} /><span className="text-[10px]">Edit</span></button>
+                                                                <button type="button" onClick={() => handleOpenAssignModal(row)} className="p-1.5 text-slate-400 hover:text-purple-400 hover:bg-purple-900/20 rounded-md transition-colors flex flex-col items-center" title="Re-assign"><Repeat size={16} /><span className="text-[10px]">Re-assign</span></button>
+                                                            </div>
+                                                        </td>
+                                                    </>
+                                                )}
+
+                                                {/* ===================== TAB 3: CONFIRMED BOOKINGS ===================== */}
+                                                {activeTab === 'Confirmed Bookings' && (
+                                                    <>
+                                                        <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-white font-bold">{row.customerName || row.profileName || 'N/A'}</span>
+                                                                <span className="text-xs text-slate-400">{row.phone || row.mobileNo || 'N/A'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col text-sm">
+                                                                <span className="text-emerald-400 font-medium">{row.confirmedDestination || row.destination || 'N/A'}</span>
+                                                                <span className="text-xs text-slate-400">{row.packageType || row.tourType || 'N/A'}</span>
+                                                                <span className="text-xs text-slate-500">{row.duration || 'N/A'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col text-sm">
+                                                                <span className="text-slate-300">{row.tourStartDate || row.travelDate || 'TBD'}</span>
+                                                                <span className="text-xs text-slate-500">{row.tourEndDate || row.returnDate || 'TBD'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-sm">{row.services || 'N/A'}</td>
+                                                        <td className="px-6 py-4 text-sm">{row.salesExecutive || 'N/A'}</td>
+                                                        <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 hover:bg-blue-900/30 rounded-md transition-colors flex flex-col items-center" title="View"><Eye size={16} /><span className="text-[10px]">View</span></button>
+                                                                <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-yellow-900/20 rounded-md transition-colors flex flex-col items-center" title="Edit"><Pencil size={16} /><span className="text-[10px]">Edit</span></button>
+                                                            </div>
+                                                        </td>
+                                                    </>
+                                                )}
+
+                                                {/* ===================== TAB 4: UPCOMING BOOKINGS ===================== */}
+                                                {activeTab === 'Upcoming Bookings' && (
+                                                    <>
+                                                        <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col">
+                                                                <span className="text-white font-bold">{row.customerName || row.profileName || 'N/A'}</span>
+                                                                <span className="text-xs text-slate-400">{row.phone || row.mobileNo || 'N/A'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col text-sm">
+                                                                <span className="text-emerald-400 font-medium">{row.confirmedDestination || row.destination || 'N/A'}</span>
+                                                                <span className="text-xs text-slate-400">{row.packageType || row.tourType || 'N/A'}</span>
+                                                                <span className="text-xs text-slate-500">{row.duration || 'N/A'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <div className="flex flex-col text-sm">
+                                                                <span className="text-slate-300">{row.tourStartDate || row.travelDate || 'TBD'}</span>
+                                                                <span className="text-xs text-slate-500">{row.tourEndDate || row.returnDate || 'TBD'}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="px-2 py-1 bg-red-950/50 text-red-400 border border-red-900/50 rounded font-bold text-xs">
+                                                                {getDaysToDeparture(row.tourStartDate || row.travelDate)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-sm">{row.salesExecutive || 'N/A'}</td>
+                                                        <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 hover:bg-blue-900/30 rounded-md transition-colors flex flex-col items-center" title="View"><Eye size={16} /><span className="text-[10px]">View</span></button>
+                                                                <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-yellow-900/20 rounded-md transition-colors flex flex-col items-center" title="Edit"><Pencil size={16} /><span className="text-[10px]">Edit</span></button>
+                                                            </div>
+                                                        </td>
+                                                    </>
+                                                )}
+
                                             </tr>
                                         )) : (
                                             <tr>
-                                                <td colSpan="11" className="px-6 py-12 text-center text-slate-500">
+                                                <td colSpan="7" className="px-6 py-12 text-center text-slate-500">
                                                     <div className="flex flex-col items-center justify-center gap-2">
                                                         <Target size={32} className="text-slate-600 mb-2" />
                                                         <p className="text-sm font-medium text-slate-400">No records in this section.</p>
@@ -1237,30 +1317,29 @@ export default function OperationsDashboard() {
                                         <div className="flex items-start justify-between mb-2">
                                             <div className="flex items-center gap-2">
                                                 <span className="font-mono font-bold text-slate-300 text-sm">LMN{row.id}</span>
-                                                <span className="px-1.5 py-0.5 rounded bg-purple-950/40 text-purple-300 border border-purple-900/40 text-xs font-bold">{row.workType || 'FIT'}</span>
-                                                <span className={`text-xs px-2 py-0.5 rounded font-medium ${row.priority === 'High' ? 'bg-red-950 text-red-400' : 'bg-blue-950 text-blue-400'}`}>{row.priority || 'Normal'}</span>
+                                                {activeTab === 'Upcoming Bookings' && (
+                                                    <span className="px-2 py-0.5 bg-red-950/50 text-red-400 border border-red-900/50 rounded font-bold text-[10px]">
+                                                        {getDaysToDeparture(row.tourStartDate || row.travelDate)}
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-1.5">
                                                 {activeTab === 'New Requests' ? (
-                                                    <button type="button" onClick={() => handleOpenAssignModal(row)} className="p-1.5 text-slate-400 hover:text-orange-400 bg-slate-800 rounded-md border border-slate-700" title="Assign">
-                                                        <CheckSquare size={15} />
-                                                    </button>
+                                                    <>
+                                                        <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 bg-slate-800 rounded-md border border-slate-700" title="View"><Eye size={15} /></button>
+                                                        <button type="button" onClick={() => handleOpenAssignModal(row)} className="p-1.5 text-slate-400 hover:text-orange-400 bg-slate-800 rounded-md border border-slate-700" title="Assign"><CheckSquare size={15} /></button>
+                                                    </>
+                                                ) : activeTab === 'Follow-Up' ? (
+                                                    <>
+                                                        <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 bg-slate-800 rounded-md border border-slate-700" title="View"><Eye size={15} /></button>
+                                                        <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 bg-slate-800 rounded-md border border-slate-700" title="Edit"><Pencil size={15} /></button>
+                                                        <button type="button" onClick={() => handleOpenAssignModal(row)} className="p-1.5 text-slate-400 hover:text-purple-400 bg-slate-800 rounded-md border border-slate-700" title="Re-assign"><Repeat size={15} /></button>
+                                                    </>
                                                 ) : (
                                                     <>
                                                         <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 bg-slate-800 rounded-md border border-slate-700" title="View"><Eye size={15} /></button>
                                                         <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 bg-slate-800 rounded-md border border-slate-700" title="Edit"><Pencil size={15} /></button>
-                                                        
-                                                        {activeTab === 'Follow-Up' && (
-                                                            <button type="button" onClick={() => handleSendToSalesReady(row)} className="p-1.5 text-emerald-400 bg-emerald-950/40 rounded-md border border-emerald-900/50" title="Send to Sales (Customisation Ready)">
-                                                                <Send size={15} />
-                                                            </button>
-                                                        )}
                                                     </>
-                                                )}
-                                                {activeTab !== 'Upcoming Bookings' && (
-                                                    <button type="button" onClick={() => setLeadToFulfill(row)} className="p-1.5 bg-slate-800 rounded-md border border-slate-700" title="Fulfillment">
-                                                        <Send size={15} className="text-orange-400" />
-                                                    </button>
                                                 )}
                                             </div>
                                         </div>
@@ -1271,24 +1350,10 @@ export default function OperationsDashboard() {
                                                 <span className="text-slate-400 text-xs">📞 {row.phone || row.mobileNo || 'N/A'}</span>
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <span className="text-emerald-400 text-xs font-medium flex items-center gap-1"><MapPin size={11} />{row.destination}</span>
-                                                <span className="text-slate-500 text-xs">📅 {row.travelDates || row.date}</span>
+                                                <span className="text-emerald-400 text-xs font-medium flex items-center gap-1"><MapPin size={11} />{activeTab === 'New Requests' || activeTab === 'Follow-Up' ? row.destination : (row.confirmedDestination || row.destination)}</span>
+                                                <span className="text-slate-500 text-xs">📅 {activeTab === 'Confirmed Bookings' || activeTab === 'Upcoming Bookings' ? (row.tourStartDate || row.travelDate) : (row.travelDates || row.travelDate)}</span>
                                             </div>
                                         </div>
-
-                                        {activeTab === 'Follow-Up' && (
-                                            <div className="text-xs text-slate-400 bg-slate-800/30 rounded px-2.5 py-1.5 mt-1">
-                                                Vendor: <strong className="text-slate-200">{row.vendorDmcName || row.vendorName || 'Internal'}</strong>
-                                                <span className="mx-2">·</span>
-                                                Next: <strong className="text-amber-400">{row.nextFollowUp || 'TBD'}</strong>
-                                            </div>
-                                        )}
-                                        {activeTab === 'Confirmed Bookings' && (
-                                            <span className="inline-block mt-1 text-emerald-400 font-black font-mono text-sm">{row.amount || '₹2,50,000'}</span>
-                                        )}
-                                        {activeTab === 'Upcoming Bookings' && (
-                                            <span className="inline-block mt-1 text-cyan-400 font-bold text-xs bg-cyan-950 border border-cyan-800 px-2 py-0.5 rounded">{row.voucherStatus || 'Vouchered'}</span>
-                                        )}
                                     </div>
                                 )) : (
                                     <div className="px-4 py-10 text-center">
