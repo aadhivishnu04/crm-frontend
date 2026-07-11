@@ -249,6 +249,72 @@ const Dashboard = () => {
 
     const formattedDate = time.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     const formattedTime = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+
+    // ─── LEAVE MANAGEMENT STATES ─────────────────────────────────────────────
+    const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+    const [leaveForm, setLeaveForm] = useState({ startDate: '', endDate: '', reason: '' });
+    const [leaves, setLeaves] = useState([]);
+
+    const isSalesOrOps = user?.role === ROLES.SALES || user?.role === ROLES.OPERATION;
+    const isAdmin = user?.role === ROLES.ADMIN;
+
+    // ─── LEAVE API HANDLERS ──────────────────────────────────────────────────
+    const fetchLeaves = async () => {
+        try {
+            const endpoint = isAdmin ? `${API_BASE_URL}/leaves/pending` : `${API_BASE_URL}/leaves?employeeId=${currentUserIdentifier}`;
+            const res = await fetch(endpoint);
+            if (res.ok) setLeaves(await res.json());
+        } catch (err) {
+            console.error("Failed to fetch leaves", err);
+        }
+    };
+
+    useEffect(() => {
+        fetchLeaves();
+        const leaveTimer = setInterval(fetchLeaves, 5000);
+        return () => clearInterval(leaveTimer);
+    }, [currentUserIdentifier, isAdmin]);
+
+    const applyLeave = async () => {
+        if (!leaveForm.startDate || !leaveForm.endDate || !leaveForm.reason.trim()) return;
+        try {
+            const res = await fetch(`${API_BASE_URL}/leaves`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ...leaveForm,
+                    employeeId: currentUserIdentifier,
+                    employeeName: user?.name,
+                    status: 'Pending'
+                })
+            });
+            if (res.ok) {
+                const savedLeave = await res.json();
+                setLeaves(prev => [savedLeave, ...prev]);
+                setLeaveModalOpen(false);
+                setLeaveForm({ startDate: '', endDate: '', reason: '' });
+                showToast("Leave application submitted to Admin.", "success");
+            }
+        } catch (err) {
+            showToast("Failed to submit leave.", "error");
+        }
+    };
+
+    const handleLeaveAction = async (leaveId, action) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/leaves/${leaveId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: action })
+            });
+            if (res.ok) {
+                setLeaves(prev => prev.filter(l => l.id !== leaveId));
+                showToast(`Leave request ${action.toLowerCase()}.`, "success");
+            }
+        } catch (err) {
+            showToast("Failed to process leave action.", "error");
+        }
+    };
     
     // Form handlers
     const [leadModalOpen, setLeadModalOpen] = useState(false);
@@ -282,7 +348,6 @@ const Dashboard = () => {
                 const savedLead = await response.json();
                 showToast(`Success! Lead for ${savedLead.customerName || 'Customer'} has been saved.`, 'success');
                 
-                // Trigger email alert to backend
                 fetch(`${API_BASE_URL}/notifications/new-lead`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -312,7 +377,6 @@ const Dashboard = () => {
         }
     };
 
-    // Task and agenda pipelines
     const [tasks, setTasks] = useState([]);
     const [taskFilter, setTaskFilter] = useState('all');
     const [taskModal, setTaskModal] = useState({ open: false, mode: 'add', task: null });
@@ -400,7 +464,6 @@ const Dashboard = () => {
 
     const [members, setMembers] = useState([]);
 
-    // Target metrics
     const [targets, setTargets] = useState([]);
     const [targetModal, setTargetModal] = useState(false);
     const [editingTarget, setEditingTarget] = useState(null);
@@ -463,7 +526,6 @@ const Dashboard = () => {
         } catch (err) { console.error(err); }
     };
 
-    // Calendar timelines
     const [currentDate, setCurrentDate] = useState(new Date());
     const [events, setEvents] = useState([]);
     const [eventModalOpen, setEventModalOpen] = useState(false);
@@ -519,7 +581,6 @@ const Dashboard = () => {
     const [topDestinations, setTopDestinations] = useState([]);
     const [topDestinationsModalOpen, setTopDestinationsModalOpen] = useState(false);
 
-    // Sync loop tracking real databases
     useEffect(() => {
         const timer = setInterval(() => setTime(new Date()), 1000);
 
@@ -564,7 +625,6 @@ const Dashboard = () => {
                     const leadsData = await leadsRes.json();
                     if (Array.isArray(leadsData)) {
                         
-                        // Calculate aggregations dynamically
                         let calcTotalIn = 0;
                         let calcTotalOut = 0;
                         let calcPending = 0;
@@ -576,8 +636,6 @@ const Dashboard = () => {
                             const parseAmt = (v) => parseFloat(String(v).replace(/[₹,\s]/g, '')) || 0;
                             const packageCost = parseAmt(lead.totalPackageCost || lead.packageCost || lead.budget);
                             
-                            // --- NEW PAYMENT SUMMATION LOGIC ---
-                            // Extracts and sums up amounts from the Payment History array created by SalesDashboard
                             let totalReceived = 0;
                             let paymentHistory = [];
                             try { 
@@ -595,11 +653,9 @@ const Dashboard = () => {
                             const amountReceived = totalReceived;
                             const balancePending = lead.balancePending ? parseAmt(lead.balancePending) : Math.max(0, packageCost - amountReceived);
                             
-                            // Mutate lead to hold computed values for Modals
                             lead.computedTotalReceived = amountReceived;
                             lead.computedBalancePending = balancePending;
                             lead.computedPackageCost = packageCost;
-                            // ------------------------------------
 
                             calcTotalIn += amountReceived;
                             calcPending += balancePending;
@@ -616,7 +672,6 @@ const Dashboard = () => {
                                 leadVendorTotalPaid += outAmt;
                             });
 
-                            // Track atomic granular profiles for payment widget cards
                             if (amountReceived > 0 || balancePending > 0 || leadVendorTotalPaid > 0) {
                                 indPaymentList.push({
                                     id: lead.id,
@@ -630,7 +685,6 @@ const Dashboard = () => {
                                 });
                             }
 
-                            // Calculate 7-day windows against travel schedules
                             if (lead.status === 'Confirmed Bookings' || lead.status === 'Upcoming Departure') {
                                 const tDate = lead.travelDates || lead.travelDate || lead.tourStartDate;
                                 if (tDate) {
@@ -689,7 +743,6 @@ const Dashboard = () => {
         return () => { clearInterval(intervalId); clearInterval(timer); };
     }, [allLeads.length]);
 
-    // Copilot AI Assistant Engine
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatInput, setChatInput] = useState('');
     const [isChatLoading, setIsChatLoading] = useState(false);
@@ -787,7 +840,6 @@ const Dashboard = () => {
     return (
         <div className={`min-h-screen w-full p-3 sm:p-5 lg:p-7 pt-20 sm:pt-24 lg:pt-6 pb-24 space-y-4 sm:space-y-5 poppins-regular text-base relative custom-scrollbar overflow-x-hidden transition-colors duration-300 ${darkMode ? 'bg-[#0b0f1a] text-slate-100 dark' : 'bg-slate-100 text-slate-800'}`}>
 
-            {/* ── TOAST NOTIFICATION UI ── */}
             {toast.show && (
                 <div className={`fixed top-4 right-4 left-4 sm:left-auto sm:top-6 sm:right-6 z-[200] flex items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 rounded-2xl shadow-[0_20px_40px_-8px_rgba(0,0,0,0.4)] border transition-all backdrop-blur-xl ${toast.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/30 text-emerald-100' : 'bg-red-950/90 border-red-500/30 text-red-100'}`}>
                     {toast.type === 'success' ? <Check size={18} className="text-emerald-400 flex-shrink-0" /> : <AlertCircle size={18} className="text-red-400 flex-shrink-0" />}
@@ -796,7 +848,29 @@ const Dashboard = () => {
                 </div>
             )}
 
-            {/* ── NEW CUSTOMER / LEAD MODAL ── */}
+            {/* ── LEAVE APPLICATION MODAL (EMPLOYEES ONLY) ── */}
+            <Modal open={leaveModalOpen} onClose={() => setLeaveModalOpen(false)} title="Apply for Leave" maxWidth="max-w-md">
+                <div className="px-1 py-1 space-y-4">
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                        <Field label="Start Date">
+                            <Input type="date" value={leaveForm.startDate} onChange={e => setLeaveForm(f => ({ ...f, startDate: e.target.value }))} />
+                        </Field>
+                        <Field label="End Date">
+                            <Input type="date" value={leaveForm.endDate} onChange={e => setLeaveForm(f => ({ ...f, endDate: e.target.value }))} />
+                        </Field>
+                    </div>
+                    <Field label="Reason for Leave" className="mb-0">
+                        <TextArea rows="3" placeholder="Explain your reason briefly..." value={leaveForm.reason} onChange={e => setLeaveForm(f => ({ ...f, reason: e.target.value }))} />
+                    </Field>
+                </div>
+                <div className="flex flex-col sm:flex-row gap-3 mt-5">
+                    <button onClick={() => setLeaveModalOpen(false)} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
+                    <button onClick={applyLeave} disabled={!leaveForm.startDate || !leaveForm.endDate || !leaveForm.reason.trim()} className="w-full sm:flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 order-1 sm:order-2">
+                        <Save size={16} /> Submit Application
+                    </button>
+                </div>
+            </Modal>
+
             <Modal open={leadModalOpen} onClose={() => setLeadModalOpen(false)} title="Add New Travel Lead" maxWidth="max-w-4xl">
                 <div className="flex flex-col h-full">
                     <div className="space-y-5 flex-1 px-1 py-1">
@@ -846,7 +920,6 @@ const Dashboard = () => {
                 </div>
             </Modal>
 
-            {/* ── TASK MODAL ── */}
             <Modal open={taskModal.open} onClose={closeTaskModal} title={taskModal.mode === 'add' ? 'Add New Task' : 'Edit Task'}>
                 <div className="px-1 py-1 space-y-4">
                     <Field label="Task Title" className="mb-0"><Input value={taskForm.title} onChange={e => setTaskForm(f => ({ ...f, title: e.target.value }))} onKeyDown={e => e.key === 'Enter' && saveTask()} autoFocus /></Field>
@@ -872,7 +945,6 @@ const Dashboard = () => {
                 </div>
             </Modal>
 
-            {/* ── EVENT / REMINDER MODAL ── */}
             <Modal open={eventModalOpen} onClose={() => setEventModalOpen(false)} title="Add Calendar Reminder">
                 <div className="px-1 py-1">
                     <Field label="Reminder Title"><Input value={eventForm.title} onChange={e => setEventForm(f => ({ ...f, title: e.target.value }))} placeholder="Follow up with client..." autoFocus /></Field>
@@ -890,7 +962,6 @@ const Dashboard = () => {
                 </div>
             </Modal>
 
-            {/* ── VIEW ALL REMINDERS MODAL ── */}
             <Modal open={allRemindersModalOpen} onClose={() => setAllRemindersModalOpen(false)} title="All Scheduled Reminders" maxWidth="max-w-2xl">
                 <div className="space-y-2.5 overflow-y-auto max-h-[60vh] pr-1 custom-scrollbar">
                     {events.length === 0 ? (
@@ -914,7 +985,6 @@ const Dashboard = () => {
                 <button onClick={() => setAllRemindersModalOpen(false)} className="w-full mt-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 font-semibold text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">Close</button>
             </Modal>
 
-            {/* ── TARGET MODAL (FIXED) ── */}
             <Modal open={targetModal} onClose={() => { setTargetModal(false); setEditingTarget(null); }} title={editingTarget ? "Edit Target" : "Add Sales Target"} maxWidth="max-w-md">
                 <div className="space-y-4 px-1 py-1">
                     <Field label="Target Name">
@@ -947,9 +1017,7 @@ const Dashboard = () => {
                 </div>
             </Modal>
 
-            {/* ── ROW 1: HEADER ── */}
             <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-200/80 dark:border-slate-700/30 shadow-sm dark:shadow-none flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-5 relative overflow-hidden">
-                {/* Subtle gradient accent */}
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-blue-500/3 dark:to-blue-500/5 pointer-events-none rounded-2xl" />
                 <div className="min-w-0 relative">
                     <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 dark:text-white mb-1 tracking-tight truncate">Welcome Back, {displayHeaderName}</h1>
@@ -973,7 +1041,6 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* ── ROW 2: STAT CARDS ── */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {[
                     { id: 'Today Leads', label: 'Today Leads', value: computedStats.todayLeads, icon: <Users className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-blue-500/20 to-blue-600/5', iconBg: 'bg-blue-500/15 text-blue-500 dark:text-blue-400', border: 'border-blue-500/10 dark:border-blue-500/10', glow: 'hover:border-blue-500/30 dark:hover:border-blue-500/20' },
@@ -985,7 +1052,6 @@ const Dashboard = () => {
                         key={i} onClick={() => handleStatCardClick(s.id)}
                         className={`cursor-pointer group relative overflow-hidden bg-white dark:bg-[#111827] p-4 sm:p-5 rounded-2xl border ${s.border} ${s.glow} flex flex-row items-center gap-3 sm:gap-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:hover:shadow-none active:scale-[0.98]`}
                     >
-                        {/* Card gradient overlay */}
                         <div className={`absolute inset-0 bg-gradient-to-br ${s.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`} />
                         <div className={`p-2.5 sm:p-3 rounded-xl ${s.iconBg} flex-shrink-0 relative z-10`}>
                             {s.icon}
@@ -998,10 +1064,7 @@ const Dashboard = () => {
                 ))}
             </div>
 
-            {/* ── UPDATED ROW 3: PAYMENTS & CALENDAR ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                
-                {/* ── GRANULAR PAYMENT PROFILES PANEL (Spans 2 columns) ── */}
                 <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-[480px] lg:col-span-2">
                     <div className="flex justify-between items-center mb-3 flex-shrink-0">
                         <div>
@@ -1066,14 +1129,12 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* ── CALENDAR PANEL (Spans 1 column) ── */}
                 <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/30 flex flex-col gap-3 shadow-sm lg:col-span-1">
                     <div className="flex items-center justify-between">
                         <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
                     </div>
 
-                    {/* Date strip */}
                     <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30 rounded-xl p-2.5">
                         <div className="flex justify-between items-center mb-2.5 px-0.5">
                             <div className="flex gap-1">
@@ -1136,10 +1197,7 @@ const Dashboard = () => {
 
             </div>
 
-            {/* ── UPDATED ROW 4: TASKS, SALES TARGETS, & TOP DESTINATIONS ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                
-                {/* ── TASKS PANEL ── */}
                 <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                     <div className="flex justify-between items-center mb-4">
                         <div>
@@ -1151,7 +1209,6 @@ const Dashboard = () => {
                         </button>
                     </div>
 
-                    {/* Filter tabs */}
                     <div className="flex gap-1.5 mb-4 bg-slate-100 dark:bg-slate-800/40 p-1 rounded-xl">
                         {[
                             { key: 'all', label: `All (${taskCounts.all})` },
@@ -1189,7 +1246,6 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* ── SALES TARGETS PANEL ── */}
                 <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
                     <div className="flex justify-between items-center mb-4">
                         <div>
@@ -1201,7 +1257,6 @@ const Dashboard = () => {
                         </button>
                     </div>
 
-                    {/* Region Cards */}
                     <div className="grid grid-cols-2 gap-2.5 mb-5">
                         <div 
                             onClick={() => handleRegionCardClick('india')}
@@ -1255,7 +1310,6 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* ── TOP DESTINATIONS PANEL ── */}
                 <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                     <div className="flex justify-between items-center mb-4">
                         <div>
@@ -1292,10 +1346,7 @@ const Dashboard = () => {
 
             </div>
 
-            {/* ── ROW 5: FULFILLMENT ALERTS & ACTIVE TEAM ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                
-                {/* ── FULFILLMENT ALERTS PANEL ── */}
                 <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-rose-900/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-2">
                     <div className="flex justify-between items-center mb-4">
                         <div className="flex items-center gap-2.5">
@@ -1329,7 +1380,6 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                {/* ── ACTIVE TEAM PANEL ── */}
                 <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-full lg:col-span-1">
                     <div className="flex justify-between items-start mb-4 gap-2">
                         <div>
@@ -1369,7 +1419,92 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            {/* ── ALL INDIVIDUAL PAYMENTS MODAL ── */}
+            {/* ── ROW 6: LEAVE MANAGEMENT ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+                {/* ── LEAVE DASHBOARD (EMPLOYEES ONLY) ── */}
+                {isSalesOrOps && (
+                    <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                        <div className="flex justify-between items-center mb-4">
+                            <div>
+                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">My Leaves</h2>
+                                <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Track your applications</p>
+                            </div>
+                            <button onClick={() => setLeaveModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20">
+                                <Plus size={13} /> Apply Leave
+                            </button>
+                        </div>
+
+                        <div className="space-y-2 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
+                            {leaves.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400 text-xs">No leave history found.</div>
+                            ) : (
+                                leaves.map(leave => (
+                                    <div key={leave.id} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-800/30 flex justify-between items-center">
+                                        <div>
+                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{leave.startDate} to {leave.endDate}</p>
+                                            <p className="text-[10px] text-slate-500 mt-1 truncate max-w-[150px]">{leave.reason}</p>
+                                        </div>
+                                        <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
+                                            leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+                                            leave.status === 'Rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
+                                            'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                        }`}>
+                                            {leave.status}
+                                        </span>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* ── LEAVE APPROVAL DASHBOARD (ADMIN ONLY) ── */}
+                {isAdmin && (
+                    <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-amber-900/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
+                        <div className="flex justify-between items-center mb-4">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 flex-shrink-0">
+                                    <AlertCircle size={16} />
+                                </div>
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Pending Leaves</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Requires Admin Approval</p>
+                                </div>
+                            </div>
+                            <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{leaves.length} Request(s)</span>
+                        </div>
+                        
+                        <div className="space-y-2.5 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
+                            {leaves.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400 text-xs">No pending leave requests.</div>
+                            ) : (
+                                leaves.map(leave => (
+                                    <div key={leave.id} className="p-3 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/10 rounded-xl">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{leave.employeeName}</p>
+                                                <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">{leave.startDate} to {leave.endDate}</p>
+                                            </div>
+                                        </div>
+                                        <p className="text-[10px] text-slate-600 dark:text-slate-300 mb-3 bg-white dark:bg-[#0d1526] p-2 rounded-lg border border-slate-100 dark:border-slate-700/50">
+                                            "{leave.reason}"
+                                        </p>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => handleLeaveAction(leave.id, 'Approved')} className="flex-1 py-1.5 text-[10px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex justify-center items-center gap-1 shadow-sm shadow-emerald-500/20">
+                                                <Check size={12}/> Approve
+                                            </button>
+                                            <button onClick={() => handleLeaveAction(leave.id, 'Rejected')} className="flex-1 py-1.5 text-[10px] font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-lg transition-colors flex justify-center items-center gap-1 shadow-sm shadow-rose-500/20">
+                                                <X size={12}/> Reject
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
+
             <Modal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} title="All Payment List" maxWidth="max-w-3xl">
                 <div className="max-h-[60vh] overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
                     {individualPayments.length === 0 ? (
@@ -1415,7 +1550,6 @@ const Dashboard = () => {
                 </div>
             </Modal>
 
-            {/* ── TOP DESTINATIONS MODAL ── */}
             <Modal open={topDestinationsModalOpen} onClose={() => setTopDestinationsModalOpen(false)} title="Top Destinations Breakdown" maxWidth="max-w-2xl">
                 <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                     {topDestinations.map((dest, idx) => (
@@ -1437,7 +1571,6 @@ const Dashboard = () => {
                 </div>
             </Modal>
 
-            {/* ── REGIONAL TRIP BREAKDOWN POPUP MODAL ── */}
             <Modal 
                 open={regionModal.open} onClose={() => setRegionModal(prev => ({ ...prev, open: false }))} 
                 title={regionModal.regionName} maxWidth="max-w-2xl"
@@ -1470,7 +1603,6 @@ const Dashboard = () => {
                 </button>
             </Modal>
 
-            {/* ── PAYMENT HISTORY DOSSIER MODAL ── */}
             <Modal open={!!selectedPaymentLead} onClose={() => setSelectedPaymentLead(null)} title={`Payment History: ${selectedPaymentLead?.customerName || selectedPaymentLead?.profileName || 'Details'}`} maxWidth="max-w-3xl">
                 {selectedPaymentLead && (() => {
                     let historyList = [];
@@ -1532,7 +1664,6 @@ const Dashboard = () => {
                 })()}
             </Modal>
 
-            {/* ── MEMBER PROFILE MODAL ── */}
             <Modal open={!!selectedMember} onClose={() => setSelectedMember(null)} title="Team Member Profile" maxWidth="max-w-sm">
                 {selectedMember && (
                     <div className="flex flex-col items-center text-center space-y-4 py-2">
@@ -1564,13 +1695,11 @@ const Dashboard = () => {
                 )}
             </Modal>
 
-            {/* ── FULL LEAD DOSSIER / HISTORY MODAL ── */}
             <Modal open={!!selectedLeadDetails} onClose={() => setSelectedLeadDetails(null)} title={`Lead: ${selectedLeadDetails?.customerName || selectedLeadDetails?.profileName || 'Details'}`} maxWidth="max-w-4xl">
                 {selectedLeadDetails && (
                     <div className="flex flex-col h-full">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-1 overflow-y-auto max-h-[60vh] custom-scrollbar">
                             
-                            {/* Profile Box */}
                             <div className="space-y-3 bg-slate-50 dark:bg-[#0d1526] p-4 rounded-2xl border border-slate-100 dark:border-slate-700/30">
                                 <h4 className="font-bold text-violet-500 border-b border-slate-100 dark:border-slate-700/30 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><Users size={13}/> Customer Profile</h4>
                                 {[
@@ -1586,7 +1715,6 @@ const Dashboard = () => {
                                 ))}
                             </div>
 
-                            {/* Logistics Box */}
                             <div className="space-y-3 bg-slate-50 dark:bg-[#0d1526] p-4 rounded-2xl border border-slate-100 dark:border-slate-700/30">
                                 <h4 className="font-bold text-emerald-500 border-b border-slate-100 dark:border-slate-700/30 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><MapPin size={13}/> Trip Logistics</h4>
                                 {[
@@ -1602,7 +1730,6 @@ const Dashboard = () => {
                                 ))}
                             </div>
 
-                            {/* Status Box */}
                             <div className="space-y-3 bg-slate-50 dark:bg-[#0d1526] p-4 rounded-2xl border border-slate-100 dark:border-slate-700/30">
                                 <h4 className="font-bold text-blue-500 border-b border-slate-100 dark:border-slate-700/30 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><Target size={13}/> Pipeline Status</h4>
                                 {[
@@ -1618,7 +1745,6 @@ const Dashboard = () => {
                                 ))}
                             </div>
 
-                            {/* Financial Box */}
                             <div className="space-y-3 bg-slate-50 dark:bg-[#0d1526] p-4 rounded-2xl border border-slate-100 dark:border-slate-700/30">
                                 <h4 className="font-bold text-amber-500 border-b border-slate-100 dark:border-slate-700/30 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><Wallet size={13}/> Financial Overview</h4>
                                 {[
@@ -1634,7 +1760,6 @@ const Dashboard = () => {
                                 ))}
                             </div>
 
-                            {/* Message / Notes Full Width */}
                             <div className="md:col-span-2 space-y-3 bg-slate-50 dark:bg-[#0d1526] p-4 rounded-2xl border border-slate-100 dark:border-slate-700/30">
                                 <h4 className="font-bold text-pink-500 border-b border-slate-100 dark:border-slate-700/30 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><MessageSquare size={13}/> Lead Message & Internal Notes</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1663,7 +1788,6 @@ const Dashboard = () => {
                 )}
             </Modal>
 
-            {/* ── FLOATING AI CHAT ── */}
             {isChatOpen && (
                 <div className="fixed inset-0 sm:inset-auto sm:top-10 sm:bottom-auto sm:left-auto sm:right-6 w-full sm:w-[460px] h-full sm:h-[75vh] bg-[#0d1526] sm:border border-slate-700/50 rounded-none sm:rounded-2xl shadow-[0_32px_64px_-8px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col z-[150]">
                     <div className="bg-gradient-to-r from-teal-600 to-teal-500 px-4 sm:px-5 py-3.5 flex justify-between items-center text-white shadow-lg">
