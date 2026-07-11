@@ -261,7 +261,8 @@ const Dashboard = () => {
     // ─── LEAVE API HANDLERS ──────────────────────────────────────────────────
     const fetchLeaves = async () => {
         try {
-            const endpoint = isAdmin ? `${API_BASE_URL}/leaves/pending` : `${API_BASE_URL}/leaves?employeeId=${currentUserIdentifier}`;
+            // Updated to hit the new /all endpoint for Admins
+            const endpoint = isAdmin ? `${API_BASE_URL}/leaves/all` : `${API_BASE_URL}/leaves?employeeId=${currentUserIdentifier}`;
             const res = await fetch(endpoint);
             if (res.ok) setLeaves(await res.json());
         } catch (err) {
@@ -308,7 +309,8 @@ const Dashboard = () => {
                 body: JSON.stringify({ status: action })
             });
             if (res.ok) {
-                setLeaves(prev => prev.filter(l => l.id !== leaveId));
+                // UPDATE: Map over the array to change the status instead of filtering it out
+                setLeaves(prev => prev.map(l => l.id === leaveId ? { ...l, status: action } : l));
                 showToast(`Leave request ${action.toLowerCase()}.`, "success");
             }
         } catch (err) {
@@ -1467,36 +1469,49 @@ const Dashboard = () => {
                                     <AlertCircle size={16} />
                                 </div>
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Pending Leaves</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Requires Admin Approval</p>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Team Leaves</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Admin Overview</p>
                                 </div>
                             </div>
-                            <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{leaves.length} Request(s)</span>
+                            <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{leaves.filter(l => l.status === 'Pending').length} Pending</span>
                         </div>
                         
                         <div className="space-y-2.5 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
                             {leaves.length === 0 ? (
-                                <div className="text-center py-8 text-slate-400 text-xs">No pending leave requests.</div>
+                                <div className="text-center py-8 text-slate-400 text-xs">No leave requests found.</div>
                             ) : (
                                 leaves.map(leave => (
-                                    <div key={leave.id} className="p-3 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/10 rounded-xl">
+                                    <div key={leave.id} className={`p-3 border rounded-xl transition-colors ${
+                                        leave.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/10' :
+                                        'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40'
+                                    }`}>
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
                                                 <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{leave.employeeName}</p>
                                                 <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">{leave.startDate} to {leave.endDate}</p>
                                             </div>
+                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
+                                                leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+                                                leave.status === 'Rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
+                                                'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                            }`}>
+                                                {leave.status}
+                                            </span>
                                         </div>
                                         <p className="text-[10px] text-slate-600 dark:text-slate-300 mb-3 bg-white dark:bg-[#0d1526] p-2 rounded-lg border border-slate-100 dark:border-slate-700/50">
                                             "{leave.reason}"
                                         </p>
-                                        <div className="flex gap-2">
-                                            <button onClick={() => handleLeaveAction(leave.id, 'Approved')} className="flex-1 py-1.5 text-[10px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex justify-center items-center gap-1 shadow-sm shadow-emerald-500/20">
-                                                <Check size={12}/> Approve
-                                            </button>
-                                            <button onClick={() => handleLeaveAction(leave.id, 'Rejected')} className="flex-1 py-1.5 text-[10px] font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-lg transition-colors flex justify-center items-center gap-1 shadow-sm shadow-rose-500/20">
-                                                <X size={12}/> Reject
-                                            </button>
-                                        </div>
+                                        
+                                        {leave.status === 'Pending' && (
+                                            <div className="flex gap-2">
+                                                <button onClick={() => handleLeaveAction(leave.id, 'Approved')} className="flex-1 py-1.5 text-[10px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex justify-center items-center gap-1 shadow-sm shadow-emerald-500/20">
+                                                    <Check size={12}/> Approve
+                                                </button>
+                                                <button onClick={() => handleLeaveAction(leave.id, 'Rejected')} className="flex-1 py-1.5 text-[10px] font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-lg transition-colors flex justify-center items-center gap-1 shadow-sm shadow-rose-500/20">
+                                                    <X size={12}/> Reject
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 ))
                             )}
