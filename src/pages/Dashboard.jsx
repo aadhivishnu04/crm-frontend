@@ -150,19 +150,32 @@ const Field = ({ label, children, className = '' }) => (
 
 const Input = ({ className = '', ...props }) => (
     <input
-        className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all ${className}`}
+        className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all ${className}`}
         {...props}
     />
+);
+
+const DateInput = ({ value, onChange, className = '' }) => (
+    <div className="relative bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl focus-within:border-blue-500/70 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all overflow-hidden group flex items-center">
+        <input
+            type="date"
+            value={value || ''}
+            onChange={onChange}
+            onClick={(e) => e.target.showPicker && e.target.showPicker()}
+            className={`w-full px-3 py-2.5 text-sm bg-transparent text-slate-800 dark:text-slate-200 outline-none cursor-pointer appearance-none relative z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:left-0 [&::-webkit-calendar-picker-indicator]:top-0 ${className}`}
+        />
+        <Calendar size={15} className="absolute right-3 text-slate-400 group-hover:text-blue-400 z-0 pointer-events-none transition-colors" />
+    </div>
 );
 
 const TextArea = ({ className = '', ...props }) => (
     <textarea
-        className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-300 dark:placeholder-slate-600 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all custom-scrollbar ${className}`}
+        className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all custom-scrollbar ${className}`}
         {...props}
     />
 );
 
-const Select = ({ options, value, onChange, placeholder = "Select an option", className = '', allowCustom = false }) => {
+const Select = ({ options, value, onChange, placeholder = "", className = '', allowCustom = false }) => {
     const isValueCustom = value && !options.includes(value);
     const [showInput, setShowInput] = useState(isValueCustom);
 
@@ -177,7 +190,6 @@ const Select = ({ options, value, onChange, placeholder = "Select an option", cl
                     type="text"
                     value={value}
                     onChange={e => onChange(e.target.value)}
-                    placeholder={`Type custom entry...`}
                     className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2.5 pr-10 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all ${className}`}
                     autoFocus
                 />
@@ -207,7 +219,8 @@ const Select = ({ options, value, onChange, placeholder = "Select an option", cl
                 }}
                 className={`w-full appearance-none bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2.5 pr-8 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer ${className}`}
             >
-                <option value="" disabled>{placeholder}</option>
+                {placeholder && <option value="" disabled>{placeholder}</option>}
+                {!placeholder && <option value="" disabled></option>}
                 {options.map(o => <option key={o} value={o}>{o}</option>)}
                 {allowCustom && <option value="__CUSTOM__" className="font-semibold text-blue-600 dark:text-blue-400">Add Custom Entry...</option>}
             </select>
@@ -251,21 +264,32 @@ const Dashboard = () => {
     const formattedTime = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
     // ─── LEAVE MANAGEMENT STATES ─────────────────────────────────────────────
-// ─── LEAVE MANAGEMENT STATES ─────────────────────────────────────────────
     const [leaveModalOpen, setLeaveModalOpen] = useState(false);
-    const [leaveForm, setLeaveForm] = useState({ leaveType: 'Casual Leave', startDate: '', endDate: '', reason: '' });
+    const [leaveForm, setLeaveForm] = useState({ 
+        leaveType: 'Leave', 
+        startDate: '', 
+        endDate: '', 
+        reason: '',
+        handoverTo: '',
+        handoverNotes: '',
+        workedOnDate: '',
+        session: ''
+    });
     const [leaves, setLeaves] = useState([]);
-    
-    // Define the options for the dropdown
-    const LEAVE_TYPES = ['Casual Leave', 'Sick Leave', 'Privilege / Earned Leave', 'Compensatory Off', 'Loss of Pay (LOP)'];
+    const [allEmployees, setAllEmployees] = useState([]); 
 
     const isSalesOrOps = user?.role === ROLES.SALES || user?.role === ROLES.OPERATION;
     const isAdmin = user?.role === ROLES.ADMIN;
+    
+    const calculateDays = (start, end) => {
+        if (!start || !end) return '';
+        const diff = new Date(end) - new Date(start);
+        return diff >= 0 ? (diff / (1000 * 60 * 60 * 24)) + 1 : 0;
+    };
 
     // ─── LEAVE API HANDLERS ──────────────────────────────────────────────────
     const fetchLeaves = async () => {
         try {
-            // Updated to hit the new /all endpoint for Admins
             const endpoint = isAdmin ? `${API_BASE_URL}/leaves/all` : `${API_BASE_URL}/leaves?employeeId=${currentUserIdentifier}`;
             const res = await fetch(endpoint);
             if (res.ok) setLeaves(await res.json());
@@ -280,14 +304,24 @@ const Dashboard = () => {
         return () => clearInterval(leaveTimer);
     }, [currentUserIdentifier, isAdmin]);
 
-const applyLeave = async () => {
-        if (!leaveForm.startDate || !leaveForm.endDate || !leaveForm.reason.trim()) return;
+    const applyLeave = async () => {
+        const isLeave = leaveForm.leaveType === 'Leave';
+        const isWeekOff = leaveForm.leaveType === 'Week Off';
+        const isHalfDay = leaveForm.leaveType === 'Half Day';
+
+        if (isLeave && (!leaveForm.startDate || !leaveForm.endDate || !leaveForm.reason.trim())) return;
+        if (isWeekOff && (!leaveForm.startDate || !leaveForm.workedOnDate || !leaveForm.reason.trim())) return;
+        if (isHalfDay && (!leaveForm.startDate || !leaveForm.session || !leaveForm.reason.trim())) return;
+
+        const calculatedDays = isLeave ? calculateDays(leaveForm.startDate, leaveForm.endDate) : (isHalfDay ? 0.5 : 1);
+
         try {
             const res = await fetch(`${API_BASE_URL}/leaves`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    ...leaveForm, // This now includes leaveType automatically
+                    ...leaveForm,
+                    totalDays: calculatedDays,
                     employeeId: currentUserIdentifier,
                     employeeName: user?.name,
                     status: 'Pending'
@@ -297,8 +331,7 @@ const applyLeave = async () => {
                 const savedLeave = await res.json();
                 setLeaves(prev => [savedLeave, ...prev]);
                 setLeaveModalOpen(false);
-                // Update reset state here:
-                setLeaveForm({ leaveType: 'Casual Leave', startDate: '', endDate: '', reason: '' });
+                setLeaveForm({ leaveType: 'Leave', startDate: '', endDate: '', reason: '', handoverTo: '', handoverNotes: '', workedOnDate: '', session: '' });
                 showToast("Leave application submitted to Admin.", "success");
             }
         } catch (err) {
@@ -314,7 +347,6 @@ const applyLeave = async () => {
                 body: JSON.stringify({ status: action })
             });
             if (res.ok) {
-                // UPDATE: Map over the array to change the status instead of filtering it out
                 setLeaves(prev => prev.map(l => l.id === leaveId ? { ...l, status: action } : l));
                 showToast(`Leave request ${action.toLowerCase()}.`, "success");
             }
@@ -593,7 +625,7 @@ const applyLeave = async () => {
 
         const fetchDashboardData = async () => {
             try {
-                const [statsRes, tasksRes, membersRes, targetsRes, eventsRes, topDestRes, jobsRes, leadsRes, campaignsRes] = await Promise.all([
+                const [statsRes, tasksRes, membersRes, targetsRes, eventsRes, topDestRes, jobsRes, leadsRes, campaignsRes, employeesRes] = await Promise.all([
                     fetch(`${API_BASE_URL}/stats`),
                     fetch(`${API_BASE_URL}/tasks?employeeId=${currentUserIdentifier}`),
                     fetch(`${API_BASE_URL}/members`),
@@ -603,9 +635,11 @@ const applyLeave = async () => {
                     fetch(`${API_BASE_URL}/jobs`),  
                     fetch(`${API_BASE_URL}/leads`), 
                     fetch(`${API_BASE_URL}/campaigns`),
+                    fetch(`${API_BASE_URL}/employees`)
                 ]);
 
                 if (statsRes.ok) setStats(await statsRes.json());
+                if (employeesRes.ok) setAllEmployees(await employeesRes.json());
                 
                 if (tasksRes.ok) {
                     const allTasks = await tasksRes.json();
@@ -855,36 +889,101 @@ const applyLeave = async () => {
                 </div>
             )}
 
-        {/* ── LEAVE APPLICATION MODAL (EMPLOYEES ONLY) ── */}
+            {/* ── LEAVE APPLICATION MODAL (EMPLOYEES ONLY) ── */}
             <Modal open={leaveModalOpen} onClose={() => setLeaveModalOpen(false)} title="Apply for Leave" maxWidth="max-w-md">
                 <div className="px-1 py-1 space-y-4">
                     
-                    {/* NEW LEAVE TYPE DROPDOWN */}
-                    <Field label="Leave Type *">
+                    <Field label="Leave Type">
                         <Select 
-                            options={LEAVE_TYPES} 
+                            options={['Leave', 'Week Off', 'Half Day']} 
                             value={leaveForm.leaveType} 
-                            onChange={v => setLeaveForm(f => ({ ...f, leaveType: v }))} 
-                            placeholder="Select Leave Type" 
+                            onChange={v => setLeaveForm(f => ({ ...f, leaveType: v, startDate: '', endDate: '', reason: '', handoverTo: '', handoverNotes: '', workedOnDate: '', session: '' }))} 
+                            placeholder=""
                         />
                     </Field>
 
-                    <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                        <Field label="Start Date *">
-                            <Input type="date" value={leaveForm.startDate} onChange={e => setLeaveForm(f => ({ ...f, startDate: e.target.value }))} />
-                        </Field>
-                        <Field label="End Date *">
-                            <Input type="date" value={leaveForm.endDate} onChange={e => setLeaveForm(f => ({ ...f, endDate: e.target.value }))} />
-                        </Field>
-                    </div>
-                    <Field label="Reason *" className="mb-0">
-                        <TextArea rows="3" placeholder="Explain your reason for leave..." value={leaveForm.reason} onChange={e => setLeaveForm(f => ({ ...f, reason: e.target.value }))} />
-                    </Field>
+                    {leaveForm.leaveType === 'Leave' && (
+                        <>
+                            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                                <Field label="From Date">
+                                    <DateInput value={leaveForm.startDate} onChange={e => setLeaveForm(f => ({ ...f, startDate: e.target.value }))} />
+                                </Field>
+                                <Field label="To Date">
+                                    <DateInput value={leaveForm.endDate} onChange={e => setLeaveForm(f => ({ ...f, endDate: e.target.value }))} />
+                                </Field>
+                            </div>
+                            <Field label="Total Days">
+                                <Input value={calculateDays(leaveForm.startDate, leaveForm.endDate)} readOnly className="bg-slate-100 dark:bg-slate-800 cursor-not-allowed font-bold" />
+                            </Field>
+                            <Field label="Reason" className="mb-0">
+                                <TextArea rows="2" value={leaveForm.reason} onChange={e => setLeaveForm(f => ({ ...f, reason: e.target.value }))} />
+                            </Field>
+                            <Field label="Work Handover To">
+                                <Select 
+                                    options={allEmployees.filter(emp => emp.designation?.toLowerCase() !== 'admin').map(emp => emp.name)} 
+                                    value={leaveForm.handoverTo} 
+                                    onChange={v => setLeaveForm(f => ({ ...f, handoverTo: v }))} 
+                                    placeholder=""
+                                />
+                            </Field>
+                            <Field label="Handover Notes">
+                                <Input value={leaveForm.handoverNotes} onChange={e => setLeaveForm(f => ({ ...f, handoverNotes: e.target.value }))} />
+                            </Field>
+                        </>
+                    )}
+
+                    {leaveForm.leaveType === 'Week Off' && (
+                        <>
+                            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                                <Field label="Week Off Date">
+                                    <DateInput value={leaveForm.startDate} onChange={e => setLeaveForm(f => ({ ...f, startDate: e.target.value }))} />
+                                </Field>
+                                <Field label="Worked On">
+                                    <DateInput value={leaveForm.workedOnDate} onChange={e => setLeaveForm(f => ({ ...f, workedOnDate: e.target.value }))} />
+                                </Field>
+                            </div>
+                            <Field label="Reason" className="mb-0">
+                                <TextArea rows="2" value={leaveForm.reason} onChange={e => setLeaveForm(f => ({ ...f, reason: e.target.value }))} />
+                            </Field>
+                            <Field label="Work Handover To">
+                                <Select 
+                                    options={allEmployees.filter(emp => emp.designation?.toLowerCase() !== 'admin').map(emp => emp.name)} 
+                                    value={leaveForm.handoverTo} 
+                                    onChange={v => setLeaveForm(f => ({ ...f, handoverTo: v }))} 
+                                    placeholder=""
+                                />
+                            </Field>
+                            <Field label="Handover Notes">
+                                <Input value={leaveForm.handoverNotes} onChange={e => setLeaveForm(f => ({ ...f, handoverNotes: e.target.value }))} />
+                            </Field>
+                        </>
+                    )}
+
+                    {leaveForm.leaveType === 'Half Day' && (
+                        <>
+                            <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                                <Field label="Date">
+                                    <DateInput value={leaveForm.startDate} onChange={e => setLeaveForm(f => ({ ...f, startDate: e.target.value }))} />
+                                </Field>
+                                <Field label="Session">
+                                    <Select 
+                                        options={['First Half', 'Second Half']} 
+                                        value={leaveForm.session} 
+                                        onChange={v => setLeaveForm(f => ({ ...f, session: v }))} 
+                                        placeholder=""
+                                    />
+                                </Field>
+                            </div>
+                            <Field label="Reason" className="mb-0">
+                                <TextArea rows="3" value={leaveForm.reason} onChange={e => setLeaveForm(f => ({ ...f, reason: e.target.value }))} />
+                            </Field>
+                        </>
+                    )}
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 mt-5">
-                    <button onClick={() => setLeaveModalOpen(false)} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
-                    <button onClick={applyLeave} disabled={!leaveForm.startDate || !leaveForm.endDate || !leaveForm.reason.trim()} className="w-full sm:flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 order-1 sm:order-2">
-                        <Save size={16} /> Submit Application
+                    <button onClick={() => setLeaveModalOpen(false)} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">CANCEL</button>
+                    <button onClick={applyLeave} className="w-full sm:flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 order-1 sm:order-2">
+                        SUBMIT
                     </button>
                 </div>
             </Modal>
@@ -965,12 +1064,12 @@ const applyLeave = async () => {
 
             <Modal open={eventModalOpen} onClose={() => setEventModalOpen(false)} title="Add Calendar Reminder">
                 <div className="px-1 py-1">
-                    <Field label="Reminder Title"><Input value={eventForm.title} onChange={e => setEventForm(f => ({ ...f, title: e.target.value }))} placeholder="Follow up with client..." autoFocus /></Field>
+                    <Field label="Reminder Title"><Input value={eventForm.title} onChange={e => setEventForm(f => ({ ...f, title: e.target.value }))} autoFocus /></Field>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <Field label="Date"><Input type="date" value={eventForm.date} onChange={e => setEventForm(f => ({ ...f, date: e.target.value }))} /></Field>
                         <Field label="Time"><Input type="time" value={eventForm.time} onChange={e => setEventForm(f => ({ ...f, time: e.target.value }))} /></Field>
                     </div>
-                    <Field label="Category"><Select options={EVENT_CATEGORIES} value={eventForm.category} onChange={v => setEventForm(f => ({ ...f, category: v }))} placeholder="Select Category" /></Field>
+                    <Field label="Category"><Select options={EVENT_CATEGORIES} value={eventForm.category} onChange={v => setEventForm(f => ({ ...f, category: v }))} placeholder="" /></Field>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 mt-5">
                     <button onClick={() => setEventModalOpen(false)} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
@@ -1006,7 +1105,7 @@ const applyLeave = async () => {
             <Modal open={targetModal} onClose={() => { setTargetModal(false); setEditingTarget(null); }} title={editingTarget ? "Edit Target" : "Add Sales Target"} maxWidth="max-w-md">
                 <div className="space-y-4 px-1 py-1">
                     <Field label="Target Name">
-                        <Input value={targetForm.label} onChange={e => setTargetForm(f => ({ ...f, label: e.target.value }))} placeholder="e.g., Monthly Revenue" autoFocus />
+                        <Input value={targetForm.label} onChange={e => setTargetForm(f => ({ ...f, label: e.target.value }))} autoFocus />
                     </Field>
                     <div className="grid grid-cols-2 gap-4">
                         <Field label="Current Value">
@@ -1018,7 +1117,7 @@ const applyLeave = async () => {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <Field label="Unit Designator">
-                            <Input value={targetForm.unit} onChange={e => setTargetForm(f => ({ ...f, unit: e.target.value }))} placeholder="e.g., $, leads" />
+                            <Input value={targetForm.unit} onChange={e => setTargetForm(f => ({ ...f, unit: e.target.value }))} />
                         </Field>
                         <Field label="Color Theme">
                             <div className="relative">
@@ -1264,7 +1363,7 @@ const applyLeave = async () => {
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
+                <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                     <div className="flex justify-between items-center mb-4">
                         <div>
                             <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Sales Targets</h2>
@@ -1459,7 +1558,7 @@ const applyLeave = async () => {
                                 leaves.map(leave => (
                                     <div key={leave.id} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-800/30 flex justify-between items-center">
                                         <div>
-                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{leave.startDate} to {leave.endDate}</p>
+                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{leave.startDate} to {leave.endDate || 'N/A'}</p>
                                          <p className="text-[10px] text-slate-500 mt-1 truncate max-w-[150px]">
     <span className="font-semibold text-slate-600 dark:text-slate-300">{leave.leaveType}</span> • {leave.reason}
 </p>
@@ -1506,7 +1605,7 @@ const applyLeave = async () => {
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
                                                 <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{leave.employeeName}</p>
-                                                <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">{leave.startDate} to {leave.endDate}</p>
+                                                <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">{leave.startDate} to {leave.endDate || 'N/A'}</p>
                                             </div>
                                             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
                                                 leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
