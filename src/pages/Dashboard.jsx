@@ -265,6 +265,7 @@ const Dashboard = () => {
 
     // ─── LEAVE MANAGEMENT STATES ─────────────────────────────────────────────
     const [leaveModalOpen, setLeaveModalOpen] = useState(false);
+    const [allLeavesModalOpen, setAllLeavesModalOpen] = useState(false);
     const [leaveForm, setLeaveForm] = useState({ 
         leaveType: 'Leave', 
         startDate: '', 
@@ -988,6 +989,81 @@ const Dashboard = () => {
                 </div>
             </Modal>
 
+            <Modal open={allLeavesModalOpen} onClose={() => setAllLeavesModalOpen(false)} title={isAdmin ? "All Team Leaves" : "My Leave History"} maxWidth="max-w-3xl">
+                <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1 custom-scrollbar">
+                    {leaves.length === 0 ? (
+                        <p className="text-slate-500 text-center py-10 text-sm">No leave records found.</p>
+                    ) : (
+                        leaves.map(leave => (
+                            <div key={leave.id} className={`p-4 rounded-2xl border transition-colors ${
+                                leave.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/10' :
+                                'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40'
+                            }`}>
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                            {leave.employeeName} 
+                                            {isAdmin && <span className="text-[10px] font-mono text-slate-500 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-lg">ID: {leave.employeeId}</span>}
+                                        </p>
+                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 font-mono space-y-1">
+                                            <p>
+                                                <span className="font-bold text-slate-600 dark:text-slate-300">{leave.leaveType || 'Leave'}</span>
+                                                {leave.leaveType === 'Leave' && leave.totalDays && ` • ${leave.totalDays} Days`}
+                                            </p>
+                                            <p>
+                                                {leave.leaveType === 'Half Day' ? (
+                                                    `${leave.startDate} • ${leave.session}`
+                                                ) : leave.leaveType === 'Week Off' ? (
+                                                    `Off: ${leave.startDate} • Worked: ${leave.workedOnDate}`
+                                                ) : (
+                                                    `${leave.startDate} to ${leave.endDate || 'N/A'}`
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span className={`text-[10px] font-bold px-3 py-1 rounded-xl border uppercase tracking-wide flex-shrink-0 ${
+                                        leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 
+                                        leave.status === 'Rejected' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' : 
+                                        'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                                    }`}>
+                                        {leave.status}
+                                    </span>
+                                </div>
+                                
+                                <div className="text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-[#0d1526] p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 space-y-2.5">
+                                    <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Reason</span> {leave.reason}</p>
+                                    
+                                    {(leave.handoverTo || leave.handoverNotes) && (
+                                        <div className="pt-2.5 border-t border-slate-100 dark:border-slate-700/50 space-y-2.5">
+                                            {leave.handoverTo && (
+                                                <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Handover To</span> {leave.handoverTo}</p>
+                                            )}
+                                            {leave.handoverNotes && (
+                                                <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Handover Notes</span> {leave.handoverNotes}</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {isAdmin && leave.status === 'Pending' && (
+                                    <div className="flex gap-3 mt-4">
+                                        <button onClick={() => handleLeaveAction(leave.id, 'Approved')} className="flex-1 py-2 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl transition-colors flex justify-center items-center gap-1.5 shadow-sm shadow-emerald-500/20">
+                                            <Check size={14}/> Approve Leave
+                                        </button>
+                                        <button onClick={() => handleLeaveAction(leave.id, 'Rejected')} className="flex-1 py-2 text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-xl transition-colors flex justify-center items-center gap-1.5 shadow-sm shadow-rose-500/20">
+                                            <X size={14}/> Reject Leave
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    )}
+                </div>
+                <div className="mt-5 flex justify-end">
+                    <button onClick={() => setAllLeavesModalOpen(false)} className="px-6 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 font-semibold text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">Close</button>
+                </div>
+            </Modal>
+
             <Modal open={leadModalOpen} onClose={() => setLeadModalOpen(false)} title="Add New Travel Lead" maxWidth="max-w-4xl">
                 <div className="flex flex-col h-full">
                     <div className="space-y-5 flex-1 px-1 py-1">
@@ -1363,7 +1439,7 @@ const Dashboard = () => {
                     </div>
                 </div>
 
-                <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
                     <div className="flex justify-between items-center mb-4">
                         <div>
                             <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Sales Targets</h2>
@@ -1546,21 +1622,24 @@ const Dashboard = () => {
                                 <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">My Leaves</h2>
                                 <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Track your applications</p>
                             </div>
-                            <button onClick={() => setLeaveModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20">
-                                <Plus size={13} /> Apply Leave
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button type="button" onClick={() => setAllLeavesModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors bg-blue-50/50 dark:bg-transparent">View All</button>
+                                <button onClick={() => setLeaveModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20">
+                                    <Plus size={13} /> Apply Leave
+                                </button>
+                            </div>
                         </div>
 
                         <div className="space-y-2 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
                             {leaves.length === 0 ? (
                                 <div className="text-center py-8 text-slate-400 text-xs">No leave history found.</div>
                             ) : (
-                                leaves.map(leave => (
+                                leaves.slice(0, 3).map(leave => (
                                     <div key={leave.id} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-800/30 flex justify-between items-center">
                                         <div>
                                             <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{leave.startDate} to {leave.endDate || 'N/A'}</p>
                                          <p className="text-[10px] text-slate-500 mt-1 truncate max-w-[150px]">
-    <span className="font-semibold text-slate-600 dark:text-slate-300">{leave.leaveType}</span> • {leave.reason}
+    <span className="font-semibold text-slate-600 dark:text-slate-300">{leave.leaveType || 'Leave'}</span> • {leave.reason}
 </p>
                                         </div>
                                         <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
@@ -1590,22 +1669,41 @@ const Dashboard = () => {
                                     <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Admin Overview</p>
                                 </div>
                             </div>
-                            <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{leaves.filter(l => l.status === 'Pending').length} Pending</span>
+                            <div className="flex items-center gap-2">
+                                <button type="button" onClick={() => setAllLeavesModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors bg-amber-50/50 dark:bg-transparent">View All</button>
+                                <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{leaves.filter(l => l.status === 'Pending').length} Pending</span>
+                            </div>
                         </div>
                         
                         <div className="space-y-2.5 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
                             {leaves.length === 0 ? (
                                 <div className="text-center py-8 text-slate-400 text-xs">No leave requests found.</div>
                             ) : (
-                                leaves.map(leave => (
+                                leaves.slice(0, 3).map(leave => (
                                     <div key={leave.id} className={`p-3 border rounded-xl transition-colors ${
                                         leave.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/10' :
                                         'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40'
                                     }`}>
                                         <div className="flex justify-between items-start mb-2">
                                             <div>
-                                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{leave.employeeName}</p>
-                                                <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 font-mono">{leave.startDate} to {leave.endDate || 'N/A'}</p>
+                                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                                    {leave.employeeName} <span className="font-normal text-slate-500 text-[10px]">({leave.employeeId})</span>
+                                                </p>
+                                                <div className="text-[9px] text-slate-500 dark:text-slate-400 mt-1 font-mono space-y-0.5">
+                                                    <p>
+                                                        <span className="font-bold text-slate-600 dark:text-slate-300">{leave.leaveType || 'Leave'}</span>
+                                                        {leave.leaveType === 'Leave' && leave.totalDays && ` • ${leave.totalDays} Days`}
+                                                    </p>
+                                                    <p>
+                                                        {leave.leaveType === 'Half Day' ? (
+                                                            `${leave.startDate} • ${leave.session}`
+                                                        ) : leave.leaveType === 'Week Off' ? (
+                                                            `Off: ${leave.startDate} • Worked: ${leave.workedOnDate}`
+                                                        ) : (
+                                                            `${leave.startDate} to ${leave.endDate || 'N/A'}`
+                                                        )}
+                                                    </p>
+                                                </div>
                                             </div>
                                             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
                                                 leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
@@ -1615,9 +1713,21 @@ const Dashboard = () => {
                                                 {leave.status}
                                             </span>
                                         </div>
-                                        <p className="text-[10px] text-slate-600 dark:text-slate-300 mb-3 bg-white dark:bg-[#0d1526] p-2 rounded-lg border border-slate-100 dark:border-slate-700/50">
-                                            "{leave.reason}"
-                                        </p>
+                                        
+                                        <div className="text-[10px] text-slate-600 dark:text-slate-300 mb-3 bg-white dark:bg-[#0d1526] p-2.5 rounded-lg border border-slate-100 dark:border-slate-700/50 space-y-2">
+                                            <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Reason</span> {leave.reason}</p>
+                                            
+                                            {(leave.handoverTo || leave.handoverNotes) && (
+                                                <div className="pt-2 border-t border-slate-100 dark:border-slate-700/50 space-y-2">
+                                                    {leave.handoverTo && (
+                                                        <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Handover To</span> {leave.handoverTo}</p>
+                                                    )}
+                                                    {leave.handoverNotes && (
+                                                        <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Handover Notes</span> {leave.handoverNotes}</p>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                         
                                         {leave.status === 'Pending' && (
                                             <div className="flex gap-2">
@@ -1679,6 +1789,81 @@ const Dashboard = () => {
                 </div>
                 <div className="mt-5 flex justify-end">
                     <button onClick={() => setPaymentModalOpen(false)} className="px-6 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 font-semibold text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">Close</button>
+                </div>
+            </Modal>
+
+            <Modal open={allLeavesModalOpen} onClose={() => setAllLeavesModalOpen(false)} title={isAdmin ? "All Team Leaves" : "My Leave History"} maxWidth="max-w-3xl">
+                <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1 custom-scrollbar">
+                    {leaves.length === 0 ? (
+                        <p className="text-slate-500 text-center py-10 text-sm">No leave records found.</p>
+                    ) : (
+                        leaves.map(leave => (
+                            <div key={leave.id} className={`p-4 rounded-2xl border transition-colors ${
+                                leave.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/10' :
+                                'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40'
+                            }`}>
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                            {leave.employeeName} 
+                                            {isAdmin && <span className="text-[10px] font-mono text-slate-500 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-lg">ID: {leave.employeeId}</span>}
+                                        </p>
+                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 font-mono space-y-1">
+                                            <p>
+                                                <span className="font-bold text-slate-600 dark:text-slate-300">{leave.leaveType || 'Leave'}</span>
+                                                {leave.leaveType === 'Leave' && leave.totalDays && ` • ${leave.totalDays} Days`}
+                                            </p>
+                                            <p>
+                                                {leave.leaveType === 'Half Day' ? (
+                                                    `${leave.startDate} • ${leave.session}`
+                                                ) : leave.leaveType === 'Week Off' ? (
+                                                    `Off: ${leave.startDate} • Worked: ${leave.workedOnDate}`
+                                                ) : (
+                                                    `${leave.startDate} to ${leave.endDate || 'N/A'}`
+                                                )}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <span className={`text-[10px] font-bold px-3 py-1 rounded-xl border uppercase tracking-wide flex-shrink-0 ${
+                                        leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 
+                                        leave.status === 'Rejected' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' : 
+                                        'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                                    }`}>
+                                        {leave.status}
+                                    </span>
+                                </div>
+                                
+                                <div className="text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-[#0d1526] p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 space-y-2.5">
+                                    <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Reason</span> {leave.reason}</p>
+                                    
+                                    {(leave.handoverTo || leave.handoverNotes) && (
+                                        <div className="pt-2.5 border-t border-slate-100 dark:border-slate-700/50 space-y-2.5">
+                                            {leave.handoverTo && (
+                                                <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Handover To</span> {leave.handoverTo}</p>
+                                            )}
+                                            {leave.handoverNotes && (
+                                                <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Handover Notes</span> {leave.handoverNotes}</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                
+                                {isAdmin && leave.status === 'Pending' && (
+                                    <div className="flex gap-3 mt-4">
+                                        <button onClick={() => handleLeaveAction(leave.id, 'Approved')} className="flex-1 py-2 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl transition-colors flex justify-center items-center gap-1.5 shadow-sm shadow-emerald-500/20">
+                                            <Check size={14}/> Approve Leave
+                                        </button>
+                                        <button onClick={() => handleLeaveAction(leave.id, 'Rejected')} className="flex-1 py-2 text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-xl transition-colors flex justify-center items-center gap-1.5 shadow-sm shadow-rose-500/20">
+                                            <X size={14}/> Reject Leave
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        ))
+                    )}
+                </div>
+                <div className="mt-5 flex justify-end">
+                    <button onClick={() => setAllLeavesModalOpen(false)} className="px-6 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 font-semibold text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">Close</button>
                 </div>
             </Modal>
 
