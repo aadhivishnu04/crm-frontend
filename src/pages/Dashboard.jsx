@@ -251,9 +251,13 @@ const Dashboard = () => {
     const formattedTime = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
 
     // ─── LEAVE MANAGEMENT STATES ─────────────────────────────────────────────
+// ─── LEAVE MANAGEMENT STATES ─────────────────────────────────────────────
     const [leaveModalOpen, setLeaveModalOpen] = useState(false);
-    const [leaveForm, setLeaveForm] = useState({ startDate: '', endDate: '', reason: '' });
+    const [leaveForm, setLeaveForm] = useState({ leaveType: 'Casual Leave', startDate: '', endDate: '', reason: '' });
     const [leaves, setLeaves] = useState([]);
+    
+    // Define the options for the dropdown
+    const LEAVE_TYPES = ['Casual Leave', 'Sick Leave', 'Privilege / Earned Leave', 'Compensatory Off', 'Loss of Pay (LOP)'];
 
     const isSalesOrOps = user?.role === ROLES.SALES || user?.role === ROLES.OPERATION;
     const isAdmin = user?.role === ROLES.ADMIN;
@@ -276,14 +280,14 @@ const Dashboard = () => {
         return () => clearInterval(leaveTimer);
     }, [currentUserIdentifier, isAdmin]);
 
-    const applyLeave = async () => {
+const applyLeave = async () => {
         if (!leaveForm.startDate || !leaveForm.endDate || !leaveForm.reason.trim()) return;
         try {
             const res = await fetch(`${API_BASE_URL}/leaves`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    ...leaveForm,
+                    ...leaveForm, // This now includes leaveType automatically
                     employeeId: currentUserIdentifier,
                     employeeName: user?.name,
                     status: 'Pending'
@@ -293,7 +297,8 @@ const Dashboard = () => {
                 const savedLeave = await res.json();
                 setLeaves(prev => [savedLeave, ...prev]);
                 setLeaveModalOpen(false);
-                setLeaveForm({ startDate: '', endDate: '', reason: '' });
+                // Update reset state here:
+                setLeaveForm({ leaveType: 'Casual Leave', startDate: '', endDate: '', reason: '' });
                 showToast("Leave application submitted to Admin.", "success");
             }
         } catch (err) {
@@ -850,19 +855,30 @@ const Dashboard = () => {
                 </div>
             )}
 
-            {/* ── LEAVE APPLICATION MODAL (EMPLOYEES ONLY) ── */}
+        {/* ── LEAVE APPLICATION MODAL (EMPLOYEES ONLY) ── */}
             <Modal open={leaveModalOpen} onClose={() => setLeaveModalOpen(false)} title="Apply for Leave" maxWidth="max-w-md">
                 <div className="px-1 py-1 space-y-4">
+                    
+                    {/* NEW LEAVE TYPE DROPDOWN */}
+                    <Field label="Leave Type *">
+                        <Select 
+                            options={LEAVE_TYPES} 
+                            value={leaveForm.leaveType} 
+                            onChange={v => setLeaveForm(f => ({ ...f, leaveType: v }))} 
+                            placeholder="Select Leave Type" 
+                        />
+                    </Field>
+
                     <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                        <Field label="Start Date">
+                        <Field label="Start Date *">
                             <Input type="date" value={leaveForm.startDate} onChange={e => setLeaveForm(f => ({ ...f, startDate: e.target.value }))} />
                         </Field>
-                        <Field label="End Date">
+                        <Field label="End Date *">
                             <Input type="date" value={leaveForm.endDate} onChange={e => setLeaveForm(f => ({ ...f, endDate: e.target.value }))} />
                         </Field>
                     </div>
-                    <Field label="Reason for Leave" className="mb-0">
-                        <TextArea rows="3" placeholder="Explain your reason briefly..." value={leaveForm.reason} onChange={e => setLeaveForm(f => ({ ...f, reason: e.target.value }))} />
+                    <Field label="Reason *" className="mb-0">
+                        <TextArea rows="3" placeholder="Explain your reason for leave..." value={leaveForm.reason} onChange={e => setLeaveForm(f => ({ ...f, reason: e.target.value }))} />
                     </Field>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 mt-5">
@@ -1444,7 +1460,9 @@ const Dashboard = () => {
                                     <div key={leave.id} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-800/30 flex justify-between items-center">
                                         <div>
                                             <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{leave.startDate} to {leave.endDate}</p>
-                                            <p className="text-[10px] text-slate-500 mt-1 truncate max-w-[150px]">{leave.reason}</p>
+                                         <p className="text-[10px] text-slate-500 mt-1 truncate max-w-[150px]">
+    <span className="font-semibold text-slate-600 dark:text-slate-300">{leave.leaveType}</span> • {leave.reason}
+</p>
                                         </div>
                                         <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
                                             leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
