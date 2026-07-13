@@ -1841,11 +1841,21 @@ export default function OperationsDashboard() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">Confirmed Method</label>
-                <input type="text" value={selectedLeadForEdit.confirmedMethod || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, confirmedMethod: e.target.value})} className={inputCls} />
+               <input 
+    type="text" 
+    readOnly 
+    value={selectedLeadForEdit.confirmedMethod || ''} 
+    className={readonlyCls} 
+/>
             </div>
             <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">Confirmed Date</label>
-                <DatePickerField type="date" value={selectedLeadForEdit.confirmedDate || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, confirmedDate: e.target.value})} className={inputCls} />
+            <DatePickerField 
+    type="date" 
+    readOnly 
+    value={selectedLeadForEdit.confirmedDate || ''} 
+    className={readonlyCls} 
+/>
             </div>
             <div>
                 <label className="block text-xs font-medium text-slate-400 mb-1">Operations Executive</label>
