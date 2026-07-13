@@ -2430,7 +2430,7 @@ export default function OperationsDashboard() {
                                                             
                                                             {(!selectedLeadForEdit.updateRecords || safeParseArray(selectedLeadForEdit.updateRecords, null).filter(Boolean).length === 0) && (
                                                                 <div className="text-slate-500 text-xs text-center py-6 bg-slate-900/30 rounded border border-slate-800 border-dashed">
-                                                                    No previous records. Add an update and save the form to see it here.
+                                                                    No previous records 
                                                                 </div>
                                                             )}
                                                         </div>
