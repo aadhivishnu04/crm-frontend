@@ -483,7 +483,7 @@ export default function OperationsDashboard() {
                     ...item,
                     uniqueKey: `${item.id}-${index}`,
                     reqIndex: index,
-                    rawRowStatus: rawRowStatus,
+                    rawRowStatus: item.customerResponse === 'Booking Confirmed' ? 'Confirmed Bookings' : (rawRowStatus || 'New Requests'),
                     destination: req.destination || item.destination,
                     customisationType: req.customisationType || item.customisationType,
                     requirements: req.requirements || item.requirements,
@@ -497,7 +497,7 @@ export default function OperationsDashboard() {
             ...item, 
             uniqueKey: `${item.id}-0`, 
             reqIndex: 0, 
-            rawRowStatus: item.status || 'New Requests',
+            rawRowStatus: item.customerResponse === 'Booking Confirmed' ? 'Confirmed Bookings' : (item.status || 'New Requests'),
             assignedOps: item.operationExecutive || ''
         }];
     });
@@ -666,27 +666,7 @@ export default function OperationsDashboard() {
 
     const updateDomTransport = (index, field, value) => {
         const newTrans = [...selectedLeadForEdit.domTransports];
-        newTrans[index][field] = value;
-        setSelectedLeadForEdit({ ...selectedLeadForEdit, domTransports: newTrans });
-    };
-
-    const updateDomTransportNested = (index, mode, leg, field, value) => {
-        const newTrans = JSON.parse(JSON.stringify(selectedLeadForEdit.domTransports));
-        if (!newTrans[index][mode]) newTrans[index][mode] = { onward: {}, return: null };
-        if (!newTrans[index][mode][leg]) newTrans[index][mode][leg] = {};
-        newTrans[index][mode][leg][field] = value;
-        setSelectedLeadForEdit({ ...selectedLeadForEdit, domTransports: newTrans });
-    };
-
-    const addDomTransportReturn = (index, mode) => {
-        const newTrans = JSON.parse(JSON.stringify(selectedLeadForEdit.domTransports));
-        newTrans[index][mode].return = {}; 
-        setSelectedLeadForEdit({ ...selectedLeadForEdit, domTransports: newTrans });
-    };
-
-    const removeDomTransportReturn = (index, mode) => {
-        const newTrans = JSON.parse(JSON.stringify(selectedLeadForEdit.domTransports));
-        newTrans[index][mode].return = null;
+        newTrans[index] = { ...newTrans[index], [field]: value };
         setSelectedLeadForEdit({ ...selectedLeadForEdit, domTransports: newTrans });
     };
 
@@ -980,7 +960,6 @@ export default function OperationsDashboard() {
     const totalPages = Math.max(1, Math.ceil(filtered.length / entriesPerPage));
     const paginated = filtered.slice((currentPage - 1) * entriesPerPage, currentPage * entriesPerPage);
 
-    // Categories Updated to Match Screenshot Labels
     const categories = [
         { id: 'New Requests', label: 'Jobs', icon: ShoppingCart, count: countNew },
         { id: 'Follow-Up', label: 'My Jobs', icon: Target, count: countFollow },
@@ -1002,7 +981,6 @@ export default function OperationsDashboard() {
     const baseVendorOptions = ['Bali DMC', 'Dubai DMC', 'Thai DMC', 'Singapore DMC'];
     baseVendorOptions.forEach(dmc => { dmcToContactsMap[dmc] = new Set(); });
 
-    // 1. Extract from existing database leads
     leads.forEach(l => {
         const legacyDMC = l.vendorDmcName || l.vendorName || l.dmcName;
         const legacyContact = l.vendorContactPerson || l.dmcContactPerson;
@@ -1027,7 +1005,6 @@ export default function OperationsDashboard() {
         }
     });
 
-    // 2. Extract from Local Storage (Persisted manual entries)
     try {
         const storedDirectory = JSON.parse(localStorage.getItem('saved_vendor_directory') || '{}');
         Object.keys(storedDirectory).forEach(dmc => {
@@ -1036,7 +1013,6 @@ export default function OperationsDashboard() {
         });
     } catch(e) {}
 
-    // 3. Extract from Current Form Session (Immediate UI updates)
     if (selectedLeadForEdit && selectedLeadForEdit.vendorRequests) {
         selectedLeadForEdit.vendorRequests.forEach(req => {
             const dReq = req.vendorDmcName;
@@ -1433,158 +1409,201 @@ export default function OperationsDashboard() {
                                 {activeTab === 'Confirmed Bookings' ? (
                                     selectedLeadForEdit.tourType === 'International Tour' ? (
                                         <div className="space-y-6">
-                                            {/* Booking Information */}
+                                            {/* 1. BOOKING CONFIRMATION (Fetched from Sales - Read Only) */}
                                             <div className={sectionCls} style={{ borderColor: 'rgba(56, 189, 248, 0.4)' }}>
-                                                <h3 className={`${sectionHeadCls} text-sky-400 border-sky-900/50 flex flex-wrap justify-between gap-1`}>
-                                                    <span>INTERNATIONAL - Booking Information</span>
-                                                </h3>
+                                                <h3 className={`${sectionHeadCls} text-sky-400 border-sky-900/50 mb-4`}>INTERNATIONAL - Booking Confirmation</h3>
                                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Customer Name</label><input type="text" readOnly value={selectedLeadForEdit.customerName} className={readonlyCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Mobile Number</label><input type="text" readOnly value={selectedLeadForEdit.mobileNumber} className={readonlyCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Destination</label><input type="text" readOnly value={selectedLeadForEdit.destination} className={readonlyCls} /></div>
-                                                    
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">No. Of Adult</label><input type="text" value={selectedLeadForEdit.noOfAdults} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, noOfAdults: e.target.value})} className={inputCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">No. Of Children</label><input type="text" value={selectedLeadForEdit.noOfChildren} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, noOfChildren: e.target.value})} className={inputCls} /></div>
-                                                    <div className="hidden sm:block"></div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Confirmed Method</label><input type="text" readOnly value={selectedLeadForEdit.confirmedMethod || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Confirmed Date</label><input type="text" readOnly value={selectedLeadForEdit.confirmedDate || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Operations Executive</label><input type="text" readOnly value={selectedLeadForEdit.operationExecutive || ''} className={readonlyCls} /></div>
 
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Departure Date</label><DatePickerField type="date" readOnly value={selectedLeadForEdit.departureDate} className={readonlyCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Travel Date</label><DatePickerField type="date" readOnly value={selectedLeadForEdit.travelDate} className={readonlyCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Return Date</label><DatePickerField type="date" readOnly value={selectedLeadForEdit.returnDate || 'TBD'} className={readonlyCls} /></div>
-                                                    
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Transport Mode</label><input type="text" readOnly value={selectedLeadForEdit.domTransportType} className={readonlyCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Special Offers</label><input type="text" readOnly value={selectedLeadForEdit.specialOffers} className={readonlyCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Arrival Date</label><DatePickerField type="date" readOnly value={selectedLeadForEdit.arrivalDate} className={readonlyCls} /></div>
-                                                    
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Package Cost</label><input type="text" readOnly value={selectedLeadForEdit.packageCost} className={readonlyCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Sales Executive</label><input type="text" readOnly value={selectedLeadForEdit.salesExecutive} className={readonlyCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Confirmation Date</label><DatePickerField type="date" readOnly value={selectedLeadForEdit.confirmationDate || selectedLeadForEdit.bookingDate || 'TBD'} className={readonlyCls} /></div>
-                                                </div>
-                                            </div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Destination Type</label><input type="text" readOnly value={selectedLeadForEdit.confirmedTripType || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Destination</label><input type="text" readOnly value={selectedLeadForEdit.confirmedDestination || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Duration</label><input type="text" readOnly value={selectedLeadForEdit.confirmedDuration || ''} className={readonlyCls} /></div>
 
-                                            {/* Passenger Details */}
-                                            <div className={sectionCls}>
-                                                <h3 className={`${sectionHeadCls} flex flex-wrap justify-between gap-1`}>
-                                                    <span>Passenger Details</span>
-                                                </h3>
-                                                <div className="space-y-4">
-                                                    {selectedLeadForEdit.passengers?.map((pax, index) => (
-                                                        <div key={index} className="p-4 bg-slate-950 rounded-lg border border-slate-800 relative opacity-80">
-                                                            <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-slate-400 border border-slate-700 rounded">PAX {index + 1}</span>
-                                                            
-                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Full Name</label><input type="text" readOnly value={pax.fullName} className={readonlyCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Date Of Birth</label><input type="text" readOnly value={pax.dob} className={readonlyCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Gender</label><input type="text" readOnly value={pax.gender} className={readonlyCls} /></div>
-                                                                
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Aadhar Card Number</label><input type="text" readOnly value={pax.aadharNumber} className={readonlyCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">PAN Number</label><input type="text" readOnly value={pax.panNumber} className={readonlyCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Number</label><input type="text" readOnly value={pax.passportNumber} className={readonlyCls} /></div>
-
-                                                                {selectedLeadForEdit.tourType === 'International Tour' && (
-                                                                    <>
-                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Issue Date</label><input type="text" readOnly value={pax.passportIssueDate} className={readonlyCls} /></div>
-                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Expiry Date</label><input type="text" readOnly value={pax.passportExpiryDate} className={readonlyCls} /></div>
-                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Place of Issue</label><input type="text" readOnly value={pax.passportIssuePlace} className={readonlyCls} /></div>
-                                                                    </>
-                                                                )}
-
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Mobile Number</label><input type="text" readOnly value={pax.mobileNumber} className={readonlyCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Emergency Contact</label><input type="text" readOnly value={pax.emergencyContact || ''} className={readonlyCls} /></div>
-                                                            </div>
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-slate-400 mb-1">No. of Pax (Adults | Children)</label>
+                                                        <div className="flex gap-2">
+                                                            <input type="text" readOnly value={selectedLeadForEdit.noOfPax || '0'} className={readonlyCls} placeholder="Adults" />
+                                                            <input type="text" readOnly value={selectedLeadForEdit.confirmedNoOfChildren || '0'} className={readonlyCls} placeholder="Children" />
                                                         </div>
-                                                    ))}
+                                                    </div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Departure Date</label><DatePickerField type="date" readOnly value={selectedLeadForEdit.departureDate} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Return Date</label><DatePickerField type="date" readOnly value={selectedLeadForEdit.returnDate} className={readonlyCls} /></div>
+
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Tour Start Date</label><DatePickerField type="date" readOnly value={selectedLeadForEdit.tourStartDate} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Tour End Date</label><DatePickerField type="date" readOnly value={selectedLeadForEdit.tourEndDate} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Services</label><input type="text" readOnly value={selectedLeadForEdit.confirmedServices || ''} className={readonlyCls} /></div>
+
+                                                    {/* Service Costs (Up to 3 dynamically mapped) */}
+                                                    {(() => {
+                                                        const servicesArr = selectedLeadForEdit.confirmedServices ? selectedLeadForEdit.confirmedServices.split(', ').filter(Boolean) : [];
+                                                        return Array.from({ length: 3 }).map((_, idx) => (
+                                                            <div key={idx}>
+                                                                <label className="block text-xs font-medium text-slate-400 mb-1">{servicesArr[idx] || `Service ${idx + 1}`} Cost</label>
+                                                                <input type="text" readOnly value={selectedLeadForEdit[`service${idx+1}Cost`] || ''} className={readonlyCls} />
+                                                            </div>
+                                                        ));
+                                                    })()}
+
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">GST</label><input type="text" readOnly value={selectedLeadForEdit.gst || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">TCS</label><input type="text" readOnly value={selectedLeadForEdit.tcs || ''} className={readonlyCls} /></div>
                                                 </div>
                                             </div>
 
-                                            {/* Flight Details */}
+                                            {/* 2. PASSENGER DETAILS (Fetched from Sales - Read Only) */}
+                                            <div className={sectionCls}>
+                                                <h3 className={`${sectionHeadCls} mb-4`}>Passenger Details</h3>
+                                                <div className="overflow-x-auto border border-slate-700/50 rounded-lg custom-scrollbar">
+                                                    <table className="w-full text-left text-xs text-slate-300 whitespace-nowrap">
+                                                        <thead className="bg-slate-800/80 border-b border-slate-700/50">
+                                                            <tr>
+                                                                <th className="p-2.5 font-medium">Passenger Name</th><th className="p-2.5 font-medium">DOB</th><th className="p-2.5 font-medium">Gender</th>
+                                                                <th className="p-2.5 font-medium">Aadhar Number</th><th className="p-2.5 font-medium">PAN Number</th><th className="p-2.5 font-medium">Passport Number</th>
+                                                                <th className="p-2.5 font-medium">Passport Issue Place</th><th className="p-2.5 font-medium">Issue Date</th><th className="p-2.5 font-medium">Expiry Date</th>
+                                                                <th className="p-2.5 font-medium">Mobile Number</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {selectedLeadForEdit.passengers && selectedLeadForEdit.passengers.length > 0 ? (
+                                                                selectedLeadForEdit.passengers.map((p, idx) => (
+                                                                    <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/40">
+                                                                        <td className="p-2.5">{p.fullName}</td><td className="p-2.5">{p.dob}</td><td className="p-2.5">{p.gender}</td>
+                                                                        <td className="p-2.5">{p.aadharNumber}</td><td className="p-2.5">{p.panNumber}</td><td className="p-2.5">{p.passportNumber}</td>
+                                                                        <td className="p-2.5">{p.passportIssuePlace}</td><td className="p-2.5">{p.passportIssueDate}</td><td className="p-2.5">{p.passportExpiryDate}</td>
+                                                                        <td className="p-2.5">{p.mobileNumber}</td>
+                                                                    </tr>
+                                                                ))
+                                                            ) : (
+                                                                <tr><td colSpan="10" className="p-4 text-center text-slate-500 italic">No passengers recorded.</td></tr>
+                                                            )}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+
+                                            {/* 2.1 DOCUMENT COLLECTION (Fetched from Sales - Read Only) */}
+                                            <div className={sectionCls}>
+                                                <h3 className={`${sectionHeadCls} mb-4`}>Document Collection</h3>
+                                                
+                                                {/* Adjusted to Match Image 2 Exact Flow */}
+                                                <div className="grid grid-cols-1 gap-4 max-w-3xl">
+                                                    
+                                                    {/* Row 1: Aadhar + Remarks */}
+                                                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 border-b border-slate-700/30 pb-3">
+                                                        <div className="flex items-center gap-3 w-48 shrink-0">
+                                                            <input type="checkbox" checked={selectedLeadForEdit.docAadhar === 'Received'} readOnly className="w-5 h-5 accent-emerald-500 cursor-not-allowed" />
+                                                            <label className="text-sm font-medium text-slate-300">Aadhar Copy Received</label>
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <label className="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Remarks</label>
+                                                            <input type="text" readOnly value={selectedLeadForEdit.docRemarks || ''} className={readonlyCls} />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Row 2: PAN + Documents/Drive Link */}
+                                                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 border-b border-slate-700/30 pb-3">
+                                                        <div className="flex items-center gap-3 w-48 shrink-0">
+                                                            <input type="checkbox" checked={selectedLeadForEdit.docPan === 'Received'} readOnly className="w-5 h-5 accent-emerald-500 cursor-not-allowed" />
+                                                            <label className="text-sm font-medium text-slate-300">Pan Copy Received</label>
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <label className="block text-[10px] uppercase font-semibold text-slate-500 mb-1">View Documents</label>
+                                                            <input type="text" readOnly value={selectedLeadForEdit.docDriveLink || ''} className={readonlyCls} />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Row 3: Passport */}
+                                                    <div className="flex items-center gap-3 border-b border-slate-700/30 pb-3">
+                                                        <input type="checkbox" checked={selectedLeadForEdit.docPassport === 'Received'} readOnly className="w-5 h-5 accent-emerald-500 cursor-not-allowed" />
+                                                        <label className="text-sm font-medium text-slate-300">Passport Copy Received</label>
+                                                    </div>
+
+                                                    {/* Row 4: Photographs */}
+                                                    <div className="flex items-center gap-3">
+                                                        <input type="checkbox" checked={selectedLeadForEdit.docPhoto === 'Received'} readOnly className="w-5 h-5 accent-emerald-500 cursor-not-allowed" />
+                                                        <label className="text-sm font-medium text-slate-300">Photographs</label>
+                                                    </div>
+
+                                                </div>
+                                            </div>
+
+                                            {/* 3. FLIGHT DETAILS */}
                                             <div className={sectionCls}>
                                                 <h3 className={sectionHeadCls}>Flight Details</h3>
-                                                <div className="space-y-4">
+                                                <div className="space-y-6">
                                                     {selectedLeadForEdit.flights?.map((flight, index) => (
-                                                        <div key={index} className="p-4 bg-slate-950 rounded-lg border border-slate-800 relative">
+                                                        <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative">
                                                             <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-slate-400 border border-slate-700 rounded">FLIGHT {index + 1}</span>
                                                             {index > 0 && <button type="button" onClick={() => removeArrayItem('flights', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
                                                             
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
                                                                 <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Flight Type</label>
-                                                                    <CustomSelect value={flight.flightType} onChange={(v) => handleArrayChange('flights', index, 'flightType', v)} className={selectCls} options={['One Way', 'Round Trip', 'Multi City']} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Flight Responsibility</label>
-                                                                    <CustomSelect value={flight.flightResponsibility} onChange={(v) => handleArrayChange('flights', index, 'flightResponsibility', v)} className={selectCls} options={['Agency', 'Client']} />
+                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Booking Handled By</label>
+                                                                    <CustomSelect value={flight.flightResponsibility} onChange={(v) => handleArrayChange('flights', index, 'flightResponsibility', v)} className={selectCls} options={['In-House', 'Client', 'Vendor', 'Team/Myself']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booking Status</label>
-                                                                    <CustomSelect value={flight.bookingStatus} onChange={(v) => handleArrayChange('flights', index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Confirmed', 'Cancelled']} />
+                                                                    <CustomSelect value={flight.bookingStatus} onChange={(v) => handleArrayChange('flights', index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Confirmed','Ticket Issued', 'Cancelled','Rescheduled']} />
                                                                 </div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Booking Date</label><DatePickerField type="date" value={flight.bookingDate} onChange={(e) => handleArrayChange('flights', index, 'bookingDate', e.target.value)} className={inputCls} /></div>
 
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Airline</label><input type="text" value={flight.airline} onChange={(e) => handleArrayChange('flights', index, 'airline', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">PNR No.</label><input type="text" value={flight.pnr} onChange={(e) => handleArrayChange('flights', index, 'pnr', e.target.value)} className={inputCls} /></div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Booked Through</label>
-                                                                    <CustomSelect value={flight.bookedThrough} onChange={(v) => handleArrayChange('flights', index, 'bookedThrough', v)} className={selectCls} options={['Internal Team', 'DMC', 'Direct Client']} />
-                                                                </div>
+                                                                {/* Conditional Rendering based on "red instructions" */}
+                                                                {['Vendor', 'Team/Myself'].includes(flight.flightResponsibility) && (
+                                                                    <>
+                                                                        <div className="sm:col-span-3 border-t border-slate-700/30 my-1 pt-3"></div>
+                                                                        <div>
+                                                                            <label className="block text-xs font-medium text-slate-400 mb-1">Flight Type</label>
+                                                                            <CustomSelect value={flight.flightType} onChange={(v) => handleArrayChange('flights', index, 'flightType', v)} className={selectCls} options={['One Way', 'Round Trip', 'Multi City']} />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-xs font-medium text-slate-400 mb-1">Booking Through</label>
+                                                                            <CustomSelect value={flight.bookedThrough} onChange={(v) => handleArrayChange('flights', index, 'bookedThrough', v)} className={selectCls} options={['Airline Website', 'Vendor Website','Other']} />
+                                                                        </div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">PNR Number</label><input type="text" value={flight.pnr} onChange={(e) => handleArrayChange('flights', index, 'pnr', e.target.value)} className={inputCls} /></div>
+                                                                        
+                                                                        <div>
+                                                                            <label className="block text-xs font-medium text-slate-400 mb-1">Flight Route</label>
+                                                                            <div className="flex items-center gap-2">
+                                                                                <input type="text" value={flight.boardingPoint} onChange={(e) => handleArrayChange('flights', index, 'boardingPoint', e.target.value)} className={inputCls} placeholder="From" />
+                                                                                <span className="text-slate-500">→</span>
+                                                                                <input type="text" value={flight.deboardingPoint} onChange={(e) => handleArrayChange('flights', index, 'deboardingPoint', e.target.value)} className={inputCls} placeholder="To" />
+                                                                            </div>
+                                                                        </div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Departure Date & Time</label><DatePickerField type="datetime-local" value={flight.departureDateTime} onChange={(e) => handleArrayChange('flights', index, 'departureDateTime', e.target.value)} className={inputCls} /></div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Arrival Date & Time</label><DatePickerField type="datetime-local" value={flight.arrivalDateTime} onChange={(e) => handleArrayChange('flights', index, 'arrivalDateTime', e.target.value)} className={inputCls} /></div>
 
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Category</label>
-                                                                    <CustomSelect value={flight.category} onChange={(v) => handleArrayChange('flights', index, 'category', v)} className={selectCls} options={['Economy', 'Premium Economy', 'Business', 'First Class']} />
-                                                                </div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Flight Departure Date & Time</label><DatePickerField type="datetime-local" value={flight.departureDateTime} onChange={(e) => handleArrayChange('flights', index, 'departureDateTime', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Boarding Point</label><input type="text" value={flight.boardingPoint} onChange={(e) => handleArrayChange('flights', index, 'boardingPoint', e.target.value)} className={inputCls} /></div>
-
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Ticket Shared</label>
-                                                                    <CustomSelect value={flight.ticketShared} onChange={(v) => handleArrayChange('flights', index, 'ticketShared', v)} className={selectCls} options={['Yes', 'No']} />
-                                                                </div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Ticket Shared Date</label><DatePickerField type="date" value={flight.ticketSharedDate} onChange={(e) => handleArrayChange('flights', index, 'ticketSharedDate', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Deboarding Point</label><input type="text" value={flight.deboardingPoint} onChange={(e) => handleArrayChange('flights', index, 'deboardingPoint', e.target.value)} className={inputCls} /></div>
-
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Flight Cost</label><input type="text" value={flight.flightCost} onChange={(e) => handleArrayChange('flights', index, 'flightCost', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Markup Cost</label><input type="text" value={flight.markupCost || ''} onChange={(e) => handleArrayChange('flights', index, 'markupCost', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Drive Link</label><input type="text" value={flight.driveLink} onChange={(e) => handleArrayChange('flights', index, 'driveLink', e.target.value)} className={inputCls} /></div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Upload Ticket Copy</label><input type="text" value={flight.driveLink} onChange={(e) => handleArrayChange('flights', index, 'driveLink', e.target.value)} className={inputCls} placeholder="Drive Link" /></div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Flight Cost</label><input type="text" value={flight.flightCost} onChange={(e) => handleArrayChange('flights', index, 'flightCost', e.target.value)} className={inputCls} /></div>
+                                                                        <div className="flex items-center gap-2 mt-6">
+                                                                            <input type="checkbox" checked={flight.ticketShared === 'Yes'} onChange={(e) => handleArrayChange('flights', index, 'ticketShared', e.target.checked ? 'Yes' : 'No')} className="w-4 h-4 accent-cyan-500" />
+                                                                            <label className="text-xs font-medium text-slate-300">Ticket Shared With Client</label>
+                                                                        </div>
+                                                                    </>
+                                                                )}
                                                             </div>
+                                                            {['Vendor', 'Team/Myself'].includes(flight.flightResponsibility) && (
+                                                                <div className="flex gap-4 mt-4">
+                                                                    {flight.flightType === 'Round Trip' && (
+                                                                        <button type="button" className="text-cyan-400 font-bold text-xs flex items-center gap-1 hover:text-cyan-300"><Plus size={14} /> Add Return Details</button>
+                                                                    )}
+                                                                    {flight.flightType === 'Multi City' && (
+                                                                        <button type="button" className="text-cyan-400 font-bold text-xs flex items-center gap-1 hover:text-cyan-300"><Plus size={14} /> Add Flight Route</button>
+                                                                    )}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ))}
-                                                    <div className="flex justify-between items-center bg-slate-900 border border-slate-700/50 p-2 rounded">
-                                                        <button type="button" onClick={() => addArrayItem('flights', { flightType: '', flightResponsibility: '', bookingStatus: '', airline: '', pnr: '', bookedThrough: '', category: '', departureDateTime: '', boardingPoint: '', ticketShared: '', ticketSharedDate: '', deboardingPoint: '', flightCost: '', markupCost: '', driveLink: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md cursor-pointer">
-                                                            <Plus size={14} /> Add Flight
-                                                        </button>
-                                                    </div>
+                                                    <button type="button" onClick={() => addArrayItem('flights', { flightResponsibility: '', bookingStatus: '', bookingDate: '', flightType: '', bookedThrough: '', pnr: '', boardingPoint: '', deboardingPoint: '', departureDateTime: '', arrivalDateTime: '', driveLink: '', flightCost: '', ticketShared: 'No' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md cursor-pointer"><Plus size={14} /> Add Flight</button>
                                                 </div>
                                             </div>
 
-                                            {/* Travel Insurance */}
-                                            <div className={sectionCls}>
-                                                <h3 className={sectionHeadCls}>Travel Insurance</h3>
-                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Insurance Required</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insRequired} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insRequired: v })} className={selectCls} options={['Yes', 'No']} />
-                                                    </div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Provider</label><input type="text" value={selectedLeadForEdit.insProvider} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insProvider: e.target.value })} className={inputCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Policy Number</label><input type="text" value={selectedLeadForEdit.insPolicyNo} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insPolicyNo: e.target.value })} className={inputCls} /></div>
-                                                    
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Cost</label><input type="text" value={selectedLeadForEdit.insCost} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insCost: e.target.value })} className={inputCls} /></div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Status (Pending / Issued)</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insStatus: v })} className={selectCls} options={['Pending', 'Issued']} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Policy Shared  </label>
-                                                        <CustomSelect value={selectedLeadForEdit.insPolicyShared} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insPolicyShared: v })} className={selectCls} options={['Yes', 'No']} />
-                                                    </div>
-
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Markup Cost</label><input type="text" value={selectedLeadForEdit.insMarkup || ''} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insMarkup: e.target.value })} className={inputCls} /></div>
-                                                </div>
-                                            </div>
-
-                                            {/* VISA Details */}
+                                            {/* 4. VISA DETAILS */}
                                             <div className={sectionCls}>
                                                 <h3 className={sectionHeadCls}>VISA Details</h3>
-                                                <div className="space-y-4">
+                                                <div className="space-y-6">
                                                     {selectedLeadForEdit.visas?.map((visa, index) => (
-                                                        <div key={index} className="p-4 bg-slate-950 rounded-lg border border-slate-800 relative">
+                                                        <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative">
                                                             <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-slate-400 border border-slate-700 rounded">VISA {index + 1}</span>
                                                             {index > 0 && <button type="button" onClick={() => removeArrayItem('visas', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
                                                             
@@ -1592,394 +1611,169 @@ export default function OperationsDashboard() {
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Destination</label><input type="text" value={visa.destination} onChange={(e) => handleArrayChange('visas', index, 'destination', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">VISA Type</label>
-                                                                    <CustomSelect value={visa.visaType} onChange={v => handleArrayChange('visas', index, 'visaType', v)} className={selectCls} options={['Tourist', 'Business', 'Transit', 'e-Visa', 'Visa on Arrival']} />
+                                                                    <CustomSelect value={visa.visaType} onChange={v => handleArrayChange('visas', index, 'visaType', v)} className={selectCls} options={['VISA-Free', 'VISA-On-Arrival', 'Traditional', 'e-VISA']} />
                                                                 </div>
                                                                 <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Transit VISA Required</label>
-                                                                    <CustomSelect value={visa.transitVisaReq} onChange={v => handleArrayChange('visas', index, 'transitVisaReq', v)} className={selectCls} options={['Yes', 'No']} />
+                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Applied By</label>
+                                                                    <CustomSelect value={visa.appliedBy} onChange={v => handleArrayChange('visas', index, 'appliedBy', v)} className={selectCls} options={['In-House', 'Client', 'VISA Partner']} />
                                                                 </div>
 
                                                                 <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Arrival Card Applicable</label>
-                                                                    <CustomSelect value={visa.arrivalCardApplicable} onChange={v => handleArrayChange('visas', index, 'arrivalCardApplicable', v)} className={selectCls} options={['Yes', 'No']} />
+                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Application Status</label>
+                                                                    <CustomSelect value={visa.applicationStatus} onChange={v => handleArrayChange('visas', index, 'applicationStatus', v)} className={selectCls} options={['Not Started', 'Documents Pending', 'Applied', 'Under Process','Approved','Rejected','Cancelled']} />
                                                                 </div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Arrival Card Details</label><input type="text" value={visa.arrivalCardDetails} onChange={e => handleArrayChange('visas', index, 'arrivalCardDetails', e.target.value)} className={inputCls} /></div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Applied by</label>
-                                                                    <CustomSelect value={visa.appliedBy} onChange={v => handleArrayChange('visas', index, 'appliedBy', v)} className={selectCls} options={['Client', 'Vendor', 'Team']} />
-                                                                </div>
-
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Documents Pending</label><input type="text" value={visa.docsPending} onChange={e => handleArrayChange('visas', index, 'docsPending', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Status</label><input type="text" value={visa.visaStatus} onChange={e => handleArrayChange('visas', index, 'visaStatus', e.target.value)} className={inputCls} /></div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">VISA Copy Shared</label>
-                                                                    <CustomSelect value={visa.visaCopyShared} onChange={v => handleArrayChange('visas', index, 'visaCopyShared', v)} className={selectCls} options={['Yes', 'No']} />
-                                                                </div>
-
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Approval Date</label><DatePickerField type="date" value={visa.visaApprovalDate} onChange={(e) => handleArrayChange('visas', index, 'visaApprovalDate', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Expiry Date</label><DatePickerField type="date" value={visa.visaExpiryDate} onChange={(e) => handleArrayChange('visas', index, 'visaExpiryDate', e.target.value)} className={inputCls} /></div>
-                                                                <div className="hidden sm:block"></div>
-
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Cost</label><input type="text" value={visa.visaCost} onChange={e => handleArrayChange('visas', index, 'visaCost', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Markup Cost</label><input type="text" value={visa.markupCost} onChange={e => handleArrayChange('visas', index, 'markupCost', e.target.value)} className={inputCls} /></div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                    <div className="flex justify-between items-center bg-slate-900 border border-slate-700/50 p-2 rounded">
-                                                        <button type="button" onClick={() => addArrayItem('visas', { destination: '', visaType: '', transitVisaReq: '', arrivalCardApplicable: '', arrivalCardDetails: '', appliedBy: '', docsPending: '', visaStatus: '', visaCopyShared: '', visaApprovalDate: '', visaExpiryDate: '', visaCost: '', markupCost: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md cursor-pointer">
-                                                            <Plus size={14} /> Add VISA
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                        </div>
-                                    ) : (
-                                        /* ───────────────────────────────────────────── */
-                                        /* NEW DOMESTIC CONFIRMED BOOKING VIEW           */
-                                        /* ───────────────────────────────────────────── */
-                                        <div className="space-y-6">
-                                            {/* 1. Booking Information */}
-                                            <div className={sectionCls} style={{ borderColor: 'rgba(56, 189, 248, 0.4)' }}>
-                                                <h3 className={`${sectionHeadCls} text-sky-400 border-sky-900/50 flex flex-wrap justify-between gap-1`}>
-                                                    <span>Booking Information</span>
-                                                </h3>
-                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Customer Name</label><input type="text" readOnly value={selectedLeadForEdit.customerName} className={readonlyCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Mobile Number</label><input type="text" readOnly value={selectedLeadForEdit.mobileNumber} className={readonlyCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Destination</label><input type="text" readOnly value={selectedLeadForEdit.destination} className={readonlyCls} /></div>
-                                                    
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">No. Of Adult</label><input type="text" value={selectedLeadForEdit.noOfAdults} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, noOfAdults: e.target.value})} className={inputCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">No. Of Children</label><input type="text" value={selectedLeadForEdit.noOfChildren} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, noOfChildren: e.target.value})} className={inputCls} /></div>
-                                                    <div className="hidden sm:block"></div>
-
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Departure Date</label><DatePickerField type="date" value={selectedLeadForEdit.departureDate} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, departureDate: e.target.value})} className={inputCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Travel Date</label><DatePickerField type="date" value={selectedLeadForEdit.travelDate} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, travelDate: e.target.value})} className={inputCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Return Date</label><DatePickerField type="date" value={selectedLeadForEdit.returnDate || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, returnDate: e.target.value})} className={inputCls} /></div>
-                                                    
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Transport Mode</label><input type="text" value={selectedLeadForEdit.domTransportType} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, domTransportType: e.target.value})} className={inputCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Special Offers</label><input type="text" value={selectedLeadForEdit.specialOffers} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, specialOffers: e.target.value})} className={inputCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Arrival Date</label><DatePickerField type="date" value={selectedLeadForEdit.arrivalDate} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, arrivalDate: e.target.value})} className={inputCls} /></div>
-                                                    
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Package Cost</label><input type="text" value={selectedLeadForEdit.packageCost} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, packageCost: e.target.value})} className={inputCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Sales Executive</label><input type="text" value={selectedLeadForEdit.salesExecutive} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, salesExecutive: e.target.value})} className={inputCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Confirmation Date</label><DatePickerField type="date" value={selectedLeadForEdit.confirmationDate || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, confirmationDate: e.target.value})} className={inputCls} /></div>
-                                                </div>
-                                            </div>
-
-                                            {/* 2. Passenger Details */}
-                                            <div className={sectionCls}>
-                                                <h3 className={`${sectionHeadCls} flex flex-wrap justify-between gap-1`}>
-                                                    <span>Passenger Details (Locked - Fetched from Sales)</span>
-                                                </h3>
-                                                <div className="space-y-4">
-                                                    {selectedLeadForEdit.passengers?.map((pax, index) => (
-                                                        <div key={index} className="p-4 bg-slate-950 rounded-lg border border-slate-800 relative opacity-80">
-                                                            <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-slate-400 border border-slate-700 rounded">PAX {index + 1}</span>
-                                                            
-                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Full Name</label><input type="text" readOnly value={pax.fullName} className={readonlyCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Date Of Birth</label><input type="text" readOnly value={pax.dob} className={readonlyCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Gender</label><input type="text" readOnly value={pax.gender} className={readonlyCls} /></div>
-                                                                
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Aadhar Card Number</label><input type="text" readOnly value={pax.aadharNumber} className={readonlyCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">PAN Number</label><input type="text" readOnly value={pax.panNumber} className={readonlyCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Number</label><input type="text" readOnly value={pax.passportNumber} className={readonlyCls} /></div>
-
-                                                                {selectedLeadForEdit.tourType === 'International Tour' && (
-                                                                    <>
-                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Issue Date</label><input type="text" readOnly value={pax.passportIssueDate} className={readonlyCls} /></div>
-                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Expiry Date</label><input type="text" readOnly value={pax.passportExpiryDate} className={readonlyCls} /></div>
-                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Passport Place of Issue</label><input type="text" readOnly value={pax.passportIssuePlace} className={readonlyCls} /></div>
-                                                                    </>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Application Date</label><DatePickerField type="date" value={visa.applicationDate} onChange={(e) => handleArrayChange('visas', index, 'applicationDate', e.target.value)} className={inputCls} /></div>
+                                                                {visa.visaType === 'Traditional' && (
+                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Appointment Date</label><DatePickerField type="date" value={visa.appointmentDate} onChange={(e) => handleArrayChange('visas', index, 'appointmentDate', e.target.value)} className={inputCls} /></div>
                                                                 )}
 
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Mobile Number</label><input type="text" readOnly value={pax.mobileNumber} className={readonlyCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Emergency Contact</label><input type="text" readOnly value={pax.emergencyContact || ''} className={readonlyCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Issue Date</label><DatePickerField type="date" value={visa.visaApprovalDate} onChange={(e) => handleArrayChange('visas', index, 'visaApprovalDate', e.target.value)} className={inputCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Expiry Date</label><DatePickerField type="date" value={visa.visaExpiryDate} onChange={(e) => handleArrayChange('visas', index, 'visaExpiryDate', e.target.value)} className={inputCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Remarks</label><input type="text" value={visa.remarks || ''} onChange={(e) => handleArrayChange('visas', index, 'remarks', e.target.value)} className={inputCls} /></div>
+
+                                                                {/* Arrival Card */}
+                                                                <div className="sm:col-span-3 border-t border-slate-700/50 mt-2 pt-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                                    <div>
+                                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Arrival Card Required</label>
+                                                                        <CustomSelect value={visa.arrivalCardApplicable} onChange={v => handleArrayChange('visas', index, 'arrivalCardApplicable', v)} className={selectCls} options={['Yes', 'No']} />
+                                                                    </div>
+                                                                    {visa.arrivalCardApplicable === 'Yes' && (
+                                                                        <>
+                                                                            <div>
+                                                                                <label className="block text-xs font-medium text-slate-400 mb-1">Arrival Card Status</label>
+                                                                                <CustomSelect value={visa.arrivalCardStatus} onChange={v => handleArrayChange('visas', index, 'arrivalCardStatus', v)} className={selectCls} options={['Pending', 'Completed']} />
+                                                                            </div>
+                                                                            <div>
+                                                                                <label className="block text-xs font-medium text-slate-400 mb-1">Completed By</label>
+                                                                                <CustomSelect value={visa.arrivalCardCompletedBy} onChange={v => handleArrayChange('visas', index, 'arrivalCardCompletedBy', v)} className={selectCls} options={['Client', 'Vendor', 'Team']} />
+                                                                            </div>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Transit VISA */}
+                                                                <div className="sm:col-span-3 border-t border-slate-700/50 mt-2 pt-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                                    <div>
+                                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Transit VISA Required</label>
+                                                                        <CustomSelect value={visa.transitVisaReq} onChange={v => handleArrayChange('visas', index, 'transitVisaReq', v)} className={selectCls} options={['Yes', 'No']} />
+                                                                    </div>
+                                                                    {visa.transitVisaReq === 'Yes' && (
+                                                                        <>
+                                                                            <div><label className="block text-xs font-medium text-slate-400 mb-1">Transit Country</label><input type="text" value={visa.transitCountry} onChange={(e) => handleArrayChange('visas', index, 'transitCountry', e.target.value)} className={inputCls} /></div>
+                                                                            <div>
+                                                                                <label className="block text-xs font-medium text-slate-400 mb-1">Transit VISA Status</label>
+                                                                                <CustomSelect value={visa.transitVisaStatus} onChange={v => handleArrayChange('visas', index, 'transitVisaStatus', v)} className={selectCls} options={['Pending', 'Approved']} />
+                                                                            </div>
+                                                                        </>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     ))}
+                                                    <button type="button" onClick={() => addArrayItem('visas', { destination: '', visaType: '', appliedBy: '', applicationStatus: '', applicationDate: '', appointmentDate: '', visaApprovalDate: '', visaExpiryDate: '', remarks: '', arrivalCardApplicable: 'No', transitVisaReq: 'No' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md cursor-pointer"><Plus size={14} /> Add Another VISA</button>
                                                 </div>
                                             </div>
 
-                                            {/* 3. Document Collection */}
+                                            {/* 5. TRAVEL INSURANCE */}
                                             <div className={sectionCls}>
-                                                <h3 className={sectionHeadCls}>Document Collection (Locked - Fetched from Sales)</h3>
-                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 opacity-80">
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Aadhar Copy</label><input type="text" readOnly value={selectedLeadForEdit.docAadhar || 'Pending'} className={readonlyCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">PAN Card</label><input type="text" readOnly value={selectedLeadForEdit.docPan || 'Pending'} className={readonlyCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Photograph</label><input type="text" readOnly value={selectedLeadForEdit.docPhoto || 'Pending'} className={readonlyCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Drive Link</label><input type="text" readOnly value={selectedLeadForEdit.docDriveLink || 'N/A'} className={readonlyCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Document Status</label><input type="text" readOnly value={selectedLeadForEdit.documentStatus || 'Pending'} className={readonlyCls} /></div>
-                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Remarks</label><input type="text" readOnly value={selectedLeadForEdit.docRemarks || 'None'} className={readonlyCls} /></div>
+                                                <h3 className={sectionHeadCls}>Travel Insurance</h3>
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                    <div>
+                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Insurance Taken</label>
+                                                        <CustomSelect value={selectedLeadForEdit.insRequired} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insRequired: v })} className={selectCls} options={['Yes', 'No']} />
+                                                    </div>
+                                                    {selectedLeadForEdit.insRequired === 'Yes' && (
+                                                        <>
+                                                            <div>
+                                                                <label className="block text-xs font-medium text-slate-400 mb-1">Insurance Status</label>
+                                                                <CustomSelect value={selectedLeadForEdit.insStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insStatus: v })} className={selectCls} options={['Pending', 'Issued']} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-xs font-medium text-slate-400 mb-1">Taken By</label>
+                                                                <CustomSelect value={selectedLeadForEdit.insTakenBy || ''} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insTakenBy: v })} className={selectCls} options={['Client', 'Agency']} />
+                                                            </div>
+                                                            <div><label className="block text-xs font-medium text-slate-400 mb-1">Upload Policy</label><input type="text" value={selectedLeadForEdit.insPolicyNo || ''} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insPolicyNo: e.target.value })} className={inputCls} placeholder="Drive Link or Policy No" /></div>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
 
-                                            {/* 4. Transport Details */}
+                                            {/* 6. DMC DETAILS */}
                                             <div className={sectionCls}>
-                                                <h3 className={sectionHeadCls}>Transport Details</h3>
+                                                <h3 className={sectionHeadCls}>DMC Details</h3>
                                                 <div className="space-y-6">
-                                                    {selectedLeadForEdit.domTransports?.map((trans, index) => (
-                                                        <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative space-y-4">
-                                                            {index > 0 && (
-                                                                <button type="button" onClick={() => removeArrayItem('domTransports', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>
-                                                            )}
-                                                            
+                                                    {selectedLeadForEdit.vendorRequests?.map((dmc, index) => (
+                                                        <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative">
+                                                            {index > 0 && <button type="button" onClick={() => removeArrayItem('vendorRequests', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Transport Type</label>
-                                                                    <CustomSelect value={trans.transportType} onChange={(v) => updateDomTransport(index, 'transportType', v)} className={selectCls} options={['Flight', 'Train', 'Bus']} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Booked By</label>
-                                                                    <CustomSelect value={trans.bookedBy} onChange={(v) => updateDomTransport(index, 'bookedBy', v)} className={selectCls} options={['Internal Team', 'Customer']} />
-                                                                </div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">DMC Name</label><CustomSelect value={dmc.vendorDmcName} onChange={v => handleArrayChange('vendorRequests', index, 'vendorDmcName', v)} className={selectCls} options={finalDmcOptions} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Contact Person</label><CustomSelect value={dmc.vendorContactPerson} onChange={v => handleArrayChange('vendorRequests', index, 'vendorContactPerson', v)} className={selectCls} options={getContactsForDMC(dmc.vendorDmcName)} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Mobile Number</label><input type="text" value={dmc.vendorContactMobile || ''} onChange={e => handleArrayChange('vendorRequests', index, 'vendorContactMobile', e.target.value)} className={inputCls} /></div>
+                                                                
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Service Cost</label><input type="text" value={dmc.serviceCost || ''} onChange={e => handleArrayChange('vendorRequests', index, 'serviceCost', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booking Status</label>
-                                                                    <CustomSelect value={trans.bookingStatus} onChange={(v) => updateDomTransport(index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Confirmed', 'Cancelled']} />
+                                                                    <CustomSelect value={dmc.bookingStatus || ''} onChange={v => handleArrayChange('vendorRequests', index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Confirmed', 'Cancelled']} />
                                                                 </div>
-                                                                <div className="sm:col-start-2">
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Ticket Shared to Client</label>
-                                                                    <CustomSelect value={trans.ticketSharedToClient || ''} onChange={(v) => updateDomTransport(index, 'ticketSharedToClient', v)} className={selectCls} options={['Yes', 'No']} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Shared Date</label>
-                                                                    <DatePickerField type="date" value={trans.sharedDate || ''} onChange={(e) => updateDomTransport(index, 'sharedDate', e.target.value)} className={inputCls} />
-                                                                </div>
-                                                            </div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Confirmation Date</label><DatePickerField type="date" value={dmc.confirmationDate || ''} onChange={e => handleArrayChange('vendorRequests', index, 'confirmationDate', e.target.value)} className={inputCls} /></div>
 
-                                                            {trans.transportType === 'Flight' && (
-                                                                <div className="space-y-4 border-t border-slate-700/30 pt-4">
-                                                                    <div className="font-bold text-cyan-400 text-xs uppercase tracking-widest">If Flight</div>
-                                                                    {['onward', 'return'].map((leg) => {
-                                                                        if (leg === 'return' && !trans.flight?.return) return null;
-                                                                        return (
-                                                                            <div key={leg} className="space-y-3 bg-slate-900/50 p-3 border border-slate-700/30 rounded-md">
-                                                                                <div className="font-semibold text-slate-300 text-xs capitalize">{leg}</div>
-                                                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Airline</label><input type="text" value={trans.flight?.[leg]?.airline || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'airline', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">PNR No.</label><input type="text" value={trans.flight?.[leg]?.pnr || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'pnr', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Booking Date</label><DatePickerField type="date" value={trans.flight?.[leg]?.bookingDate || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'bookingDate', e.target.value)} className={inputCls} /></div>
-                                                                                    <div>
-                                                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Booked Through</label>
-                                                                                        <CustomSelect value={trans.flight?.[leg]?.bookedThrough || ''} onChange={(v) => updateDomTransportNested(index, 'flight', leg, 'bookedThrough', v)} className={selectCls} options={['Internal', 'DMC', 'Direct']} />
-                                                                                    </div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Departure Date & Time</label><DatePickerField type="datetime-local" value={trans.flight?.[leg]?.depDateTime || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'depDateTime', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">From</label><input type="text" value={trans.flight?.[leg]?.from || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'from', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Ticket Link</label><input type="text" value={trans.flight?.[leg]?.attachTicket || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'attachTicket', e.target.value)} className={inputCls} /></div>
-                                                                                    <div className="hidden sm:block"></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">To</label><input type="text" value={trans.flight?.[leg]?.to || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'to', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Flight Cost</label><input type="text" value={trans.flight?.[leg]?.flightCost || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'flightCost', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Markup Cost</label><input type="text" value={trans.flight?.[leg]?.markupCost || ''} onChange={(e) => updateDomTransportNested(index, 'flight', leg, 'markupCost', e.target.value)} className={inputCls} /></div>
-                                                                                </div>
-                                                                            </div>
-                                                                        );
-                                                                    })}
-                                                                    {!trans.flight?.return ? (
-                                                                        <button type="button" onClick={() => addDomTransportReturn(index, 'flight')} className="font-bold text-sm text-cyan-400 hover:text-cyan-300 bg-transparent border-none cursor-pointer p-0 text-left">+ Add Return Details</button>
-                                                                    ) : (
-                                                                        <button type="button" onClick={() => removeDomTransportReturn(index, 'flight')} className="font-bold text-sm text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer p-0 text-left">- Remove Return Details</button>
-                                                                    )}
+                                                                {/* Service Confirmed Checkboxes */}
+                                                                <div className="sm:col-span-3 mt-2 border-t border-slate-700/30 pt-3">
+                                                                    <label className="block text-xs font-medium text-slate-300 mb-2">Service Confirmed</label>
+                                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                                                        {['Hotel', 'Airport Transfer', 'Local Transfer', 'Sightseeing', 'Activities', 'Refreshment Room', 'All', 'Others'].map(service => {
+                                                                            const servicesArr = dmc.servicesConfirmed ? dmc.servicesConfirmed.split(', ') : [];
+                                                                            const isChecked = servicesArr.includes(service);
+                                                                            return (
+                                                                                <label key={service} className="flex items-center gap-2 text-xs font-medium text-slate-300 cursor-pointer">
+                                                                                    <input type="checkbox" checked={isChecked} onChange={(e) => {
+                                                                                        let newArr = [...servicesArr];
+                                                                                        if (e.target.checked) newArr.push(service);
+                                                                                        else newArr = newArr.filter(s => s !== service);
+                                                                                        handleArrayChange('vendorRequests', index, 'servicesConfirmed', newArr.join(', '));
+                                                                                    }} className="w-4 h-4 accent-cyan-500" /> {service}
+                                                                                </label>
+                                                                            );
+                                                                        })}
+                                                                    </div>
                                                                 </div>
-                                                            )}
 
-                                                            {trans.transportType === 'Train' && (
-                                                                <div className="space-y-4 border-t border-slate-700/30 pt-4">
-                                                                    <div className="font-bold text-cyan-400 text-xs uppercase tracking-widest">If Train is Selected</div>
-                                                                    {['onward', 'return'].map((leg) => {
-                                                                        if (leg === 'return' && !trans.train?.return) return null;
-                                                                        return (
-                                                                            <div key={leg} className="space-y-3 bg-slate-900/50 p-3 border border-slate-700/30 rounded-md">
-                                                                                {leg === 'return' && <div className="font-semibold text-slate-300 text-xs capitalize">Return</div>}
-                                                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Train Name</label><input type="text" value={trans.train?.[leg]?.trainName || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'trainName', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Train No.</label><input type="text" value={trans.train?.[leg]?.trainNo || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'trainNo', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Booking Date</label><DatePickerField type="date" value={trans.train?.[leg]?.bookingDate || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'bookingDate', e.target.value)} className={inputCls} /></div>
-                                                                                    
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Boarding Station</label><input type="text" value={trans.train?.[leg]?.boardingStation || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'boardingStation', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Destination</label><input type="text" value={trans.train?.[leg]?.destination || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'destination', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Train start Time</label><DatePickerField type="time" value={trans.train?.[leg]?.trainStartTime || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'trainStartTime', e.target.value)} className={inputCls} /></div>
-                                                                                    
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Cost</label><input type="text" value={trans.train?.[leg]?.cost || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'cost', e.target.value)} className={inputCls} /></div>
-                                                                                    <div className="hidden sm:block"></div> 
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Train Reaching Time</label><DatePickerField type="time" value={trans.train?.[leg]?.trainReachingTime || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'trainReachingTime', e.target.value)} className={inputCls} /></div>
-                                                                                    
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Seat Details</label><input type="text" value={trans.train?.[leg]?.seatDetails || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'seatDetails', e.target.value)} className={inputCls} /></div>
-                                                                                    <div>
-                                                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Train Class</label>
-                                                                                        <CustomSelect value={trans.train?.[leg]?.trainClass || ''} onChange={(v) => updateDomTransportNested(index, 'train', leg, 'trainClass', v)} className={selectCls} options={['1A', '2A', '3A', 'SL', 'CC', 'EC']} />
-                                                                                    </div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Ticket Link</label><input type="text" value={trans.train?.[leg]?.attachTicketLink || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'attachTicketLink', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Meals</label><input type="text" value={trans.train?.[leg]?.meals || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'meals', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Train Cost</label><input type="text" value={trans.train?.[leg]?.trainCost || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'trainCost', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Mark-Up</label><input type="text" value={trans.train?.[leg]?.markupCost || ''} onChange={(e) => updateDomTransportNested(index, 'train', leg, 'markupCost', e.target.value)} className={inputCls} /></div>
-                                                                                </div>
-                                                                            </div>
-                                                                        );
-                                                                    })}
-                                                                    {!trans.train?.return ? (
-                                                                        <button type="button" onClick={() => addDomTransportReturn(index, 'train')} className="font-bold text-sm text-cyan-400 hover:text-cyan-300 bg-transparent border-none cursor-pointer p-0 text-left">+ Add Return Details</button>
-                                                                    ) : (
-                                                                        <button type="button" onClick={() => removeDomTransportReturn(index, 'train')} className="font-bold text-sm text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer p-0 text-left">- Remove Return Details</button>
-                                                                    )}
+                                                                <div className="sm:col-span-3 mt-2 border-t border-slate-700/30 pt-3">
+                                                                    <label className="block text-xs font-medium text-slate-400 mb-2">Upload Documents</label>
+                                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                                                        <div>
+                                                                            <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wider">Final Itinerary</label>
+                                                                            <input type="text" value={dmc.finalItineraryDoc || ''} onChange={e => handleArrayChange('vendorRequests', index, 'finalItineraryDoc', e.target.value)} className={inputCls} placeholder="Drive Link" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wider">DMC Confirmation</label>
+                                                                            <input type="text" value={dmc.dmcConfirmationDoc || ''} onChange={e => handleArrayChange('vendorRequests', index, 'dmcConfirmationDoc', e.target.value)} className={inputCls} placeholder="Drive Link" />
+                                                                        </div>
+                                                                        <div>
+                                                                            <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wider">Invoice</label>
+                                                                            <input type="text" value={dmc.invoiceDoc || ''} onChange={e => handleArrayChange('vendorRequests', index, 'invoiceDoc', e.target.value)} className={inputCls} placeholder="Drive Link" />
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                            )}
-
-                                                            {trans.transportType === 'Bus' && (
-                                                                <div className="space-y-4 border-t border-slate-700/30 pt-4">
-                                                                    <div className="font-bold text-cyan-400 text-xs uppercase tracking-widest">If Bus is Selected</div>
-                                                                    {['onward', 'return'].map((leg) => {
-                                                                        if (leg === 'return' && !trans.bus?.return) return null;
-                                                                        return (
-                                                                            <div key={leg} className="space-y-3 bg-slate-900/50 p-3 border border-slate-700/30 rounded-md">
-                                                                                {leg === 'return' && <div className="font-semibold text-slate-300 text-xs capitalize">Return</div>}
-                                                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Service Provider</label><input type="text" value={trans.bus?.[leg]?.serviceProvider || ''} onChange={(e) => updateDomTransportNested(index, 'bus', leg, 'serviceProvider', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Booking Date</label><DatePickerField type="date" value={trans.bus?.[leg]?.bookingDate || ''} onChange={(e) => updateDomTransportNested(index, 'bus', leg, 'bookingDate', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Destination</label><input type="text" value={trans.bus?.[leg]?.destination || ''} onChange={(e) => updateDomTransportNested(index, 'bus', leg, 'destination', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Boarding Point</label><input type="text" value={trans.bus?.[leg]?.boardingPoint || ''} onChange={(e) => updateDomTransportNested(index, 'bus', leg, 'boardingPoint', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Travel Date & Time</label><DatePickerField type="datetime-local" value={trans.bus?.[leg]?.travelDateTime || ''} onChange={(e) => updateDomTransportNested(index, 'bus', leg, 'travelDateTime', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Seat Details</label><input type="text" value={trans.bus?.[leg]?.seatDetails || ''} onChange={(e) => updateDomTransportNested(index, 'bus', leg, 'seatDetails', e.target.value)} className={inputCls} /></div>
-                                                                                    <div className="sm:col-start-2"><label className="block text-xs font-medium text-slate-400 mb-1">Bus Cost</label><input type="text" value={trans.bus?.[leg]?.cost || ''} onChange={(e) => updateDomTransportNested(index, 'bus', leg, 'cost', e.target.value)} className={inputCls} /></div>
-                                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Mark-Up</label><input type="text" value={trans.bus?.[leg]?.markupCost || ''} onChange={(e) => updateDomTransportNested(index, 'bus', leg, 'markupCost', e.target.value)} className={inputCls} /></div>
-                                                                                </div>
-                                                                            </div>
-                                                                        );
-                                                                    })}
-                                                                    {!trans.bus?.return ? (
-                                                                        <button type="button" onClick={() => addDomTransportReturn(index, 'bus')} className="font-bold text-sm text-cyan-400 hover:text-cyan-300 bg-transparent border-none cursor-pointer p-0 text-left">+ Add Return Details</button>
-                                                                    ) : (
-                                                                        <button type="button" onClick={() => removeDomTransportReturn(index, 'bus')} className="font-bold text-sm text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer p-0 text-left">- Remove Return Details</button>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    ))}
-                                                    <button type="button" onClick={() => addArrayItem('domTransports', { transportType: '', bookedBy: '', bookingStatus: '', ticketSharedToClient: '', sharedDate: '', flight: { onward: {}, return: null }, train: { onward: {}, return: null }, bus: { onward: {}, return: null } })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md transition-colors cursor-pointer">
-                                                        <Plus size={14} /> Add Transport Block
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {/* 5. Hotel Booking */}
-                                            <div className={sectionCls}>
-                                                <h3 className={sectionHeadCls}>Hotel Booking</h3>
-                                                <div className="space-y-6">
-                                                    {selectedLeadForEdit.domHotels?.map((hotel, index) => (
-                                                        <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative">
-                                                            <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-slate-400 border border-slate-700 rounded">HOTEL {index + 1}</span>
-                                                            {index > 0 && <button type="button" onClick={() => removeArrayItem('domHotels', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
-                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Location</label><input type="text" value={hotel.location} onChange={(e) => handleArrayChange('domHotels', index, 'location', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Hotel Name</label><input type="text" value={hotel.hotelName} onChange={(e) => handleArrayChange('domHotels', index, 'hotelName', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Hotel Category</label><input type="text" value={hotel.hotelCategory} onChange={(e) => handleArrayChange('domHotels', index, 'hotelCategory', e.target.value)} className={inputCls} /></div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Booked By</label>
-                                                                    <CustomSelect value={hotel.bookedBy} onChange={(v) => handleArrayChange('domHotels', index, 'bookedBy', v)} className={selectCls} options={['Operations Desk 1', 'Operations Desk 2', 'Ground Vendor']} />
-                                                                </div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Reference No./ Booking Id</label><input type="text" value={hotel.refNo} onChange={(e) => handleArrayChange('domHotels', index, 'refNo', e.target.value)} className={inputCls} /></div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
-                                                                    <CustomSelect value={hotel.status} onChange={(v) => handleArrayChange('domHotels', index, 'status', v)} className={selectCls} options={['Pending', 'Confirmed', 'Cancelled']} />
-                                                                </div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Room Category</label><input type="text" value={hotel.roomCategory} onChange={(e) => handleArrayChange('domHotels', index, 'roomCategory', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">No. Of Rooms</label><input type="text" value={hotel.noOfRooms} onChange={(e) => handleArrayChange('domHotels', index, 'noOfRooms', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Additional Mattress</label><input type="text" value={hotel.addMattress} onChange={(e) => handleArrayChange('domHotels', index, 'addMattress', e.target.value)} className={inputCls} /></div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Specifications</label>
-                                                                    <CustomSelect value={hotel.specifications} onChange={(v) => handleArrayChange('domHotels', index, 'specifications', v)} className={selectCls} options={['Standard', 'Sea View', 'City View']} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Meal Plan</label>
-                                                                    <CustomSelect value={hotel.mealPlan} onChange={(v) => handleArrayChange('domHotels', index, 'mealPlan', v)} className={selectCls} options={['EP', 'CP', 'MAP', 'AP']} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Early Check-In / Late</label>
-                                                                    <CustomSelect value={hotel.earlyCheckIn} onChange={(v) => handleArrayChange('domHotels', index, 'earlyCheckIn', v)} className={selectCls} options={['None', 'Early Check-In', 'Late Check-Out']} />
-                                                                </div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Check-In Date & Time</label><DatePickerField type="datetime-local" value={hotel.checkInDateTime} onChange={(e) => handleArrayChange('domHotels', index, 'checkInDateTime', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Check-Out Date & Time</label><DatePickerField type="datetime-local" value={hotel.checkOutDateTime} onChange={(e) => handleArrayChange('domHotels', index, 'checkOutDateTime', e.target.value)} className={inputCls} /></div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Refreshment Room Required</label>
-                                                                    <CustomSelect value={hotel.refreshmentRoom} onChange={(v) => handleArrayChange('domHotels', index, 'refreshmentRoom', v)} className={selectCls} options={['Yes', 'No']} />
-                                                                </div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Cost</label><input type="text" value={hotel.cost} onChange={(e) => handleArrayChange('domHotels', index, 'cost', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={hotel.paymentDueDate} onChange={(e) => handleArrayChange('domHotels', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Attach Voucher Link</label><input type="text" value={hotel.attachVoucher} onChange={(e) => handleArrayChange('domHotels', index, 'attachVoucher', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Mark-Up</label><input type="text" value={hotel.markup || ''} onChange={(e) => handleArrayChange('domHotels', index, 'markup', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Special Arrangements</label><input type="text" value={hotel.specialArrangements} onChange={(e) => handleArrayChange('domHotels', index, 'specialArrangements', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Notes</label><input type="text" value={hotel.notes} onChange={(e) => handleArrayChange('domHotels', index, 'notes', e.target.value)} className={inputCls} /></div>
                                                             </div>
                                                         </div>
                                                     ))}
-                                                    <button type="button" onClick={() => addArrayItem('domHotels', { location: '', hotelName: '', hotelCategory: '', bookedBy: '', refNo: '', status: '', roomCategory: '', noOfRooms: '', addMattress: '', specifications: '', mealPlan: '', earlyCheckIn: '', checkInDateTime: '', checkOutDateTime: '', refreshmentRoom: '', cost: '', markup: '', paymentDueDate: '', attachVoucher: '', specialArrangements: '', notes: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md transition-colors cursor-pointer">
-                                                        <Plus size={14} /> Add Hotel
-                                                    </button>
+                                                    <button type="button" onClick={() => addArrayItem('vendorRequests', { vendorDmcName: '', vendorContactPerson: '', vendorContactMobile: '', vendorService: '', bookingStatus: '', confirmationDate: '', serviceCost: '', remarks: '', servicesConfirmed: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md cursor-pointer"><Plus size={14} /> Add Another Vendor</button>
                                                 </div>
                                             </div>
 
-                                            {/* 6. Local Transport */}
+                                            {/* 8. CLIENT SPECIAL REQUIREMENTS */}
                                             <div className={sectionCls}>
-                                                <h3 className={sectionHeadCls}>Local Transport</h3>
-                                                <div className="space-y-6">
-                                                    {selectedLeadForEdit.domLocalTransports?.map((trans, index) => (
-                                                        <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative">
-                                                            <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-slate-400 border border-slate-700 rounded">VEHICLE {index + 1}</span>
-                                                            {index > 0 && <button type="button" onClick={() => removeArrayItem('domLocalTransports', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
-                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Local Operator Name</label><input type="text" value={trans.serviceProvider || trans.operatorName || ''} onChange={(e) => handleArrayChange('domLocalTransports', index, 'serviceProvider', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Vehicle Type</label><input type="text" value={trans.vehicleType} onChange={(e) => handleArrayChange('domLocalTransports', index, 'vehicleType', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Contact Person</label><input type="text" value={trans.contactPerson} onChange={(e) => handleArrayChange('domLocalTransports', index, 'contactPerson', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Driver Name</label><input type="text" value={trans.driverName} onChange={(e) => handleArrayChange('domLocalTransports', index, 'driverName', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Vehicle Number</label><input type="text" value={trans.vehicleNumber} onChange={(e) => handleArrayChange('domLocalTransports', index, 'vehicleNumber', e.target.value)} className={inputCls} /></div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Status</label>
-                                                                    <CustomSelect value={trans.status} onChange={(v) => handleArrayChange('domLocalTransports', index, 'status', v)} className={selectCls} options={['Pending', 'Confirmed', 'Cancelled']} />
-                                                                </div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Driver Contact Number</label><input type="text" value={trans.driverContact || ''} onChange={(e) => handleArrayChange('domLocalTransports', index, 'driverContact', e.target.value)} className={inputCls} /></div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Toll Parking & Other State Permit</label>
-                                                                    <CustomSelect value={trans.tollPermit || trans.tollParking || ''} onChange={(v) => handleArrayChange('domLocalTransports', index, 'tollPermit', v)} className={selectCls} options={['Included', 'Excluded']} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Duration</label>
-                                                                    <CustomSelect value={trans.duration} onChange={(v) => handleArrayChange('domLocalTransports', index, 'duration', v)} className={selectCls} options={['Half Day', 'Full Day', 'Multi Day']} />
-                                                                </div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Pickup Point</label><input type="text" value={trans.pickupPoint} onChange={(e) => handleArrayChange('domLocalTransports', index, 'pickupPoint', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Pickup Date</label><DatePickerField type="date" value={trans.pickupDate} onChange={(e) => handleArrayChange('domLocalTransports', index, 'pickupDate', e.target.value)} className={inputCls} /></div>
-                                                                <div className="hidden sm:block"></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Drop Point</label><input type="text" value={trans.dropPoint} onChange={(e) => handleArrayChange('domLocalTransports', index, 'dropPoint', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Drop Date</label><DatePickerField type="date" value={trans.dropDate} onChange={(e) => handleArrayChange('domLocalTransports', index, 'dropDate', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Notes</label><input type="text" value={trans.notes} onChange={(e) => handleArrayChange('domLocalTransports', index, 'notes', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Cost</label><input type="text" value={trans.cost} onChange={(e) => handleArrayChange('domLocalTransports', index, 'cost', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Mark-Up</label><input type="text" value={trans.markup || ''} onChange={(e) => handleArrayChange('domLocalTransports', index, 'markup', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={trans.paymentDueDate} onChange={(e) => handleArrayChange('domLocalTransports', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                    <button type="button" onClick={() => addArrayItem('domLocalTransports', { serviceProvider: '', vehicleType: '', contactPerson: '', driverName: '', vehicleNumber: '', status: '', pickupPoint: '', pickupDate: '', duration: '', dropPoint: '', dropDate: '', tollParking: '', cost: '', markup: '', paymentDueDate: '', notes: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md transition-colors cursor-pointer">
-                                                        <Plus size={14} /> Add Vehicle
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            {/* 7. Special Requirements */}
-                                            <div className={sectionCls}>
-                                                <h3 className={`${sectionHeadCls} flex flex-wrap justify-between gap-1`}>
-                                                    <span>Special Requirements</span>
-                                                </h3>
-                                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-y-4 gap-x-2">
+                                                <h3 className={sectionHeadCls}>Client Special Requirements</h3>
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-y-4 gap-x-2 pt-2">
                                                     {[
-                                                        { id: 'reqVeg', label: 'Vegetarian Meal' },
+                                                        { id: 'reqVeg', label: 'Veg Meal' },
                                                         { id: 'reqFloating', label: 'Floating Breakfast' },
-                                                        { id: 'reqWheelchair', label: 'Wheelchair Assistance' },
                                                         { id: 'reqDecor', label: 'Special Decoration' },
-                                                        { id: 'reqSenior', label: 'Senior Citizen' },
-                                                        { id: 'reqBirthday', label: 'Birthday During Trip' },
                                                         { id: 'reqHoneymoon', label: 'Honeymoon Perks' },
-                                                        { id: 'reqAnniversary', label: 'Anniversary During Trip' },
                                                         { id: 'reqCandlelight', label: 'Candlelight Dinner' },
-                                                        { id: 'reqManualAdd', label: 'Add Manually' },
+                                                        { id: 'reqWheelchair', label: 'Wheel Chair Assistance' },
+                                                        { id: 'reqManualAdd', label: 'Other Requirements' },
                                                     ].map(chk => (
                                                         <label key={chk.id} className="flex items-center gap-2 cursor-pointer group">
                                                             <input type="checkbox" checked={selectedLeadForEdit[chk.id]} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, [chk.id]: e.target.checked })}
@@ -1990,41 +1784,425 @@ export default function OperationsDashboard() {
                                                 </div>
                                             </div>
 
-                                            {/* 8. Payment Request */}
+                                            {/* 9. VENDOR PAYMENT REQUEST */}
                                             <div className={sectionCls}>
-                                                <h3 className={sectionHeadCls}>Payment Request</h3>
+                                                <h3 className={sectionHeadCls}>Vendor Payment Request</h3>
                                                 <div className="space-y-6">
-                                                    {selectedLeadForEdit.paymentRequests?.map((req, index) => (
+                                                    {selectedLeadForEdit.paymentRequests?.map((req, index) => {
+                                                        const matchedVendor = (selectedLeadForEdit.vendorRequests || []).find(v => v.vendorDmcName === req.providerName);
+                                                        return (
                                                         <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative">
                                                             <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-slate-400 border border-slate-700 rounded">PAYMENT {index + 1}</span>
                                                             {index > 0 && <button type="button" onClick={() => removeArrayItem('paymentRequests', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
                                                                 <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Service</label>
-                                                                    <CustomSelect value={req.service} onChange={(v) => handleArrayChange('paymentRequests', index, 'service', v)} className={selectCls} options={['Transport', 'Hotel', 'Local Vehicle Operator']} />
+                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Vendor / DMC Name</label>
+                                                                    <select value={req.providerName} onChange={(e) => handleArrayChange('paymentRequests', index, 'providerName', e.target.value)} className={selectCls}>
+                                                                        <option value="" disabled hidden>Select Vendor</option>
+                                                                        {(selectedLeadForEdit.vendorRequests || []).map((v, i) => (
+                                                                            <option key={i} value={v.vendorDmcName || ''}>{v.vendorDmcName || 'DMC Record'}</option>
+                                                                        ))}
+                                                                    </select>
                                                                 </div>
                                                                 <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Provider Name </label>
-                                                                    <input type="text" value={req.providerName} readOnly className={readonlyCls} />
+                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Service Cost</label>
+                                                                    <input type="text" readOnly value={matchedVendor?.serviceCost || ''} className={readonlyCls} />
                                                                 </div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={req.paymentDueDate} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Service Cost</label><input type="text" value={req.serviceCost} onChange={(e) => handleArrayChange('paymentRequests', index, 'serviceCost', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Payment Type</label>
                                                                     <CustomSelect value={req.paymentType} onChange={(v) => handleArrayChange('paymentRequests', index, 'paymentType', v)} className={selectCls} options={['Full Payment', 'Advance', 'Balance']} />
                                                                 </div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Amount to Pay</label><input type="text" value={req.amountToPay} onChange={(e) => handleArrayChange('paymentRequests', index, 'amountToPay', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Account Details</label><input type="text" value={req.paymentAccountDetails} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentAccountDetails', e.target.value)} className={inputCls} /></div>
-                                                                <div className="sm:col-start-3 flex items-end">
-                                                                    <button type="button" className="w-full py-2 bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-400 border border-emerald-800 font-bold text-xs rounded transition-colors cursor-pointer text-center">Request To Director & Accounts</button>
+                                                                <div>
+                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Currency</label>
+                                                                    <CustomSelect value={req.currency || ''} onChange={(v) => handleArrayChange('paymentRequests', index, 'currency', v)} className={selectCls} options={['INR', 'USD', 'EUR', 'AED', 'THB']} />
                                                                 </div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Amount To Pay</label><input type="text" value={req.amountToPay} onChange={(e) => handleArrayChange('paymentRequests', index, 'amountToPay', e.target.value)} className={inputCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={req.paymentDueDate} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Details</label><input type="text" value={req.paymentAccountDetails} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentAccountDetails', e.target.value)} className={inputCls} /></div>
                                                             </div>
                                                         </div>
-                                                    ))}
-                                                    <button type="button" onClick={() => addArrayItem('paymentRequests', { service: '', providerName: '', paymentDueDate: '', serviceCost: '', paymentType: '', amountToPay: '', paymentAccountDetails: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md transition-colors cursor-pointer"><Plus size={14} /> Add Payment Request</button>
+                                                    )})}
+                                                    <button type="button" onClick={() => addArrayItem('paymentRequests', { providerName: '', paymentType: '', currency: '', amountToPay: '', paymentDueDate: '', paymentAccountDetails: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md transition-colors cursor-pointer"><Plus size={14} /> Add Payment Request</button>
                                                 </div>
                                             </div>
                                         </div>
+                                    ) : (
+                                       /* ───────────────────────────────────────────── */
+/* STANDARD DOMESTIC CONFIRMED BOOKING VIEW      */
+/* ───────────────────────────────────────────── */
+<div className="space-y-6">
+    {/* 1. BOOKING CONFIRMATION SECTION */}
+    <div className={sectionCls} style={{ borderColor: 'rgba(56, 189, 248, 0.4)' }}>
+        <div className="flex justify-between items-end mb-4 border-b border-sky-900/50 pb-2">
+            <h3 className="text-sm font-bold text-sky-400 tracking-wider uppercase m-0">BOOKING CONFIRMATION</h3>
+            {/* <span className="text-orange-400 text-xs italic font-medium">fetched from Sales - My Jobs</span> */}
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Confirmed Method</label>
+                <input type="text" value={selectedLeadForEdit.confirmedMethod || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, confirmedMethod: e.target.value})} className={inputCls} />
+            </div>
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Confirmed Date</label>
+                <DatePickerField type="date" value={selectedLeadForEdit.confirmedDate || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, confirmedDate: e.target.value})} className={inputCls} />
+            </div>
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Operations Executive</label>
+                <input type="text" value={selectedLeadForEdit.operationExecutive || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, operationExecutive: e.target.value})} className={inputCls} />
+            </div>
+
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Destination Type</label>
+                <input type="text" value={selectedLeadForEdit.confirmedTripType || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, confirmedTripType: e.target.value})} className={inputCls} />
+            </div>
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Destination</label>
+                <input type="text" value={selectedLeadForEdit.confirmedDestination || selectedLeadForEdit.destination || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, confirmedDestination: e.target.value})} className={inputCls} />
+            </div>
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Duration</label>
+                <input type="text" value={selectedLeadForEdit.confirmedDuration || selectedLeadForEdit.duration || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, confirmedDuration: e.target.value})} className={inputCls} />
+            </div>
+
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">No. of Pax (Adults | Children)</label>
+                <div className="flex gap-2">
+                    <input type="text" value={selectedLeadForEdit.noOfAdults || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, noOfAdults: e.target.value})} className={inputCls} placeholder="Adults" />
+                    <input type="text" value={selectedLeadForEdit.confirmedNoOfChildren || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, confirmedNoOfChildren: e.target.value})} className={inputCls} placeholder="Children" />
+                </div>
+            </div>
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Departure Date</label>
+                <DatePickerField type="date" value={selectedLeadForEdit.departureDate || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, departureDate: e.target.value})} className={inputCls} />
+            </div>
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Return Date</label>
+                <DatePickerField type="date" value={selectedLeadForEdit.returnDate || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, returnDate: e.target.value})} className={inputCls} />
+            </div>
+
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Tour Start Date</label>
+                <DatePickerField type="date" value={selectedLeadForEdit.tourStartDate || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, tourStartDate: e.target.value})} className={inputCls} />
+            </div>
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Tour End Date</label>
+                <DatePickerField type="date" value={selectedLeadForEdit.tourEndDate || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, tourEndDate: e.target.value})} className={inputCls} />
+            </div>
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">Services</label>
+                <input type="text" value={selectedLeadForEdit.confirmedServices || selectedLeadForEdit.services || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, confirmedServices: e.target.value})} className={inputCls} placeholder="selected services will appear" />
+            </div>
+
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">&#123;Service 1&#125; Cost</label>
+                <input type="text" value={selectedLeadForEdit.service1Cost || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, service1Cost: e.target.value})} className={inputCls} />
+            </div>
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">&#123;Service 2&#125; Cost</label>
+                <input type="text" value={selectedLeadForEdit.service2Cost || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, service2Cost: e.target.value})} className={inputCls} />
+            </div>
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">&#123;Service 3&#125; Cost</label>
+                <input type="text" value={selectedLeadForEdit.service3Cost || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, service3Cost: e.target.value})} className={inputCls} />
+            </div>
+
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">GST</label>
+                <input type="text" value={selectedLeadForEdit.gst || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, gst: e.target.value})} className={inputCls} />
+            </div>
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">TCS</label>
+                <input type="text" value={selectedLeadForEdit.tcs || ''} onChange={e => setSelectedLeadForEdit({...selectedLeadForEdit, tcs: e.target.value})} className={inputCls} />
+            </div>
+        </div>
+    </div>
+
+    {/* 2. PASSENGER DETAILS TABLE VIEW */}
+    <div className={sectionCls}>
+        <div className="flex justify-between items-end mb-4 border-b border-slate-700/50 pb-2">
+            <h3 className="text-sm font-bold text-cyan-400 tracking-wider uppercase m-0">PASSENGER DETAILS</h3>
+            {/* <span className="text-orange-400 text-xs italic font-medium">fetched from Sales - My Confirmation</span> */}
+        </div>
+        <div className="overflow-x-auto border border-slate-700/50 rounded-lg custom-scrollbar">
+            <table className="w-full text-left text-xs text-slate-300 whitespace-nowrap">
+                <thead className="bg-slate-800/80 border-b border-slate-700/50">
+                    <tr>
+                        <th className="p-2.5 font-bold uppercase tracking-wider">Passenger Name</th>
+                        <th className="p-2.5 font-bold uppercase tracking-wider">DOB</th>
+                        <th className="p-2.5 font-bold uppercase tracking-wider">Gender</th>
+                        <th className="p-2.5 font-bold uppercase tracking-wider">Aadhar Card Number</th>
+                        <th className="p-2.5 font-bold uppercase tracking-wider">Mobile Number</th>
+                        <th className="p-2.5 font-bold uppercase tracking-wider">Emergency Contact Number</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {selectedLeadForEdit.passengers && selectedLeadForEdit.passengers.length > 0 ? (
+                        selectedLeadForEdit.passengers.map((p, idx) => (
+                            <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/40">
+                                <td className="p-2.5 font-medium text-white">{p.fullName || '—'}</td>
+                                <td className="p-2.5">{p.dob || '—'}</td>
+                                <td className="p-2.5">{p.gender || '—'}</td>
+                                <td className="p-2.5 font-mono">{p.aadharNumber || '—'}</td>
+                                <td className="p-2.5">{p.mobileNumber || '—'}</td>
+                                <td className="p-2.5">{p.emergencyContact || '—'}</td>
+                            </tr>
+                        ))
+                    ) : (
+                        <tr><td colSpan="6" className="p-4 text-center text-slate-500 italic">No dynamic passenger records extracted.</td></tr>
+                    )}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {/* 3. DOCUMENT COLLECTION VERIFICATION */}
+    <div className={sectionCls}>
+        <div className="flex justify-between items-end mb-4 border-b border-slate-700/50 pb-2">
+            <h3 className="text-sm font-bold text-cyan-400 tracking-wider uppercase m-0">Document Collection</h3>
+            {/* <span className="text-orange-400 text-xs italic font-medium">fetched from Sales - My Confirmation</span> */}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+                <div className="flex items-start gap-3 bg-slate-900/40 p-3 rounded-lg border border-slate-800">
+                    <input type="checkbox" checked={selectedLeadForEdit.docAadhar === 'Received'} readOnly className="w-5 h-5 mt-0.5 accent-emerald-500 border-slate-700 cursor-not-allowed bg-slate-950 shrink-0" />
+                    <div className="flex flex-col gap-1">
+                        <span className="text-sm font-medium text-slate-200">Aadhar Copy Received</span>
+                        {/* <span className="text-[10px] text-orange-400/90 leading-tight italic">If sales selected "received" option in "Sales - My Confirmation", it will be tick off</span> */}
+                    </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                    <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1">Remarks</label>
+                        <input type="text" readOnly value={selectedLeadForEdit.docRemarks || ''} className={readonlyCls} />
+                    </div>
+                    <div>
+                        <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1">View documents</label>
+                        <input type="text" readOnly value={selectedLeadForEdit.docDriveLink || ''} className={readonlyCls} />
+                    </div>
+                </div>
+            </div>
+
+            <div className="flex items-start gap-3 bg-slate-900/40 p-4 rounded-lg border border-slate-800 h-fit">
+                <span className="text-sm font-medium text-slate-200 flex-1">Photographs</span>
+                <input type="checkbox" checked={selectedLeadForEdit.docPhoto === 'Received'} readOnly className="w-5 h-5 accent-emerald-500 border-slate-700 cursor-not-allowed bg-slate-950" />
+            </div>
+        </div>
+    </div>
+
+    {/* 4. DYNAMIC TRANSPORT PIPELINE */}
+    <div className={sectionCls}>
+        <h3 className="text-sm font-bold text-cyan-400 tracking-wider uppercase mb-4 pb-2 border-b border-slate-800">TRANSPORT DETAILS</h3>
+        <div className="space-y-6">
+            {selectedLeadForEdit.domTransports?.map((trans, index) => (
+                <div key={index} className="p-4 bg-slate-950/40 rounded-xl border border-slate-800 relative space-y-4 shadow-inner">
+                    {index > 0 && (
+                        <button type="button" onClick={() => removeArrayItem('domTransports', index)} className="absolute top-3 right-3 text-slate-500 hover:text-red-400 transition-colors bg-transparent border-none cursor-pointer">
+                            <Trash2 size={16} />
+                        </button>
+                    )}
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Transport Type</label>
+                            <CustomSelect value={trans.transportType} onChange={(v) => updateDomTransport(index, 'transportType', v)} className={selectCls} options={['Flight', 'Train', 'Bus']} hideDefaultManual />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Booking Handled By</label>
+                            <CustomSelect value={trans.bookedBy || 'In-House'} onChange={(v) => updateDomTransport(index, 'bookedBy', v)} className={selectCls} options={['In-House', 'Vendor']} hideDefaultManual />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-400 mb-1.5 uppercase">Booking Status</label>
+                            <CustomSelect value={trans.bookingStatus} onChange={(v) => updateDomTransport(index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Confirmed', 'Cancelled']} hideDefaultManual />
+                        </div>
+                    </div>
+
+                    {/* ─── CONDITIONAL RENDER: FLIGHT PATH ─── */}
+                    {trans.transportType === 'Flight' && (
+                        <div className="border-t border-slate-800/80 pt-4 mt-2 animate-in fade-in slide-in-from-top-2">
+                            <div className="flex justify-between items-center mb-3">
+                                {/* <h4 className="text-xs font-bold text-red-500 tracking-wider uppercase">IF FLIGHT</h4> */}
+                                {/* <span className="text-[11px] text-red-400 italic">Handled By = In House or Vendor</span> */}
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Flight Type</label>
+                                    <CustomSelect value={trans.flightType} onChange={(v) => updateDomTransport(index, 'flightType', v)} className={selectCls} options={['One Way', 'Round Trip', 'Multi City']} hideDefaultManual />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">PNR No.</label>
+                                    <input type="text" value={trans.pnr || ''} onChange={(e) => updateDomTransport(index, 'pnr', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Booking Date</label>
+                                    <DatePickerField type="date" value={trans.bookingDate || ''} onChange={(e) => updateDomTransport(index, 'bookingDate', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Flight Route</label>
+                                    <div className="flex items-center gap-2">
+                                        <input type="text" value={trans.boardingPoint || ''} onChange={(e) => updateDomTransport(index, 'boardingPoint', e.target.value)} className={inputCls} placeholder="From" />
+                                        <span className="text-slate-500 text-xs font-bold">→</span>
+                                        <input type="text" value={trans.deboardingPoint || ''} onChange={(e) => updateDomTransport(index, 'deboardingPoint', e.target.value)} className={inputCls} placeholder="To" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Departure Date & Time</label>
+                                    <DatePickerField type="datetime-local" value={trans.departureDateTime || ''} onChange={(e) => updateDomTransport(index, 'departureDateTime', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Arrival Date & Time</label>
+                                    <DatePickerField type="datetime-local" value={trans.arrivalDateTime || ''} onChange={(e) => updateDomTransport(index, 'arrivalDateTime', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Upload Ticket Copy</label>
+                                    <input type="text" value={trans.driveLink || ''} onChange={(e) => updateDomTransport(index, 'driveLink', e.target.value)} className={inputCls} placeholder="Upload Tickets" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Flight Cost</label>
+                                    <input type="text" value={trans.flightCost || ''} onChange={(e) => updateDomTransport(index, 'flightCost', e.target.value)} className={inputCls} />
+                                </div>
+                                <div className="flex items-center gap-2.5 pt-5">
+                                    <input type="checkbox" checked={trans.ticketSharedToClient === 'Yes'} onChange={(e) => updateDomTransport(index, 'ticketSharedToClient', e.target.checked ? 'Yes' : 'No')} className="w-4 h-4 accent-cyan-500" />
+                                    <label className="text-xs font-medium text-slate-300">Ticket Shared With Client</label>
+                                </div>
+                            </div>
+                            <div className="mt-3 flex gap-4">
+                                <button type="button" className="text-cyan-400 font-bold text-xs flex items-center gap-1 hover:text-cyan-300 cursor-pointer bg-transparent border-none">
+                                    <Plus size={13} /> Add Return Details
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ─── CONDITIONAL RENDER: TRAIN PATH ─── */}
+                    {trans.transportType === 'Train' && (
+                        <div className="border-t border-slate-700/60 pt-4 mt-2 animate-in fade-in slide-in-from-top-2">
+                            {/* <h4 className="text-xs font-bold text-orange-500 tracking-wider uppercase mb-3">IF Train</h4> */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Train Name</label>
+                                    <input type="text" value={trans.trainName || ''} onChange={(e) => updateDomTransport(index, 'trainName', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">PNR No.</label>
+                                    <input type="text" value={trans.pnr || ''} onChange={(e) => updateDomTransport(index, 'pnr', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Booking Date</label>
+                                    <DatePickerField type="date" value={trans.bookingDate || ''} onChange={(e) => updateDomTransport(index, 'bookingDate', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Train Route</label>
+                                    <div className="flex items-center gap-2">
+                                        <input type="text" value={trans.boardingPoint || ''} onChange={(e) => updateDomTransport(index, 'boardingPoint', e.target.value)} className={inputCls} placeholder="From" />
+                                        <span className="text-slate-500 text-xs font-bold">→</span>
+                                        <input type="text" value={trans.deboardingPoint || ''} onChange={(e) => updateDomTransport(index, 'deboardingPoint', e.target.value)} className={inputCls} placeholder="To" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Train Class</label>
+                                    <CustomSelect value={trans.trainClass} onChange={(v) => updateDomTransport(index, 'trainClass', v)} className={selectCls} options={['1AC', '2AC', '3AC', 'Sleeper', 'CC', '2S']} hideDefaultManual />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Seat / Berth Details</label>
+                                    <input type="text" value={trans.seatDetails || ''} onChange={(e) => updateDomTransport(index, 'seatDetails', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Departure Date & Time</label>
+                                    <DatePickerField type="datetime-local" value={trans.departureDateTime || ''} onChange={(e) => updateDomTransport(index, 'departureDateTime', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Arrival Date & Time</label>
+                                    <DatePickerField type="datetime-local" value={trans.arrivalDateTime || ''} onChange={(e) => updateDomTransport(index, 'arrivalDateTime', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Train Cost</label>
+                                    <input type="text" value={trans.trainCost || ''} onChange={(e) => updateDomTransport(index, 'trainCost', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-300 mb-1">Upload Ticket Copy</label>
+                                    <input type="text" value={trans.driveLink || ''} onChange={(e) => updateDomTransport(index, 'driveLink', e.target.value)} className={inputCls} placeholder="Upload Tickets" />
+                                </div>
+                                <div className="flex items-center gap-2.5 pt-5 sm:col-span-2">
+                                    <input type="checkbox" checked={trans.ticketSharedToClient === 'Yes'} onChange={(e) => updateDomTransport(index, 'ticketSharedToClient', e.target.checked ? 'Yes' : 'No')} className="w-4 h-4 accent-cyan-500" />
+                                    <label className="text-xs font-medium text-slate-300">Ticket Shared With Client</label>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ─── CONDITIONAL RENDER: BUS PATH ─── */}
+                    {trans.transportType === 'Bus' && (
+                        <div className="border-t border-slate-700/60 pt-4 mt-2 animate-in fade-in slide-in-from-top-2">
+                            {/* <h4 className="text-xs font-bold text-amber-600 tracking-wider uppercase mb-3">If Bus</h4> */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Bus Operator</label>
+                                    <input type="text" value={trans.busOperator || ''} onChange={(e) => updateDomTransport(index, 'busOperator', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Bus Type</label>
+                                    <CustomSelect value={trans.busType} onChange={(v) => updateDomTransport(index, 'busType', v)} className={selectCls} options={['AC Sleeper', 'Non-AC Sleeper', 'AC Seater', 'Volvo', 'Scania']} hideDefaultManual />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Booking Date</label>
+                                    <DatePickerField type="date" value={trans.bookingDate || ''} onChange={(e) => updateDomTransport(index, 'bookingDate', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Reference Number</label>
+                                    <input type="text" value={trans.referenceNumber || ''} onChange={(e) => updateDomTransport(index, 'referenceNumber', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Bus Route</label>
+                                    <div className="flex items-center gap-2">
+                                        <input type="text" value={trans.boardingPoint || ''} onChange={(e) => updateDomTransport(index, 'boardingPoint', e.target.value)} className={inputCls} placeholder="From" />
+                                        <span className="text-slate-500 text-xs font-bold">→</span>
+                                        <input type="text" value={trans.deboardingPoint || ''} onChange={(e) => updateDomTransport(index, 'deboardingPoint', e.target.value)} className={inputCls} placeholder="To" />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Seat Numbers</label>
+                                    <input type="text" value={trans.seatNumbers || ''} onChange={(e) => updateDomTransport(index, 'seatNumbers', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Boarding Point</label>
+                                    <input type="text" value={trans.pickupPoint || ''} onChange={(e) => updateDomTransport(index, 'pickupPoint', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Departure Date & Time</label>
+                                    <DatePickerField type="datetime-local" value={trans.departureDateTime || ''} onChange={(e) => updateDomTransport(index, 'departureDateTime', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Text Area</label>
+                                    <input type="text" value={trans.textArea || ''} onChange={(e) => updateDomTransport(index, 'textArea', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Dropping Point</label>
+                                    <input type="text" value={trans.dropPoint || ''} onChange={(e) => updateDomTransport(index, 'dropPoint', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Arrival Date & Time</label>
+                                    <DatePickerField type="datetime-local" value={trans.arrivalDateTime || ''} onChange={(e) => updateDomTransport(index, 'arrivalDateTime', e.target.value)} className={inputCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-300 mb-1">&nbsp;</label>
+                                    <input type="text" value={trans.driveLink || ''} onChange={(e) => updateDomTransport(index, 'driveLink', e.target.value)} className="w-full px-3 py-2 bg-slate-900 border border-pink-700/60 rounded text-pink-400 font-bold text-sm focus:outline-none placeholder-pink-800/60 shadow-sm" placeholder="Upload Tickets" />
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            ))}
+            
+            <div className="pt-2">
+                <button type="button" onClick={() => addArrayItem('domTransports', { transportType: 'Flight', bookedBy: 'In-House', bookingStatus: 'Pending', flightType: 'One Way' })} className="text-cyan-400 font-bold text-xs sm:text-sm flex items-center gap-1.5 hover:text-cyan-300 transition-colors bg-transparent border-none cursor-pointer">
+                    <Plus size={16} /> Add Another Transport Details
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+                                        
                                     )
                                 ) : (
                                     /* ─── STANDARD OPS PIPELINE EDIT ────────────────────── */
@@ -2439,11 +2617,6 @@ export default function OperationsDashboard() {
                                                 </div>
                                             )}
                                         </div>
-                     
-
-                                        {/* Section 6: Quality Check */}
-                                      
-
                                     </div>
                                 )}
                         </form>
@@ -2615,5 +2788,5 @@ export default function OperationsDashboard() {
                 </div>
             )}
         </div>
-    );
+    );  
 }
