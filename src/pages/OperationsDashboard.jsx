@@ -1464,7 +1464,7 @@ export default function OperationsDashboard() {
                                             {/* Passenger Details */}
                                             <div className={sectionCls}>
                                                 <h3 className={`${sectionHeadCls} flex flex-wrap justify-between gap-1`}>
-                                                    <span>Passenger Details (Locked - Fetched from Sales)</span>
+                                                    <span>Passenger Details</span>
                                                 </h3>
                                                 <div className="space-y-4">
                                                     {selectedLeadForEdit.passengers?.map((pax, index) => (
@@ -2139,115 +2139,6 @@ export default function OperationsDashboard() {
                                             )}
                                         </div>
 
-                                        {/* Section 3.5: OPERATIONS ACKNOWLEDGEMENT */}
-                                        <div className={sectionCls}>
-                                            <div className="flex justify-between items-center mb-2 border-b border-slate-800/60 pb-3 cursor-pointer hover:bg-slate-800/20 transition-colors"
-                                                 onClick={(e) => handleHeaderClick(e, 'operationsAcknowledgement')}>
-                                                <h3 className="text-sm font-bold text-cyan-400 tracking-wider uppercase m-0 flex items-center gap-2">
-                                                    OPERATIONS ACKNOWLEDGEMENT
-                                                    <ChevronDown size={16} className={`transition-transform duration-200 ${openSections.operationsAcknowledgement ? 'rotate-180' : ''}`} />
-                                                </h3>
-                                            </div>
-                                            
-                                            {openSections.operationsAcknowledgement && (
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-3 animate-in slide-in-from-top-2 fade-in">
-                                                    
-                                                    {/* Customisation Status */}
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Customisation Status</label>
-                                                        <CustomSelect 
-                                                            value={selectedLeadForEdit.opsCustomisationStatus} 
-                                                            onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, opsCustomisationStatus: v })} 
-                                                            className={selectCls} 
-                                                            options={['Requirement Shared with Vendor', 'Awaiting Vendor Response', 'Comparing with other vendors', 'Itinerary Preparation Started','Itinerary Shared with Sales']} 
-                                                        />
-                                                    </div>
-
-                                                    {/* Expected Completion By */}
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Expected Completion By</label>
-                                                        <div className="flex gap-2">
-                                                            <DatePickerField 
-                                                                type="date" 
-                                                                value={selectedLeadForEdit.opsExpectedCompletionDate} 
-                                                                onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, opsExpectedCompletionDate: e.target.value })} 
-                                                                className={inputCls} 
-                                                            />
-                                                            <DatePickerField 
-                                                                type="time" 
-                                                                value={selectedLeadForEdit.opsExpectedCompletionTime} 
-                                                                onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, opsExpectedCompletionTime: e.target.value })} 
-                                                                className={inputCls} 
-                                                            />
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Update to Sales (Voice or Text) */}
-                                                    <div className="sm:col-span-2">
-                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Update to Sales</label>
-                                                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                                                            <input 
-                                                                type="text" 
-                                                                value={selectedLeadForEdit.opsUpdateToSalesMessage || ''} 
-                                                                onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, opsUpdateToSalesMessage: e.target.value })} 
-                                                                placeholder="Type Message or tap Voice Recorder..." 
-                                                                className={`${inputCls} max-w-md flex-1`} 
-                                                            />
-                                                            <div className="flex items-center gap-2">
-                                                                <button 
-                                                                    type="button" 
-                                                                    onClick={handleVoiceRecord}
-                                                                    className={`flex items-center justify-center gap-1.5 px-3 py-2 border rounded text-xs font-bold transition-all whitespace-nowrap cursor-pointer shadow-sm ${
-                                                                        isRecording 
-                                                                        ? 'bg-red-900/40 text-red-400 border-red-700 animate-pulse ring-2 ring-red-900/50' 
-                                                                        : 'bg-slate-800 hover:bg-slate-700 text-cyan-400 border-slate-700'
-                                                                    }`}>
-                                                                    <Mic size={14} className={isRecording ? 'animate-bounce' : ''} /> 
-                                                                    {isRecording ? 'Listening...' : 'Voice'}
-                                                                </button>
-                                                                <button 
-                                                                    type="button"
-                                                                    onClick={handleAddNoteToLog}
-                                                                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/50 rounded text-xs font-bold transition-all whitespace-nowrap cursor-pointer shadow-sm"
-                                                                >
-                                                                    <Plus size={14} /> Add Note
-                                                                </button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Auto-generated Summary Block (Records History) */}
-                                                    <div className="sm:col-span-2 mt-4 pt-4 border-t border-slate-700/50">
-                                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Previous Notes & Records</h4>
-                                                        <div className="space-y-3 max-h-60 overflow-y-auto custom-scrollbar pr-2">
-                                                            {safeParseArray(selectedLeadForEdit.updateRecords, null)
-                                                                .filter(Boolean)
-                                                                .map((rec, idx) => (
-                                                                <div key={idx} className="bg-slate-900/80 border border-slate-700/50 p-3.5 rounded-lg text-xs shadow-inner">
-                                                                    <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-700/50">
-                                                                        <span className="font-bold text-cyan-400 flex items-center gap-1.5"><History size={12}/> {rec.author || 'Operations Team'}</span>
-                                                                        <span className="text-slate-500 font-mono text-[10px]">{rec.date}</span>
-                                                                    </div>
-                                                                    <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">{rec.message}</p>
-                                                                    {rec.status && (
-                                                                        <div className="mt-2.5 inline-block px-2.5 py-1 bg-slate-800/80 rounded-md text-[10px] text-slate-400 border border-slate-700/50">
-                                                                            Status at time of note: <span className="font-semibold text-slate-300">{rec.status}</span>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            ))}
-                                                            
-                                                            {(!selectedLeadForEdit.updateRecords || safeParseArray(selectedLeadForEdit.updateRecords, null).filter(Boolean).length === 0) && (
-                                                                <div className="text-slate-500 text-xs text-center py-6 bg-slate-900/30 rounded border border-slate-800 border-dashed">
-                                                                    No previous records. Add an update and save the form to see it here.
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    </div>
-
-                                                </div>
-                                            )}
-                                        </div>
 
                                         {/* Section 4: VENDOR ASSISTANCE */}
                                         {(selectedLeadForEdit.workType === 'Vendor Assistance' || selectedLeadForEdit.workType === 'Rate Modification') && (
@@ -2438,6 +2329,116 @@ export default function OperationsDashboard() {
                                             </div>
                                         )}
 
+
+                                        {/* Section 3.5: OPERATIONS ACKNOWLEDGEMENT */}
+                                        <div className={sectionCls}>
+                                            <div className="flex justify-between items-center mb-2 border-b border-slate-800/60 pb-3 cursor-pointer hover:bg-slate-800/20 transition-colors"
+                                                 onClick={(e) => handleHeaderClick(e, 'operationsAcknowledgement')}>
+                                                <h3 className="text-sm font-bold text-cyan-400 tracking-wider uppercase m-0 flex items-center gap-2">
+                                                    OPERATIONS ACKNOWLEDGEMENT
+                                                    <ChevronDown size={16} className={`transition-transform duration-200 ${openSections.operationsAcknowledgement ? 'rotate-180' : ''}`} />
+                                                </h3>
+                                            </div>
+                                            
+                                            {openSections.operationsAcknowledgement && (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-3 animate-in slide-in-from-top-2 fade-in">
+                                                    
+                                                    {/* Customisation Status */}
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Customisation Status</label>
+                                                        <CustomSelect 
+                                                            value={selectedLeadForEdit.opsCustomisationStatus} 
+                                                            onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, opsCustomisationStatus: v })} 
+                                                            className={selectCls} 
+                                                            options={['Requirement Shared with Vendor', 'Awaiting Vendor Response', 'Comparing with other vendors', 'Itinerary Preparation Started','Itinerary Shared with Sales']} 
+                                                        />
+                                                    </div>
+
+                                                    {/* Expected Completion By */}
+                                                    <div>
+                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Expected Completion By</label>
+                                                        <div className="flex gap-2">
+                                                            <DatePickerField 
+                                                                type="date" 
+                                                                value={selectedLeadForEdit.opsExpectedCompletionDate} 
+                                                                onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, opsExpectedCompletionDate: e.target.value })} 
+                                                                className={inputCls} 
+                                                            />
+                                                            <DatePickerField 
+                                                                type="time" 
+                                                                value={selectedLeadForEdit.opsExpectedCompletionTime} 
+                                                                onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, opsExpectedCompletionTime: e.target.value })} 
+                                                                className={inputCls} 
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Update to Sales (Voice or Text) */}
+                                                    <div className="sm:col-span-2">
+                                                        <label className="block text-xs font-bold text-slate-300 mb-1.5">Update to Sales</label>
+                                                        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                                                            <input 
+                                                                type="text" 
+                                                                value={selectedLeadForEdit.opsUpdateToSalesMessage || ''} 
+                                                                onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, opsUpdateToSalesMessage: e.target.value })} 
+                                                                placeholder="Type Message or tap Voice Recorder..." 
+                                                                className={`${inputCls} max-w-md flex-1`} 
+                                                            />
+                                                            <div className="flex items-center gap-2">
+                                                                <button 
+                                                                    type="button" 
+                                                                    onClick={handleVoiceRecord}
+                                                                    className={`flex items-center justify-center gap-1.5 px-3 py-2 border rounded text-xs font-bold transition-all whitespace-nowrap cursor-pointer shadow-sm ${
+                                                                        isRecording 
+                                                                        ? 'bg-red-900/40 text-red-400 border-red-700 animate-pulse ring-2 ring-red-900/50' 
+                                                                        : 'bg-slate-800 hover:bg-slate-700 text-cyan-400 border-slate-700'
+                                                                    }`}>
+                                                                    <Mic size={14} className={isRecording ? 'animate-bounce' : ''} /> 
+                                                                    {isRecording ? 'Listening...' : 'Voice'}
+                                                                </button>
+                                                                <button 
+                                                                    type="button"
+                                                                    onClick={handleAddNoteToLog}
+                                                                    className="flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-400 border border-emerald-500/50 rounded text-xs font-bold transition-all whitespace-nowrap cursor-pointer shadow-sm"
+                                                                >
+                                                                    <Plus size={14} /> Add Note
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Auto-generated Summary Block (Records History) */}
+                                                    <div className="sm:col-span-2 mt-4 pt-4 border-t border-slate-700/50">
+                                                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Previous Notes & Records</h4>
+                                                        <div className="space-y-3 max-h-60 overflow-y-auto custom-scrollbar pr-2">
+                                                            {safeParseArray(selectedLeadForEdit.updateRecords, null)
+                                                                .filter(Boolean)
+                                                                .map((rec, idx) => (
+                                                                <div key={idx} className="bg-slate-900/80 border border-slate-700/50 p-3.5 rounded-lg text-xs shadow-inner">
+                                                                    <div className="flex justify-between items-center mb-2 pb-2 border-b border-slate-700/50">
+                                                                        <span className="font-bold text-cyan-400 flex items-center gap-1.5"><History size={12}/> {rec.author || 'Operations Team'}</span>
+                                                                        <span className="text-slate-500 font-mono text-[10px]">{rec.date}</span>
+                                                                    </div>
+                                                                    <p className="text-slate-300 whitespace-pre-wrap leading-relaxed">{rec.message}</p>
+                                                                    {rec.status && (
+                                                                        <div className="mt-2.5 inline-block px-2.5 py-1 bg-slate-800/80 rounded-md text-[10px] text-slate-400 border border-slate-700/50">
+                                                                            Status at time of note: <span className="font-semibold text-slate-300">{rec.status}</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                            
+                                                            {(!selectedLeadForEdit.updateRecords || safeParseArray(selectedLeadForEdit.updateRecords, null).filter(Boolean).length === 0) && (
+                                                                <div className="text-slate-500 text-xs text-center py-6 bg-slate-900/30 rounded border border-slate-800 border-dashed">
+                                                                    No previous records. Add an update and save the form to see it here.
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                </div>
+                                            )}
+                                        </div>
                      
 
                                         {/* Section 6: Quality Check */}
