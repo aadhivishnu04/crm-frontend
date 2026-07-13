@@ -2066,11 +2066,7 @@ export default function OperationsDashboard() {
                                     <label className="text-xs font-medium text-slate-300">Ticket Shared With Client</label>
                                 </div>
                             </div>
-                            <div className="mt-3 flex gap-4">
-                                <button type="button" className="text-cyan-400 font-bold text-xs flex items-center gap-1 hover:text-cyan-300 cursor-pointer bg-transparent border-none">
-                                    <Plus size={13} /> Add Return Details
-                                </button>
-                            </div>
+                            
                         </div>
                     )}
 
