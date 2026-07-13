@@ -1559,7 +1559,7 @@ export default function OperationsDashboard() {
                                                 <h3 className={sectionHeadCls}>Travel Insurance</h3>
                                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                     <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Insurance Required (yes/no)</label>
+                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Insurance Required</label>
                                                         <CustomSelect value={selectedLeadForEdit.insRequired} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insRequired: v })} className={selectCls} options={['Yes', 'No']} />
                                                     </div>
                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Provider</label><input type="text" value={selectedLeadForEdit.insProvider} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insProvider: e.target.value })} className={inputCls} /></div>
@@ -1571,7 +1571,7 @@ export default function OperationsDashboard() {
                                                         <CustomSelect value={selectedLeadForEdit.insStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insStatus: v })} className={selectCls} options={['Pending', 'Issued']} />
                                                     </div>
                                                     <div>
-                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Policy Shared (Yes / no)</label>
+                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Policy Shared  </label>
                                                         <CustomSelect value={selectedLeadForEdit.insPolicyShared} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insPolicyShared: v })} className={selectCls} options={['Yes', 'No']} />
                                                     </div>
 
