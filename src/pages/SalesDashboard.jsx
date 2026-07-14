@@ -104,6 +104,13 @@ const SalesDashboard = () => {
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
+    // --- HANDOVER TO OPERATION MODAL STATES ---
+    const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
+    const [handoverLead, setHandoverLead] = useState(null);
+    const [handoverLeadId, setHandoverLeadId] = useState('');
+    const [handoverTarget, setHandoverTarget] = useState('');
+    const [handoverNotes, setHandoverNotes] = useState('');
+
     const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
     const [reassignOption, setReassignOption] = useState('pool');
     const [reassignTargetEmployee, setReassignTargetEmployee] = useState('');
@@ -890,6 +897,11 @@ const SalesDashboard = () => {
                 finalStatus = 'Sales Assigned'; // Revert back to My Jobs if they change their mind
             }
 
+            // --- AUTO-ROUTE TO OPERATIONS ---
+            if (activeTab === 'My Confirmation' && editFormData.operationExecutive) {
+                finalStatus = 'Move To Operation';
+            }
+
             let updatedHistory = appendHistory( currentHistory, `Lead Profile Updated`, `Status: ${editFormData.leadStatusField || finalStatus} | Stage: ${editFormData.leadResponse || 'N/A'}` );
 
             // --- NEW RECYCLE BIN RESET CONDITION ---
@@ -942,6 +954,7 @@ const SalesDashboard = () => {
                 tcsStatus: editFormData.tcs,
                 passengers: editFormData.passengers?.length ? JSON.stringify(editFormData.passengers) : null,
                 docAadhar: editFormData.aadharCopy,
+                docPan: editFormData.pancard,
                 docPassport: editFormData.passportCopy,
                 docPhoto: editFormData.photograph,
                 docDriveLink: editFormData.attachDriveLink,
@@ -1058,33 +1071,59 @@ const SalesDashboard = () => {
         } catch (error) { console.error('Assign error:', error); }
     };
 
-    // Move Lead directly to Operations
-    const handleMoveToOperation = async (lead) => {
-        if (!window.confirm(`Are you sure you want to move Lead LMN${lead.id} to Operations?`)) return;
+    // --- HANDOVER TO OPERATION HANDLERS ---
+    const handleOpenHandoverModal = (lead = null) => {
+        setHandoverLead(lead);
+        setHandoverLeadId(lead ? lead.id : '');
+        setHandoverTarget('');
+        setHandoverNotes('');
+        setIsHandoverModalOpen(true);
+    };
+
+    const handleHandoverSubmit = async () => {
+        const targetId = handoverLead ? handoverLead.id : handoverLeadId;
         
+        if (!targetId) { 
+            alert('Please select a job to handover.'); 
+            return; 
+        }
+        if (!handoverTarget) { 
+            alert('Please select an Operations Executive to assign this to.'); 
+            return; 
+        }
+
+        const leadToUpdate = handoverLead || jobs.find(j => j.id == targetId);
+        if (!leadToUpdate) return;
+
         try {
-            // Log the action in the lead's history
-            let updatedHistory = appendHistory(lead.history || [], 'Moved to Operations', 'Lead transferred to the operations team for processing.');
+            let updatedHistory = appendHistory(
+                leadToUpdate.history || [], 
+                'Moved to Operations', 
+                `Handed over to ${handoverTarget}. Notes: ${handoverNotes || 'None'}`
+            );
             
             const payload = {
                 status: 'Move To Operation',
+                operationExecutive: handoverTarget,
+                operationNotes: handoverNotes,
                 history: JSON.stringify(updatedHistory)
             };
 
-            const response = await fetch(`${API_BASE_URL}/leads/${lead.id}`, {
+            const response = await fetch(`${API_BASE_URL}/leads/${targetId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
             if (response.ok) {
-                await fetchJobs(true); // Silently refresh the list so it disappears from My Jobs
+                await fetchJobs(true);
+                setIsHandoverModalOpen(false);
             } else {
-                alert('Failed to move lead to operations.');
+                alert('Failed to handover to operations.');
             }
         } catch (error) {
-            console.error('Error moving to operations:', error);
-            alert('Network error while moving lead.');
+            console.error('Handover error:', error);
+            alert('Network error while handing over.');
         }
     };
 
@@ -1155,6 +1194,16 @@ const SalesDashboard = () => {
                     <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight uppercase">SALES DASHBOARD</h1>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full md:w-auto">
+                    
+                    {/* NEW COMMON HANDOVER BUTTON */}
+                    {(activeTab === 'My Jobs' || activeTab === 'My Confirmation') && (
+                        <button type="button" onClick={() => handleOpenHandoverModal(null)}
+                            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-purple-500 hover:bg-purple-400 active:bg-purple-600 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-purple-500/20 transition-all duration-200">
+                            <Send size={18} strokeWidth={2.5} />
+                            <span>Handover to Ops</span>
+                        </button>
+                    )}
+
                     <button type="button" onClick={handleOpenNewLeadModal}
                         className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-[#0f172a] font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-cyan-500/20 transition-all duration-200">
                         <Plus size={18} strokeWidth={2.5} />
@@ -1519,19 +1568,22 @@ const SalesDashboard = () => {
                                                 className="p-2 md:p-1.5 text-blue-400 md:text-slate-400 hover:text-blue-300 bg-blue-500/10 md:bg-transparent hover:bg-blue-900/30 rounded-lg transition-colors" title="View Details">
                                                 <Eye size={18} />
                                             </button>
+                                            
                                             {activeTab !== 'Jobs' && activeTab !== 'Recycle' && (
                                                 <button type="button" onClick={() => handleOpenEditModal(row)}
                                                     className="p-2 md:p-1.5 text-yellow-400 md:text-slate-400 hover:text-yellow-400 bg-yellow-500/10 md:bg-transparent hover:bg-yellow-900/30 rounded-lg transition-colors" title="Edit Details">
                                                     <Pencil size={18} />
                                                 </button>
                                             )}
-                                            {/* Fix: Render the Send button in My Jobs, Customisation Ready, and My Confirmation */}
-                                            {(activeTab === 'My Jobs' || activeTab === 'Customisation Ready' || activeTab === 'My Confirmation') && (
-                                                <button type="button" onClick={() => handleMoveToOperation(row)}
-                                                    className="p-2 md:p-1.5 text-emerald-400 md:text-slate-400 hover:text-emerald-400 bg-emerald-500/10 md:bg-transparent hover:bg-emerald-900/30 rounded-lg transition-colors" title="Move to Operations">
+
+                                            {/* NEW INDIVIDUAL HANDOVER BUTTON */}
+                                            {(activeTab === 'My Jobs' || activeTab === 'My Confirmation') && (
+                                                <button type="button" onClick={() => handleOpenHandoverModal(row)}
+                                                    className="p-2 md:p-1.5 text-purple-400 md:text-slate-400 hover:text-purple-400 bg-purple-500/10 md:bg-transparent hover:bg-purple-900/30 rounded-lg transition-colors" title="Handover to Operations">
                                                     <Send size={18} />
                                                 </button>
                                             )}
+                                            
                                             {activeTab === 'My Jobs' && (
                                                 <button type="button" onClick={() => handleOpenReassignModal(row)}
                                                     className="p-2 md:p-1.5 text-orange-400 md:text-slate-400 hover:text-orange-400 bg-orange-500/10 md:bg-transparent hover:bg-yellow-900/30 rounded-lg transition-colors" title="Reassign">
@@ -1867,7 +1919,7 @@ const SalesDashboard = () => {
                                                                 <button type="button" onClick={() => handleLogNoResponse('interaction')} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap cursor-pointer">
                                                                     Save Log
                                                                 </button>
-                                                            </div>
+                                                                </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1956,7 +2008,7 @@ const SalesDashboard = () => {
                                                                 <div>
                                                                     <label className="block text-[11px] sm:text-xs font-medium text-orange-400 mb-1">Closure Reason</label>
                                                                     {renderDropdown('closureReason', editFormData.closureReason, ' ', ['Budget Issue', 'Competitor', 'No Response', 'VISA Rejected','Medical Emergency','Natural Disaster','Flight Unavailable','Internal Decision'], handleInputChange)}
-                                                                </div>
+                                                            </div>
                                                             )}
 
                                                             {(editFormData.customerResponse === 'Negotiation' || editFormData.customerResponse === 'Client Follow-Up') && (
@@ -2163,78 +2215,76 @@ const SalesDashboard = () => {
                                 </>
                             )}
 
-                            {/* SECTION 7: BOOKING CONFIRMATION */}
-                            <div className={sectionCls}>
-                                <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('bookingConfirmation')}>
-                                    <div className="flex flex-col gap-0.5">
-                                        <h3 className={`text-sm sm:text-base font-bold tracking-wider uppercase m-0 flex items-center gap-2 ${editFormData.customerResponse === 'Booking Confirmed' ? 'text-emerald-400' : 'text-slate-500'}`}>
-                                            {editFormData.customerResponse === 'Booking Confirmed' && <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />}
-                                            Booking Confirmation
-                                        </h3>
+                            {/* BOOKING CONFIRMATION SECTION - ONLY IN MY CONFIRMATION TAB */}
+                            {activeTab === 'My Confirmation' && (
+                                <div className={sectionCls}>
+                                    <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('bookingConfirmation')}>
+                                        <div className="flex flex-col gap-0.5">
+                                            <h3 className={`text-sm sm:text-base font-bold tracking-wider uppercase m-0 flex items-center gap-2 ${editFormData.customerResponse === 'Booking Confirmed' ? 'text-emerald-400' : 'text-slate-500'}`}>
+                                                {editFormData.customerResponse === 'Booking Confirmed' && <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />}
+                                                Booking Confirmation
+                                            </h3>
+                                        </div>
+                                        {expandedSections.bookingConfirmation ? <ChevronDown size={18} className={editFormData.customerResponse === 'Booking Confirmed' ? "text-emerald-400" : "text-slate-500"}/> : <ChevronRight size={18} className="text-slate-500"/>}
                                     </div>
-                                    {expandedSections.bookingConfirmation ? <ChevronDown size={18} className={editFormData.customerResponse === 'Booking Confirmed' ? "text-emerald-400" : "text-slate-500"}/> : <ChevronRight size={18} className="text-slate-500"/>}
-                                </div>
-                                
-                                {expandedSections.bookingConfirmation && (
-                                    (editFormData.customerResponse === 'Booking Confirmed' || activeTab === 'My Confirmation') ? (
+                                    
+                                    {expandedSections.bookingConfirmation && (
                                         <div className="mt-4 space-y-8">
                                             {/* 1. MAIN BOOKING DETAILS */}
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                                                 {(() => {
-                                                    const isConfirmTab = activeTab === 'My Confirmation';
-                                                    const confirmInputCls = isConfirmTab ? readonlyCls : inputCls;
-                                                    const tcsDisabled = isConfirmTab || editFormData.confirmedTripType === 'Domestic';
+                                                    const tcsDisabled = editFormData.confirmedTripType === 'Domestic';
 
                                                     return (
                                                         <>
                                                             {/* Row 1 */}
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Confirmed Method</label>
-                                                                {renderDropdown('confirmedMethod', editFormData.confirmedMethod, '', ['Phone Call', 'WhatsApp', 'Email', 'Office Visit'], handleInputChange, selectCls, isConfirmTab)}
+                                                                {renderDropdown('confirmedMethod', editFormData.confirmedMethod, '', ['Phone Call', 'WhatsApp', 'Email', 'Office Visit'], handleInputChange, selectCls, false)}
                                                             </div>
-                                                            {renderDatePicker('confirmedDate', editFormData.confirmedDate, 'Confirmed Date', handleInputChange, '', isConfirmTab)}
+                                                            {renderDatePicker('confirmedDate', editFormData.confirmedDate, 'Confirmed Date', handleInputChange, '', false)}
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Operations Executive</label>
-                                                                <input type="text" name="operationExecutive" value={editFormData.operationExecutive} onChange={handleInputChange} className={confirmInputCls} readOnly={isConfirmTab} />
+                                                                {renderDropdown('operationExecutive', editFormData.operationExecutive, 'Select Exec', operationsStaff, handleInputChange, selectCls, false)}
                                                             </div>
 
                                                             {/* Row 2 */}
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination Type</label>
-                                                                {renderDropdown('confirmedTripType', editFormData.confirmedTripType, '', ['Domestic', 'International'], handleInputChange, selectCls, isConfirmTab)}
+                                                                {renderDropdown('confirmedTripType', editFormData.confirmedTripType, '', ['Domestic', 'International'], handleInputChange, selectCls, false)}
                                                             </div>
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination</label>
-                                                                <input type="text" name="confirmedDestination" value={editFormData.confirmedDestination} onChange={handleInputChange} className={confirmInputCls} readOnly={isConfirmTab} />
+                                                                <input type="text" name="confirmedDestination" value={editFormData.confirmedDestination} onChange={handleInputChange} className={inputCls} />
                                                             </div>
-                                                      <div>
-    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
-    {renderDropdown('confirmedDuration', editFormData.confirmedDuration, '', ['1 Day (Same Day Return)', '1N / 2D', '2N / 3D', '3N / 4D', '4N / 5D', '5N / 6D', '6N / 7D', '7N / 8D', '8N / 9D', '9N / 10D', '10-15 Days', '15+ Days'], handleInputChange, selectCls, isConfirmTab)}
-</div>
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
+                                                                {renderDropdown('confirmedDuration', editFormData.confirmedDuration, '', ['1 Day (Same Day Return)', '1N / 2D', '2N / 3D', '3N / 4D', '4N / 5D', '5N / 6D', '6N / 7D', '7N / 8D', '8N / 9D', '9N / 10D', '10-15 Days', '15+ Days'], handleInputChange, selectCls, false)}
+                                                            </div>
 
                                                             {/* Row 3 */}
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. of Pax (Adults | Children)</label>
                                                                 <div className="flex gap-2">
-                                                                    <input type="number" name="noOfPax" placeholder="Adults" value={editFormData.noOfPax} onChange={handleInputChange} className={confirmInputCls} min="1" readOnly={isConfirmTab} />
-                                                                    <input type="number" name="confirmedNoOfChildren" placeholder="Children" value={editFormData.confirmedNoOfChildren} onChange={handleInputChange} className={confirmInputCls} min="0" readOnly={isConfirmTab} />
+                                                                    <input type="number" name="noOfPax" placeholder="Adults" value={editFormData.noOfPax} onChange={handleInputChange} className={inputCls} min="1" />
+                                                                    <input type="number" name="confirmedNoOfChildren" placeholder="Children" value={editFormData.confirmedNoOfChildren} onChange={handleInputChange} className={inputCls} min="0" />
                                                                 </div>
                                                             </div>
-                                                            {renderDatePicker('departureDate', editFormData.departureDate, 'Departure Date', handleInputChange, '', isConfirmTab)}
-                                                            {renderDatePicker('returnDate', editFormData.returnDate, 'Return Date', handleInputChange, '', isConfirmTab)}
+                                                            {renderDatePicker('departureDate', editFormData.departureDate, 'Departure Date', handleInputChange, '', false)}
+                                                            {renderDatePicker('returnDate', editFormData.returnDate, 'Return Date', handleInputChange, '', false)}
 
                                                             {/* Row 4 */}
-                                                            {renderDatePicker('tourStartDate', editFormData.tourStartDate, 'Tour Start Date', handleInputChange, '', isConfirmTab)}
-                                                            {renderDatePicker('tourEndDate', editFormData.tourEndDate, 'Tour End Date', handleInputChange, '', isConfirmTab)}
+                                                            {renderDatePicker('tourStartDate', editFormData.tourStartDate, 'Tour Start Date', handleInputChange, '', false)}
+                                                            {renderDatePicker('tourEndDate', editFormData.tourEndDate, 'Tour End Date', handleInputChange, '', false)}
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Services</label>
-                                                                {renderMultiSelect('confirmedServices', editFormData.confirmedServices, ['Flight Booking', 'Hotel Booking', 'Train Booking', 'Bus Booking', 'VISA Apply', 'Travel Insurance'], isConfirmTab)}
+                                                                {renderMultiSelect('confirmedServices', editFormData.confirmedServices, ['Flight Booking', 'Hotel Booking', 'Train Booking', 'Bus Booking', 'VISA Apply', 'Travel Insurance'], false)}
                                                             </div>
 
                                                             {/* Row 5 */}
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">GST</label>
-                                                                {renderDropdown('gst', editFormData.gst, '', ['Yes', 'NO'], handleInputChange, selectCls, isConfirmTab)}
+                                                                {renderDropdown('gst', editFormData.gst, '', ['Yes', 'NO'], handleInputChange, selectCls, false)}
                                                             </div>
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">TCS</label>
@@ -2247,7 +2297,7 @@ const SalesDashboard = () => {
                                                                 return selectedServicesArr.slice(0, 3).map((srv, idx) => (
                                                                     <div key={idx}>
                                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">{srv} Cost</label>
-                                                                        <input type="text" name={`service${idx+1}Cost`} value={editFormData[`service${idx+1}Cost`] || ''} onChange={handleInputChange} className={confirmInputCls} readOnly={isConfirmTab} />
+                                                                        <input type="text" name={`service${idx+1}Cost`} value={editFormData[`service${idx+1}Cost`] || ''} onChange={handleInputChange} className={inputCls} />
                                                                     </div>
                                                                 ));
                                                             })()}
@@ -2255,7 +2305,7 @@ const SalesDashboard = () => {
                                                             {(!editFormData.confirmedServices || editFormData.confirmedServices.split(', ').filter(Boolean).length === 0) && (
                                                                 <div>
                                                                     <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Cost</label>
-                                                                    <input type="text" name="finalPackageValue" value={editFormData.finalPackageValue} onChange={handleInputChange} className={confirmInputCls} readOnly={isConfirmTab} />
+                                                                    <input type="text" name="finalPackageValue" value={editFormData.finalPackageValue} onChange={handleInputChange} className={inputCls} />
                                                                 </div>
                                                             )}
                                                         </>
@@ -2263,186 +2313,185 @@ const SalesDashboard = () => {
                                                 })()}
                                             </div>
 
-                                            {/* 2. PASSENGER DETAILS & 3. DOCUMENT COLLECTION — My Confirmation only */}
-                                            {activeTab === 'My Confirmation' && (
-                                                <>
-                                                {/* 2. PASSENGER DETAILS */}
-                                                <div className="pt-5 border-t border-slate-700/50">
-                                                    <h4 className="text-sm font-bold text-cyan-400 mb-4 tracking-wider uppercase">Passenger Details</h4>
-                                                    
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 p-4 bg-slate-800/20 border border-slate-700/50 rounded-xl mb-4">
-                                                        <div>
-                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">
-                                                                {editFormData.confirmedTripType === 'International' ? 'Full Name As Per Passport' : 'Full Name As Per Aadhar'}
-                                                            </label>
-                                                            <input type="text" name="fullName" value={currentPassenger.fullName} onChange={handleCurrentPassengerChange} className={inputCls} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Date of Birth</label>
-                                                            <input type="date" name="dob" value={currentPassenger.dob} onChange={handleCurrentPassengerChange} className={inputCls} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Gender</label>
-                                                            <select name="gender" value={currentPassenger.gender} onChange={handleCurrentPassengerChange} className={selectCls}>
-                                                                <option value="" disabled hidden></option>
-                                                                <option value="Male">Male</option>
-                                                                <option value="Female">Female</option>
-                                                                <option value="Other">Other</option>
-                                                            </select>
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Aadhar Card Number</label>
-                                                            <input type="text" name="aadharNumber" value={currentPassenger.aadharNumber} onChange={handleCurrentPassengerChange} className={inputCls} />
-                                                        </div>
-
-                                                        {editFormData.confirmedTripType === 'International' && (
-                                                            <>
-                                                                <div>
-                                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">PAN Card Number</label>
-                                                                    <input type="text" name="panNumber" value={currentPassenger.panNumber} onChange={handleCurrentPassengerChange} className={inputCls} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Number</label>
-                                                                    <input type="text" name="passportNumber" value={currentPassenger.passportNumber} onChange={handleCurrentPassengerChange} className={inputCls} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Place of Issue</label>
-                                                                    <input type="text" name="passportIssuePlace" value={currentPassenger.passportIssuePlace} onChange={handleCurrentPassengerChange} className={inputCls} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Issue Date</label>
-                                                                    <input type="date" name="passportIssueDate" value={currentPassenger.passportIssueDate} onChange={handleCurrentPassengerChange} className={inputCls} />
-                                                                </div>
-                                                                <div>
-                                                                    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Expiry Date</label>
-                                                                    <input type="date" name="passportExpiryDate" value={currentPassenger.passportExpiryDate} onChange={handleCurrentPassengerChange} className={inputCls} />
-                                                                </div>
-                                                            </>
-                                                        )}
-                                                        <div>
-                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Mobile Number</label>
-                                                            <input type="text" name="mobileNumber" value={currentPassenger.mobileNumber} onChange={handleCurrentPassengerChange} className={inputCls} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Emergency Contact Number</label>
-                                                            <input type="text" name="emergencyContact" value={currentPassenger.emergencyContact} onChange={handleCurrentPassengerChange} className={inputCls} />
-                                                        </div>
-                                                        
-                                                        <div className="md:col-span-3 flex justify-start mt-2">
-                                                            <button type="button" onClick={handleAddPassenger} className="text-cyan-400 font-bold text-sm flex items-center gap-1 hover:text-cyan-300 bg-transparent border-none cursor-pointer">
-                                                                <Plus size={16} /> Add Another Passenger
-                                                            </button>
-                                                        </div>
+                                            {/* 2. PASSENGER DETAILS */}
+                                            <div className="pt-5 border-t border-slate-700/50">
+                                                <h4 className="text-sm font-bold text-cyan-400 mb-4 tracking-wider uppercase">Passenger Details</h4>
+                                                
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 p-4 bg-slate-800/20 border border-slate-700/50 rounded-xl mb-4">
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">
+                                                            {editFormData.confirmedTripType === 'International' ? 'Full Name As Per Passport' : 'Full Name As Per Aadhar'}
+                                                        </label>
+                                                        <input type="text" name="fullName" value={currentPassenger.fullName} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Date of Birth</label>
+                                                        <input type="date" name="dob" value={currentPassenger.dob} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Gender</label>
+                                                        <select name="gender" value={currentPassenger.gender} onChange={handleCurrentPassengerChange} className={selectCls}>
+                                                            <option value="" disabled hidden></option>
+                                                            <option value="Male">Male</option>
+                                                            <option value="Female">Female</option>
+                                                            <option value="Other">Other</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Aadhar Card Number</label>
+                                                        <input type="text" name="aadharNumber" value={currentPassenger.aadharNumber} onChange={handleCurrentPassengerChange} className={inputCls} />
                                                     </div>
 
-                                                    {/* PASSENGER TABLE */}
-                                                    {editFormData.passengers && editFormData.passengers.length > 0 && (
-                                                        <div className="overflow-x-auto custom-scrollbar border border-slate-700/50 rounded-lg">
-                                                            <table className="w-full text-left text-[11px] sm:text-xs text-slate-300 whitespace-nowrap">
-                                                                <thead className="bg-slate-800/80 border-b border-slate-700/50">
-                                                                    <tr>
-                                                                        <th className="p-2.5 font-medium">Name</th>
-                                                                        <th className="p-2.5 font-medium">DOB</th>
-                                                                        <th className="p-2.5 font-medium">Gender</th>
-                                                                        <th className="p-2.5 font-medium">Aadhar</th>
+                                                    {editFormData.confirmedTripType === 'International' && (
+                                                        <>
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">PAN Card Number</label>
+                                                                <input type="text" name="panNumber" value={currentPassenger.panNumber} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Number</label>
+                                                                <input type="text" name="passportNumber" value={currentPassenger.passportNumber} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Place of Issue</label>
+                                                                <input type="text" name="passportIssuePlace" value={currentPassenger.passportIssuePlace} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Issue Date</label>
+                                                                <input type="date" name="passportIssueDate" value={currentPassenger.passportIssueDate} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Expiry Date</label>
+                                                                <input type="date" name="passportExpiryDate" value={currentPassenger.passportExpiryDate} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Mobile Number</label>
+                                                        <input type="text" name="mobileNumber" value={currentPassenger.mobileNumber} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Emergency Contact Number</label>
+                                                        <input type="text" name="emergencyContact" value={currentPassenger.emergencyContact} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                    </div>
+                                                    
+                                                    <div className="md:col-span-3 flex justify-start mt-2">
+                                                        <button type="button" onClick={handleAddPassenger} className="text-cyan-400 font-bold text-sm flex items-center gap-1 hover:text-cyan-300 bg-transparent border-none cursor-pointer">
+                                                            <Plus size={16} /> Add Another Passenger
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* PASSENGER TABLE */}
+                                                {editFormData.passengers && editFormData.passengers.length > 0 && (
+                                                    <div className="overflow-x-auto custom-scrollbar border border-slate-700/50 rounded-lg">
+                                                        <table className="w-full text-left text-[11px] sm:text-xs text-slate-300 whitespace-nowrap">
+                                                            <thead className="bg-slate-800/80 border-b border-slate-700/50">
+                                                                <tr>
+                                                                    <th className="p-2.5 font-medium">Name</th>
+                                                                    <th className="p-2.5 font-medium">DOB</th>
+                                                                    <th className="p-2.5 font-medium">Gender</th>
+                                                                    <th className="p-2.5 font-medium">Aadhar</th>
+                                                                    {editFormData.confirmedTripType === 'International' && (
+                                                                        <>
+                                                                            <th className="p-2.5 font-medium">PAN</th>
+                                                                            <th className="p-2.5 font-medium">Passport</th>
+                                                                            <th className="p-2.5 font-medium">Issue Place</th>
+                                                                            <th className="p-2.5 font-medium">Issue Date</th>
+                                                                            <th className="p-2.5 font-medium">Expiry</th>
+                                                                        </>
+                                                                    )}
+                                                                    <th className="p-2.5 font-medium">Mobile</th>
+                                                                    <th className="p-2.5 font-medium text-center">Action</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {editFormData.passengers.map((p, idx) => (
+                                                                    <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/40">
+                                                                        <td className="p-2.5">{p.fullName}</td>
+                                                                        <td className="p-2.5">{p.dob}</td>
+                                                                        <td className="p-2.5">{p.gender}</td>
+                                                                        <td className="p-2.5">{p.aadharNumber}</td>
                                                                         {editFormData.confirmedTripType === 'International' && (
                                                                             <>
-                                                                                <th className="p-2.5 font-medium">PAN</th>
-                                                                                <th className="p-2.5 font-medium">Passport</th>
-                                                                                <th className="p-2.5 font-medium">Issue Place</th>
-                                                                                <th className="p-2.5 font-medium">Issue Date</th>
-                                                                                <th className="p-2.5 font-medium">Expiry</th>
+                                                                                <td className="p-2.5">{p.panNumber}</td>
+                                                                                <td className="p-2.5">{p.passportNumber}</td>
+                                                                                <td className="p-2.5">{p.passportIssuePlace}</td>
+                                                                                <td className="p-2.5">{p.passportIssueDate}</td>
+                                                                                <td className="p-2.5">{p.passportExpiryDate}</td>
                                                                             </>
                                                                         )}
-                                                                        <th className="p-2.5 font-medium">Mobile</th>
-                                                                        <th className="p-2.5 font-medium text-center">Action</th>
+                                                                        <td className="p-2.5">{p.mobileNumber}</td>
+                                                                        <td className="p-2.5 text-center">
+                                                                            <button type="button" onClick={() => handleRemovePassenger(idx)} className="text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer">
+                                                                                <Trash2 size={14} />
+                                                                            </button>
+                                                                        </td>
                                                                     </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    {editFormData.passengers.map((p, idx) => (
-                                                                        <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-800/40">
-                                                                            <td className="p-2.5">{p.fullName}</td>
-                                                                            <td className="p-2.5">{p.dob}</td>
-                                                                            <td className="p-2.5">{p.gender}</td>
-                                                                            <td className="p-2.5">{p.aadharNumber}</td>
-                                                                            {editFormData.confirmedTripType === 'International' && (
-                                                                                <>
-                                                                                    <td className="p-2.5">{p.panNumber}</td>
-                                                                                    <td className="p-2.5">{p.passportNumber}</td>
-                                                                                    <td className="p-2.5">{p.passportIssuePlace}</td>
-                                                                                    <td className="p-2.5">{p.passportIssueDate}</td>
-                                                                                    <td className="p-2.5">{p.passportExpiryDate}</td>
-                                                                                </>
-                                                                            )}
-                                                                            <td className="p-2.5">{p.mobileNumber}</td>
-                                                                            <td className="p-2.5 text-center">
-                                                                                <button type="button" onClick={() => handleRemovePassenger(idx)} className="text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer">
-                                                                                    <Trash2 size={14} />
-                                                                                </button>
-                                                                            </td>
-                                                                        </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* 3. DOCUMENT COLLECTION */}
+                                            <div className="pt-5 border-t border-slate-700/50">
+                                                <h4 className="text-sm font-bold text-cyan-400 mb-4 tracking-wider uppercase">Document Collection</h4>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Aadhar Copy</label>
+                                                        <select name="aadharCopy" value={editFormData.aadharCopy} onChange={handleInputChange} className={selectCls}>
+                                                            <option value="" disabled hidden></option>
+                                                            <option value="Pending">Pending</option>
+                                                            <option value="Received">Received</option>
+                                                        </select>
+                                                    </div>
+                                                    {editFormData.confirmedTripType === 'International' && (
+                                                        <div>
+                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Copy</label>
+                                                            <select name="passportCopy" value={editFormData.passportCopy} onChange={handleInputChange} className={selectCls}>
+                                                                <option value="" disabled hidden></option>
+                                                                <option value="Pending">Pending</option>
+                                                                <option value="Received">Received</option>
+                                                            </select>
                                                         </div>
                                                     )}
-                                                </div>
-
-                                                {/* 3. DOCUMENT COLLECTION */}
-                                                <div className="pt-5 border-t border-slate-700/50">
-                                                    <h4 className="text-sm font-bold text-cyan-400 mb-4 tracking-wider uppercase">Document Collection</h4>
-                                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                                                        <div>
-                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Aadhar Copy</label>
-                                                            <select name="aadharCopy" value={editFormData.aadharCopy} onChange={handleInputChange} className={selectCls}>
-                                                                <option value="" disabled hidden></option>
-                                                                <option value="Pending">Pending</option>
-                                                                <option value="Received">Received</option>
-                                                            </select>
-                                                        </div>
-                                                        {editFormData.confirmedTripType === 'International' && (
-                                                            <div>
-                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Copy</label>
-                                                                <select name="passportCopy" value={editFormData.passportCopy} onChange={handleInputChange} className={selectCls}>
-                                                                    <option value="" disabled hidden></option>
-                                                                    <option value="Pending">Pending</option>
-                                                                    <option value="Received">Received</option>
-                                                                </select>
-                                                            </div>
-                                                        )}
-                                                        <div>
-                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Photograph</label>
-                                                            <select name="photograph" value={editFormData.photograph} onChange={handleInputChange} className={selectCls}>
-                                                                <option value="" disabled hidden></option>
-                                                                <option value="Pending">Pending</option>
-                                                                <option value="Received">Received</option>
-                                                            </select>
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Attach Drive Link</label>
-                                                            <input type="text" name="attachDriveLink" value={editFormData.attachDriveLink} onChange={handleInputChange} className={inputCls} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Remarks</label>
-                                                            <input type="text" name="docRemarks" value={editFormData.docRemarks} onChange={handleInputChange} className={inputCls} />
-                                                        </div>
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Photograph</label>
+                                                        <select name="photograph" value={editFormData.photograph} onChange={handleInputChange} className={selectCls}>
+                                                            <option value="" disabled hidden></option>
+                                                            <option value="Pending">Pending</option>
+                                                            <option value="Received">Received</option>
+                                                        </select>
+                                                    </div>
+                                                     <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Pancard</label>
+                                                        <select name="pancard" value={editFormData.pancard} onChange={handleInputChange} className={selectCls}>
+                                                            <option value="" disabled hidden></option>
+                                                            <option value="Pending">Pending</option>
+                                                            <option value="Received">Received</option>
+                                                        </select>
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Attach Drive Link</label>
+                                                        <input type="text" name="attachDriveLink" value={editFormData.attachDriveLink} onChange={handleInputChange} className={inputCls} />
+                                                    </div>
+                                                    <div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Remarks</label>
+                                                        <input type="text" name="docRemarks" value={editFormData.docRemarks} onChange={handleInputChange} className={inputCls} />
                                                     </div>
                                                 </div>
-                                                </>
-                                            )}
+                                            </div>
 
                                         </div>
-                                    ) : (
-                                        <div className="mt-4 px-4 py-5 text-xs sm:text-sm text-slate-500 border border-dashed border-slate-800 rounded-xl text-center">
-                                            This section appears when Customer Response is "Booking Confirmed".
-                                        </div>
-                                    )
-                                )}
-                            </div>
+                                    )}
+                                </div>
+                            )}
 
-                            {activeTab !== 'My Confirmation' && (
+                            {/* SECTION 8: PAYMENT INFORMATION - ONLY IN MY CONFIRMATION OR VIA PAYMENT MODAL */}
+                            {(activeTab === 'My Confirmation' || expandedSections.paymentInfo) && (
                                 <div id="section-paymentInfo" className={sectionCls}>
-                                    {/* SECTION 8: PAYMENT INFORMATION */}
                                     <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('paymentInfo')}>
                                         <h3 className={`text-sm sm:text-base font-bold tracking-wider uppercase m-0 flex items-center gap-2 text-emerald-400`}>
                                             <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
@@ -2594,6 +2643,74 @@ const SalesDashboard = () => {
                 </div>
             )}
 
+            {/* HANDOVER TO OPERATION MODAL */}
+            {isHandoverModalOpen && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+                    <div className="bg-[#1e293b] border border-slate-700/60 rounded-xl shadow-2xl w-full max-w-md relative flex flex-col max-h-[90vh]">
+                        <div className="px-6 pt-5 sm:pt-6 pb-2 flex-shrink-0">
+                            <button type="button" onClick={() => setIsHandoverModalOpen(false)} className="absolute top-4 right-4 text-slate-400 border-none bg-transparent cursor-pointer hover:text-white transition-colors p-1.5 hover:bg-slate-800 rounded-lg">
+                                <X size={20} />
+                            </button>
+                            <h2 className="text-lg sm:text-xl font-bold text-white mb-4 sm:mb-6 tracking-tight pr-6 truncate">Handover to Operation</h2>
+                        </div>
+                        <div className="px-6 pb-6 space-y-4 text-sm overflow-y-auto custom-scrollbar flex-1">
+                            
+                            {!handoverLead ? (
+                                <div>
+                                    <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-[11px] sm:text-xs">Select Job ID</label>
+                                    <select 
+                                        value={handoverLeadId} 
+                                        onChange={(e) => setHandoverLeadId(e.target.value)}
+                                        className="w-full px-3 py-3 sm:py-2.5 border border-slate-700 rounded-lg sm:rounded-md bg-slate-900 text-white focus:outline-none focus:border-purple-500 transition-colors"
+                                    >
+                                        <option value="" disabled>-- Select a Job from current tab --</option>
+                                        {filteredData.map(job => (
+                                            <option key={job.id} value={job.id}>LMN{job.id} - {job.customerName || 'Unknown'}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            ) : (
+                                <div>
+                                    <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-[11px] sm:text-xs">Job ID</label>
+                                    <input type="text" readOnly value={`LMN${handoverLead.id}`}
+                                        className="w-full px-3 py-2.5 sm:py-2 bg-slate-900 border border-slate-700 rounded-lg sm:rounded-md text-slate-300 outline-none font-medium cursor-not-allowed" />
+                                </div>
+                            )}
+                            
+                            <div>
+                                <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-[11px] sm:text-xs">Assigned To (Operations Team)</label>
+                                <select 
+                                    value={handoverTarget} 
+                                    onChange={(e) => setHandoverTarget(e.target.value)}
+                                    className="w-full px-3 py-3 sm:py-2.5 border border-slate-700 rounded-lg sm:rounded-md bg-slate-900 text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer"
+                                >
+                                    <option value="" disabled hidden>-- Select Ops Employee --</option>
+                                    {operationsStaff.map((emp, idx) => (
+                                        <option key={idx} value={emp}>{emp}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-[11px] sm:text-xs">Handover Notes</label>
+                                <textarea 
+                                    value={handoverNotes} 
+                                    onChange={(e) => setHandoverNotes(e.target.value)}
+                                    rows="3"
+                                    placeholder="Add required operational notes here..."
+                                    className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg sm:rounded-md text-slate-300 outline-none focus:border-purple-500 transition-colors resize-none custom-scrollbar" 
+                                />
+                            </div>
+
+                            <div className="flex flex-col sm:flex-row items-center gap-3 mt-6 pt-2">
+                                <button type="button" onClick={() => setIsHandoverModalOpen(false)} className="w-full sm:flex-1 py-2.5 sm:py-2 bg-transparent cursor-pointer border border-slate-700 hover:bg-slate-800 text-slate-300 font-medium rounded-lg sm:rounded transition-colors order-2 sm:order-1">Cancel</button>
+                                <button type="button" onClick={handleHandoverSubmit} className="w-full sm:flex-1 py-2.5 sm:py-2 bg-purple-500 border-none cursor-pointer hover:bg-purple-600 text-white font-bold rounded-lg sm:rounded shadow transition-colors order-1 sm:order-2">Submit</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* REASSIGN MODAL */}
             {isReassignModalOpen && selectedLead && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
@@ -2687,12 +2804,7 @@ const SalesDashboard = () => {
                                         {selectedLead.leadMessage || selectedLead.message || 'No message provided.'}
                                     </p>
                                 </div>
-                                <div className="pt-3 border-t border-slate-700/50">
-                                    <span className="block text-xs sm:text-sm text-slate-400 mb-1">Internal Notes:</span>
-                                    <p className="text-xs sm:text-sm text-emerald-400 leading-relaxed">
-                                        {selectedLead.salesNotes || selectedLead.notes || selectedLead.opsRemarks || 'No internal notes.'}
-                                    </p>
-                                </div>
+                                
                             </div>
                         </div>
                     </div>
