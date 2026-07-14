@@ -32,7 +32,8 @@ import {
     BellRing,
     AlertTriangle,
     BookmarkCheck,
-    PlaneTakeoff
+    PlaneTakeoff,
+    PackageCheck
 } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
 import { ROLES } from '../utils/permissions';
@@ -828,7 +829,7 @@ const Dashboard = () => {
         });
     };
 
-  const handleStatCardClick = (type) => {
+    const handleStatCardClick = (type) => {
         let list = [];
         let title = '';
         const todayStr = new Date().toDateString();
@@ -1257,455 +1258,248 @@ const Dashboard = () => {
                 ))}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-[480px] lg:col-span-2">
-                    <div className="flex justify-between items-center mb-3 flex-shrink-0">
-                        <div>
-                            <h2 className="text-medium font-bold text-slate-800 dark:text-white tracking-tight">Payment</h2>
-                            <p className="text-[12px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Live ledger</p>
-                        </div>
-                        <div className="flex items-center gap-2.5">
-                            <button type="button" onClick={() => setPaymentModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 dark:border-emerald-500/20 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors bg-emerald-50/50 dark:bg-transparent">View All</button>
-                            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500">
-                                <Wallet size={16} />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="flex gap-3 mb-4 text-[14px] font-bold border border-slate-100 dark:border-slate-700/40 rounded-xl p-2.5 flex-shrink-0 bg-slate-50 dark:bg-slate-800/30">
-                        <div className="flex-1">
-                            <span className="block text-slate-400 text-[12px] uppercase tracking-widest mb-0.5">Money In</span>
-                            <span className="text-emerald-500 font-mono">₹{payments.totalIn.toLocaleString('en-IN')}</span>
-                        </div>
-                        <div className="w-px bg-slate-200 dark:bg-slate-700/50" />
-                        <div className="flex-1">
-                            <span className="block text-slate-400 text-[12px] uppercase tracking-widest mb-0.5">Money Out</span>
-                            <span className="text-rose-400 font-mono">₹{payments.totalOut.toLocaleString('en-IN')}</span>
-                        </div>
-                    </div>
+            {/* ─── SALES SPECIFIC DASHBOARD LAYOUT ─── */}
+            {user?.role === ROLES.SALES ? (
+                <div className="space-y-4 sm:space-y-5">
                     
-                    <div className="space-y-2.5 overflow-y-auto flex-1 pr-0.5 custom-scrollbar">
-                        {individualPayments.length === 0 ? (
-                            <div className="text-center py-12 text-slate-400 text-xs">No live transaction profiles tracked.</div>
-                        ) : (
-                            individualPayments.slice(0, 5).map(pay => (
-                                <div key={pay.id} onClick={() => setSelectedPaymentLead(pay.rawLead)} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/30 bg-slate-50/50 dark:bg-slate-800/20 space-y-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700/60 transition-all group">
-                                    <div className="flex justify-between items-start gap-2">
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-base font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{pay.customerName}</p>
-                                            <p className="text-[14px] text-slate-400 flex items-center gap-1 truncate mt-0.5"><MapPin size={9}/> {pay.destination} · LMN{pay.id}</p>
-                                        </div>
-                                        <span className={`text-[14px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
-                                            pay.paymentStatus === 'Fully Paid' || pay.paymentStatus === 'Cleared' 
-                                                ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' 
-                                                : 'bg-orange-500/10 text-orange-400 border-orange-500/20'
-                                        }`}>
-                                            {pay.paymentStatus}
-                                        </span>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-1 pt-2 border-t border-slate-100 dark:border-slate-700/30 text-[12px] font-mono">
-                                        <div>
-                                            <span className="text-slate-400 block text-[12px] uppercase tracking-wide mb-0.5">Received</span>
-                                            <span className="text-emerald-500 font-bold">₹{pay.received.toLocaleString('en-IN')}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-slate-400 block text-[12px] uppercase tracking-wide mb-0.5">Paid Ops</span>
-                                            <span className="text-rose-400 font-bold">₹{pay.vendorPaid.toLocaleString('en-IN')}</span>
-                                        </div>
-                                        <div>
-                                            <span className="text-slate-400 block text-[12px] uppercase tracking-wide mb-0.5">Balance</span>
-                                            <span className="text-amber-400 font-bold">₹{pay.pending.toLocaleString('en-IN')}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-
-                <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/30 flex flex-col gap-3 shadow-sm lg:col-span-1">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30 rounded-xl p-2.5">
-                        <div className="flex justify-between items-center mb-2.5 px-0.5">
-                            <div className="flex gap-1">
-                                <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronLeft size={14}/></button>
-                                <button onClick={nextDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronRight size={14}/></button>
-                            </div>
-                        </div>
-                        <div className="flex justify-between items-center gap-1">
-                            {dateStrip.map((date, idx) => {
-                                const isSelected = date.toDateString() === currentDate.toDateString();
-                                return (
-                                    <div key={idx} onClick={() => { setCurrentDate(date); openAddEvent(date); }}
-                                        className={`flex flex-col items-center justify-center py-2 rounded-xl cursor-pointer transition-all w-full min-w-0 ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
-                                        <span className="text-[8px] uppercase font-bold tracking-wider mb-1 block">{date.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 2)}</span>
-                                        <span className={`text-sm font-bold ${isSelected ? 'text-white' : ''}`}>{date.getDate()}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2">
-                        <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-700/30 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
-                            <Eye size={12}/> <span>View All</span>
-                        </button>
-                        <button onClick={() => openAddEvent(currentDate)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[11px] font-bold transition-colors shadow-lg shadow-blue-500/20">
-                            <Plus size={12}/> <span>Create</span>
-                        </button>   
-                    </div>
-
-                    <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-700/30 rounded-xl p-3 flex-1 flex flex-col">
-                        <div className="flex justify-between items-center mb-2.5">
-                            <h3 className="text-[9px] uppercase tracking-widest font-bold text-slate-400">Reminders · {currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
-                            <span className="text-[9px] font-bold text-slate-500 bg-slate-200 dark:bg-slate-700/60 px-1.5 py-0.5 rounded-full">{filteredEvents.length}</span>
-                        </div>
-                        <div className="space-y-2 flex-1 overflow-y-auto max-h-[140px] pr-1 custom-scrollbar">
-                            {filteredEvents.length === 0 ? (
-                                <p className="text-slate-400 text-center py-4 text-[10px]">No reminders today.</p>
-                            ) : (
-                                filteredEvents.map((event, idx) => {
-                                    const evDate = event.date ? new Date(event.date + 'T00:00:00') : new Date();
-                                    return (
-                                        <div key={event.id || idx} className="flex gap-2.5 items-start group hover:bg-slate-100 dark:hover:bg-slate-800/40 p-1.5 rounded-lg transition-colors">
-                                            <div className="pl-2 border-l-2 border-blue-400/50 flex flex-col items-center min-w-[28px] flex-shrink-0">
-                                                <span className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight">{evDate.getDate()}</span>
-                                                <span className="text-[8px] font-bold text-slate-400 uppercase">{monthNames[evDate.getMonth()].substring(0, 3)}</span>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">{event.title}</h4>
-                                                <p className="text-[9px] text-slate-400 flex items-center gap-1 mt-0.5"><Clock size={9}/> {event.time}</p>
-                                            </div>
-                                            <button onClick={() => deleteEvent(event.id)} className="text-slate-400 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><Trash2 size={11}/></button>
-                                        </div>
-                                    );
-                                })
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
-                    <div className="flex justify-between items-center mb-4">
-                        <div>
-                            <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
-                            <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{taskCounts.pending} pending</p>
-                        </div>
-                        <button onClick={openAddTask} className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-violet-500/20">
-                            <Plus size={13} /> Add Task
-                        </button>
-                    </div>
-
-                    <div className="flex gap-1.5 mb-4 bg-slate-100 dark:bg-slate-800/40 p-1 rounded-xl">
-                        {[
-                            { key: 'all', label: `All (${taskCounts.all})` },
-                            { key: 'pending', label: `Pending (${taskCounts.pending})` },
-                            { key: 'completed', label: `Done (${taskCounts.completed})` },
-                        ].map(tab => (
-                            <button key={tab.key} onClick={() => setTaskFilter(tab.key)} className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all whitespace-nowrap px-2 cursor-pointer border-none uppercase tracking-wide ${taskFilter === tab.key ? 'bg-white dark:bg-slate-700/80 text-slate-800 dark:text-white shadow-sm' : 'bg-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="space-y-1 flex-1 overflow-y-auto max-h-[320px] sm:max-h-[380px] custom-scrollbar pr-1">
-                        {filteredTasks.length === 0 && <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No tasks here. Add one!</div>}
-                        {filteredTasks.map(task => (
-                            <div key={task.id} className="flex items-center justify-between py-3 px-3 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-slate-700/40 hover:bg-slate-50 dark:hover:bg-slate-800/30 group transition-all gap-3">
-                                <div className="flex items-center gap-3 min-w-0 flex-1">
-                                    <button onClick={() => toggleTask(task.id, task.completed)} className={`w-5 h-5 rounded-lg flex items-center justify-center border-2 transition-all cursor-pointer flex-shrink-0 ${task.completed ? 'bg-violet-500 border-violet-500' : 'bg-transparent border-slate-300 dark:border-slate-600 hover:border-violet-400'}`}>
-                                        {task.completed && <Check size={11} className="text-white" strokeWidth={3} />}
-                                    </button>
-                                    <div className="min-w-0">
-                                        <p className={`text-xs font-semibold truncate ${task.completed ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>{task.title}</p>
-                                        <p className="text-[9px] text-slate-400 mt-0.5 flex items-center gap-1 uppercase tracking-wide"><Calendar size={9}/> {formatTaskDateTime(task.time)}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-2 flex-shrink-0">
-                                    <PriorityBadge priority={task.priority} />
-                                    <div className="flex gap-0.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                                        <button onClick={() => openEditTask(task)} className="p-1.5 rounded-lg text-slate-400 bg-transparent border-none cursor-pointer hover:text-blue-400 hover:bg-blue-500/10 transition-colors"><Pencil size={12} /></button>
-                                        <button onClick={() => deleteTask(task.id)} className="p-1.5 rounded-lg text-slate-400 bg-transparent border-none cursor-pointer hover:text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={12} /></button>
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
-                    <div className="flex justify-between items-center mb-4">
-                        <div>
-                            <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Sales Targets</h2>
-                            <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Click ± to adjust</p>
-                        </div>
-                        <button onClick={() => { setEditingTarget(null); setTargetForm({ label: '', value: 0, max: 100, unit: '', isPercent: false, color: '#7c3aed' }); setTargetModal(true); }} className="flex items-center gap-1.5 text-xs font-bold text-violet-500 dark:text-violet-400 hover:text-violet-600 bg-violet-500/10 hover:bg-violet-500/20 px-3 py-1.5 rounded-xl transition-colors border border-violet-500/15">
-                            <Plus size={13}/> Add
-                        </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2.5 mb-5">
-                        <div 
-                            onClick={() => handleRegionCardClick('india')}
-                            className="flex items-center gap-2.5 px-3 py-3 rounded-xl border border-orange-500/15 bg-gradient-to-br from-orange-500/8 to-orange-500/3 relative overflow-hidden cursor-pointer hover:border-orange-500/30 hover:from-orange-500/12 active:scale-[0.98] transition-all group"
-                        >
-                            <div className="p-1.5 rounded-lg bg-orange-500/15 text-orange-500 flex-shrink-0"><MapPin size={13}/></div>
-                            <div className="min-w-0">
-                                <p className="text-lg font-bold text-slate-800 dark:text-white leading-none">{tripRegionCounts.india}</p>
-                                <p className="text-[9px] text-slate-400 mt-1 font-semibold uppercase tracking-wide truncate group-hover:text-orange-400 transition-colors">🇮🇳 National</p>
-                            </div>
-                            <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                        </div>
-                        <div 
-                            onClick={() => handleRegionCardClick('international')}
-                            className="flex items-center gap-2.5 px-3 py-3 rounded-xl border border-cyan-500/15 bg-gradient-to-br from-cyan-500/8 to-cyan-500/3 relative overflow-hidden cursor-pointer hover:border-cyan-500/30 hover:from-cyan-500/12 active:scale-[0.98] transition-all group"
-                        >
-                            <div className="p-1.5 rounded-lg bg-cyan-500/15 text-cyan-500 flex-shrink-0"><Globe size={13}/></div>
-                            <div className="min-w-0">
-                                <p className="text-lg font-bold text-slate-800 dark:text-white leading-none">{tripRegionCounts.international}</p>
-                                <p className="text-[9px] text-slate-400 mt-1 font-semibold uppercase tracking-wide truncate group-hover:text-cyan-400 transition-colors">🌐 Intl.</p>
-                            </div>
-                            <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
-                        </div>
-                    </div>
-
-                    <div className="space-y-4">
-                        {targets.map(item => {
-                            const pct = item.max > 0 ? Math.min(100, Math.round((item.value / item.max) * 100)) : 0;
-                            return (
-                                <div key={item.id} className="group">
-                                    <div className="flex justify-between items-center mb-2 gap-2">
-                                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 truncate">{item.label}</span>
-                                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                                            <div className="flex items-center gap-1">
-                                                <button onClick={() => nudgeTarget(item.id, -1, item.value, item.max, item.unit)} className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-slate-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><Minus size={10}/></button>
-                                                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 min-w-[58px] text-center font-mono">{formatTargetDisplay(item)}</span>
-                                                <button onClick={() => nudgeTarget(item.id, 1, item.value, item.max, item.unit)} className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-slate-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><Plus size={10}/></button>
-                                            </div>
-                                            <div className="flex items-center gap-0.5 pl-1.5 border-l border-slate-200 dark:border-slate-700/50">
-                                                <button onClick={() => openEditTarget(item)} className="w-5 h-5 rounded-lg hover:bg-blue-500/10 flex items-center justify-center text-slate-400 hover:text-blue-400 transition-colors"><Pencil size={11}/></button>
-                                                <button onClick={() => deleteTarget(item.id)} className="w-5 h-5 rounded-lg hover:bg-red-500/10 flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors"><Trash2 size={11}/></button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <ProgressBar value={item.value} max={item.max} color={item.color} />
-                                    <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-1.5 text-right uppercase tracking-wide">{pct}% achieved</p>
-                                </div>
-                            );
-                        })}
-                        {targets.length === 0 && <div className="text-center py-10 text-slate-400 dark:text-slate-500 text-xs">No targets set. Add one!</div>}
-                    </div>
-                </div>
-
-                <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
-                    <div className="flex justify-between items-center mb-4">
-                        <div>
-                            <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Top Destinations</h2>
-                        </div>
-                        <button type="button" onClick={() => setTopDestinationsModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">View All</button>
-                    </div>
-                    <div className="space-y-1 flex-1 mt-1">
-                        {topDestinations.length === 0 ? (
-                            <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No destination data yet.<br />Add some leads!</div>
-                        ) : (
-                            topDestinations.slice(0, 5).map((dest, idx) => (
-                                <div 
-                                    key={idx} 
-                                    onClick={() => handleDestinationClick(dest.name)}
-                                    className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/30 px-2 py-2.5 -mx-1 rounded-xl transition-all"
-                                >
-                                    <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-                                        <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xs font-bold border border-amber-500/15 flex-shrink-0">{idx + 1}</div>
-                                        <div className="min-w-0">
-                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-amber-500 transition-colors truncate">{dest.name}</p>
-                                            <p className="text-[9px] text-slate-400 mt-0.5 uppercase tracking-wide">Destination</p>
-                                        </div>
-                                    </div>
-                                    <div className="text-right flex-shrink-0">
-                                        <p className="text-sm font-bold text-slate-800 dark:text-white">{dest.count}</p>
-                                        <p className="text-[9px] text-slate-400 mt-0.5 uppercase tracking-wide">leads</p>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-rose-900/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-2">
-                    <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center gap-2.5">
-                            <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500 flex-shrink-0">
-                                <BellRing size={16} />
-                            </div>
-                            <div>
-                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Fulfillment Alerts</h2>
-                                <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Trips within 7 days</p>
-                            </div>
-                        </div>
-                        <span className="bg-rose-500/10 text-rose-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-rose-500/20 uppercase tracking-wide">{fulfillmentAlerts.length} Action{fulfillmentAlerts.length !== 1 ? 's' : ''}</span>
-                    </div>
-                    <div className="space-y-2.5 overflow-y-auto max-h-[240px] custom-scrollbar">
-                        {fulfillmentAlerts.length === 0 ? (
-                            <div className="text-center py-8 text-slate-400 text-xs">No upcoming trips in the next 7 days.</div>
-                        ) : (
-                            fulfillmentAlerts.map(alert => (
-                                <div key={alert.id} className="flex items-center justify-between bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/10 p-3 rounded-xl hover:bg-rose-100/80 dark:hover:bg-rose-500/10 transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-rose-500/15 text-rose-500 rounded-xl flex-shrink-0"><AlertTriangle size={15}/></div>
-                                        <div>
-                                            <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{alert.customerName} — {alert.destination}</p>
-                                            <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide">Trip starts <span className="font-bold text-slate-700 dark:text-slate-300">{alert.date}</span> · {alert.daysLeft}d left</p>
-                                        </div>
-                                    </div>
-                                    <button className="px-3 py-1.5 text-[10px] font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-xl transition-colors shadow-sm shadow-rose-500/20 uppercase tracking-wide">Review</button>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-
-                <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-full lg:col-span-1">
-                    <div className="flex justify-between items-start mb-4 gap-2">
-                        <div>
-                            <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Active Team</h2>
-                            <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{members.filter(m => m.status === 'online').length} online now</p>
-                        </div>
-                        {members.length > 5 && (
-                            <button
-                                type="button" onClick={() => setAllMembersExpanded(!allMembersExpanded)}
-                                className="px-3 py-1.5 text-[11px] font-bold text-violet-500 dark:text-violet-400 border border-violet-500/20 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors flex-shrink-0"
-                            >
-                                {allMembersExpanded ? 'Less' : 'All'}
-                            </button>
-                        )}
-                    </div>
-                    <div className="space-y-1 flex-1 overflow-y-auto custom-scrollbar pr-0.5 min-h-[200px]">
-                        {members.length === 0 ? (
-                            <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No active employees operating right now.</div>
-                        ) : (
-                            (allMembersExpanded ? members : members.slice(0, 5)).map(member => (
-                                <div key={member.id} onClick={() => setSelectedMember(member)} className="flex items-center gap-3 py-2.5 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700/30 cursor-pointer">
-                                    <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white flex-shrink-0 shadow-md uppercase" style={{ backgroundColor: member.color || '#7c3aed' }}>{member.initials}</div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-bold text-slate-800 dark:text-white leading-tight truncate">{member.name}</p>
-                                        <p className="text-[9px] text-slate-400 mt-0.5 truncate uppercase tracking-wider font-semibold">{member.role}</p>
-                                    </div>
-                                    <div className="flex items-center gap-2 flex-shrink-0">
-                                        <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/30">
-                                            <StatusDot status={member.status} />
-                                            <span className="hidden sm:inline text-[9px] font-bold text-slate-500 dark:text-slate-400 capitalize uppercase tracking-wide">{member.status}</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* ── ROW 6: LEAVE MANAGEMENT ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                {/* ── LEAVE DASHBOARD (EMPLOYEES ONLY) ── */}
-                {isSalesOrOps && (
-                    <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
-                        <div className="flex justify-between items-center mb-4">
-                            <div>
-                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">My Leaves</h2>
-                                <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Track your applications</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button type="button" onClick={() => setAllLeavesModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors bg-blue-50/50 dark:bg-transparent">View All</button>
-                                <button onClick={() => setLeaveModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20">
-                                    <Plus size={13} /> Apply Leave
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
-                            {leaves.length === 0 ? (
-                                <div className="text-center py-8 text-slate-400 text-xs">No leave history found.</div>
-                            ) : (
-                                leaves.slice(0, 3).map(leave => (
-                                    <div key={leave.id} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-800/30 flex justify-between items-center">
-                                        <div>
-                                            <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{leave.startDate} to {leave.endDate || 'N/A'}</p>
-                                         <p className="text-[10px] text-slate-500 mt-1 truncate max-w-[150px]">
-    <span className="font-semibold text-slate-600 dark:text-slate-300">{leave.leaveType || 'Leave'}</span> • {leave.reason}
-</p>
-                                        </div>
-                                        <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
-                                            leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
-                                            leave.status === 'Rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
-                                            'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                                        }`}>
-                                            {leave.status}
-                                        </span>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* ── LEAVE APPROVAL DASHBOARD (ADMIN ONLY) ── */}
-                {isAdmin && (
-                    <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-amber-900/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
-                        <div className="flex justify-between items-center mb-4">
-                            <div className="flex items-center gap-2.5">
-                                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 flex-shrink-0">
-                                    <AlertCircle size={16} />
-                                </div>
-                                <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Team Leaves</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Admin Overview</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button type="button" onClick={() => setAllLeavesModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors bg-amber-50/50 dark:bg-transparent">View All</button>
-                                <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{leaves.filter(l => l.status === 'Pending').length} Pending</span>
-                            </div>
-                        </div>
+                    {/* ── 3RD ROW: Employee List, Sales Targets, Top Destinations ── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         
-                        <div className="space-y-2.5 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
-                            {leaves.length === 0 ? (
-                                <div className="text-center py-8 text-slate-400 text-xs">No leave requests found.</div>
-                            ) : (
-                                leaves.slice(0, 3).map(leave => (
-                                    <div key={leave.id} className={`p-3 border rounded-xl transition-colors ${
-                                        leave.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/10' :
-                                        'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40'
-                                    }`}>
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                                                    {leave.employeeName} <span className="font-normal text-slate-500 text-[10px]">({leave.employeeId})</span>
-                                                </p>
-                                                <div className="text-[9px] text-slate-500 dark:text-slate-400 mt-1 font-mono space-y-0.5">
-                                                    <p>
-                                                        <span className="font-bold text-slate-600 dark:text-slate-300">{leave.leaveType || 'Leave'}</span>
-                                                        {leave.leaveType === 'Leave' && leave.totalDays && ` • ${leave.totalDays} Days`}
-                                                    </p>
-                                                    <p>
-                                                        {leave.leaveType === 'Half Day' ? (
-                                                            `${leave.startDate} • ${leave.session}`
-                                                        ) : leave.leaveType === 'Week Off' ? (
-                                                            `Off: ${leave.startDate} • Worked: ${leave.workedOnDate}`
-                                                        ) : (
-                                                            `${leave.startDate} to ${leave.endDate || 'N/A'}`
-                                                        )}
-                                                    </p>
+                        {/* 1. Employee List & Counts (Active Team) */}
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-full lg:col-span-1">
+                            <div className="flex justify-between items-start mb-4 gap-2">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Active Team</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{members.filter(m => m.status === 'online').length} online now</p>
+                                </div>
+                                {members.length > 5 && (
+                                    <button
+                                        type="button" onClick={() => setAllMembersExpanded(!allMembersExpanded)}
+                                        className="px-3 py-1.5 text-[11px] font-bold text-violet-500 dark:text-violet-400 border border-violet-500/20 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors flex-shrink-0"
+                                    >
+                                        {allMembersExpanded ? 'Less' : 'All'}
+                                    </button>
+                                )}
+                            </div>
+                            <div className="space-y-1 flex-1 overflow-y-auto custom-scrollbar pr-0.5 min-h-[200px] max-h-[320px]">
+                                {members.length === 0 ? (
+                                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No active employees operating right now.</div>
+                                ) : (
+                                    (allMembersExpanded ? members : members.slice(0, 5)).map(member => (
+                                        <div key={member.id} onClick={() => setSelectedMember(member)} className="flex items-center gap-3 py-2.5 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700/30 cursor-pointer">
+                                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white flex-shrink-0 shadow-md uppercase" style={{ backgroundColor: member.color || '#7c3aed' }}>{member.initials}</div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-bold text-slate-800 dark:text-white leading-tight truncate">{member.name}</p>
+                                                <p className="text-[9px] text-slate-400 mt-0.5 truncate uppercase tracking-wider font-semibold">{member.role}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/30">
+                                                    <StatusDot status={member.status} />
+                                                    <span className="hidden sm:inline text-[9px] font-bold text-slate-500 dark:text-slate-400 capitalize uppercase tracking-wide">{member.status}</span>
                                                 </div>
                                             </div>
-                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* 2. Sales Targets */}
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Sales Targets</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Click ± to adjust</p>
+                                </div>
+                                <button onClick={() => { setEditingTarget(null); setTargetForm({ label: '', value: 0, max: 100, unit: '', isPercent: false, color: '#7c3aed' }); setTargetModal(true); }} className="flex items-center gap-1.5 text-xs font-bold text-violet-500 dark:text-violet-400 hover:text-violet-600 bg-violet-500/10 hover:bg-violet-500/20 px-3 py-1.5 rounded-xl transition-colors border border-violet-500/15">
+                                    <Plus size={13}/> Add
+                                </button>
+                            </div>
+                            <div className="space-y-4 max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
+                                {targets.map(item => {
+                                    const pct = item.max > 0 ? Math.min(100, Math.round((item.value / item.max) * 100)) : 0;
+                                    return (
+                                        <div key={item.id} className="group">
+                                            <div className="flex justify-between items-center mb-2 gap-2">
+                                                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 truncate">{item.label}</span>
+                                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                    <div className="flex items-center gap-1">
+                                                        <button onClick={() => nudgeTarget(item.id, -1, item.value, item.max, item.unit)} className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-slate-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><Minus size={10}/></button>
+                                                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 min-w-[58px] text-center font-mono">{formatTargetDisplay(item)}</span>
+                                                        <button onClick={() => nudgeTarget(item.id, 1, item.value, item.max, item.unit)} className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-slate-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><Plus size={10}/></button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <ProgressBar value={item.value} max={item.max} color={item.color} />
+                                        </div>
+                                    );
+                                })}
+                                {targets.length === 0 && <div className="text-center py-10 text-slate-400 dark:text-slate-500 text-xs">No targets set. Add one!</div>}
+                            </div>
+                        </div>
+
+                        {/* 3. Top Destinations */}
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Top Destinations</h2>
+                                </div>
+                                <button type="button" onClick={() => setTopDestinationsModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">View All</button>
+                            </div>
+                            <div className="space-y-1 flex-1 mt-1 overflow-y-auto max-h-[320px] custom-scrollbar">
+                                {topDestinations.length === 0 ? (
+                                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No destination data yet.</div>
+                                ) : (
+                                    topDestinations.slice(0, 5).map((dest, idx) => (
+                                        <div key={idx} onClick={() => handleDestinationClick(dest.name)} className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/30 px-2 py-2.5 -mx-1 rounded-xl transition-all">
+                                            <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                                                <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xs font-bold border border-amber-500/15 flex-shrink-0">{idx + 1}</div>
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-amber-500 transition-colors truncate">{dest.name}</p>
+                                                    <p className="text-[9px] text-slate-400 mt-0.5 uppercase tracking-wide">Destination</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right flex-shrink-0">
+                                                <p className="text-sm font-bold text-slate-800 dark:text-white">{dest.count}</p>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ── 4TH ROW: Tasks, Alerts, Calendars ── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+                        
+                        {/* 1. Tasks */}
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{taskCounts.pending} pending</p>
+                                </div>
+                                <button onClick={openAddTask} className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-violet-500/20">
+                                    <Plus size={13} /> Add Task
+                                </button>
+                            </div>
+                            <div className="space-y-1 flex-1 overflow-y-auto max-h-[320px] custom-scrollbar pr-1">
+                                {filteredTasks.length === 0 && <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No tasks here. Add one!</div>}
+                                {filteredTasks.map(task => (
+                                    <div key={task.id} className="flex items-center justify-between py-3 px-3 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-slate-700/40 hover:bg-slate-50 dark:hover:bg-slate-800/30 group transition-all gap-3">
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <button onClick={() => toggleTask(task.id, task.completed)} className={`w-5 h-5 rounded-lg flex items-center justify-center border-2 transition-all cursor-pointer flex-shrink-0 ${task.completed ? 'bg-violet-500 border-violet-500' : 'bg-transparent border-slate-300 dark:border-slate-600 hover:border-violet-400'}`}>
+                                                {task.completed && <Check size={11} className="text-white" strokeWidth={3} />}
+                                            </button>
+                                            <div className="min-w-0">
+                                                <p className={`text-xs font-semibold truncate ${task.completed ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>{task.title}</p>
+                                            </div>
+                                        </div>
+                                        <PriorityBadge priority={task.priority} />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 2. Alerts (Using Reminders/Events list as Alerts) */}
+                        <div className="bg-white dark:bg-[#111827] border border-blue-200/60 dark:border-blue-900/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                            <div className="flex justify-between items-center mb-4">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500 flex-shrink-0">
+                                        <BellRing size={16} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">System Alerts</h2>
+                                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Active Notifications</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="space-y-2.5 overflow-y-auto max-h-[320px] custom-scrollbar">
+                                {events.length === 0 ? (
+                                    <div className="text-center py-8 text-slate-400 text-xs">No active alerts to display.</div>
+                                ) : (
+                                    events.map((ev) => (
+                                        <div key={ev.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-3.5 rounded-xl border border-blue-100 dark:border-blue-700/40 bg-blue-50/50 dark:bg-blue-800/10 hover:bg-blue-100/50 dark:hover:bg-blue-800/20 transition-colors">
+                                            <div className="min-w-0">
+                                                <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">{ev.title}</h4>
+                                                <p className="text-xs text-slate-500 mt-1.5 flex flex-wrap items-center gap-2">
+                                                    <span className="bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-lg text-[10px] text-slate-600 dark:text-slate-400 font-mono whitespace-nowrap">{ev.date}</span>
+                                                    <span className="flex items-center gap-1 whitespace-nowrap"><Clock size={11} /> {ev.time}</span>
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* 3. Calendar */}
+                        <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/30 flex flex-col gap-3 shadow-sm lg:col-span-1">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
+                            </div>
+                            <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30 rounded-xl p-2.5">
+                                <div className="flex justify-between items-center mb-2.5 px-0.5">
+                                    <div className="flex gap-1">
+                                        <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronLeft size={14}/></button>
+                                        <button onClick={nextDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronRight size={14}/></button>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center gap-1">
+                                    {dateStrip.map((date, idx) => {
+                                        const isSelected = date.toDateString() === currentDate.toDateString();
+                                        return (
+                                            <div key={idx} onClick={() => { setCurrentDate(date); openAddEvent(date); }}
+                                                className={`flex flex-col items-center justify-center py-2 rounded-xl cursor-pointer transition-all w-full min-w-0 ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
+                                                <span className="text-[8px] uppercase font-bold tracking-wider mb-1 block">{date.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 2)}</span>
+                                                <span className={`text-sm font-bold ${isSelected ? 'text-white' : ''}`}>{date.getDate()}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 mt-auto pt-2">
+                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-700/30 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
+                                    <Eye size={12}/> <span>View All</span>
+                                </button>
+                                <button onClick={() => openAddEvent(currentDate)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[11px] font-bold transition-colors shadow-lg shadow-blue-500/20">
+                                    <Plus size={12}/> <span>Create</span>
+                                </button>   
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ── 5TH ROW: Leave Form, Fulfillment Reports ── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+                        
+                        {/* 1. Leave Form (My Leaves) */}
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">My Leaves</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Track your applications</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button type="button" onClick={() => setAllLeavesModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors bg-blue-50/50 dark:bg-transparent">View All</button>
+                                    <button onClick={() => setLeaveModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20">
+                                        <Plus size={13} /> Apply Leave
+                                    </button>
+                                </div>
+                            </div>
+                            <div className="space-y-2 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
+                                {leaves.length === 0 ? (
+                                    <div className="text-center py-8 text-slate-400 text-xs">No leave history found.</div>
+                                ) : (
+                                    leaves.slice(0, 5).map(leave => (
+                                        <div key={leave.id} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-800/30 flex justify-between items-center">
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{leave.startDate} to {leave.endDate || 'N/A'}</p>
+                                                <p className="text-[10px] text-slate-500 mt-1 truncate max-w-[150px]">
+                                                    <span className="font-semibold text-slate-600 dark:text-slate-300">{leave.leaveType || 'Leave'}</span> • {leave.reason}
+                                                </p>
+                                            </div>
+                                            <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
                                                 leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
                                                 leave.status === 'Rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
                                                 'bg-amber-500/10 text-amber-500 border-amber-500/20'
@@ -1713,39 +1507,540 @@ const Dashboard = () => {
                                                 {leave.status}
                                             </span>
                                         </div>
-                                        
-                                        <div className="text-[10px] text-slate-600 dark:text-slate-300 mb-3 bg-white dark:bg-[#0d1526] p-2.5 rounded-lg border border-slate-100 dark:border-slate-700/50 space-y-2">
-                                            <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Reason</span> {leave.reason}</p>
-                                            
-                                            {(leave.handoverTo || leave.handoverNotes) && (
-                                                <div className="pt-2 border-t border-slate-100 dark:border-slate-700/50 space-y-2">
-                                                    {leave.handoverTo && (
-                                                        <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Handover To</span> {leave.handoverTo}</p>
-                                                    )}
-                                                    {leave.handoverNotes && (
-                                                        <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Handover Notes</span> {leave.handoverNotes}</p>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </div>
-                                        
-                                        {leave.status === 'Pending' && (
-                                            <div className="flex gap-2">
-                                                <button onClick={() => handleLeaveAction(leave.id, 'Approved')} className="flex-1 py-1.5 text-[10px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex justify-center items-center gap-1 shadow-sm shadow-emerald-500/20">
-                                                    <Check size={12}/> Approve
-                                                </button>
-                                                <button onClick={() => handleLeaveAction(leave.id, 'Rejected')} className="flex-1 py-1.5 text-[10px] font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-lg transition-colors flex justify-center items-center gap-1 shadow-sm shadow-rose-500/20">
-                                                    <X size={12}/> Reject
-                                                </button>
-                                            </div>
-                                        )}
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* 2. Fulfillment Reports (Fulfillment Alerts) */}
+                        <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-rose-900/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
+                            <div className="flex justify-between items-center mb-4">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500 flex-shrink-0">
+                                        <AlertTriangle size={16} />
                                     </div>
-                                ))
-                            )}
+                                    <div>
+                                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Fulfillment Reports</h2>
+                                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Trips within 7 days</p>
+                                    </div>
+                                </div>
+                                <span className="bg-rose-500/10 text-rose-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-rose-500/20 uppercase tracking-wide">{fulfillmentAlerts.length} Action{fulfillmentAlerts.length !== 1 ? 's' : ''}</span>
+                            </div>
+                            <div className="space-y-2.5 overflow-y-auto max-h-[250px] custom-scrollbar">
+                                {fulfillmentAlerts.length === 0 ? (
+                                    <div className="text-center py-8 text-slate-400 text-xs">No upcoming trips in the next 7 days.</div>
+                                ) : (
+                                    fulfillmentAlerts.map(alert => (
+                                        <div key={alert.id} className="flex items-center justify-between bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/10 p-3 rounded-xl hover:bg-rose-100/80 dark:hover:bg-rose-500/10 transition-colors">
+                                            <div className="flex items-center gap-3 min-w-0 pr-2">
+                                                <div className="p-2 bg-rose-500/15 text-rose-500 rounded-xl flex-shrink-0"><PackageCheck size={15}/></div>
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{alert.customerName} — {alert.destination}</p>
+                                                    <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide">Trip starts <span className="font-bold text-slate-700 dark:text-slate-300">{alert.date}</span></p>
+                                                </div>
+                                            </div>
+                                            <button className="px-3 py-1.5 text-[10px] font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-xl transition-colors shadow-sm shadow-rose-500/20 uppercase tracking-wide flex-shrink-0">Review</button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
                         </div>
                     </div>
-                )}
-            </div>
+                </div>
+            ) : (
+                /* ─── NON-SALES DEFAULT DASHBOARD LAYOUT ─── */
+                <>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-[480px] lg:col-span-2">
+                            <div className="flex justify-between items-center mb-3 flex-shrink-0">
+                                <div>
+                                    <h2 className="text-medium font-bold text-slate-800 dark:text-white tracking-tight">Payment</h2>
+                                    <p className="text-[12px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Live ledger</p>
+                                </div>
+                                <div className="flex items-center gap-2.5">
+                                    <button type="button" onClick={() => setPaymentModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 dark:border-emerald-500/20 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors bg-emerald-50/50 dark:bg-transparent">View All</button>
+                                    <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500">
+                                        <Wallet size={16} />
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex gap-3 mb-4 text-[14px] font-bold border border-slate-100 dark:border-slate-700/40 rounded-xl p-2.5 flex-shrink-0 bg-slate-50 dark:bg-slate-800/30">
+                                <div className="flex-1">
+                                    <span className="block text-slate-400 text-[12px] uppercase tracking-widest mb-0.5">Money In</span>
+                                    <span className="text-emerald-500 font-mono">₹{payments.totalIn.toLocaleString('en-IN')}</span>
+                                </div>
+                                <div className="w-px bg-slate-200 dark:bg-slate-700/50" />
+                                <div className="flex-1">
+                                    <span className="block text-slate-400 text-[12px] uppercase tracking-widest mb-0.5">Money Out</span>
+                                    <span className="text-rose-400 font-mono">₹{payments.totalOut.toLocaleString('en-IN')}</span>
+                                </div>
+                            </div>
+                            
+                            <div className="space-y-2.5 overflow-y-auto flex-1 pr-0.5 custom-scrollbar">
+                                {individualPayments.length === 0 ? (
+                                    <div className="text-center py-12 text-slate-400 text-xs">No live transaction profiles tracked.</div>
+                                ) : (
+                                    individualPayments.slice(0, 5).map(pay => (
+                                        <div key={pay.id} onClick={() => setSelectedPaymentLead(pay.rawLead)} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/30 bg-slate-50/50 dark:bg-slate-800/20 space-y-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700/60 transition-all group">
+                                            <div className="flex justify-between items-start gap-2">
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-base font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{pay.customerName}</p>
+                                                    <p className="text-[14px] text-slate-400 flex items-center gap-1 truncate mt-0.5"><MapPin size={9}/> {pay.destination} · LMN{pay.id}</p>
+                                                </div>
+                                                <span className={`text-[14px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
+                                                    pay.paymentStatus === 'Fully Paid' || pay.paymentStatus === 'Cleared' 
+                                                        ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' 
+                                                        : 'bg-orange-500/10 text-orange-400 border-orange-500/20'
+                                                }`}>
+                                                    {pay.paymentStatus}
+                                                </span>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-1 pt-2 border-t border-slate-100 dark:border-slate-700/30 text-[12px] font-mono">
+                                                <div>
+                                                    <span className="text-slate-400 block text-[12px] uppercase tracking-wide mb-0.5">Received</span>
+                                                    <span className="text-emerald-500 font-bold">₹{pay.received.toLocaleString('en-IN')}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-slate-400 block text-[12px] uppercase tracking-wide mb-0.5">Paid Ops</span>
+                                                    <span className="text-rose-400 font-bold">₹{pay.vendorPaid.toLocaleString('en-IN')}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-slate-400 block text-[12px] uppercase tracking-wide mb-0.5">Balance</span>
+                                                    <span className="text-amber-400 font-bold">₹{pay.pending.toLocaleString('en-IN')}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/30 flex flex-col gap-3 shadow-sm lg:col-span-1">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
+                            </div>
+
+                            <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30 rounded-xl p-2.5">
+                                <div className="flex justify-between items-center mb-2.5 px-0.5">
+                                    <div className="flex gap-1">
+                                        <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronLeft size={14}/></button>
+                                        <button onClick={nextDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronRight size={14}/></button>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center gap-1">
+                                    {dateStrip.map((date, idx) => {
+                                        const isSelected = date.toDateString() === currentDate.toDateString();
+                                        return (
+                                            <div key={idx} onClick={() => { setCurrentDate(date); openAddEvent(date); }}
+                                                className={`flex flex-col items-center justify-center py-2 rounded-xl cursor-pointer transition-all w-full min-w-0 ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
+                                                <span className="text-[8px] uppercase font-bold tracking-wider mb-1 block">{date.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 2)}</span>
+                                                <span className={`text-sm font-bold ${isSelected ? 'text-white' : ''}`}>{date.getDate()}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-700/30 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
+                                    <Eye size={12}/> <span>View All</span>
+                                </button>
+                                <button onClick={() => openAddEvent(currentDate)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[11px] font-bold transition-colors shadow-lg shadow-blue-500/20">
+                                    <Plus size={12}/> <span>Create</span>
+                                </button>   
+                            </div>
+
+                            <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-700/30 rounded-xl p-3 flex-1 flex flex-col">
+                                <div className="flex justify-between items-center mb-2.5">
+                                    <h3 className="text-[9px] uppercase tracking-widest font-bold text-slate-400">Reminders · {currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
+                                    <span className="text-[9px] font-bold text-slate-500 bg-slate-200 dark:bg-slate-700/60 px-1.5 py-0.5 rounded-full">{filteredEvents.length}</span>
+                                </div>
+                                <div className="space-y-2 flex-1 overflow-y-auto max-h-[140px] pr-1 custom-scrollbar">
+                                    {filteredEvents.length === 0 ? (
+                                        <p className="text-slate-400 text-center py-4 text-[10px]">No reminders today.</p>
+                                    ) : (
+                                        filteredEvents.map((event, idx) => {
+                                            const evDate = event.date ? new Date(event.date + 'T00:00:00') : new Date();
+                                            return (
+                                                <div key={event.id || idx} className="flex gap-2.5 items-start group hover:bg-slate-100 dark:hover:bg-slate-800/40 p-1.5 rounded-lg transition-colors">
+                                                    <div className="pl-2 border-l-2 border-blue-400/50 flex flex-col items-center min-w-[28px] flex-shrink-0">
+                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight">{evDate.getDate()}</span>
+                                                        <span className="text-[8px] font-bold text-slate-400 uppercase">{monthNames[evDate.getMonth()].substring(0, 3)}</span>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">{event.title}</h4>
+                                                        <p className="text-[9px] text-slate-400 flex items-center gap-1 mt-0.5"><Clock size={9}/> {event.time}</p>
+                                                    </div>
+                                                    <button onClick={() => deleteEvent(event.id)} className="text-slate-400 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><Trash2 size={11}/></button>
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{taskCounts.pending} pending</p>
+                                </div>
+                                <button onClick={openAddTask} className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-violet-500/20">
+                                    <Plus size={13} /> Add Task
+                                </button>
+                            </div>
+
+                            <div className="flex gap-1.5 mb-4 bg-slate-100 dark:bg-slate-800/40 p-1 rounded-xl">
+                                {[
+                                    { key: 'all', label: `All (${taskCounts.all})` },
+                                    { key: 'pending', label: `Pending (${taskCounts.pending})` },
+                                    { key: 'completed', label: `Done (${taskCounts.completed})` },
+                                ].map(tab => (
+                                    <button key={tab.key} onClick={() => setTaskFilter(tab.key)} className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all whitespace-nowrap px-2 cursor-pointer border-none uppercase tracking-wide ${taskFilter === tab.key ? 'bg-white dark:bg-slate-700/80 text-slate-800 dark:text-white shadow-sm' : 'bg-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="space-y-1 flex-1 overflow-y-auto max-h-[320px] sm:max-h-[380px] custom-scrollbar pr-1">
+                                {filteredTasks.length === 0 && <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No tasks here. Add one!</div>}
+                                {filteredTasks.map(task => (
+                                    <div key={task.id} className="flex items-center justify-between py-3 px-3 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-slate-700/40 hover:bg-slate-50 dark:hover:bg-slate-800/30 group transition-all gap-3">
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            <button onClick={() => toggleTask(task.id, task.completed)} className={`w-5 h-5 rounded-lg flex items-center justify-center border-2 transition-all cursor-pointer flex-shrink-0 ${task.completed ? 'bg-violet-500 border-violet-500' : 'bg-transparent border-slate-300 dark:border-slate-600 hover:border-violet-400'}`}>
+                                                {task.completed && <Check size={11} className="text-white" strokeWidth={3} />}
+                                            </button>
+                                            <div className="min-w-0">
+                                                <p className={`text-xs font-semibold truncate ${task.completed ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>{task.title}</p>
+                                                <p className="text-[9px] text-slate-400 mt-0.5 flex items-center gap-1 uppercase tracking-wide"><Calendar size={9}/> {formatTaskDateTime(task.time)}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                            <PriorityBadge priority={task.priority} />
+                                            <div className="flex gap-0.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => openEditTask(task)} className="p-1.5 rounded-lg text-slate-400 bg-transparent border-none cursor-pointer hover:text-blue-400 hover:bg-blue-500/10 transition-colors"><Pencil size={12} /></button>
+                                                <button onClick={() => deleteTask(task.id)} className="p-1.5 rounded-lg text-slate-400 bg-transparent border-none cursor-pointer hover:text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={12} /></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Sales Targets</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Click ± to adjust</p>
+                                </div>
+                                <button onClick={() => { setEditingTarget(null); setTargetForm({ label: '', value: 0, max: 100, unit: '', isPercent: false, color: '#7c3aed' }); setTargetModal(true); }} className="flex items-center gap-1.5 text-xs font-bold text-violet-500 dark:text-violet-400 hover:text-violet-600 bg-violet-500/10 hover:bg-violet-500/20 px-3 py-1.5 rounded-xl transition-colors border border-violet-500/15">
+                                    <Plus size={13}/> Add
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2.5 mb-5">
+                                <div 
+                                    onClick={() => handleRegionCardClick('india')}
+                                    className="flex items-center gap-2.5 px-3 py-3 rounded-xl border border-orange-500/15 bg-gradient-to-br from-orange-500/8 to-orange-500/3 relative overflow-hidden cursor-pointer hover:border-orange-500/30 hover:from-orange-500/12 active:scale-[0.98] transition-all group"
+                                >
+                                    <div className="p-1.5 rounded-lg bg-orange-500/15 text-orange-500 flex-shrink-0"><MapPin size={13}/></div>
+                                    <div className="min-w-0">
+                                        <p className="text-lg font-bold text-slate-800 dark:text-white leading-none">{tripRegionCounts.india}</p>
+                                        <p className="text-[9px] text-slate-400 mt-1 font-semibold uppercase tracking-wide truncate group-hover:text-orange-400 transition-colors">🇮🇳 National</p>
+                                    </div>
+                                    <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                                </div>
+                                <div 
+                                    onClick={() => handleRegionCardClick('international')}
+                                    className="flex items-center gap-2.5 px-3 py-3 rounded-xl border border-cyan-500/15 bg-gradient-to-br from-cyan-500/8 to-cyan-500/3 relative overflow-hidden cursor-pointer hover:border-cyan-500/30 hover:from-cyan-500/12 active:scale-[0.98] transition-all group"
+                                >
+                                    <div className="p-1.5 rounded-lg bg-cyan-500/15 text-cyan-500 flex-shrink-0"><Globe size={13}/></div>
+                                    <div className="min-w-0">
+                                        <p className="text-lg font-bold text-slate-800 dark:text-white leading-none">{tripRegionCounts.international}</p>
+                                        <p className="text-[9px] text-slate-400 mt-1 font-semibold uppercase tracking-wide truncate group-hover:text-cyan-400 transition-colors">🌐 Intl.</p>
+                                    </div>
+                                    <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                {targets.map(item => {
+                                    const pct = item.max > 0 ? Math.min(100, Math.round((item.value / item.max) * 100)) : 0;
+                                    return (
+                                        <div key={item.id} className="group">
+                                            <div className="flex justify-between items-center mb-2 gap-2">
+                                                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 truncate">{item.label}</span>
+                                                <div className="flex items-center gap-1.5 flex-shrink-0">
+                                                    <div className="flex items-center gap-1">
+                                                        <button onClick={() => nudgeTarget(item.id, -1, item.value, item.max, item.unit)} className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-slate-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><Minus size={10}/></button>
+                                                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 min-w-[58px] text-center font-mono">{formatTargetDisplay(item)}</span>
+                                                        <button onClick={() => nudgeTarget(item.id, 1, item.value, item.max, item.unit)} className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-slate-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><Plus size={10}/></button>
+                                                    </div>
+                                                    <div className="flex items-center gap-0.5 pl-1.5 border-l border-slate-200 dark:border-slate-700/50">
+                                                        <button onClick={() => openEditTarget(item)} className="w-5 h-5 rounded-lg hover:bg-blue-500/10 flex items-center justify-center text-slate-400 hover:text-blue-400 transition-colors"><Pencil size={11}/></button>
+                                                        <button onClick={() => deleteTarget(item.id)} className="w-5 h-5 rounded-lg hover:bg-red-500/10 flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors"><Trash2 size={11}/></button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <ProgressBar value={item.value} max={item.max} color={item.color} />
+                                            <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-1.5 text-right uppercase tracking-wide">{pct}% achieved</p>
+                                        </div>
+                                    );
+                                })}
+                                {targets.length === 0 && <div className="text-center py-10 text-slate-400 dark:text-slate-500 text-xs">No targets set. Add one!</div>}
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                            <div className="flex justify-between items-center mb-4">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Top Destinations</h2>
+                                </div>
+                                <button type="button" onClick={() => setTopDestinationsModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">View All</button>
+                            </div>
+                            <div className="space-y-1 flex-1 mt-1">
+                                {topDestinations.length === 0 ? (
+                                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No destination data yet.<br />Add some leads!</div>
+                                ) : (
+                                    topDestinations.slice(0, 5).map((dest, idx) => (
+                                        <div 
+                                            key={idx} 
+                                            onClick={() => handleDestinationClick(dest.name)}
+                                            className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/30 px-2 py-2.5 -mx-1 rounded-xl transition-all"
+                                        >
+                                            <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
+                                                <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xs font-bold border border-amber-500/15 flex-shrink-0">{idx + 1}</div>
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-amber-500 transition-colors truncate">{dest.name}</p>
+                                                    <p className="text-[9px] text-slate-400 mt-0.5 uppercase tracking-wide">Destination</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right flex-shrink-0">
+                                                <p className="text-sm font-bold text-slate-800 dark:text-white">{dest.count}</p>
+                                                <p className="text-[9px] text-slate-400 mt-0.5 uppercase tracking-wide">leads</p>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+                        <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-rose-900/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-2">
+                            <div className="flex justify-between items-center mb-4">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500 flex-shrink-0">
+                                        <BellRing size={16} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Fulfillment Alerts</h2>
+                                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Trips within 7 days</p>
+                                    </div>
+                                </div>
+                                <span className="bg-rose-500/10 text-rose-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-rose-500/20 uppercase tracking-wide">{fulfillmentAlerts.length} Action{fulfillmentAlerts.length !== 1 ? 's' : ''}</span>
+                            </div>
+                            <div className="space-y-2.5 overflow-y-auto max-h-[240px] custom-scrollbar">
+                                {fulfillmentAlerts.length === 0 ? (
+                                    <div className="text-center py-8 text-slate-400 text-xs">No upcoming trips in the next 7 days.</div>
+                                ) : (
+                                    fulfillmentAlerts.map(alert => (
+                                        <div key={alert.id} className="flex items-center justify-between bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/10 p-3 rounded-xl hover:bg-rose-100/80 dark:hover:bg-rose-500/10 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="p-2 bg-rose-500/15 text-rose-500 rounded-xl flex-shrink-0"><AlertTriangle size={15}/></div>
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{alert.customerName} — {alert.destination}</p>
+                                                    <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide">Trip starts <span className="font-bold text-slate-700 dark:text-slate-300">{alert.date}</span> · {alert.daysLeft}d left</p>
+                                                </div>
+                                            </div>
+                                            <button className="px-3 py-1.5 text-[10px] font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-xl transition-colors shadow-sm shadow-rose-500/20 uppercase tracking-wide">Review</button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-full lg:col-span-1">
+                            <div className="flex justify-between items-start mb-4 gap-2">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Active Team</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{members.filter(m => m.status === 'online').length} online now</p>
+                                </div>
+                                {members.length > 5 && (
+                                    <button
+                                        type="button" onClick={() => setAllMembersExpanded(!allMembersExpanded)}
+                                        className="px-3 py-1.5 text-[11px] font-bold text-violet-500 dark:text-violet-400 border border-violet-500/20 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors flex-shrink-0"
+                                    >
+                                        {allMembersExpanded ? 'Less' : 'All'}
+                                    </button>
+                                )}
+                            </div>
+                            <div className="space-y-1 flex-1 overflow-y-auto custom-scrollbar pr-0.5 min-h-[200px]">
+                                {members.length === 0 ? (
+                                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No active employees operating right now.</div>
+                                ) : (
+                                    (allMembersExpanded ? members : members.slice(0, 5)).map(member => (
+                                        <div key={member.id} onClick={() => setSelectedMember(member)} className="flex items-center gap-3 py-2.5 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700/30 cursor-pointer">
+                                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white flex-shrink-0 shadow-md uppercase" style={{ backgroundColor: member.color || '#7c3aed' }}>{member.initials}</div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-xs font-bold text-slate-800 dark:text-white leading-tight truncate">{member.name}</p>
+                                                <p className="text-[9px] text-slate-400 mt-0.5 truncate uppercase tracking-wider font-semibold">{member.role}</p>
+                                            </div>
+                                            <div className="flex items-center gap-2 flex-shrink-0">
+                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/30">
+                                                    <StatusDot status={member.status} />
+                                                    <span className="hidden sm:inline text-[9px] font-bold text-slate-500 dark:text-slate-400 capitalize uppercase tracking-wide">{member.status}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ── ROW 6: LEAVE MANAGEMENT ── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+                        {/* ── LEAVE DASHBOARD (EMPLOYEES ONLY) ── */}
+                        {isSalesOrOps && (
+                            <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                                <div className="flex justify-between items-center mb-4">
+                                    <div>
+                                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">My Leaves</h2>
+                                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Track your applications</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button type="button" onClick={() => setAllLeavesModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors bg-blue-50/50 dark:bg-transparent">View All</button>
+                                        <button onClick={() => setLeaveModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20">
+                                            <Plus size={13} /> Apply Leave
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
+                                    {leaves.length === 0 ? (
+                                        <div className="text-center py-8 text-slate-400 text-xs">No leave history found.</div>
+                                    ) : (
+                                        leaves.slice(0, 3).map(leave => (
+                                            <div key={leave.id} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-800/30 flex justify-between items-center">
+                                                <div>
+                                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{leave.startDate} to {leave.endDate || 'N/A'}</p>
+                                                <p className="text-[10px] text-slate-500 mt-1 truncate max-w-[150px]">
+            <span className="font-semibold text-slate-600 dark:text-slate-300">{leave.leaveType || 'Leave'}</span> • {leave.reason}
+        </p>
+                                                </div>
+                                                <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
+                                                    leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+                                                    leave.status === 'Rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
+                                                    'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                                }`}>
+                                                    {leave.status}
+                                                </span>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ── LEAVE APPROVAL DASHBOARD (ADMIN ONLY) ── */}
+                        {isAdmin && (
+                            <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-amber-900/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
+                                <div className="flex justify-between items-center mb-4">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 flex-shrink-0">
+                                            <AlertCircle size={16} />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Team Leaves</h2>
+                                            <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Admin Overview</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <button type="button" onClick={() => setAllLeavesModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors bg-amber-50/50 dark:bg-transparent">View All</button>
+                                        <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{leaves.filter(l => l.status === 'Pending').length} Pending</span>
+                                    </div>
+                                </div>
+                                
+                                <div className="space-y-2.5 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
+                                    {leaves.length === 0 ? (
+                                        <div className="text-center py-8 text-slate-400 text-xs">No leave requests found.</div>
+                                    ) : (
+                                        leaves.slice(0, 3).map(leave => (
+                                            <div key={leave.id} className={`p-3 border rounded-xl transition-colors ${
+                                                leave.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/10' :
+                                                'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40'
+                                            }`}>
+                                                <div className="flex justify-between items-start mb-2">
+                                                    <div>
+                                                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                                                            {leave.employeeName} <span className="font-normal text-slate-500 text-[10px]">({leave.employeeId})</span>
+                                                        </p>
+                                                        <div className="text-[9px] text-slate-500 dark:text-slate-400 mt-1 font-mono space-y-0.5">
+                                                            <p>
+                                                                <span className="font-bold text-slate-600 dark:text-slate-300">{leave.leaveType || 'Leave'}</span>
+                                                                {leave.leaveType === 'Leave' && leave.totalDays && ` • ${leave.totalDays} Days`}
+                                                            </p>
+                                                            <p>
+                                                                {leave.leaveType === 'Half Day' ? (
+                                                                    `${leave.startDate} • ${leave.session}`
+                                                                ) : leave.leaveType === 'Week Off' ? (
+                                                                    `Off: ${leave.startDate} • Worked: ${leave.workedOnDate}`
+                                                                ) : (
+                                                                    `${leave.startDate} to ${leave.endDate || 'N/A'}`
+                                                                )}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
+                                                        leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
+                                                        leave.status === 'Rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
+                                                        'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                                    }`}>
+                                                        {leave.status}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="text-[10px] text-slate-600 dark:text-slate-300 mb-3 bg-white dark:bg-[#0d1526] p-2.5 rounded-lg border border-slate-100 dark:border-slate-700/50 space-y-2">
+                                                    <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Reason</span> {leave.reason}</p>
+                                                    
+                                                    {(leave.handoverTo || leave.handoverNotes) && (
+                                                        <div className="pt-2 border-t border-slate-100 dark:border-slate-700/50 space-y-2">
+                                                            {leave.handoverTo && (
+                                                                <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Handover To</span> {leave.handoverTo}</p>
+                                                            )}
+                                                            {leave.handoverNotes && (
+                                                                <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Handover Notes</span> {leave.handoverNotes}</p>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                
+                                                {leave.status === 'Pending' && (
+                                                    <div className="flex gap-2">
+                                                        <button onClick={() => handleLeaveAction(leave.id, 'Approved')} className="flex-1 py-1.5 text-[10px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-lg transition-colors flex justify-center items-center gap-1 shadow-sm shadow-emerald-500/20">
+                                                            <Check size={12}/> Approve
+                                                        </button>
+                                                        <button onClick={() => handleLeaveAction(leave.id, 'Rejected')} className="flex-1 py-1.5 text-[10px] font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-lg transition-colors flex justify-center items-center gap-1 shadow-sm shadow-rose-500/20">
+                                                            <X size={12}/> Reject
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
 
             <Modal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} title="All Payment List" maxWidth="max-w-3xl">
                 <div className="max-h-[60vh] overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
@@ -1789,81 +2084,6 @@ const Dashboard = () => {
                 </div>
                 <div className="mt-5 flex justify-end">
                     <button onClick={() => setPaymentModalOpen(false)} className="px-6 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 font-semibold text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">Close</button>
-                </div>
-            </Modal>
-
-            <Modal open={allLeavesModalOpen} onClose={() => setAllLeavesModalOpen(false)} title={isAdmin ? "All Team Leaves" : "My Leave History"} maxWidth="max-w-3xl">
-                <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1 custom-scrollbar">
-                    {leaves.length === 0 ? (
-                        <p className="text-slate-500 text-center py-10 text-sm">No leave records found.</p>
-                    ) : (
-                        leaves.map(leave => (
-                            <div key={leave.id} className={`p-4 rounded-2xl border transition-colors ${
-                                leave.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/10' :
-                                'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40'
-                            }`}>
-                                <div className="flex justify-between items-start mb-3">
-                                    <div>
-                                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
-                                            {leave.employeeName} 
-                                            {isAdmin && <span className="text-[10px] font-mono text-slate-500 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-lg">ID: {leave.employeeId}</span>}
-                                        </p>
-                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 font-mono space-y-1">
-                                            <p>
-                                                <span className="font-bold text-slate-600 dark:text-slate-300">{leave.leaveType || 'Leave'}</span>
-                                                {leave.leaveType === 'Leave' && leave.totalDays && ` • ${leave.totalDays} Days`}
-                                            </p>
-                                            <p>
-                                                {leave.leaveType === 'Half Day' ? (
-                                                    `${leave.startDate} • ${leave.session}`
-                                                ) : leave.leaveType === 'Week Off' ? (
-                                                    `Off: ${leave.startDate} • Worked: ${leave.workedOnDate}`
-                                                ) : (
-                                                    `${leave.startDate} to ${leave.endDate || 'N/A'}`
-                                                )}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <span className={`text-[10px] font-bold px-3 py-1 rounded-xl border uppercase tracking-wide flex-shrink-0 ${
-                                        leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' : 
-                                        leave.status === 'Rejected' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' : 
-                                        'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-                                    }`}>
-                                        {leave.status}
-                                    </span>
-                                </div>
-                                
-                                <div className="text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-[#0d1526] p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 space-y-2.5">
-                                    <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Reason</span> {leave.reason}</p>
-                                    
-                                    {(leave.handoverTo || leave.handoverNotes) && (
-                                        <div className="pt-2.5 border-t border-slate-100 dark:border-slate-700/50 space-y-2.5">
-                                            {leave.handoverTo && (
-                                                <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Handover To</span> {leave.handoverTo}</p>
-                                            )}
-                                            {leave.handoverNotes && (
-                                                <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Handover Notes</span> {leave.handoverNotes}</p>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                                
-                                {isAdmin && leave.status === 'Pending' && (
-                                    <div className="flex gap-3 mt-4">
-                                        <button onClick={() => handleLeaveAction(leave.id, 'Approved')} className="flex-1 py-2 text-xs font-bold text-white bg-emerald-500 hover:bg-emerald-600 rounded-xl transition-colors flex justify-center items-center gap-1.5 shadow-sm shadow-emerald-500/20">
-                                            <Check size={14}/> Approve Leave
-                                        </button>
-                                        <button onClick={() => handleLeaveAction(leave.id, 'Rejected')} className="flex-1 py-2 text-xs font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-xl transition-colors flex justify-center items-center gap-1.5 shadow-sm shadow-rose-500/20">
-                                            <X size={14}/> Reject Leave
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        ))
-                    )}
-                </div>
-                <div className="mt-5 flex justify-end">
-                    <button onClick={() => setAllLeavesModalOpen(false)} className="px-6 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 font-semibold text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">Close</button>
                 </div>
             </Modal>
 
@@ -2086,12 +2306,7 @@ const Dashboard = () => {
                                             {selectedLeadDetails.leadMessage || selectedLeadDetails.messageFromLead || 'No direct message provided.'}
                                         </p>
                                     </div>
-                                    <div>
-                                        <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-widest mb-1.5">Internal / Ops Notes</span>
-                                        <p className="whitespace-pre-wrap text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700/30 leading-relaxed">
-                                            {selectedLeadDetails.notes || selectedLeadDetails.opsRemarks || selectedLeadDetails.salesNotes || 'No internal notes recorded.'}
-                                        </p>
-                                    </div>
+                                     
                                 </div>
                             </div>
 
