@@ -1195,14 +1195,7 @@ const SalesDashboard = () => {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full md:w-auto">
                     
-                    {/* NEW COMMON HANDOVER BUTTON */}
-                    {(activeTab === 'My Jobs' || activeTab === 'My Confirmation') && (
-                        <button type="button" onClick={() => handleOpenHandoverModal(null)}
-                            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-purple-500 hover:bg-purple-400 active:bg-purple-600 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-purple-500/20 transition-all duration-200">
-                            <Send size={18} strokeWidth={2.5} />
-                            <span>Handover to Ops</span>
-                        </button>
-                    )}
+                
 
                     <button type="button" onClick={handleOpenNewLeadModal}
                         className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-[#0f172a] font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-cyan-500/20 transition-all duration-200">
@@ -1214,6 +1207,14 @@ const SalesDashboard = () => {
                         <CreditCard size={18} strokeWidth={2.5} />
                         <span>Add New Payment</span>
                     </button>
+                        {/* NEW COMMON HANDOVER BUTTON */}
+                    {(activeTab === 'My Jobs' || activeTab === 'My Confirmation') && (
+                        <button type="button" onClick={() => handleOpenHandoverModal(null)}
+                            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-purple-500 hover:bg-purple-400 active:bg-purple-600 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-purple-500/20 transition-all duration-200">
+                            <Send size={18} strokeWidth={2.5} />
+                            <span>Handover to Ops</span>
+                        </button>
+                    )}
                 </div>
             </div>
 
