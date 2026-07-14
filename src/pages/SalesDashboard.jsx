@@ -1109,7 +1109,7 @@ const SalesDashboard = () => {
                 history: JSON.stringify(updatedHistory)
             };
 
-            const response = await fetch(`${API_BASE_URL}/leads/${targetId}`, {
+            const response = await fetch(`${API_BASE_URL}/leads/${targetId}/assign`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
@@ -1195,7 +1195,7 @@ const SalesDashboard = () => {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full md:w-auto">
                     
-                
+                   
 
                     <button type="button" onClick={handleOpenNewLeadModal}
                         className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-[#0f172a] font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-cyan-500/20 transition-all duration-200">
@@ -1207,7 +1207,7 @@ const SalesDashboard = () => {
                         <CreditCard size={18} strokeWidth={2.5} />
                         <span>Add New Payment</span>
                     </button>
-                        {/* NEW COMMON HANDOVER BUTTON */}
+                     {/* NEW COMMON HANDOVER BUTTON */}
                     {(activeTab === 'My Jobs' || activeTab === 'My Confirmation') && (
                         <button type="button" onClick={() => handleOpenHandoverModal(null)}
                             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-purple-500 hover:bg-purple-400 active:bg-purple-600 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-purple-500/20 transition-all duration-200">
@@ -1800,7 +1800,7 @@ const SalesDashboard = () => {
                                 </span>
                             </h2>
                             
-                            {(() => {
+                            {activeTab !== 'My Confirmation' && (() => {
                                 const temp = editFormData.leadTemperature || 'Cold';
                                 const tempStyles = {
                                     Hot: { ring: '#f87171', badgeBg: 'from-red-500/15 to-transparent', badgeBorder: 'border-red-500/30', wrapBg: 'from-red-500/15 to-red-500/5', wrapBorder: 'border-red-500/30', pillBg: 'bg-red-500/15', pillBorder: 'border-red-500/35', pillText: 'text-red-300', glow: 'drop-shadow(0 0 5px rgba(248,113,113,0.55))', Icon: Flame },
