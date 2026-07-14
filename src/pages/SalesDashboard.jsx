@@ -200,11 +200,12 @@ const SalesDashboard = () => {
 
         // Booking Confirmation - Dynamic Fields
         service1Cost: '', service2Cost: '', service3Cost: '', gst: '', tcs: '', passengers: [],
-        aadharCopy: '', passportCopy: '', photograph: '', attachDriveLink: '', docRemarks: '',
+        aadharCopy: '', passportCopy: '', photograph: '', docRemarks: '',
+        attachedFiles: [],
 
         // Payments
         paymentDueDate: '', transactionId: '', amountReceived: '', paymentMode: '', customerPaymentDate: '',
-        nextPaymentDate: '', paymentStatus: '', paymentHistoryDetails: '', voiceRecordings: [], 
+        nextPaymentDate: '', paymentStatus: '', paymentHistoryDetails: '', voiceRecordings: [], salesVoiceRecordings: [], outcomeVoiceRecordings: [],
         leadStatus: 'Jobs', gstInclusion: '', tcsInclusion: '', paymentService: '', paymentHistoryList: [],
         
         followUpCount: 0, followUpType: '', followupAction: '', history: []
@@ -248,11 +249,40 @@ const SalesDashboard = () => {
         }
     }, [editFormData.customerResponse, isEditModalOpen]);
 
+    // --- DIRECT FILE UPLOADER LOGIC ---
+    const handleDirectFileUpload = (e) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+        
+        files.forEach(file => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onloadend = () => {
+                setEditFormData(prev => ({
+                    ...prev,
+                    attachedFiles: [...(prev.attachedFiles || []), {
+                        name: file.name,
+                        base64: reader.result,
+                        type: file.type
+                    }]
+                }));
+            };
+        });
+    };
+
+    const removeAttachedFile = (index) => {
+        setEditFormData(prev => ({
+            ...prev,
+            attachedFiles: prev.attachedFiles.filter((_, i) => i !== index)
+        }));
+    };
+
     // --- VOICE RECORDER STATES ---
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
     const [playingIndex, setPlayingIndex] = useState(null);
 
+    const recordingTypeRef = useRef('voiceRecordings'); 
     const mediaRecorderRef = useRef(null);
     const audioChunksRef = useRef([]);
     const timerRef = useRef(null);
@@ -306,8 +336,18 @@ const SalesDashboard = () => {
         return (
             <div className="w-full">
                 {label && <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">{label}</label>}
-                <div className={`relative bg-slate-900 border border-slate-700 rounded-lg sm:rounded focus-within:border-cyan-500 focus-within:ring-1 focus-within:ring-cyan-500/50 transition-all overflow-hidden group flex items-center ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-900/50' : ''}`}>
-                    <input type="date" name={name} value={value || ''} onChange={onChangeHandler} disabled={disabled} className={`w-full px-3 py-2 sm:py-1.5 bg-transparent text-white text-sm outline-none appearance-none relative z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:left-0 [&::-webkit-calendar-picker-indicator]:top-0 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer [&::-webkit-calendar-picker-indicator]:cursor-pointer'}`} />
+                <div 
+                    onClick={(e) => { if(!disabled) { try { e.currentTarget.querySelector('input[type="date"]').showPicker(); } catch(err){} } }}
+                    className={`relative bg-slate-900 border border-slate-700 rounded-lg sm:rounded focus-within:border-cyan-500 focus-within:ring-1 focus-within:ring-cyan-500/50 transition-all overflow-hidden group flex items-center ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-900/50' : 'cursor-pointer'}`}
+                >
+                    <input 
+                        type="date" 
+                        name={name} 
+                        value={value || ''} 
+                        onChange={onChangeHandler} 
+                        disabled={disabled} 
+                        className={`w-full px-3 py-2 sm:py-1.5 bg-transparent text-white text-sm outline-none appearance-none relative z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:left-0 [&::-webkit-calendar-picker-indicator]:top-0 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`} 
+                    />
                     <Calendar size={16} className="absolute right-3 text-slate-400 group-hover:text-cyan-400 z-0 transition-colors pointer-events-none" />
                 </div>
                 {placeholderText && <p className="text-[9px] text-slate-500 mt-0.5 italic">{placeholderText}</p>}
@@ -616,7 +656,8 @@ const SalesDashboard = () => {
         );
     };
 
-    const startRecording = async () => {
+    const startRecording = async (targetField = 'voiceRecordings') => {
+        recordingTypeRef.current = targetField;
         audioChunksRef.current = [];
         setRecordingTime(0);
         try {
@@ -629,7 +670,10 @@ const SalesDashboard = () => {
                 const reader = new FileReader();
                 reader.readAsDataURL(audioBlob);
                 reader.onloadend = () => {
-                    setEditFormData(prev => ({ ...prev, voiceRecordings: [...(prev.voiceRecordings || []), { url, base64: reader.result }] }));
+                    setEditFormData(prev => ({ 
+                        ...prev, 
+                        [recordingTypeRef.current]: [...(prev[recordingTypeRef.current] || []), { url, base64: reader.result }] 
+                    }));
                 };
                 stream.getTracks().forEach(t => t.stop());
             };
@@ -647,16 +691,57 @@ const SalesDashboard = () => {
         }
     };
 
-    const deleteRecording = (index) => {
-        if (playingIndex === index) { audioPlayersRef.current[index]?.pause(); setPlayingIndex(null); }
-        setEditFormData(prev => ({ ...prev, voiceRecordings: prev.voiceRecordings.filter((_, i) => i !== index) }));
+    const deleteRecordingGeneric = (targetField, index) => {
+        if (playingIndex === `${targetField}-${index}`) { 
+            audioPlayersRef.current[`${targetField}-${index}`]?.pause(); 
+            setPlayingIndex(null); 
+        }
+        setEditFormData(prev => ({ 
+            ...prev, 
+            [targetField]: prev[targetField].filter((_, i) => i !== index) 
+        }));
     };
 
-    const togglePlayback = (index) => {
-        const player = audioPlayersRef.current[index];
+    const togglePlaybackGeneric = (targetField, index) => {
+        const playerKey = `${targetField}-${index}`;
+        const player = audioPlayersRef.current[playerKey];
         if (!player) return;
-        if (playingIndex === index) { player.pause(); setPlayingIndex(null); } 
-        else { audioPlayersRef.current[playingIndex]?.pause(); player.play(); setPlayingIndex(index); }
+        if (playingIndex === playerKey) { 
+            player.pause(); 
+            setPlayingIndex(null); 
+        } else { 
+            if (playingIndex && audioPlayersRef.current[playingIndex]) {
+                audioPlayersRef.current[playingIndex].pause(); 
+            }
+            player.play(); 
+            setPlayingIndex(playerKey); 
+        }
+    };
+
+    const renderVoiceList = (targetField) => {
+        const list = editFormData[targetField] || [];
+        if (list.length === 0) return null;
+        return (
+            <div className="mt-2 p-3 bg-slate-900/60 border border-slate-800/60 rounded-lg space-y-2 w-full">
+                <p className="text-[10px] sm:text-[11px] font-bold uppercase text-slate-400 tracking-wider">Audio Notes Attached ({list.length})</p>
+                <div className="flex flex-col sm:grid sm:grid-cols-2 md:grid-cols-3 gap-2">
+                    {list.map((audio, index) => (
+                        <div key={index} className="flex items-center justify-between p-2.5 sm:p-2 rounded-lg bg-slate-800/40 border border-slate-700/50">
+                            <span className="text-xs sm:text-sm text-slate-300">Voice Note #{index + 1}</span>
+                            <div className="flex items-center gap-2 sm:gap-1.5">
+                                <button type="button" onClick={() => togglePlaybackGeneric(targetField, index)} className="p-1.5 sm:p-1 rounded-md bg-slate-800 border-none cursor-pointer text-emerald-400 hover:bg-slate-700">
+                                    {playingIndex === `${targetField}-${index}` ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
+                                </button>
+                                <button type="button" onClick={() => deleteRecordingGeneric(targetField, index)} className="p-1.5 sm:p-1 rounded-md bg-slate-800 border-none cursor-pointer text-red-400 hover:bg-red-950">
+                                    <Trash2 size={14} />
+                                </button>
+                                <audio ref={el => audioPlayersRef.current[`${targetField}-${index}`] = el} src={audio.url} onEnded={() => setPlayingIndex(null)} className="hidden" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
     };
 
     const formatTimer = (s) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
@@ -782,11 +867,22 @@ const SalesDashboard = () => {
             }
         }
 
-        let initialRecordings = [];
+        let parsedVoice = { customisation: [], sales: [], outcome: [] };
         if (lead.voiceBinaryFile) {
-            try { initialRecordings = JSON.parse(lead.voiceBinaryFile); }
-            catch { initialRecordings = [{ url: lead.voiceBinaryFile, base64: lead.voiceBinaryFile }]; }
-        } else if (Array.isArray(lead.voiceRecordings)) { initialRecordings = lead.voiceRecordings; }
+            try { 
+                const parsed = JSON.parse(lead.voiceBinaryFile);
+                if (Array.isArray(parsed)) {
+                    parsedVoice.customisation = parsed;
+                } else if (parsed && typeof parsed === 'object') {
+                    parsedVoice.customisation = parsed.customisation || [];
+                    parsedVoice.sales = parsed.sales || [];
+                    parsedVoice.outcome = parsed.outcome || [];
+                }
+            }
+            catch { parsedVoice.customisation = [{ url: lead.voiceBinaryFile, base64: lead.voiceBinaryFile }]; }
+        } else if (Array.isArray(lead.voiceRecordings)) { 
+            parsedVoice.customisation = lead.voiceRecordings; 
+        }
         
         let parsedPaymentHistory = [];
         if (lead.paymentHistoryDetails) {
@@ -805,6 +901,19 @@ const SalesDashboard = () => {
                 requiredByDate: lead.requiredByDate || '', assignedTo: lead.customisationAssignedTo || '', raiseRequest: lead.raiseRequest || 'No',
                 readymadePackageDetails: lead.readymadePackageDetails || '', turnaroundTime: lead.turnaroundTime || '', status: lead.customisationStatus || 'Pending'
             }];
+        }
+
+        // Recover Attached Files
+        let parsedFiles = [];
+        if (lead.docDriveLink) {
+            try {
+                parsedFiles = JSON.parse(lead.docDriveLink);
+                if (!Array.isArray(parsedFiles)) parsedFiles = [];
+            } catch {
+                if (lead.docDriveLink.trim() !== '') {
+                    parsedFiles = [{ name: 'Attached Link', url: lead.docDriveLink }];
+                }
+            }
         }
 
         let derivedActionTaken = lead.actionTaken || '';
@@ -841,10 +950,14 @@ const SalesDashboard = () => {
             service1Cost: lead.service1Cost || '', service2Cost: lead.service2Cost || '', service3Cost: lead.service3Cost || '',
             gst: lead.gstStatus || lead.gstInclusion || '', tcs: lead.tcsStatus || lead.tcsInclusion || '',
             passengers: lead.passengers ? (typeof lead.passengers === 'string' ? JSON.parse(lead.passengers) : lead.passengers) : [],
-            aadharCopy: lead.docAadhar || '', passportCopy: lead.docPassport || '', photograph: lead.docPhoto || '', attachDriveLink: lead.docDriveLink || '', docRemarks: lead.docRemarks || '',
+            aadharCopy: lead.docAadhar || '', passportCopy: lead.docPassport || '', photograph: lead.docPhoto || '', docRemarks: lead.docRemarks || '',
+            attachedFiles: parsedFiles,
 
             paymentDueDate: lead.paymentDueDate || '', transactionId: lead.transactionId || '', amountReceived: lead.amountReceived || '', paymentMode: lead.paymentMode || '', customerPaymentDate: '',
-            nextPaymentDate: lead.nextPaymentDate || '', paymentStatus: lead.paymentStatus || '', paymentHistoryDetails: lead.paymentHistoryDetails || '', voiceRecordings: initialRecordings, 
+            nextPaymentDate: lead.nextPaymentDate || '', paymentStatus: lead.paymentStatus || '', paymentHistoryDetails: lead.paymentHistoryDetails || '', 
+            
+            voiceRecordings: parsedVoice.customisation, salesVoiceRecordings: parsedVoice.sales, outcomeVoiceRecordings: parsedVoice.outcome,
+            
             leadStatus: lead.status || 'Jobs', gstInclusion: lead.gstInclusion || '', tcsInclusion: lead.tcsInclusion || '', paymentService: lead.paymentService || '', paymentHistoryList: parsedPaymentHistory,
             
             followUpCount: parsedNoResponseLogs.length, followUpType: lead.followUpType || '', followupAction: lead.followupAction || ''
@@ -918,6 +1031,12 @@ const SalesDashboard = () => {
                 logsCount = 0;
             }
 
+            const combinedVoice = {
+                customisation: editFormData.voiceRecordings || [],
+                sales: editFormData.salesVoiceRecordings || [],
+                outcome: editFormData.outcomeVoiceRecordings || []
+            };
+
             // Strict Payload Mapping -> Forcing frontend keys into recognized backend keys
             const payload = {
                 ...editFormData,
@@ -957,14 +1076,14 @@ const SalesDashboard = () => {
                 docPan: editFormData.pancard,
                 docPassport: editFormData.passportCopy,
                 docPhoto: editFormData.photograph,
-                docDriveLink: editFormData.attachDriveLink,
+                docDriveLink: editFormData.attachedFiles?.length ? JSON.stringify(editFormData.attachedFiles) : null,
                 docRemarks: editFormData.docRemarks,
                 
                 noResponseLogs: updatedLogs.length ? JSON.stringify(updatedLogs) : null,
                 followupCount: logsCount,
                 followUpCount: logsCount,
                 
-                voiceBinaryFile: editFormData.voiceRecordings?.length ? JSON.stringify(editFormData.voiceRecordings) : null,
+                voiceBinaryFile: JSON.stringify(combinedVoice),
                 paymentHistoryDetails: editFormData.paymentHistoryList?.length ? JSON.stringify(editFormData.paymentHistoryList) : null,
                 
                 customisationRequests: editFormData.customisationRequests?.length ? JSON.stringify(editFormData.customisationRequests) : null,
@@ -1915,12 +2034,21 @@ const SalesDashboard = () => {
                                                         {renderDatePicker('followupDate', editFormData.followupDate, 'Next Follow-Up', handleInputChange)}
                                                         <div className="sm:col-span-2">
                                                             <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Notes</label>
-                                                            <div className="flex gap-2">
-                                                                <input type="text" name="salesNotes" value={editFormData.salesNotes} onChange={handleInputChange} className={inputCls} placeholder="Notes..." />
-                                                                <button type="button" onClick={() => handleLogNoResponse('interaction')} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap cursor-pointer">
-                                                                    Save Log
-                                                                </button>
+                                                            <div className="flex flex-col gap-2">
+                                                                <div className="flex gap-2 items-center">
+                                                                    <input type="text" name="salesNotes" value={editFormData.salesNotes} onChange={handleInputChange} className={inputCls} placeholder="Notes..." />
+                                                                    
+                                                                    <button type="button" onClick={() => isRecording && recordingTypeRef.current === 'salesVoiceRecordings' ? stopRecording() : startRecording('salesVoiceRecordings')}
+                                                                        className={`flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded whitespace-nowrap flex-shrink-0 transition-colors border-none cursor-pointer h-[34px] ${isRecording && recordingTypeRef.current === 'salesVoiceRecordings' ? 'bg-red-500 animate-pulse text-white' : 'bg-slate-800 text-cyan-400 hover:bg-slate-700'}`}>
+                                                                        {isRecording && recordingTypeRef.current === 'salesVoiceRecordings' ? <><Square size={12} fill="currentColor" /> ({formatTimer(recordingTime)})</> : <><Mic size={14} /> Voice</>}
+                                                                    </button>
+
+                                                                    <button type="button" onClick={() => handleLogNoResponse('interaction')} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap cursor-pointer h-[34px]">
+                                                                        Save Log
+                                                                    </button>
                                                                 </div>
+                                                                {renderVoiceList('salesVoiceRecordings')}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1997,11 +2125,20 @@ const SalesDashboard = () => {
                                                             </div>
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Notes</label>
-                                                                <div className="flex gap-2">
-                                                                    <input type="text" name="outcomeNotes" value={editFormData.outcomeNotes} onChange={handleInputChange} className={inputCls} placeholder="Notes..." />
-                                                                    <button type="button" onClick={() => handleLogNoResponse('outcome')} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap cursor-pointer">
-                                                                        Save Log
-                                                                    </button>
+                                                                <div className="flex flex-col gap-2">
+                                                                    <div className="flex gap-2">
+                                                                        <input type="text" name="outcomeNotes" value={editFormData.outcomeNotes} onChange={handleInputChange} className={inputCls} placeholder="Notes..." />
+                                                                        
+                                                                        <button type="button" onClick={() => isRecording && recordingTypeRef.current === 'outcomeVoiceRecordings' ? stopRecording() : startRecording('outcomeVoiceRecordings')}
+                                                                            className={`flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded whitespace-nowrap flex-shrink-0 transition-colors border-none cursor-pointer h-[34px] ${isRecording && recordingTypeRef.current === 'outcomeVoiceRecordings' ? 'bg-red-500 animate-pulse text-white' : 'bg-slate-800 text-cyan-400 hover:bg-slate-700'}`}>
+                                                                            {isRecording && recordingTypeRef.current === 'outcomeVoiceRecordings' ? <><Square size={12} fill="currentColor" /> ({formatTimer(recordingTime)})</> : <><Mic size={14} /> Voice</>}
+                                                                        </button>
+
+                                                                        <button type="button" onClick={() => handleLogNoResponse('outcome')} className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-1.5 rounded text-xs font-bold transition-colors whitespace-nowrap cursor-pointer h-[34px]">
+                                                                            Save Log
+                                                                        </button>
+                                                                    </div>
+                                                                    {renderVoiceList('outcomeVoiceRecordings')}
                                                                 </div>
                                                             </div>
                                                             
@@ -2136,9 +2273,9 @@ const SalesDashboard = () => {
                                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Requirements</label>
                                                                         <div className="flex items-center gap-1.5 w-full">
                                                                             <input type="text" value={req.requirements || ''} onChange={(e) => handleCustomisationChange(index, 'requirements', e.target.value)} className={`${inputCls} flex-1`} placeholder="" />
-                                                                            <button type="button" onClick={isRecording ? stopRecording : startRecording}
-                                                                                className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded whitespace-nowrap flex-shrink-0 transition-colors border-none cursor-pointer h-[38px] sm:h-[34px] ${isRecording ? 'bg-red-500 animate-pulse text-white' : 'bg-slate-800 text-cyan-400 hover:bg-slate-700'}`}>
-                                                                                {isRecording ? <><Square size={12} fill="currentColor" /> ({formatTimer(recordingTime)})</> : <><Mic size={14} /> Voice</>}
+                                                                            <button type="button" onClick={() => isRecording && recordingTypeRef.current === 'voiceRecordings' ? stopRecording() : startRecording('voiceRecordings')}
+                                                                                className={`flex items-center justify-center gap-1.5 px-3 py-2 sm:py-1.5 text-[11px] sm:text-xs font-semibold rounded whitespace-nowrap flex-shrink-0 transition-colors border-none cursor-pointer h-[38px] sm:h-[34px] ${isRecording && recordingTypeRef.current === 'voiceRecordings' ? 'bg-red-500 animate-pulse text-white' : 'bg-slate-800 text-cyan-400 hover:bg-slate-700'}`}>
+                                                                                {isRecording && recordingTypeRef.current === 'voiceRecordings' ? <><Square size={12} fill="currentColor" /> ({formatTimer(recordingTime)})</> : <><Mic size={14} /> Voice</>}
                                                                             </button>
                                                                         </div>
                                                                     </div>
@@ -2151,27 +2288,8 @@ const SalesDashboard = () => {
                                                             <Plus size={14} /> Add Destination
                                                         </button>
                                                     </div>
-                                                    {editFormData.voiceRecordings?.length > 0 && (
-                                                        <div className="mt-4 p-3 bg-slate-900/60 border border-slate-800/60 rounded-lg space-y-2">
-                                                            <p className="text-[10px] sm:text-[11px] font-bold uppercase text-slate-400 tracking-wider">Audio Feeds Attached ({editFormData.voiceRecordings.length})</p>
-                                                            <div className="flex flex-col sm:grid sm:grid-cols-2 md:grid-cols-3 gap-2">
-                                                                {editFormData.voiceRecordings.map((audio, index) => (
-                                                                    <div key={index} className="flex items-center justify-between p-2.5 sm:p-2 rounded-lg bg-slate-800/40 border border-slate-700/50">
-                                                                        <span className="text-xs sm:text-sm text-slate-300">Voice Capture #{index + 1}</span>
-                                                                        <div className="flex items-center gap-2 sm:gap-1.5">
-                                                                            <button type="button" onClick={() => togglePlayback(index)} className="p-1.5 sm:p-1 rounded-md bg-slate-800 border-none cursor-pointer text-emerald-400 hover:bg-slate-700">
-                                                                                {playingIndex === index ? <Square size={14} fill="currentColor" /> : <Play size={14} fill="currentColor" />}
-                                                                            </button>
-                                                                            <button type="button" onClick={() => deleteRecording(index)} className="p-1.5 sm:p-1 rounded-md bg-slate-800 border-none cursor-pointer text-red-400 hover:bg-red-950">
-                                                                                <Trash2 size={14} />
-                                                                            </button>
-                                                                            <audio ref={el => audioPlayersRef.current[index] = el} src={audio.url} onEnded={() => setPlayingIndex(null)} className="hidden" />
-                                                                        </div>
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                                    
+                                                    {renderVoiceList('voiceRecordings')}
                                                     
                                                     <div className="mt-6 pt-5 border-t border-slate-700/50">
                                                      <h4 className="text-sm font-bold text-cyan-400 tracking-wider uppercase mb-3">OPERATION RESPONSE</h4>
@@ -2466,21 +2584,33 @@ const SalesDashboard = () => {
                                                             <option value="Received">Received</option>
                                                         </select>
                                                     </div>
-                                                     <div>
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Pancard</label>
-                                                        <select name="pancard" value={editFormData.pancard} onChange={handleInputChange} className={selectCls}>
-                                                            <option value="" disabled hidden></option>
-                                                            <option value="Pending">Pending</option>
-                                                            <option value="Received">Received</option>
-                                                        </select>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Attach Drive Link</label>
-                                                        <input type="text" name="attachDriveLink" value={editFormData.attachDriveLink} onChange={handleInputChange} className={inputCls} />
-                                                    </div>
                                                     <div>
                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Remarks</label>
                                                         <input type="text" name="docRemarks" value={editFormData.docRemarks} onChange={handleInputChange} className={inputCls} />
+                                                    </div>
+                                                    
+                                                    {/* REPLACED: DRIVE LINK NOW SUPPORTS FILE UPLOADS */}
+                                                    <div className="md:col-span-3">
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Upload Direct Files</label>
+                                                        <div className="relative flex items-center justify-center bg-slate-900 border border-slate-700 border-dashed rounded-lg sm:rounded px-3 py-4 cursor-pointer hover:border-cyan-500 transition-colors">
+                                                            <span className="text-cyan-400 text-sm font-medium flex items-center gap-2">
+                                                                <Plus size={16} /> Select Files to Upload
+                                                            </span>
+                                                            <input type="file" multiple onChange={handleDirectFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                                        </div>
+                                                        {editFormData.attachedFiles?.length > 0 && (
+                                                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                                {editFormData.attachedFiles.map((file, idx) => (
+                                                                    <div key={idx} className="flex justify-between items-center p-2.5 bg-slate-800/40 rounded-lg border border-slate-700/50">
+                                                                        <span className="text-xs text-slate-300 truncate max-w-[80%]" title={file.name}>{file.name}</span>
+                                                                        <div className="flex gap-1.5 flex-shrink-0">
+                                                                            <button type="button" onClick={() => window.open(file.base64 || file.url, '_blank')} className="p-1 rounded bg-slate-800 border-none cursor-pointer text-blue-400 hover:bg-slate-700" title="View File"><Eye size={14}/></button>
+                                                                            <button type="button" onClick={() => removeAttachedFile(idx)} className="p-1 rounded bg-slate-800 border-none cursor-pointer text-red-400 hover:bg-red-950" title="Delete"><Trash2 size={14}/></button>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>

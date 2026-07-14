@@ -198,6 +198,98 @@ const generateVendorMessage = (req, lead) => {
 };
 
 // ─────────────────────────────────────────────
+// COMPONENT – Voice Recorder
+// ─────────────────────────────────────────────
+const VoiceRecorderBlock = ({ recordings = [], onUpdate }) => {
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordingTime, setRecordingTime] = useState(0);
+    const mediaRecorderRef = useRef(null);
+    const audioChunksRef = useRef([]);
+    const timerRef = useRef(null);
+    const [playingIndex, setPlayingIndex] = useState(null);
+    const audioPlayersRef = useRef({});
+
+    const startRecording = async () => {
+        audioChunksRef.current = [];
+        setRecordingTime(0);
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorderRef.current = new MediaRecorder(stream);
+            mediaRecorderRef.current.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+            mediaRecorderRef.current.onstop = () => {
+                const blob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+                const url = URL.createObjectURL(blob);
+                const reader = new FileReader();
+                reader.readAsDataURL(blob);
+                reader.onloadend = () => {
+                    onUpdate([...recordings, { url, base64: reader.result }]);
+                };
+                stream.getTracks().forEach(t => t.stop());
+            };
+            mediaRecorderRef.current.start();
+            setIsRecording(true);
+            timerRef.current = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
+        } catch (err) { alert('Microphone access denied. Please verify your browser settings.'); }
+    };
+
+    const stopRecording = () => {
+        if (mediaRecorderRef.current && isRecording) {
+            mediaRecorderRef.current.stop();
+            setIsRecording(false);
+            clearInterval(timerRef.current);
+        }
+    };
+
+    const togglePlayback = (idx) => {
+        const player = audioPlayersRef.current[idx];
+        if (!player) return;
+        if (playingIndex === idx) { player.pause(); setPlayingIndex(null); }
+        else {
+            if (playingIndex !== null && audioPlayersRef.current[playingIndex]) {
+                audioPlayersRef.current[playingIndex].pause();
+            }
+            player.play(); setPlayingIndex(idx);
+        }
+    };
+
+    const removeRecording = (idx) => {
+        if (playingIndex === idx) setPlayingIndex(null);
+        const newRecs = [...recordings];
+        newRecs.splice(idx, 1);
+        onUpdate(newRecs);
+    };
+
+    const formatTimer = (s) => `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}`;
+
+    return (
+        <div className="flex flex-col gap-2 w-full mt-2">
+            <button type="button" onClick={isRecording ? stopRecording : startRecording}
+                className={`flex items-center justify-center gap-1.5 px-3 py-1.5 text-[11px] sm:text-xs font-semibold rounded whitespace-nowrap w-fit transition-colors border-none cursor-pointer ${isRecording ? 'bg-red-500 animate-pulse text-white shadow-lg shadow-red-500/20' : 'bg-slate-800 text-cyan-400 hover:bg-slate-700 border border-slate-700'}`}>
+                {isRecording ? <><Square size={12} fill="currentColor" /> Stop Recording ({formatTimer(recordingTime)})</> : <><Mic size={14} /> Record Voice Note</>}
+            </button>
+            {recordings.length > 0 && (
+                <div className="flex flex-col gap-2 mt-1">
+                    {recordings.map((rec, idx) => (
+                        <div key={idx} className="flex items-center justify-between p-2 rounded-lg bg-slate-800/40 border border-slate-700/50 w-full max-w-sm">
+                            <span className="text-[11px] text-slate-300 font-medium">Voice Note #{idx + 1}</span>
+                            <div className="flex items-center gap-1.5">
+                                <button type="button" onClick={() => togglePlayback(idx)} className="p-1.5 rounded bg-slate-800 text-emerald-400 hover:bg-slate-700 cursor-pointer border-none shadow-sm">
+                                    {playingIndex === idx ? <Square size={12} fill="currentColor" /> : <Play size={12} fill="currentColor" />}
+                                </button>
+                                <button type="button" onClick={() => removeRecording(idx)} className="p-1.5 rounded bg-slate-800 text-red-400 hover:bg-red-950 cursor-pointer border-none shadow-sm">
+                                    <Trash2 size={12} />
+                                </button>
+                                <audio ref={el => audioPlayersRef.current[idx] = el} src={rec.url} onEnded={() => setPlayingIndex(null)} className="hidden" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+};
+
+// ─────────────────────────────────────────────
 // COMPONENT – Custom Select (with Manual Entry)
 // ─────────────────────────────────────────────
 const CustomSelect = ({ value, onChange, options, className, hideDefaultManual = false, manualTrigger = "__MANUAL__", placeholder = "" }) => {
@@ -262,29 +354,19 @@ const CustomSelect = ({ value, onChange, options, className, hideDefaultManual =
 // COMPONENT – Date/Time Picker Field
 // ─────────────────────────────────────────────
 const DatePickerField = ({ value, onChange, type = "date", readOnly = false, className }) => {
-    const inputRef = useRef(null);
     const Icon = type === 'time' ? Clock : Calendar;
 
     return (
-        <div
-            className={`relative w-full flex items-center ${!readOnly ? 'cursor-pointer' : ''}`}
-            onClick={() => {
-                if (!readOnly && inputRef.current && inputRef.current.showPicker) {
-                    try { inputRef.current.showPicker(); } 
-                    catch (e) { inputRef.current.focus(); }
-                }
-            }}
-        >
+        <div className="relative w-full flex items-center group">
             <input
-                ref={inputRef}
                 type={type}
                 value={value || ''}
                 onChange={onChange}
                 readOnly={readOnly}
-                className={`${className} ${readOnly ? '' : 'cursor-pointer'} custom-date-input`}
-                style={{ paddingRight: '2.5rem', colorScheme: 'dark' }} 
+                className={`${className} ${readOnly ? '' : 'cursor-pointer'} relative z-10 appearance-none outline-none [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer bg-transparent`}
+                style={{ colorScheme: 'dark' }} 
             />
-            <Icon size={15} className={`absolute right-3 pointer-events-none ${readOnly ? 'text-slate-600' : 'text-cyan-500'}`} />
+            <Icon size={15} className={`absolute right-3 pointer-events-none z-0 ${readOnly ? 'text-slate-600' : 'text-white group-hover:text-cyan-400 transition-colors'}`} />
         </div>
     );
 };
@@ -314,7 +396,6 @@ function Pagination({ currentPage, totalPages, onPageChange, totalEntries, entri
 // ─────────────────────────────────────────────
 export default function OperationsDashboard() {
     const [notification, setNotification] = useState({ show: false, type: '', message: '' });
-    const [isRecording, setIsRecording] = useState(false);
     const triggerNotification = (type, message) => setNotification({ show: true, type, message });
 
     const copyToClipboard = (text) => {
@@ -372,6 +453,9 @@ export default function OperationsDashboard() {
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
     const [assignTo, setAssignTo] = useState('');
     const [selectedLeadForAssign, setSelectedLeadForAssign] = useState(null);
+
+    // Recording global state for Main Note Logger
+    const [isRecording, setIsRecording] = useState(false);
 
     // Accordion State for Operations Pipeline Edit
     const [openSections, setOpenSections] = useState({
@@ -678,6 +762,58 @@ export default function OperationsDashboard() {
         return Array.isArray(arr) && arr.length > 0 ? arr : (defaultItem !== null ? [defaultItem] : []);
     };
 
+    // --- DIRECT FILE UPLOADER LOGIC ---
+    const handleFileUpload = (e, arrayName, index, field) => {
+        const files = Array.from(e.target.files);
+        if (!files.length) return;
+        
+        Promise.all(files.map(file => new Promise(resolve => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onloadend = () => resolve({ name: file.name, base64: reader.result, type: file.type });
+        }))).then(newFiles => {
+            const newArray = [...selectedLeadForEdit[arrayName]];
+            const currentFiles = newArray[index][field] || [];
+            newArray[index][field] = [...currentFiles, ...newFiles];
+            setSelectedLeadForEdit(prev => ({ ...prev, [arrayName]: newArray }));
+        });
+    };
+
+    const removeFile = (arrayName, index, field, fileIndex) => {
+        const newArray = [...selectedLeadForEdit[arrayName]];
+        newArray[index][field] = newArray[index][field].filter((_, i) => i !== fileIndex);
+        setSelectedLeadForEdit(prev => ({ ...prev, [arrayName]: newArray }));
+    };
+
+    const renderFileUploader = (label, arrayName, index, field) => {
+        const files = selectedLeadForEdit[arrayName]?.[index]?.[field] || [];
+        return (
+            <div>
+                <label className="block text-xs font-medium text-slate-400 mb-1">{label}</label>
+                <div className="relative flex items-center justify-center bg-slate-900 border border-slate-700 border-dashed rounded px-3 py-2 cursor-pointer hover:border-cyan-500 transition-colors">
+                    <span className="text-cyan-400 text-xs font-medium flex items-center gap-2">
+                        <Plus size={14} /> Upload Files
+                    </span>
+                    <input type="file" multiple onChange={(e) => handleFileUpload(e, arrayName, index, field)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                </div>
+                {files.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                        {files.map((file, idx) => (
+                            <div key={idx} className="flex justify-between items-center p-1.5 bg-slate-800/40 rounded border border-slate-700/50">
+                                <span className="text-[10px] text-slate-300 truncate max-w-[80%]" title={file.name}>{file.name}</span>
+                                <div className="flex gap-1 flex-shrink-0">
+                                    <button type="button" onClick={() => window.open(file.base64 || file.url, '_blank')} className="p-1 rounded bg-slate-800 border-none cursor-pointer text-blue-400 hover:bg-slate-700" title="View"><Eye size={12}/></button>
+                                    <button type="button" onClick={() => removeFile(arrayName, index, field, idx)} className="p-1 rounded bg-slate-800 border-none cursor-pointer text-red-400 hover:bg-red-950" title="Delete"><Trash2 size={12}/></button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    // --- MAIN VOICE RECORDER ---
     const handleVoiceRecord = () => {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRecognition) {
@@ -786,21 +922,25 @@ export default function OperationsDashboard() {
                     vendorVehicleType: '',
                     vendorPickupLocation: '',
                     vendorDropLocation: '',
-                    vendorMessage: lead.vendorMessage || ''
+                    vendorMessage: lead.vendorMessage || '',
+                    finalItineraryFiles: [],
+                    dmcConfirmationFiles: [],
+                    invoiceFiles: [],
+                    voiceNotes: []
                 }];
             } else {
                 parsedVendorRequests = [{ 
                     vendorService: '', vendorDmcName: '', vendorContactPerson: '', contactMethod: '', vendorVisaType: '',
                     vendorCheckInDate: '', vendorCheckOutDate: '', vendorRoomsRequired: '', vendorVehicleType: '', vendorPickupLocation: '', vendorDropLocation: '', 
-                    vendorMessage: '' 
+                    vendorMessage: '', finalItineraryFiles: [], dmcConfirmationFiles: [], invoiceFiles: [], voiceNotes: [] 
                 }];
             }
         }
 
         const passengers = safeParseArray(lead.passengers, { fullName: '', dob: '', gender: '', aadharNumber: '', panNumber: '', passportNumber: '', passportIssueDate: '', passportExpiryDate: '', passportIssuePlace: '', mobileNumber: '', emergencyContact: '' });
-        const flights = safeParseArray(lead.flights, { flightType: '', flightResponsibility: '', bookingStatus: '', airline: '', pnr: '', bookedThrough: '', category: '', departureDateTime: '', boardingPoint: '', ticketShared: '', ticketSharedDate: '', deboardingPoint: '', flightCost: '', markupCost: '', driveLink: '' });
-        const visas = safeParseArray(lead.visas, { destination: '', visaType: '', transitVisaReq: '', arrivalCardApplicable: '', arrivalCardDetails: '', appliedBy: '', docsPending: '', visaStatus: '', visaCopyShared: '', visaApprovalDate: '', visaExpiryDate: '', visaCost: '', markupCost: '' });
-        const domTransports = safeParseArray(lead.domTransports, { transportType: '', bookedBy: '', bookingStatus: '', ticketSharedToClient: '', sharedDate: '', flight: { onward: {}, return: null }, train: { onward: {}, return: null }, bus: { onward: {}, return: null } });
+        const flights = safeParseArray(lead.flights, { flightType: '', flightResponsibility: '', bookingStatus: '', airline: '', pnr: '', bookedThrough: '', category: '', departureDateTime: '', boardingPoint: '', ticketShared: '', ticketSharedDate: '', deboardingPoint: '', flightCost: '', markupCost: '', attachedFiles: [] });
+        const visas = safeParseArray(lead.visas, { destination: '', visaType: '', transitVisaReq: '', arrivalCardApplicable: '', arrivalCardDetails: '', appliedBy: '', docsPending: '', visaStatus: '', visaCopyShared: '', visaApprovalDate: '', visaExpiryDate: '', visaCost: '', markupCost: '', voiceNotes: [] });
+        const domTransports = safeParseArray(lead.domTransports, { transportType: '', bookedBy: '', bookingStatus: '', ticketSharedToClient: '', sharedDate: '', attachedFiles: [], voiceNotes: [], flight: { onward: {}, return: null }, train: { onward: {}, return: null }, bus: { onward: {}, return: null } });
         const domHotels = safeParseArray(lead.domHotels, { location: '', hotelName: '', hotelCategory: '', bookedBy: '', refNo: '', status: '', roomCategory: '', noOfRooms: '', addMattress: '', specifications: '', mealPlan: '', earlyCheckIn: '', checkInDateTime: '', checkOutDateTime: '', refreshmentRoom: '', cost: '', markup: '', paymentDueDate: '', attachVoucher: '', specialArrangements: '', notes: '' });
         const domLocalTransports = safeParseArray(lead.domLocalTransports, { serviceProvider: '', vehicleType: '', contactPerson: '', driverName: '', vehicleNumber: '', status: '', pickupPoint: '', pickupDate: '', duration: '', dropPoint: '', dropDate: '', tollParking: '', cost: '', markup: '', paymentDueDate: '', notes: '' });
         const paymentRequests = safeParseArray(lead.paymentRequests, { service: '', providerName: '', paymentDueDate: '', serviceCost: '', paymentType: '', amountToPay: '', paymentAccountDetails: '' });
@@ -1573,7 +1713,9 @@ export default function OperationsDashboard() {
                                                                         <div><label className="block text-xs font-medium text-slate-400 mb-1">Departure Date & Time</label><DatePickerField type="datetime-local" value={flight.departureDateTime} onChange={(e) => handleArrayChange('flights', index, 'departureDateTime', e.target.value)} className={inputCls} /></div>
                                                                         <div><label className="block text-xs font-medium text-slate-400 mb-1">Arrival Date & Time</label><DatePickerField type="datetime-local" value={flight.arrivalDateTime} onChange={(e) => handleArrayChange('flights', index, 'arrivalDateTime', e.target.value)} className={inputCls} /></div>
 
-                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Upload Ticket Copy</label><input type="text" value={flight.driveLink} onChange={(e) => handleArrayChange('flights', index, 'driveLink', e.target.value)} className={inputCls} placeholder="Drive Link" /></div>
+                                                                        <div>
+                                                                            {renderFileUploader('Upload Ticket Copy', 'flights', index, 'attachedFiles')}
+                                                                        </div>
                                                                         <div><label className="block text-xs font-medium text-slate-400 mb-1">Flight Cost</label><input type="text" value={flight.flightCost} onChange={(e) => handleArrayChange('flights', index, 'flightCost', e.target.value)} className={inputCls} /></div>
                                                                         <div className="flex items-center gap-2 mt-6">
                                                                             <input type="checkbox" checked={flight.ticketShared === 'Yes'} onChange={(e) => handleArrayChange('flights', index, 'ticketShared', e.target.checked ? 'Yes' : 'No')} className="w-4 h-4 accent-cyan-500" />
@@ -1594,7 +1736,7 @@ export default function OperationsDashboard() {
                                                             )}
                                                         </div>
                                                     ))}
-                                                    <button type="button" onClick={() => addArrayItem('flights', { flightResponsibility: '', bookingStatus: '', bookingDate: '', flightType: '', bookedThrough: '', pnr: '', boardingPoint: '', deboardingPoint: '', departureDateTime: '', arrivalDateTime: '', driveLink: '', flightCost: '', ticketShared: 'No' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md cursor-pointer"><Plus size={14} /> Add Flight</button>
+                                                    <button type="button" onClick={() => addArrayItem('flights', { flightResponsibility: '', bookingStatus: '', bookingDate: '', flightType: '', bookedThrough: '', pnr: '', boardingPoint: '', deboardingPoint: '', departureDateTime: '', arrivalDateTime: '', attachedFiles: [], flightCost: '', ticketShared: 'No' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md cursor-pointer"><Plus size={14} /> Add Flight</button>
                                                 </div>
                                             </div>
 
@@ -1629,7 +1771,11 @@ export default function OperationsDashboard() {
 
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Issue Date</label><DatePickerField type="date" value={visa.visaApprovalDate} onChange={(e) => handleArrayChange('visas', index, 'visaApprovalDate', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Expiry Date</label><DatePickerField type="date" value={visa.visaExpiryDate} onChange={(e) => handleArrayChange('visas', index, 'visaExpiryDate', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Remarks</label><input type="text" value={visa.remarks || ''} onChange={(e) => handleArrayChange('visas', index, 'remarks', e.target.value)} className={inputCls} /></div>
+                                                                <div>
+                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Remarks</label>
+                                                                    <input type="text" value={visa.remarks || ''} onChange={(e) => handleArrayChange('visas', index, 'remarks', e.target.value)} className={inputCls} />
+                                                                    <VoiceRecorderBlock recordings={visa.voiceNotes} onUpdate={(recs) => handleArrayChange('visas', index, 'voiceNotes', recs)} />
+                                                                </div>
 
                                                                 {/* Arrival Card */}
                                                                 <div className="sm:col-span-3 border-t border-slate-700/50 mt-2 pt-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1670,7 +1816,7 @@ export default function OperationsDashboard() {
                                                             </div>
                                                         </div>
                                                     ))}
-                                                    <button type="button" onClick={() => addArrayItem('visas', { destination: '', visaType: '', appliedBy: '', applicationStatus: '', applicationDate: '', appointmentDate: '', visaApprovalDate: '', visaExpiryDate: '', remarks: '', arrivalCardApplicable: 'No', transitVisaReq: 'No' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md cursor-pointer"><Plus size={14} /> Add Another VISA</button>
+                                                    <button type="button" onClick={() => addArrayItem('visas', { destination: '', visaType: '', appliedBy: '', applicationStatus: '', applicationDate: '', appointmentDate: '', visaApprovalDate: '', visaExpiryDate: '', remarks: '', arrivalCardApplicable: 'No', transitVisaReq: 'No', voiceNotes: [] })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md cursor-pointer"><Plus size={14} /> Add Another VISA</button>
                                                 </div>
                                             </div>
 
@@ -1692,7 +1838,30 @@ export default function OperationsDashboard() {
                                                                 <label className="block text-xs font-medium text-slate-400 mb-1">Taken By</label>
                                                                 <CustomSelect value={selectedLeadForEdit.insTakenBy || ''} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insTakenBy: v })} className={selectCls} options={['Client', 'Agency']} />
                                                             </div>
-                                                            <div><label className="block text-xs font-medium text-slate-400 mb-1">Upload Policy</label><input type="text" value={selectedLeadForEdit.insPolicyNo || ''} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, insPolicyNo: e.target.value })} className={inputCls} placeholder="Drive Link or Policy No" /></div>
+                                                            <div className="sm:col-span-3">
+                                                                <label className="block text-[11px] font-semibold text-slate-500 mb-1 uppercase tracking-wider">Upload Policy Document</label>
+                                                                <div className="relative flex items-center justify-center bg-slate-900 border border-slate-700 border-dashed rounded px-3 py-2 cursor-pointer hover:border-cyan-500 transition-colors w-full sm:w-1/3">
+                                                                    <span className="text-cyan-400 text-xs font-medium flex items-center gap-2">
+                                                                        <Plus size={14} /> Attach Policy File
+                                                                    </span>
+                                                                    <input type="file" onChange={e => {
+                                                                        const file = e.target.files[0];
+                                                                        if(!file) return;
+                                                                        const r = new FileReader();
+                                                                        r.readAsDataURL(file);
+                                                                        r.onloadend = () => setSelectedLeadForEdit({...selectedLeadForEdit, insPolicyNo: r.result});
+                                                                    }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                                                </div>
+                                                                {selectedLeadForEdit.insPolicyNo && selectedLeadForEdit.insPolicyNo.startsWith('data:') && (
+                                                                    <div className="mt-2 flex items-center justify-between p-1.5 bg-slate-800/40 rounded border border-slate-700/50 w-full sm:w-1/3">
+                                                                        <span className="text-[10px] text-slate-300">Policy Document Attached</span>
+                                                                        <div className="flex gap-1">
+                                                                            <button type="button" onClick={() => window.open(selectedLeadForEdit.insPolicyNo, '_blank')} className="p-1 rounded bg-slate-800 border-none cursor-pointer text-blue-400"><Eye size={12}/></button>
+                                                                            <button type="button" onClick={() => setSelectedLeadForEdit({...selectedLeadForEdit, insPolicyNo: ''})} className="p-1 rounded bg-slate-800 border-none cursor-pointer text-red-400"><Trash2 size={12}/></button>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </>
                                                     )}
                                                 </div>
@@ -1741,24 +1910,15 @@ export default function OperationsDashboard() {
                                                                 <div className="sm:col-span-3 mt-2 border-t border-slate-700/30 pt-3">
                                                                     <label className="block text-xs font-medium text-slate-400 mb-2">Upload Documents</label>
                                                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                                                        <div>
-                                                                            <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wider">Final Itinerary</label>
-                                                                            <input type="text" value={dmc.finalItineraryDoc || ''} onChange={e => handleArrayChange('vendorRequests', index, 'finalItineraryDoc', e.target.value)} className={inputCls} placeholder="Drive Link" />
-                                                                        </div>
-                                                                        <div>
-                                                                            <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wider">DMC Confirmation</label>
-                                                                            <input type="text" value={dmc.dmcConfirmationDoc || ''} onChange={e => handleArrayChange('vendorRequests', index, 'dmcConfirmationDoc', e.target.value)} className={inputCls} placeholder="Drive Link" />
-                                                                        </div>
-                                                                        <div>
-                                                                            <label className="block text-[10px] font-semibold text-slate-500 mb-1 uppercase tracking-wider">Invoice</label>
-                                                                            <input type="text" value={dmc.invoiceDoc || ''} onChange={e => handleArrayChange('vendorRequests', index, 'invoiceDoc', e.target.value)} className={inputCls} placeholder="Drive Link" />
-                                                                        </div>
+                                                                        {renderFileUploader('Final Itinerary', 'vendorRequests', index, 'finalItineraryFiles')}
+                                                                        {renderFileUploader('DMC Confirmation', 'vendorRequests', index, 'dmcConfirmationFiles')}
+                                                                        {renderFileUploader('Invoice', 'vendorRequests', index, 'invoiceFiles')}
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                         </div>
                                                     ))}
-                                                    <button type="button" onClick={() => addArrayItem('vendorRequests', { vendorDmcName: '', vendorContactPerson: '', vendorContactMobile: '', vendorService: '', bookingStatus: '', confirmationDate: '', serviceCost: '', remarks: '', servicesConfirmed: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md cursor-pointer"><Plus size={14} /> Add Another Vendor</button>
+                                                    <button type="button" onClick={() => addArrayItem('vendorRequests', { vendorDmcName: '', vendorContactPerson: '', vendorContactMobile: '', vendorService: '', bookingStatus: '', confirmationDate: '', serviceCost: '', remarks: '', servicesConfirmed: '', finalItineraryFiles: [], dmcConfirmationFiles: [], invoiceFiles: [] })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md cursor-pointer"><Plus size={14} /> Add Another Vendor</button>
                                                 </div>
                                             </div>
 
@@ -2064,8 +2224,7 @@ export default function OperationsDashboard() {
                                     <DatePickerField type="datetime-local" value={trans.arrivalDateTime || ''} onChange={(e) => updateDomTransport(index, 'arrivalDateTime', e.target.value)} className={inputCls} />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-400 mb-1">Upload Ticket Copy</label>
-                                    <input type="text" value={trans.driveLink || ''} onChange={(e) => updateDomTransport(index, 'driveLink', e.target.value)} className={inputCls} placeholder="Upload Tickets" />
+                                    {renderFileUploader('Upload Ticket Copy', 'domTransports', index, 'attachedFiles')}
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-slate-400 mb-1">Flight Cost</label>
@@ -2126,8 +2285,7 @@ export default function OperationsDashboard() {
                                     <input type="text" value={trans.trainCost || ''} onChange={(e) => updateDomTransport(index, 'trainCost', e.target.value)} className={inputCls} />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-300 mb-1">Upload Ticket Copy</label>
-                                    <input type="text" value={trans.driveLink || ''} onChange={(e) => updateDomTransport(index, 'driveLink', e.target.value)} className={inputCls} placeholder="Upload Tickets" />
+                                    {renderFileUploader('Upload Ticket Copy', 'domTransports', index, 'attachedFiles')}
                                 </div>
                                 <div className="flex items-center gap-2.5 pt-5 sm:col-span-2">
                                     <input type="checkbox" checked={trans.ticketSharedToClient === 'Yes'} onChange={(e) => updateDomTransport(index, 'ticketSharedToClient', e.target.checked ? 'Yes' : 'No')} className="w-4 h-4 accent-cyan-500" />
@@ -2179,8 +2337,9 @@ export default function OperationsDashboard() {
                                     <DatePickerField type="datetime-local" value={trans.departureDateTime || ''} onChange={(e) => updateDomTransport(index, 'departureDateTime', e.target.value)} className={inputCls} />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-400 mb-1">Text Area</label>
+                                    <label className="block text-xs font-medium text-slate-400 mb-1">Text Area / Notes</label>
                                     <input type="text" value={trans.textArea || ''} onChange={(e) => updateDomTransport(index, 'textArea', e.target.value)} className={inputCls} />
+                                    <VoiceRecorderBlock recordings={trans.voiceNotes} onUpdate={(recs) => updateDomTransport(index, 'voiceNotes', recs)} />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-medium text-slate-400 mb-1">Dropping Point</label>
@@ -2191,8 +2350,7 @@ export default function OperationsDashboard() {
                                     <DatePickerField type="datetime-local" value={trans.arrivalDateTime || ''} onChange={(e) => updateDomTransport(index, 'arrivalDateTime', e.target.value)} className={inputCls} />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-slate-300 mb-1">&nbsp;</label>
-                                    <input type="text" value={trans.driveLink || ''} onChange={(e) => updateDomTransport(index, 'driveLink', e.target.value)} className="w-full px-3 py-2 bg-slate-900 border border-pink-700/60 rounded text-pink-400 font-bold text-sm focus:outline-none placeholder-pink-800/60 shadow-sm" placeholder="Upload Tickets" />
+                                    {renderFileUploader('Upload Ticket Copy', 'domTransports', index, 'attachedFiles')}
                                 </div>
                             </div>
                         </div>
@@ -2201,7 +2359,7 @@ export default function OperationsDashboard() {
             ))}
             
             <div className="pt-2">
-                <button type="button" onClick={() => addArrayItem('domTransports', { transportType: 'Flight', bookedBy: 'In-House', bookingStatus: 'Pending', flightType: 'One Way' })} className="text-cyan-400 font-bold text-xs sm:text-sm flex items-center gap-1.5 hover:text-cyan-300 transition-colors bg-transparent border-none cursor-pointer">
+                <button type="button" onClick={() => addArrayItem('domTransports', { transportType: 'Flight', bookedBy: 'In-House', bookingStatus: 'Pending', flightType: 'One Way', attachedFiles: [], voiceNotes: [] })} className="text-cyan-400 font-bold text-xs sm:text-sm flex items-center gap-1.5 hover:text-cyan-300 transition-colors bg-transparent border-none cursor-pointer">
                     <Plus size={16} /> Add Another Transport Details
                 </button>
             </div>
@@ -2496,6 +2654,9 @@ export default function OperationsDashboard() {
                                                                             </div>
                                                                             <div className="p-1">
                                                                                 <textarea rows="16" value={req.vendorMessage} onChange={e => handleArrayChange('vendorRequests', index, 'vendorMessage', e.target.value)} className="w-full bg-transparent border-none text-slate-300 text-[13px] leading-relaxed p-4 focus:ring-0 outline-none custom-scrollbar resize-y" spellCheck="false" />
+                                                                                <div className="px-4 pb-4">
+                                                                                    <VoiceRecorderBlock recordings={req.voiceNotes} onUpdate={(recs) => handleArrayChange('vendorRequests', index, 'voiceNotes', recs)} />
+                                                                                </div>
                                                                             </div>
                                                                         </div>
                                                                     )}
@@ -2504,7 +2665,7 @@ export default function OperationsDashboard() {
                                                         ))}
 
                                                         <div className="sm:col-span-3 mt-4 flex justify-end">
-                                                            <button type="button" onClick={() => addArrayItem('vendorRequests', { vendorService: '', vendorDmcName: '', vendorContactPerson: '', contactMethod: '', vendorVisaType: '', vendorMessage: '' })} className="text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md px-4 py-2 transition-colors flex items-center gap-1.5 cursor-pointer">
+                                                            <button type="button" onClick={() => addArrayItem('vendorRequests', { vendorService: '', vendorDmcName: '', vendorContactPerson: '', contactMethod: '', vendorVisaType: '', vendorMessage: '', voiceNotes: [] })} className="text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md px-4 py-2 transition-colors flex items-center gap-1.5 cursor-pointer">
                                                                 <Plus size={14}/> Add Another Vendor
                                                             </button>
                                                         </div>
