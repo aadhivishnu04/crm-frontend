@@ -564,17 +564,17 @@ export default function Fulfillment() {
                                                         <div>
                                                             <label className="block text-xs font-bold text-slate-200 mb-1">Baggage Required</label>
                                                             <CustomSelect value={selectedLeadForEdit.flBaggageReq} onChange={(v) => handleFieldChange('flBaggageReq', v)} className={selectCls} placeholder="Select" options={['Yes', 'No', 'Yes, Only for return']} />
-                                                            <p className="text-[10px] text-slate-500 mt-1">Yes / No / Yes, Only for return</p>
+                                                            {/* <p className="text-[10px] text-slate-500 mt-1">Yes / No / Yes, Only for return</p> */}
                                                         </div>
                                                         <div>
                                                             <label className="block text-xs font-bold text-slate-200 mb-1">Booked By</label>
                                                             <CustomSelect value={selectedLeadForEdit.flBaggageBookedBy} onChange={(v) => handleFieldChange('flBaggageBookedBy', v)} className={selectCls} placeholder="Select" options={['Client', 'Team']} />
-                                                            <p className="text-[10px] text-slate-500 mt-1">Client / Team</p>
+                                                            {/* <p className="text-[10px] text-slate-500 mt-1">Client / Team</p> */}
                                                         </div>
                                                         <div>
                                                             <label className="block text-xs font-bold text-slate-200 mb-1">Baggage Status</label>
                                                             <CustomSelect value={selectedLeadForEdit.flBaggageStatus} onChange={(v) => handleFieldChange('flBaggageStatus', v)} className={selectCls} placeholder="Select" options={['Not Required', 'Pending', 'Added']} />
-                                                            <p className="text-[10px] text-slate-500 mt-1">Not Required / Pending / Added</p>
+                                                            {/* <p className="text-[10px] text-slate-500 mt-1">Not Required / Pending / Added</p> */}
                                                         </div>
                                                         <div>
                                                             <label className="block text-xs font-bold text-slate-200 mb-1">Boarding Pass Support</label>
@@ -595,7 +595,7 @@ export default function Fulfillment() {
                                                         <div>
                                                             <label className="block text-xs font-bold text-slate-200 mb-1">Booking Status</label>
                                                             <CustomSelect value={selectedLeadForEdit.flSeatStatus} onChange={(v) => handleFieldChange('flSeatStatus', v)} className={selectCls} placeholder="Select" options={['Not Required', 'Pending', 'Reserved']} />
-                                                            <p className="text-[10px] text-slate-500 mt-1">Not Required / Pending / Reserved</p>
+                                                            {/* <p className="text-[10px] text-slate-500 mt-1">Not Required / Pending / Reserved</p> */}
                                                         </div>
                                                     </div>
 
@@ -604,7 +604,7 @@ export default function Fulfillment() {
                                                         <div>
                                                             <label className="block text-xs font-bold text-slate-200 mb-1">Meal Required</label>
                                                             <CustomSelect value={selectedLeadForEdit.flMealReq} onChange={(v) => handleFieldChange('flMealReq', v)} className={selectCls} placeholder="Select" options={['Yes', 'No']} />
-                                                            <p className="text-[10px] text-slate-500 mt-1">Yes/ No</p>
+                                                            {/* <p className="text-[10px] text-slate-500 mt-1">Yes/ No</p> */}
                                                         </div>
                                                         <div>
                                                             <label className="block text-xs font-bold text-slate-200 mb-1">Meal Type</label>
@@ -866,7 +866,7 @@ export default function Fulfillment() {
                                                 {/* Finance */}
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start border-t border-slate-700/50 pt-6">
                                                     <div className="space-y-3">
-                                                        <h4 className="text-sm font-bold text-white mb-2 flex justify-between">Finance <span className="text-[10px] text-slate-500 normal-case font-normal bg-slate-800 px-1 rounded">Autofetch</span></h4>
+                                                        <h4 className="text-sm font-bold text-white mb-2 flex justify-between">Finance </h4>
                                                         <label className="flex items-center justify-between cursor-pointer group">
                                                             <span className="text-sm font-bold text-slate-200">Payment Cleared</span>
                                                             <input type="checkbox" checked={selectedLeadForEdit.clrFinPayment} onChange={(e) => handleFieldChange('clrFinPayment', e.target.checked)} className="w-4 h-4 rounded border-slate-600 text-cyan-500" />
@@ -884,7 +884,7 @@ export default function Fulfillment() {
 
                                                 {/* Operations Manager Approval */}
                                                 <div className="space-y-4 border-t border-slate-700/50 pt-6">
-                                                    <h4 className="text-sm font-bold text-white mb-2 flex justify-between">Operations Manager Approval <span className="text-[10px] text-slate-500 normal-case font-normal bg-slate-800 px-1 rounded">Autofetch</span></h4>
+                                                    <h4 className="text-sm font-bold text-white mb-2 flex justify-between">Operations Manager Approval  </h4>
                                                     <label className="flex items-center justify-between max-w-sm cursor-pointer group">
                                                         <span className="text-sm font-bold text-slate-200">Final Review Completed</span>
                                                         <input type="checkbox" checked={selectedLeadForEdit.clrMgrReview} onChange={(e) => handleFieldChange('clrMgrReview', e.target.checked)} className="w-4 h-4 rounded border-slate-600 text-cyan-500" />
