@@ -1265,42 +1265,62 @@ const Dashboard = () => {
                     {/* ── 3RD ROW: Employee List, Sales Targets, Top Destinations ── */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         
-                        {/* 1. Employee List & Counts (Active Team) */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-full lg:col-span-1">
-                            <div className="flex justify-between items-start mb-4 gap-2">
+                        {/* 1. Sales Report */}
+                        <div className="bg-white dark:bg-[#0b101e] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm flex flex-col h-full lg:col-span-1 overflow-hidden">
+                            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-[#111827]">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Active Team</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{members.filter(m => m.status === 'online').length} online now</p>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Sales Report</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Today's Lead Counts & Status</p>
                                 </div>
-                                {members.length > 5 && (
-                                    <button
-                                        type="button" onClick={() => setAllMembersExpanded(!allMembersExpanded)}
-                                        className="px-3 py-1.5 text-[11px] font-bold text-violet-500 dark:text-violet-400 border border-violet-500/20 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-colors flex-shrink-0"
-                                    >
-                                        {allMembersExpanded ? 'Less' : 'All'}
-                                    </button>
-                                )}
                             </div>
-                            <div className="space-y-1 flex-1 overflow-y-auto custom-scrollbar pr-0.5 min-h-[200px] max-h-[320px]">
-                                {members.length === 0 ? (
-                                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No active employees operating right now.</div>
-                                ) : (
-                                    (allMembersExpanded ? members : members.slice(0, 5)).map(member => (
-                                        <div key={member.id} onClick={() => setSelectedMember(member)} className="flex items-center gap-3 py-2.5 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700/30 cursor-pointer">
-                                            <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white flex-shrink-0 shadow-md uppercase" style={{ backgroundColor: member.color || '#7c3aed' }}>{member.initials}</div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-bold text-slate-800 dark:text-white leading-tight truncate">{member.name}</p>
-                                                <p className="text-[9px] text-slate-400 mt-0.5 truncate uppercase tracking-wider font-semibold">{member.role}</p>
-                                            </div>
-                                            <div className="flex items-center gap-2 flex-shrink-0">
-                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/30">
-                                                    <StatusDot status={member.status} />
-                                                    <span className="hidden sm:inline text-[9px] font-bold text-slate-500 dark:text-slate-400 capitalize uppercase tracking-wide">{member.status}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
+                            
+                            <div className="flex-1 overflow-y-auto custom-scrollbar min-h-[200px] max-h-[320px]">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-slate-50 dark:bg-[#0f1523] sticky top-0 z-10 border-b border-slate-100 dark:border-slate-800/80">
+                                        <tr>
+                                            <th className="px-4 py-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">Employee Name</th>
+                                            <th className="px-4 py-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-right whitespace-nowrap">Counts</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
+                                        {/* Unassigned Today Leads Row */}
+                                        <tr className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                                            <td className="px-4 py-3.5 text-xs font-semibold text-slate-700 dark:text-slate-200">Unassigned / New</td>
+                                            <td className="px-4 py-3.5 text-right text-xs font-semibold text-slate-800 dark:text-white">
+                                                {allLeads.filter(l => !l.assignedTo && !l.assignedToOps && l.createdAt && new Date(l.createdAt).toDateString() === todayStr).length}
+                                            </td>
+                                        </tr>
+                                        
+                                        {/* Dynamic Active Members Mapping (Today Leads Only & Logged In Today) */}
+                                        {members
+                                            .filter(member => member.lastActive && new Date(member.lastActive).toDateString() === todayStr)
+                                            .map((member, idx) => {
+                                                const todayCount = allLeads.filter(l => 
+                                                    (l.assignedTo === member.name || l.assignedToOps === member.name) && 
+                                                    l.createdAt && new Date(l.createdAt).toDateString() === todayStr
+                                                ).length;
+                                                
+                                                return (
+                                                    <tr key={member.id || idx} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group cursor-pointer" onClick={() => setSelectedMember(member)}>
+                                                        <td className="px-4 py-3.5 text-xs font-semibold text-slate-700 dark:text-slate-200">
+                                                            <span className="truncate">{member.name}</span>
+                                                        </td>
+                                                        <td className="px-4 py-3.5 text-right text-xs font-bold text-slate-800 dark:text-white">
+                                                            {todayCount}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                        })}
+                                        
+                                        {/* Self Assigned Today Leads Row */}
+                                        <tr className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
+                                            <td className="px-4 py-3.5 text-xs font-semibold text-slate-700 dark:text-slate-200">Self Assigned</td>
+                                            <td className="px-4 py-3.5 text-right text-xs font-semibold text-slate-800 dark:text-white">
+                                                {allLeads.filter(l => (l.assignedTo === user?.name || l.assignedToOps === user?.name) && l.createdAt && new Date(l.createdAt).toDateString() === todayStr).length}
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 
