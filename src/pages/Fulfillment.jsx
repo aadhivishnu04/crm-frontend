@@ -206,7 +206,9 @@ export default function Fulfillment() {
     
     const [operationsStaff, setOperationsStaff] = useState([]);
 
-    const SYSTEM_TODAY = new Date("2026-06-25T00:00:00");
+    // CORRECTION: Dynamically get today's date and strip time for accurate day comparisons
+    const SYSTEM_TODAY = new Date();
+    SYSTEM_TODAY.setHours(0, 0, 0, 0);
 
     useEffect(() => {
         const fetchStaffDirectory = async () => {
@@ -1205,7 +1207,7 @@ export default function Fulfillment() {
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <span className="text-sm font-bold text-white">Travel Advisory</span>
                                                 </div>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-sm text-slate-300 pl-4 sm:pl-7">
+                                                <div className="grid grid-cols-1 sm:grid-cols-1 gap-y-2 gap-x-6 text-sm text-slate-300 pl-4 sm:pl-7">
                                                     <label className="flex items-center justify-between cursor-pointer">
                                                         <span>Local Rules & Regulations</span>
                                                         <input type="checkbox" checked={selectedLeadForEdit.advLocalRules} onChange={e => handleFieldChange('advLocalRules', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
@@ -1226,7 +1228,7 @@ export default function Fulfillment() {
                                                         <span>ID Proof Requirement</span>
                                                         <input type="checkbox" checked={selectedLeadForEdit.advIdProof} onChange={e => handleFieldChange('advIdProof', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
                                                     </label>
-                                                </div>
+                                                </div>  
                                             </div>
 
                                             {/* Journey Guidance */}
@@ -1234,7 +1236,7 @@ export default function Fulfillment() {
                                                 <div className="flex items-center gap-2 mb-2">
                                                     <span className="text-sm font-bold text-white">Journey Guidance</span>
                                                 </div>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-sm text-slate-300 pl-4 sm:pl-7">
+                                                <div className="grid grid-cols-1 sm:grid-cols-1 gap-y-2 gap-x-6 text-sm text-slate-300 pl-4 sm:pl-7">
                                                     <label className="flex items-center justify-between cursor-pointer">
                                                         <span>Pickup / Boarding Details Shared</span>
                                                         <input type="checkbox" checked={selectedLeadForEdit.journPickupDetails} onChange={e => handleFieldChange('journPickupDetails', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
@@ -1244,13 +1246,14 @@ export default function Fulfillment() {
                                                         <span>Hotel Contact Shared</span>
                                                         <input type="checkbox" checked={selectedLeadForEdit.journHotelContact} onChange={e => handleFieldChange('journHotelContact', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
                                                     </label>
-                                                    <label className="flex items-center justify-between cursor-pointer">
-                                                        <span>Emergency Contacts</span>
-                                                        <input type="checkbox" checked={selectedLeadForEdit.journEmergencyContact} onChange={e => handleFieldChange('journEmergencyContact', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
-                                                    </label>
+                                                   
                                                     <label className="flex items-center justify-between cursor-pointer">
                                                         <span>Hotel Check-in Process Explained</span>
                                                         <input type="checkbox" checked={selectedLeadForEdit.journHotelCheckin} onChange={e => handleFieldChange('journHotelCheckin', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                     <label className="flex items-center justify-between cursor-pointer">
+                                                        <span>Emergency Contacts</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.journEmergencyContact} onChange={e => handleFieldChange('journEmergencyContact', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
                                                     </label>
                                                 </div>
                                             </div>
