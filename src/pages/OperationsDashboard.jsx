@@ -1395,6 +1395,7 @@ export default function OperationsDashboard() {
                                                             <div className="flex items-center justify-end gap-2">
                                                                 <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 hover:bg-blue-900/30 rounded-md transition-colors flex flex-col items-center" title="View"><Eye size={16} /><span className="text-[10px]">View</span></button>
                                                                 <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-yellow-900/20 rounded-md transition-colors flex flex-col items-center" title="Edit"><Pencil size={16} /><span className="text-[10px]">Edit</span></button>
+                                                                <button type="button" onClick={() => setLeadToFulfill(row)} className="p-1.5 text-slate-400 hover:text-orange-400 hover:bg-orange-900/30 rounded-md transition-colors flex flex-col items-center" title="Send to Fulfillment"><Send size={16} /><span className="text-[10px]">Fulfill</span></button>
                                                             </div>
                                                         </td>
                                                     </>
@@ -1433,6 +1434,7 @@ export default function OperationsDashboard() {
                                                             <div className="flex items-center justify-end gap-2">
                                                                 <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 hover:bg-blue-900/30 rounded-md transition-colors flex flex-col items-center" title="View"><Eye size={16} /><span className="text-[10px]">View</span></button>
                                                                 <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-yellow-900/20 rounded-md transition-colors flex flex-col items-center" title="Edit"><Pencil size={16} /><span className="text-[10px]">Edit</span></button>
+                                                                <button type="button" onClick={() => setLeadToFulfill(row)} className="p-1.5 text-slate-400 hover:text-orange-400 hover:bg-orange-900/30 rounded-md transition-colors flex flex-col items-center" title="Send to Fulfillment"><Send size={16} /><span className="text-[10px]">Fulfill</span></button>
                                                             </div>
                                                         </td>
                                                     </>
@@ -1483,6 +1485,7 @@ export default function OperationsDashboard() {
                                                     <>
                                                         <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 bg-slate-800 rounded-md border border-slate-700" title="View"><Eye size={15} /></button>
                                                         <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 bg-slate-800 rounded-md border border-slate-700" title="Edit"><Pencil size={15} /></button>
+                                                        <button type="button" onClick={() => setLeadToFulfill(row)} className="p-1.5 text-slate-400 hover:text-orange-400 bg-slate-800 rounded-md border border-slate-700" title="Send to Fulfillment"><Send size={15} /></button>
                                                     </>
                                                 )}
                                             </div>

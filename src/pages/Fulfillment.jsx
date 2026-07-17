@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     Eye, Pencil, Clock, Search, MapPin, Calendar,
     BookmarkCheck, PlaneTakeoff, X, AlertCircle, CheckCircle2, 
-    CheckSquare, ChevronLeft, ChevronRight, ArrowUp
+    CheckSquare, ArrowUp, ChevronDown, ChevronUp
 } from 'lucide-react';
 
 // ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
@@ -35,39 +35,20 @@ const MOCK_LEADS = [
             { departureDateTime: '2026-08-12T10:30', boardingPoint: 'DEL', deboardingPoint: 'SIN' },
             { departureDateTime: '2026-08-18T18:00', boardingPoint: 'SIN', deboardingPoint: 'DEL' }
         ],
-        visas: [{ visaType: 'e-Visa', visaStatus: 'Approved', transitVisaReq: 'No', visaCopyShared: 'Yes' }],
+        visas: [{ visaType: 'e-Visa', visaStatus: 'Approved', transitVisaReq: 'No', visaCopyShared: 'Yes', arrivalCardApplicable: 'Yes', arrivalCardStatus: 'Completed' }],
         clientPayStatus: 'Cleared', vendorPayStatus: 'Pending'
-    },
-    {
-        id: 14, customerName: 'John Doe', destination: 'Dubai', amount: '₹3,00,000+', 
-        status: 'Confirmed Bookings', phone: '9876543211', salesExecutive: 'Sarah', operationsExecutive: 'Ops Desk 2',
-        bookingDate: '2026-06-15', travelDate: '2026-06-28', returnDate: '2026-07-04', reviewStatus: 'Review Received',
-        noOfPax: '4', insRequired: 'No',
-        flights: [
-            { departureDateTime: '2026-06-28T22:30', boardingPoint: 'BOM', deboardingPoint: 'DXB' },
-            { departureDateTime: '2026-07-04T04:00', boardingPoint: 'DXB', deboardingPoint: 'BOM' }
-        ]
-    },
-    {
-        id: 15, customerName: 'Jane Smith', destination: 'Kerala', amount: '₹1,50,000+', 
-        status: 'Confirmed Bookings', phone: '9876543212', salesExecutive: 'Mike', operationsExecutive: 'Ops Desk 1',
-        bookingDate: '2026-06-20', travelDate: '2026-06-22', returnDate: '2026-06-27', reviewStatus: 'Pending Review',
-        noOfPax: '2', insRequired: 'No',
-        domTransports: [],
-        domHotels: [],
-        reqVeg: true, reqHoneymoon: true
     }
 ];
 
 // ─────────────────────────────────────────────
 // REUSABLE COMPONENTS
 // ─────────────────────────────────────────────
-const CustomSelect = ({ value, onChange, options, placeholder = "-- Select --", className }) => {
+const CustomSelect = ({ value, onChange, options, className }) => {
     const normalizedOptions = options.map(opt => typeof opt === 'object' ? opt : { value: opt, label: opt });
     const safeValue = value !== undefined && value !== null ? String(value) : '';
     return (
         <select value={safeValue} onChange={(e) => onChange(e.target.value)} className={className}>
-            <option value="" disabled hidden>{placeholder}</option>
+            <option value="" disabled hidden></option>
             {normalizedOptions.map((opt, idx) => (
                 <option key={idx} value={opt.value}>{opt.label}</option>
             ))}
@@ -82,6 +63,25 @@ const DatePickerField = ({ value, onChange, type = "date", readOnly = false, cla
         <div className={`relative w-full flex items-center ${!readOnly ? 'cursor-pointer' : ''}`} onClick={() => { if (!readOnly && inputRef.current?.showPicker) inputRef.current.showPicker(); }}>
             <input ref={inputRef} type={type} value={value || ''} onChange={onChange} readOnly={readOnly} className={`${className} ${readOnly ? '' : 'cursor-pointer'} custom-date-input`} style={{ paddingRight: '2.5rem', colorScheme: 'dark' }} />
             <Icon size={15} className={`absolute right-3 pointer-events-none ${readOnly ? 'text-slate-600' : 'text-cyan-500'}`} />
+        </div>
+    );
+};
+
+const FormSection = ({ title, titleColor = "text-cyan-400", action, children }) => {
+    const [isOpen, setIsOpen] = useState(true);
+    return (
+        <div className="p-5 rounded-xl border border-slate-800 bg-slate-900/40 shadow-sm relative transition-all">
+            <div 
+                className={`flex items-center justify-between cursor-pointer ${isOpen ? 'mb-4' : ''}`}
+                onClick={() => setIsOpen(!isOpen)}
+            >
+                <div className="flex items-center gap-2">
+                    <h3 className={`text-sm font-bold uppercase ${titleColor}`}>{title}</h3>
+                    {action && <div onClick={e => e.stopPropagation()}>{action}</div>}
+                </div>
+                {isOpen ? <ChevronUp size={16} className="text-slate-500 flex-shrink-0"/> : <ChevronDown size={16} className="text-slate-500 flex-shrink-0"/>}
+            </div>
+            {isOpen && <div className="space-y-4 animate-in fade-in duration-200">{children}</div>}
         </div>
     );
 };
@@ -118,7 +118,6 @@ function useLeads(triggerNotification) {
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 
-                // === FIX 1: PARSE STRINGIFIED JSON ARRAYS ===
                 const parseJSON = (val) => {
                     if (!val) return [];
                     try { return typeof val === 'string' ? JSON.parse(val) : val; } 
@@ -126,7 +125,6 @@ function useLeads(triggerNotification) {
                 };
 
                 const mappedData = data.map(lead => {
-                    // Extract fulfillmentData into flat state
                     let parsedFulfillment = {};
                     if (lead.fulfillmentData) {
                         try { parsedFulfillment = typeof lead.fulfillmentData === 'string' ? JSON.parse(lead.fulfillmentData) : lead.fulfillmentData; }
@@ -135,7 +133,7 @@ function useLeads(triggerNotification) {
 
                     return {
                         ...lead,
-                        ...parsedFulfillment, // Spreads dynamic checklist fields onto the lead object
+                        ...parsedFulfillment, 
                         passengers: parseJSON(lead.passengers),
                         flights: parseJSON(lead.flights),
                         intTransports: parseJSON(lead.intTransports),
@@ -144,7 +142,9 @@ function useLeads(triggerNotification) {
                         domHotels: parseJSON(lead.domHotels),
                         intHotels: parseJSON(lead.intHotels),
                         domLocalTransports: parseJSON(lead.domLocalTransports),
-                        paymentRequests: parseJSON(lead.paymentRequests)
+                        paymentRequests: parseJSON(lead.paymentRequests),
+                        vendorRequests: parseJSON(lead.vendorRequests),
+                        customisationRequests: parseJSON(lead.customisationRequests)
                     };
                 });
                 
@@ -198,12 +198,34 @@ export default function Fulfillment() {
     
     const [selectedLeadForEdit, setSelectedLeadForEdit] = useState(null);
     const [selectedLeadForView, setSelectedLeadForView] = useState(null);
+    const [viewModal, setViewModal] = useState({ show: false, title: '', content: '' });
 
     const [showScrollTop, setShowScrollTop] = useState(false);
     const mainRef = useRef(null);
     const tabScrollRef = useRef(null);
+    
+    const [operationsStaff, setOperationsStaff] = useState([]);
 
     const SYSTEM_TODAY = new Date("2026-06-25T00:00:00");
+
+    useEffect(() => {
+        const fetchStaffDirectory = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/employees`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const ops = data.filter(emp => {
+                        const searchString = `${emp.designation || ''} ${emp.role || ''} ${emp.department || ''}`.toLowerCase();
+                        return searchString.includes('operation') || searchString.includes('ops');
+                    }).map(emp => emp.name || emp.username);
+                    setOperationsStaff(ops);
+                }
+            } catch (error) { 
+                console.error('Failed to fetch dynamic directory components:', error); 
+            }
+        };
+        fetchStaffDirectory();
+    }, []);
 
     useEffect(() => {
         const el = mainRef.current;
@@ -214,7 +236,65 @@ export default function Fulfillment() {
     }, []);
 
     const scrollToTop = () => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-    const scrollTabs = (dir) => tabScrollRef.current?.scrollBy({ left: dir * 160, behavior: 'smooth' });
+
+    // ─────────────────────────────────────────────
+    // DYNAMIC UI DATA RENDERER FOR MODALS
+    // ─────────────────────────────────────────────
+    const renderDataContent = (content) => {
+        if (!content) return <div className="text-slate-500 italic">No details available.</div>;
+        
+        if (typeof content === 'string') {
+            return <div className="leading-relaxed">{content}</div>;
+        }
+
+        if (Array.isArray(content)) {
+            if (content.length === 0) return <div className="italic text-slate-500">No records found.</div>;
+            return (
+                <div className="space-y-4">
+                    {content.map((item, idx) => (
+                        <div key={idx} className="bg-slate-900/80 p-4 rounded-xl border border-slate-700/50 shadow-inner">
+                            <h4 className="text-xs font-bold text-cyan-500 mb-3 border-b border-slate-700/50 pb-1.5 uppercase tracking-wider">Record #{idx + 1}</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
+                                {Object.entries(item).map(([key, val]) => {
+                                    if(typeof val === 'object' && val !== null) return null; // Skip complex nested data for clean UI
+                                    const formattedKey = key.replace(/([A-Z])/g, ' $1').trim();
+                                    return (
+                                        <div key={key} className="flex flex-col">
+                                            <span className="text-[10px] text-slate-500 uppercase font-semibold tracking-wide capitalize">{formattedKey}</span>
+                                            <span className="text-sm font-medium text-slate-200 break-words">{val !== null && val !== '' ? String(val) : '-'}</span>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            );
+        }
+
+        if (typeof content === 'object') {
+            return (
+                <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-700/50 shadow-inner">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
+                        {Object.entries(content).map(([key, val]) => {
+                            if(typeof val === 'object' && val !== null) return null;
+                            const formattedKey = key.replace(/([A-Z])/g, ' $1').trim();
+                            return (
+                                <div key={key} className="flex items-center justify-between border-b border-slate-800/60 pb-1.5">
+                                    <span className="text-xs text-slate-400 font-medium capitalize">{formattedKey}</span>
+                                    <span className={`text-sm font-bold ${val === true || val === 'Yes' ? 'text-emerald-400' : val === false || val === 'No' ? 'text-slate-600' : 'text-slate-200'}`}>
+                                        {typeof val === 'boolean' ? (val ? 'Yes' : 'No') : String(val || '-')}
+                                    </span>
+                                </div>
+                            )
+                        })}
+                    </div>
+                </div>
+            );
+        }
+
+        return String(content);
+    };
 
     // FULFILLMENT DATE LOGIC & CATEGORIZATION
     const categorizedLeads = leads.reduce((acc, lead) => {
@@ -258,61 +338,99 @@ export default function Fulfillment() {
         setSelectedLeadForEdit({
             ...lead,
             tourType,
-            // Flight Defaults (Intl & Dom)
-            flBaggageReq: lead.flBaggageReq || '', flBaggageBookedBy: lead.flBaggageBookedBy || '', flBaggageStatus: lead.flBaggageStatus || '', flBaggageSupport: lead.flBaggageSupport || '', flBaggageKg: lead.flBaggageKg || '',
-            flSeatPref: lead.flSeatPref || '', flSeatBookedBy: lead.flSeatBookedBy || '', flSeatStatus: lead.flSeatStatus || '',
-            flMealReq: lead.flMealReq || '', flMealType: lead.flMealType || '', flMealBookedBy: lead.flMealBookedBy || '', flMealStatus: lead.flMealStatus || '', flSpecialInst: lead.flSpecialInst || '',
             
+            // Re-fetch Special Requirements to show true/false state in View Modals
+            reqVeg: lead.reqVeg || false,
+            reqWheelchair: lead.reqWheelchair || false,
+            reqSenior: lead.reqSenior || false,
+            reqHoneymoon: lead.reqHoneymoon || false,
+            reqCandlelight: lead.reqCandlelight || false,
+            reqFloating: lead.reqFloating || false,
+            reqDecor: lead.reqDecor || false,
+            reqBirthday: lead.reqBirthday || false,
+            reqAnniversary: lead.reqAnniversary || false,
+            reqManualAdd: lead.reqManualAdd || false,
+
+            // International Custom Block
+            flightTicketVerified: lead.flightTicketVerified || false,
+            flBaggageDetails: lead.flBaggageDetails || '',
+            flSeatSelection: lead.flSeatSelection || '',
+            flMealStatusCheck: lead.flMealStatusCheck || false,
+            flBoardingPassSupport: lead.flBoardingPassSupport || '',
+            insIssuedChk: lead.insIssuedChk || false,
+            dmcConfReceived: lead.dmcConfReceived || false,
+            dmcDriverDetails: lead.dmcDriverDetails || false,
+            dmcEmergencyContactReq: lead.dmcEmergencyContactReq || false,
+            dmcPtPService: lead.dmcPtPService || '',
+            specialReqStatusVal: lead.specialReqStatusVal || '',
+            briefingDateVal: lead.briefingDateVal || '',
+            briefedByVal: lead.briefedByVal || '',
+            briefedMethodVal: lead.briefedMethodVal || '',
+            
+            advLocalRules: lead.advLocalRules || false,
+            advTravelRestrictions: lead.advTravelRestrictions || false,
+            advTourismTax: lead.advTourismTax || false,
+            advPermitReq: lead.advPermitReq || false,
+            finForex: lead.finForex || false,
+            finCurrency: lead.finCurrency || false,
+            finIntlCard: lead.finIntlCard || false,
+            finLocalPayment: lead.finLocalPayment || false,
+            destWeather: lead.destWeather || false,
+            destCustoms: lead.destCustoms || false,
+            destSafety: lead.destSafety || false,
+            destEmergency: lead.destEmergency || false,
+
             // Domestic Specific Defaults
-            docCompleted: lead.docCompleted || '',
-            locTransVehicleAssigned: lead.locTransVehicleAssigned || false,
-            locTransDriverDetailsShared: lead.locTransDriverDetailsShared || false,
-            locTransDriverContactShared: lead.locTransDriverContactShared || false,
-            domSpecialReqStatus: lead.domSpecialReqStatus || '',
-            domSpecialReqCompleted: lead.domSpecialReqCompleted || '',
+            domTransportType: lead.domTransportType || '', 
+            domTicketVerified: lead.domTicketVerified || false,
+            domBagDetails: lead.domBagDetails || '',
+            domSeatSelection: lead.domSeatSelection || '',
+            domMealStatus: lead.domMealStatus || '',
+            domBoardingPass: lead.domBoardingPass || '',
+            domSeatBerthConfirmed: lead.domSeatBerthConfirmed || false,
             
-            // Checklists & Booleans (Intl)
-            dmcConfirmed: lead.dmcConfirmed || false, dmcHotelVoucher: lead.dmcHotelVoucher || false, dmcTransferVoucher: lead.dmcTransferVoucher || false, dmcSightseeingVoucher: lead.dmcSightseeingVoucher || false, dmcEmergencyContact: lead.dmcEmergencyContact || false,
-            transAirportConf: lead.transAirportConf || false, transVehicleAssigned: lead.transVehicleAssigned || false, transDriverDetails: lead.transDriverDetails || false, transDriverContact: lead.transDriverContact || false, transPtPExplained: lead.transPtPExplained || false,
-            chkLocalRules: lead.chkLocalRules || false, chkTourismTax: lead.chkTourismTax || false, chkDestRestrictions: lead.chkDestRestrictions || false, chkPermits: lead.chkPermits || false,
-            chkBoardingRules: lead.chkBoardingRules || false, chkVisaConditions: lead.chkVisaConditions || false, chkIdPassport: lead.chkIdPassport || false, chkInsuranceCov: lead.chkInsuranceCov || false,
-            chkForex: lead.chkForex || false, chkIntlCard: lead.chkIntlCard || false, chkCurrency: lead.chkCurrency || false, chkLocalPayment: lead.chkLocalPayment || false,
-            chkDressCode: lead.chkDressCode || false, chkLocalCustoms: lead.chkLocalCustoms || false, chkWeather: lead.chkWeather || false, chkSafety: lead.chkSafety || false,
-            ackItinerary: lead.ackItinerary || false, ackVoucher: lead.ackVoucher || false, ackBriefing: lead.ackBriefing || false,
-            clrOpsServices: lead.clrOpsServices || false, clrOpsDocs: lead.clrOpsDocs || false, clrFinPayment: lead.clrFinPayment || false, clrFinSupplier: lead.clrFinSupplier || false, clrMgrReview: lead.clrMgrReview || false, clrReadyDeparture: lead.clrReadyDeparture || false,
+            domVendorType: lead.domVendorType || 'Complete Package', 
+            domHotelVoucherReceived: lead.domHotelVoucherReceived || false,
+            domHotelContactShared: lead.domHotelContactShared || false,
+            domVehicleDetailsReceived: lead.domVehicleDetailsReceived || false,
+            domDriverContactShared: lead.domDriverContactShared || false,
             
-            // Arrays Setup (CRITICAL: Defaulting to skeleton arrays if empty so they never disappear)
-            intHotels: Array.isArray(lead.intHotels) && lead.intHotels.length > 0 ? lead.intHotels : [{ hotelName: '', location: '', confirmed: false, voucherShared: false }, { hotelName: '', location: '', confirmed: false, voucherShared: false }],
+            vendorPayStatus_DMC: lead.vendorPayStatus_DMC || '',
+            vendorPayStatus_Hotel1: lead.vendorPayStatus_Hotel1 || '',
+            vendorPayStatus_Hotel2: lead.vendorPayStatus_Hotel2 || '',
+            vendorPayStatus_Vehicle: lead.vendorPayStatus_Vehicle || '',
             
-            domHotels: Array.isArray(lead.domHotels) && lead.domHotels.length > 0 ? lead.domHotels : [
-                { hotelName: '', location: '', confirmed: false, voucherShared: false },
-                { hotelName: '', location: '', confirmed: false, voucherShared: false },
-                { hotelName: '', location: '', confirmed: false, voucherShared: false }
-            ],
+            advWeatherClothing: lead.advWeatherClothing || false,
+            advSafetyGuidelines: lead.advSafetyGuidelines || false,
+            advIdProof: lead.advIdProof || false,
+            journPickupDetails: lead.journPickupDetails || false,
+            journHotelContact: lead.journHotelContact || false,
+            journEmergencyContact: lead.journEmergencyContact || false,
+            journHotelCheckin: lead.journHotelCheckin || false,
             
-            domTransports: Array.isArray(lead.domTransports) && lead.domTransports.length > 0 ? lead.domTransports : [
-                { transportType: '', bookingStatus: '', ticketSharedToClient: '', flight: { onward: {}, return: {} }, train: { onward: {}, return: {} }, bus: { onward: {}, return: {} } }
-            ]
+            // Standard shared booleans
+            clrOpsServices: lead.clrOpsServices || false, clrOpsDocs: lead.clrOpsDocs || false, clrFinPayment: lead.clrFinPayment || false, clrFinSupplier: lead.clrFinSupplier || false, clrMgrReview: lead.clrMgrReview || false, clrReadyDeparture: lead.clrReadyDeparture || false
         });
     };
 
     const handleEditSubmit = (e) => {
         e.preventDefault();
 
-        // === FIX 2: BUNDLE ALL FULFILLMENT LOOSE VARIABLES ===
         const fulfillmentKeys = [
-            'flBaggageReq', 'flBaggageBookedBy', 'flBaggageStatus', 'flBaggageSupport', 'flBaggageKg',
-            'flSeatPref', 'flSeatBookedBy', 'flSeatStatus',
-            'flMealReq', 'flMealType', 'flMealBookedBy', 'flMealStatus', 'flSpecialInst',
-            'docCompleted', 'locTransVehicleAssigned', 'locTransDriverDetailsShared', 'locTransDriverContactShared',
-            'domSpecialReqStatus', 'domSpecialReqCompleted',
-            'dmcConfirmed', 'dmcHotelVoucher', 'dmcTransferVoucher', 'dmcSightseeingVoucher', 'dmcEmergencyContact',
-            'transAirportConf', 'transVehicleAssigned', 'transDriverDetails', 'transDriverContact', 'transPtPExplained',
-            'chkLocalRules', 'chkTourismTax', 'chkDestRestrictions', 'chkPermits',
-            'chkBoardingRules', 'chkVisaConditions', 'chkIdPassport', 'chkInsuranceCov',
-            'chkForex', 'chkIntlCard', 'chkCurrency', 'chkLocalPayment',
-            'chkDressCode', 'chkLocalCustoms', 'chkWeather', 'chkSafety',
-            'ackItinerary', 'ackVoucher', 'ackBriefing', 'ackBriefingBy', 'ackBriefingDate', 'ackRemarks',
+            'flightTicketVerified', 'flBaggageDetails', 'flSeatSelection', 'flMealStatusCheck', 'flBoardingPassSupport',
+            'insIssuedChk',
+            'dmcConfReceived', 'dmcDriverDetails', 'dmcEmergencyContactReq', 'dmcPtPService',
+            'specialReqStatusVal', 'briefingDateVal', 'briefedByVal', 'briefedMethodVal',
+            'advLocalRules', 'advTravelRestrictions', 'advTourismTax', 'advPermitReq',
+            'finForex', 'finCurrency', 'finIntlCard', 'finLocalPayment',
+            'destWeather', 'destCustoms', 'destSafety', 'destEmergency',
+            
+            'domTransportType', 'domTicketVerified', 'domBagDetails', 'domSeatSelection', 'domMealStatus', 'domBoardingPass', 'domSeatBerthConfirmed',
+            'domVendorType', 'domHotelVoucherReceived', 'domHotelContactShared', 'domVehicleDetailsReceived', 'domDriverContactShared',
+            'vendorPayStatus_DMC', 'vendorPayStatus_Hotel1', 'vendorPayStatus_Hotel2', 'vendorPayStatus_Vehicle',
+            'advWeatherClothing', 'advSafetyGuidelines', 'advIdProof',
+            'journPickupDetails', 'journHotelContact', 'journEmergencyContact', 'journHotelCheckin',
+            
             'clrOpsServices', 'clrOpsDocs', 'clrOpsRemarks', 'clrFinPayment', 'clrFinSupplier', 'clrFinRemarks', 'clrMgrReview', 'clrReadyDeparture'
         ];
 
@@ -323,7 +441,6 @@ export default function Fulfillment() {
             }
         });
 
-        // Pack the stringified fulfillment JSON alongside the standard lead data
         const payloadToSave = {
             ...selectedLeadForEdit,
             fulfillmentData: JSON.stringify(fulfillmentData)
@@ -337,970 +454,835 @@ export default function Fulfillment() {
         setSelectedLeadForEdit(prev => ({ ...prev, [field]: value }));
     };
 
-    const handleHotelChange = (hotelArrayKey, index, field, value) => {
-        const newHotels = [...selectedLeadForEdit[hotelArrayKey]];
-        newHotels[index] = { ...newHotels[index], [field]: value };
-        handleFieldChange(hotelArrayKey, newHotels);
-    };
-
-    // Special Requirements extraction helper
-    const specialReqOptions = [
-        { id: 'reqVeg', label: 'Vegetarian Meal' }, { id: 'reqFloating', label: 'Floating Breakfast' },
-        { id: 'reqWheelchair', label: 'Wheelchair Assistance' }, { id: 'reqDecor', label: 'Special Decoration' },
-        { id: 'reqSenior', label: 'Senior Citizen' }, { id: 'reqBirthday', label: 'Birthday During Trip' },
-        { id: 'reqHoneymoon', label: 'Honeymoon Perks' }, { id: 'reqAnniversary', label: 'Anniversary During Trip' },
-        { id: 'reqCandlelight', label: 'Candlelight Dinner' }
-    ];
-
     const inputCls = "w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm focus:border-cyan-500 outline-none";
     const selectCls = "w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm focus:border-cyan-500 outline-none cursor-pointer";
     const readonlyCls = "w-full px-3 py-2 bg-slate-900/50 border border-slate-800 rounded text-slate-400 text-sm cursor-not-allowed font-medium opacity-80 focus:outline-none";
-    const sectionCls = "p-5 rounded-xl border border-slate-800 bg-slate-900/40 shadow-sm relative";
-    const sectionHeadCls = "text-sm font-bold text-cyan-400 mb-5 pb-2 border-b border-slate-700/50 tracking-wider uppercase";
 
     return (
         <div ref={mainRef} className="w-full bg-[#0f172a] min-h-screen font-sans text-white overflow-y-auto relative" style={{ height: '100vh' }}>
             <style>{`.custom-date-input::-webkit-calendar-picker-indicator { opacity: 0; position: absolute; top: 0; left: 0; width: 100%; height: 100%; cursor: pointer; }`}</style>
             
-            <div className="p-4 sm:p-6">
-                {notification.show && (
-                    <div className={`fixed top-5 left-1/2 -translate-x-1/2 z-[150] flex items-center gap-3 px-4 py-2.5 rounded-xl border shadow-2xl text-xs font-bold bg-[#0d233e] tracking-wide animate-in fade-in slide-in-from-top-4 ${notification.type === 'success' ? 'border-emerald-500 text-emerald-400' : 'border-red-500 text-red-400'}`}>
-                        {notification.type === 'success' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
-                        <span>{notification.message}</span>
-                    </div>
-                )}
-
-                <div className="py-12 mb-0 sm:mb-8">
-                    <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Fulfillment Dashboard</h1>
-                    <p className="text-slate-400 text-sm sm:text-base mt-1">Manage fulfillment processing and department clearances.</p>
+            {notification.show && (
+                <div className={`fixed top-5 left-1/2 -translate-x-1/2 z-[150] flex items-center gap-3 px-4 py-2.5 rounded-xl border shadow-2xl text-xs font-bold bg-[#0d233e] tracking-wide animate-in fade-in slide-in-from-top-4 ${notification.type === 'success' ? 'border-emerald-500 text-emerald-400' : 'border-red-500 text-red-400'}`}>
+                    {notification.type === 'success' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+                    <span>{notification.message}</span>
                 </div>
+            )}
 
-                <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-                    {categories.map((cat) => (
-                        <div key={cat.id} onClick={() => handleTabChange(cat.id)} className={`relative p-5 rounded-xl cursor-pointer transition-all border ${activeTab === cat.id ? 'ring-2 ring-offset-2 border-slate-500 bg-[#07202a] text-white' : 'bg-transparent border-slate-700/20 text-slate-200'}`}>
-                            <div className="flex justify-between items-start mb-2">
-                                <div className={`p-3 rounded-lg ${activeTab === cat.id ? 'bg-slate-700 text-white' : 'bg-slate-800/20 text-slate-300'}`}><cat.icon size={24} /></div>
-                                <span className={`text-xl font-bold ${activeTab === cat.id ? 'text-white' : 'text-slate-200'}`}>{cat.count}</span>
-                            </div>
-                            <h3 className={`font-semibold text-base ${activeTab === cat.id ? 'text-white' : 'text-slate-200'}`}>{cat.label}</h3>
-                            {activeTab === cat.id && <div className="absolute bottom-0 left-0 w-full h-1 rounded-b-xl bg-slate-700" />}
+            {!selectedLeadForEdit ? (
+                <>
+                    <div className="p-4 sm:p-6">
+                        <div className="py-12 mb-0 sm:mb-8">
+                            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Fulfillment Dashboard</h1>
+                            <p className="text-slate-400 text-sm sm:text-base mt-1">Manage fulfillment processing and department clearances.</p>
                         </div>
-                    ))}
-                </div>
 
-                <div className="bg-transparent border border-slate-700/30 rounded-xl shadow-sm overflow-hidden">
-                    <div className="flex flex-col sm:flex-row justify-between p-4 sm:p-5 border-b border-slate-700/20 gap-3">
-                        <h2 className="text-base sm:text-lg font-bold text-white">{activeTab} <span className="text-slate-400 font-normal text-sm ml-2">({filtered.length} records)</span></h2>
-                        <div className="flex items-center gap-2 w-full sm:w-auto">
-                            <div className="relative flex-1 sm:w-64">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
-                                <input type="text" placeholder="Search..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-9 pr-4 py-2 text-sm bg-transparent border border-slate-600 rounded-lg text-slate-100" />
+                        <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+                            {categories.map((cat) => (
+                                <div key={cat.id} onClick={() => handleTabChange(cat.id)} className={`relative p-5 rounded-xl cursor-pointer transition-all border ${activeTab === cat.id ? 'ring-2 ring-offset-2 border-slate-500 bg-[#07202a] text-white' : 'bg-transparent border-slate-700/20 text-slate-200'}`}>
+                                    <div className="flex justify-between items-start mb-2">
+                                        <div className={`p-3 rounded-lg ${activeTab === cat.id ? 'bg-slate-700 text-white' : 'bg-slate-800/20 text-slate-300'}`}><cat.icon size={24} /></div>
+                                        <span className={`text-xl font-bold ${activeTab === cat.id ? 'text-white' : 'text-slate-200'}`}>{cat.count}</span>
+                                    </div>
+                                    <h3 className={`font-semibold text-base ${activeTab === cat.id ? 'text-white' : 'text-slate-200'}`}>{cat.label}</h3>
+                                    {activeTab === cat.id && <div className="absolute bottom-0 left-0 w-full h-1 rounded-b-xl bg-slate-700" />}
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="bg-transparent border border-slate-700/30 rounded-xl shadow-sm overflow-hidden">
+                            <div className="flex flex-col sm:flex-row justify-between p-4 sm:p-5 border-b border-slate-700/20 gap-3">
+                                <h2 className="text-base sm:text-lg font-bold text-white">{activeTab} <span className="text-slate-400 font-normal text-sm ml-2">({filtered.length} records)</span></h2>
+                                <div className="flex items-center gap-2 w-full sm:w-auto">
+                                    <div className="relative flex-1 sm:w-64">
+                                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={15} />
+                                        <input type="text" placeholder="" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full pl-9 pr-4 py-2 text-sm bg-transparent border border-slate-600 rounded-lg text-slate-100 outline-none focus:border-cyan-500" />
+                                    </div>
+                                </div>
                             </div>
+
+                            <div className="hidden sm:block overflow-x-auto">
+                                <table className="w-full text-left text-sm text-slate-200 min-w-[900px]">
+                                    <thead className="bg-transparent border-b border-slate-700/20 text-xs uppercase tracking-wider text-slate-400 font-semibold">
+                                        <tr>
+                                            {activeTab === 'Trip Completed' && <th className="px-6 py-4">Review Status</th>}
+                                            <th className="px-6 py-4">Lead ID</th>
+                                            <th className="px-6 py-4">Client Name</th>
+                                            <th className="px-6 py-4">Destination</th>
+                                            {activeTab !== 'Confirmed Bookings' && <th className="px-6 py-4">Sales Exec</th>}
+                                            {activeTab !== 'Trip Completed' && <th className="px-6 py-4">Ops Exec</th>}
+                                            {activeTab === 'Confirmed Bookings' && <th className="px-6 py-4">Booking Date</th>}
+                                            {['Trips For This Month', 'Upcoming Trips', 'On-Trip'].includes(activeTab) && <th className="px-6 py-4">Start Date</th>}
+                                            <th className="px-6 py-4 text-right">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-700/20">
+                                        {isLoading ? <tr><td colSpan="12" className="px-6 py-12 text-center text-slate-500">Querying records...</td></tr> : paginated.length > 0 ? paginated.map(row => (
+                                            <tr key={row.id} className="hover:bg-slate-800/30 transition-colors">
+                                                {activeTab === 'Trip Completed' && <td className="px-6 py-4 text-xs font-bold text-red-500">{row.reviewStatus || 'Pending'}</td>}
+                                                <td className="px-6 py-4 font-mono font-bold">LMN{row.id}</td>
+                                                <td className="px-6 py-4 font-bold text-white">{row.customerName}</td>
+                                                <td className="px-6 py-4 text-emerald-400 flex items-center gap-1 mt-3"><MapPin size={12} />{row.destination}</td>
+                                                {activeTab !== 'Confirmed Bookings' && <td className="px-6 py-4">{row.salesExecutive}</td>}
+                                                {activeTab !== 'Trip Completed' && <td className="px-6 py-4">{row.operationsExecutive}</td>}
+                                                {activeTab === 'Confirmed Bookings' && <td className="px-6 py-4">{row.bookingDate}</td>}
+                                                {['Trips For This Month', 'Upcoming Trips', 'On-Trip'].includes(activeTab) && <td className="px-6 py-4">{row.travelDate}</td>}
+                                                <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                    <div className="flex items-center justify-end gap-3">
+                                                        <button type="button" onClick={() => setSelectedLeadForView(row)} className="text-slate-400 hover:text-blue-300 transition-colors cursor-pointer flex items-center gap-1 bg-transparent border-none p-0" title="View Profile">
+                                                            <Eye size={18} /> View
+                                                        </button>
+                                                        
+                                                        {['Confirmed Bookings', 'Trips For This Month', 'Upcoming Trips'].includes(activeTab) && (
+                                                            <button type="button" onClick={() => handleEditClick(row)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-cyan-900/40 text-cyan-400 hover:bg-cyan-800/60 border border-cyan-800 rounded transition-colors cursor-pointer">
+                                                                <Pencil size={14} /> Edit
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )) : <tr><td colSpan="12" className="px-6 py-12 text-center text-slate-500">No records found.</td></tr>}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} totalEntries={filtered.length} entriesPerPage={entriesPerPage} />
                         </div>
                     </div>
 
-                    <div className="hidden sm:block overflow-x-auto">
-                        <table className="w-full text-left text-sm text-slate-200 min-w-[900px]">
-                            <thead className="bg-transparent border-b border-slate-700/20 text-xs uppercase tracking-wider text-slate-400 font-semibold">
-                                <tr>
-                                    {activeTab === 'Trip Completed' && <th className="px-6 py-4">Review Status</th>}
-                                    <th className="px-6 py-4">Lead ID</th>
-                                    <th className="px-6 py-4">Client Name</th>
-                                    <th className="px-6 py-4">Destination</th>
-                                    {activeTab !== 'Confirmed Bookings' && <th className="px-6 py-4">Sales Exec</th>}
-                                    {activeTab !== 'Trip Completed' && <th className="px-6 py-4">Ops Exec</th>}
-                                    {activeTab === 'Confirmed Bookings' && <th className="px-6 py-4">Booking Date</th>}
-                                    {['Trips For This Month', 'Upcoming Trips', 'On-Trip'].includes(activeTab) && <th className="px-6 py-4">Start Date</th>}
-                                    <th className="px-6 py-4 text-right">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-700/20">
-                                {isLoading ? <tr><td colSpan="12" className="px-6 py-12 text-center text-slate-500">Querying records...</td></tr> : paginated.length > 0 ? paginated.map(row => (
-                                    <tr key={row.id} className="hover:bg-slate-800/30 transition-colors">
-                                        {activeTab === 'Trip Completed' && <td className="px-6 py-4 text-xs font-bold text-red-500">{row.reviewStatus || 'Pending'}</td>}
-                                        <td className="px-6 py-4 font-mono font-bold">LMN{row.id}</td>
-                                        <td className="px-6 py-4 font-bold text-white">{row.customerName}</td>
-                                        <td className="px-6 py-4 text-emerald-400 flex items-center gap-1 mt-3"><MapPin size={12} />{row.destination}</td>
-                                        {activeTab !== 'Confirmed Bookings' && <td className="px-6 py-4">{row.salesExecutive}</td>}
-                                        {activeTab !== 'Trip Completed' && <td className="px-6 py-4">{row.operationsExecutive}</td>}
-                                        {activeTab === 'Confirmed Bookings' && <td className="px-6 py-4">{row.bookingDate}</td>}
-                                        {['Trips For This Month', 'Upcoming Trips', 'On-Trip'].includes(activeTab) && <td className="px-6 py-4">{row.travelDate}</td>}
-                                        <td className="px-6 py-4 text-right whitespace-nowrap">
-                                            <div className="flex items-center justify-end gap-3">
-                                                <button type="button" onClick={() => setSelectedLeadForView(row)} className="text-slate-400 hover:text-blue-300 transition-colors cursor-pointer flex items-center gap-1" title="View Profile">
-                                                    <Eye size={18} /> View
-                                                </button>
-                                                
-                                                {/* Show Form Edit button only for Pre-Trip tabs */}
-                                                {['Confirmed Bookings', 'Trips For This Month', 'Upcoming Trips'].includes(activeTab) && (
-                                                    <button type="button" onClick={() => handleEditClick(row)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-cyan-900/40 text-cyan-400 hover:bg-cyan-800/60 border border-cyan-800 rounded transition-colors cursor-pointer">
-                                                        <Pencil size={14} /> Edit
-                                                    </button>
+                    {/* ─── QUICK PROFILE VIEW MODAL ───────────────────────────────────────── */}
+                    {selectedLeadForView && (
+                        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[150] p-4">
+                            <div className="bg-[#0f172a] border border-slate-700/50 rounded-lg shadow-2xl w-full max-w-sm p-6">
+                                <div className="flex justify-between items-center mb-4 border-b border-slate-700/50 pb-2">
+                                    <h2 className="text-sm font-bold text-white uppercase tracking-wider">Profile Inspector — LMN{selectedLeadForView.id}</h2>
+                                    <button type="button" onClick={() => setSelectedLeadForView(null)} className="text-slate-400 hover:text-white cursor-pointer bg-transparent border-none p-0"><X size={20} /></button>
+                                </div>
+                                <div className="space-y-3 text-slate-300 text-sm">
+                                    <p className="flex justify-between border-b border-slate-800 pb-1">
+                                        <span className="text-slate-500 font-medium">Customer</span> 
+                                        <span className="font-bold text-white">{selectedLeadForView.customerName}</span>
+                                    </p>
+                                    <p className="flex justify-between border-b border-slate-800 pb-1">
+                                        <span className="text-slate-500 font-medium">Destination</span> 
+                                        <span className="text-cyan-400 font-bold">{selectedLeadForView.destination}</span>
+                                    </p>
+                                    <p className="flex justify-between border-b border-slate-800 pb-1">
+                                        <span className="text-slate-500 font-medium">Travel Date</span> 
+                                        <span className="text-slate-300">{selectedLeadForView.travelDate || 'TBD'}</span>
+                                    </p>
+                                    <p className="flex justify-between border-b border-slate-800 pb-1">
+                                        <span className="text-slate-500 font-medium">Return Date</span> 
+                                        <span className="text-slate-300">{selectedLeadForView.returnDate || 'TBD'}</span>
+                                    </p>
+                                    <p className="flex justify-between pb-1">
+                                        <span className="text-slate-500 font-medium">Status</span> 
+                                        <span className="text-emerald-400 font-bold">{selectedLeadForView.status}</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </>
+            ) : (
+                /* ─── FULFILLMENT FORM (FULL SCREEN REPLACEMENT) ──────────────────── */
+                <div className="bg-[#0f172a] flex flex-col w-full min-h-screen text-slate-100 relative z-50">
+                    <div className="sticky top-0 px-4 sm:px-6 lg:px-8 py-4 sm:py-5 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] z-50 flex-shrink-0 shadow-md">
+                        <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white flex items-center gap-2 truncate pr-4">
+                            <PlaneTakeoff size={20} className="text-cyan-400 flex-shrink-0" />
+                            <span className="truncate hidden sm:inline">
+                                {selectedLeadForEdit.tourType === 'Domestic Tour' ? 'Domestic Fulfillment Form' : 'International Fulfillment Form'}
+                            </span>
+                            <span className="text-sm font-mono font-semibold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 flex-shrink-0">
+                                LMN{String(selectedLeadForEdit.id || '').padStart(4, '0')}
+                            </span>
+                        </h2>
+                        <button type="button" onClick={() => setSelectedLeadForEdit(null)} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-800 flex-shrink-0 ml-auto cursor-pointer border-none bg-transparent">
+                            <X size={20} />
+                        </button>
+                    </div>
+
+                    <div className="flex-1 w-full relative pb-10">
+                       <form id="edit-fulfillment-form" onSubmit={handleEditSubmit} className="px-4 sm:px-6 lg:px-8 py-6 space-y-8 w-full">
+                            
+                            {selectedLeadForEdit.tourType === 'International Tour' ? (
+                                /* ───────────────────────────────────────────── */
+                                /* INTERNATIONAL FORM                            */
+                                /* ───────────────────────────────────────────── */
+                                <div className="space-y-6">
+                                    
+                                    {/* CUSTOMER DETAILS */}
+                                    <FormSection title="Customer Details" titleColor="text-emerald-500">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">Customer Name</label>
+                                                <input type="text" readOnly value={selectedLeadForEdit.customerName || ''} className={readonlyCls} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">Destination</label>
+                                                <input type="text" readOnly value={selectedLeadForEdit.destination || ''} className={readonlyCls} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">No. of Pax</label>
+                                                <input type="text" readOnly value={selectedLeadForEdit.noOfPax || ''} className={readonlyCls} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">Departure Date</label>
+                                                <input type="text" readOnly value={selectedLeadForEdit.departureDate || selectedLeadForEdit.travelDate || ''} className={readonlyCls} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">Return Date</label>
+                                                <input type="text" readOnly value={selectedLeadForEdit.returnDate || ''} className={readonlyCls} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">Services</label>
+                                                <input type="text" readOnly value={selectedLeadForEdit.confirmedServices || selectedLeadForEdit.services || ''} className={readonlyCls} />
+                                            </div>
+                                        </div>
+                                    </FormSection>
+
+                                    {/* FLIGHT DETAILS */}
+                                    <FormSection 
+                                        title="Flight Details" 
+                                        action={<button type="button" onClick={() => setViewModal({ show: true, title: 'FLIGHT DETAILS', content: selectedLeadForEdit.flights && selectedLeadForEdit.flights.length > 0 ? selectedLeadForEdit.flights : 'No flight history available.' })} className="text-xs font-bold text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0 uppercase">View Details</button>}
+                                    >
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-12 items-center gap-4 border-b border-slate-700/30 pb-3">
+                                                <span className="col-span-4 sm:col-span-3 text-sm font-bold text-white">Ticket Verified</span>
+                                                <div className="col-span-8 sm:col-span-9 flex items-center">
+                                                    <input type="checkbox" checked={selectedLeadForEdit.flightTicketVerified} onChange={e => handleFieldChange('flightTicketVerified', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-12 items-center gap-4 border-b border-slate-700/30 pb-3">
+                                                <span className="col-span-4 sm:col-span-3 text-sm font-bold text-white">Baggage Details</span>
+                                                <div className="col-span-8 sm:col-span-9 flex gap-6 items-center">
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input type="checkbox" checked={selectedLeadForEdit.flBaggageDetails === 'Added'} onChange={() => handleFieldChange('flBaggageDetails', 'Added')} className="w-4 h-4 rounded text-cyan-500" />
+                                                        <span className="text-sm text-slate-300">Added</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input type="checkbox" checked={selectedLeadForEdit.flBaggageDetails === 'Not Required'} onChange={() => handleFieldChange('flBaggageDetails', 'Not Required')} className="w-4 h-4 rounded text-cyan-500" />
+                                                        <span className="text-sm text-slate-300">Not Required</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-12 items-center gap-4 border-b border-slate-700/30 pb-3">
+                                                <span className="col-span-4 sm:col-span-3 text-sm font-bold text-white">Seat Selection</span>
+                                                <div className="col-span-8 sm:col-span-9 flex gap-6 items-center">
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input type="checkbox" checked={selectedLeadForEdit.flSeatSelection === 'Selected'} onChange={() => handleFieldChange('flSeatSelection', 'Selected')} className="w-4 h-4 rounded text-cyan-500" />
+                                                        <span className="text-sm text-slate-300">Selected</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input type="checkbox" checked={selectedLeadForEdit.flSeatSelection === 'Not Required'} onChange={() => handleFieldChange('flSeatSelection', 'Not Required')} className="w-4 h-4 rounded text-cyan-500" />
+                                                        <span className="text-sm text-slate-300">Not Required</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-12 items-center gap-4 border-b border-slate-700/30 pb-3">
+                                                <span className="col-span-4 sm:col-span-3 text-sm font-bold text-white">Meal Status</span>
+                                                <div className="col-span-8 sm:col-span-9 flex items-center">
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input type="checkbox" checked={selectedLeadForEdit.flMealStatusCheck} onChange={e => handleFieldChange('flMealStatusCheck', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                        <span className="text-sm text-slate-300">Added</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-12 items-center gap-4 border-b border-slate-700/30 pb-3">
+                                                <span className="col-span-4 sm:col-span-3 text-sm font-bold text-white">Boarding Pass Support</span>
+                                                <div className="col-span-8 sm:col-span-9 flex gap-6 items-center">
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input type="checkbox" checked={selectedLeadForEdit.flBoardingPassSupport === 'Team'} onChange={() => handleFieldChange('flBoardingPassSupport', 'Team')} className="w-4 h-4 rounded text-cyan-500" />
+                                                        <span className="text-sm text-slate-300">Team</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input type="checkbox" checked={selectedLeadForEdit.flBoardingPassSupport === 'Client'} onChange={() => handleFieldChange('flBoardingPassSupport', 'Client')} className="w-4 h-4 rounded text-cyan-500" />
+                                                        <span className="text-sm text-slate-300">Client</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </FormSection>
+
+                                    {/* TRAVEL INSURANCE */}
+                                    {selectedLeadForEdit.insRequired === 'Yes' && (
+                                        <FormSection title="Travel Insurance">
+                                            <div className="flex items-center gap-4">
+                                                <input type="checkbox" checked={selectedLeadForEdit.insIssuedChk} onChange={e => handleFieldChange('insIssuedChk', e.target.checked)} className="w-4 h-4 rounded" />
+                                                <span className="text-sm text-white font-medium">Issued</span>
+                                            </div>
+                                        </FormSection>
+                                    )}
+
+                                    {/* VISA DETAILS */}
+                                    {selectedLeadForEdit.visas && selectedLeadForEdit.visas.length > 0 && selectedLeadForEdit.visas[0].visaType && selectedLeadForEdit.visas[0].visaType !== 'VISA-Free' && (
+                                        <FormSection 
+                                            title="VISA Details"
+                                            action={<button type="button" onClick={() => setViewModal({ show: true, title: 'VISA DETAILS', content: selectedLeadForEdit.visas && selectedLeadForEdit.visas.length > 0 ? selectedLeadForEdit.visas : 'No VISA history available.' })} className="text-xs font-bold text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0 uppercase">View Details</button>}
+                                        >
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
+                                                <div className="space-y-4">
+                                                    <div className="flex items-center gap-4">
+                                                        <span className="w-32 text-sm font-bold text-white">VISA Status</span>
+                                                        <input type="text" readOnly value={selectedLeadForEdit.visas[0].visaStatus || ''} className="w-32 bg-slate-900 border border-slate-700 rounded p-1 text-center text-sm text-white focus:outline-none" />
+                                                    </div>
+                                                    {selectedLeadForEdit.visas[0].arrivalCardApplicable === 'Yes' && (
+                                                        <div className="flex items-center gap-4">
+                                                            <span className="w-32 text-sm font-bold text-white">Arrival Card Status</span>
+                                                            <input type="text" readOnly value={selectedLeadForEdit.visas[0].arrivalCardStatus || ''} className="w-32 bg-slate-900 border border-slate-700 rounded p-1 text-center text-sm text-white focus:outline-none" />
+                                                        </div>
+                                                    )}
+                                                    {selectedLeadForEdit.visas[0].transitVisaReq === 'Yes' && (
+                                                        <div className="flex items-center gap-4">
+                                                            <span className="w-32 text-sm font-bold text-white">Transit VISA Status</span>
+                                                            <input type="text" readOnly value={selectedLeadForEdit.visas[0].transitVisaStatus || ''} className="w-32 bg-slate-900 border border-slate-700 rounded p-1 text-center text-sm text-white focus:outline-none" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </FormSection>
+                                    )}
+
+                                    {/* DMC FULFILMENT */}
+                                    <FormSection 
+                                        title="DMC Fulfilment"
+                                        action={<button type="button" onClick={() => setViewModal({ show: true, title: 'DMC FULFILMENT', content: selectedLeadForEdit.vendorRequests && selectedLeadForEdit.vendorRequests.length > 0 ? selectedLeadForEdit.vendorRequests : 'No DMC/Vendor history available.' })} className="text-xs font-bold text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0 uppercase">View Details</button>}
+                                    >
+                                        <div className="space-y-4">
+                                            <div className="grid grid-cols-12 items-center gap-4 border-b border-slate-700/30 pb-3">
+                                                <span className="col-span-5 sm:col-span-4 text-sm font-bold text-white">DMC Confirmation Received</span>
+                                                <div className="col-span-7 sm:col-span-8 flex items-center">
+                                                    <input type="checkbox" checked={selectedLeadForEdit.dmcConfReceived} onChange={e => handleFieldChange('dmcConfReceived', e.target.checked)} className="w-5 h-5 rounded border border-slate-600 bg-transparent text-cyan-500" />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-12 items-center gap-4 border-b border-slate-700/30 pb-3">
+                                                <span className="col-span-5 sm:col-span-4 text-sm font-bold text-white">Driver Details Received</span>
+                                                <div className="col-span-7 sm:col-span-8 flex items-center">
+                                                    <input type="checkbox" checked={selectedLeadForEdit.dmcDriverDetails} onChange={e => handleFieldChange('dmcDriverDetails', e.target.checked)} className="w-5 h-5 rounded border border-slate-600 bg-transparent text-cyan-500" />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-12 items-center gap-4 border-b border-slate-700/30 pb-3">
+                                                <span className="col-span-5 sm:col-span-4 text-sm font-bold text-white">Emergency Contact Received</span>
+                                                <div className="col-span-7 sm:col-span-8 flex items-center">
+                                                    <input type="checkbox" checked={selectedLeadForEdit.dmcEmergencyContactReq} onChange={e => handleFieldChange('dmcEmergencyContactReq', e.target.checked)} className="w-5 h-5 rounded border border-slate-600 bg-transparent text-cyan-500" />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-12 items-center gap-4 border-b border-slate-700/30 pb-3">
+                                                <span className="col-span-5 sm:col-span-4 text-sm font-bold text-white">Point-to-Point Service</span>
+                                                <div className="col-span-7 sm:col-span-8 flex flex-col sm:flex-row gap-4 sm:gap-6 items-start sm:items-center">
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input type="checkbox" checked={selectedLeadForEdit.dmcPtPService === 'Explained to Client'} onChange={() => handleFieldChange('dmcPtPService', 'Explained to Client')} className="w-4 h-4 rounded text-cyan-500" />
+                                                        <span className="text-sm text-slate-300">Explained to Client</span>
+                                                    </label>
+                                                    <label className="flex items-center gap-2 cursor-pointer">
+                                                        <input type="checkbox" checked={selectedLeadForEdit.dmcPtPService === 'Not Applicable'} onChange={() => handleFieldChange('dmcPtPService', 'Not Applicable')} className="w-4 h-4 rounded text-cyan-500" />
+                                                        <span className="text-sm text-slate-300">Not Applicable</span>
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4 pt-2">
+                                                <h3 className="text-sm font-bold text-cyan-400">Special Requirements Status</h3>
+                                                <button type="button" onClick={() => setViewModal({ show: true, title: 'SPECIAL REQUIREMENTS', content: {
+                                                    "Veg Meal": selectedLeadForEdit.reqVeg,
+                                                    "Wheel Chair": selectedLeadForEdit.reqWheelchair,
+                                                    "Senior Citizen": selectedLeadForEdit.reqSenior,
+                                                    "Honeymoon Perks": selectedLeadForEdit.reqHoneymoon,
+                                                    "Candlelight Dinner": selectedLeadForEdit.reqCandlelight,
+                                                    "Floating Breakfast": selectedLeadForEdit.reqFloating,
+                                                    "Special Decoration": selectedLeadForEdit.reqDecor,
+                                                    "Birthday": selectedLeadForEdit.reqBirthday,
+                                                    "Anniversary": selectedLeadForEdit.reqAnniversary,
+                                                    "Other": selectedLeadForEdit.reqManualAdd
+                                                } })} className="text-xs text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0">View Details</button>
+                                                <CustomSelect value={selectedLeadForEdit.specialReqStatusVal} onChange={v => handleFieldChange('specialReqStatusVal', v)} options={['Pending', 'Completed', 'Not Applicable']} className="w-48 px-2 py-1.5 bg-slate-900 text-white text-sm rounded border border-slate-700 outline-none focus:border-cyan-500" />
+                                            </div>
+                                        </div>
+                                    </FormSection>
+
+                                    {/* PAYMENT CLEARANCE */}
+                                    <FormSection title="Payment Clearance">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">Client Payment Status</label>
+                                                <input type="text" readOnly value={selectedLeadForEdit.clientPayStatus || 'Pending'} className={readonlyCls} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">Vendor Payment Status</label>
+                                                <input type="text" readOnly value={selectedLeadForEdit.vendorPayStatus || 'Pending'} className={readonlyCls} />
+                                            </div>
+                                        </div>
+                                    </FormSection>
+
+                                    {/* BRIEFING DETAILS */}
+                                    <FormSection title="Briefing Details">
+                                        <div className="space-y-4 border-b border-slate-700/50 pb-6">
+                                            <div className="grid grid-cols-12 items-center gap-4">
+                                                <div className="col-span-4 sm:col-span-3">
+                                                    <span className="text-sm font-bold text-white block">Finalised Itinerary</span>
+                                                </div>
+                                                <div className="col-span-8 sm:col-span-9">
+                                                    <button type="button" onClick={() => setViewModal({ show: true, title: 'FINALISED ITINERARY', content: selectedLeadForEdit.customisationRequests && selectedLeadForEdit.customisationRequests.length > 0 ? selectedLeadForEdit.customisationRequests : { Readymade_Package_Details: selectedLeadForEdit.readymadePackageDetails || 'No itinerary history available.' } })} className="text-xs font-bold text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0 uppercase">View Details</button>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-12 items-center gap-4">
+                                                <div className="col-span-4 sm:col-span-3">
+                                                    <span className="text-sm font-bold text-white block">Service Voucher</span>
+                                                </div>
+                                                <div className="col-span-8 sm:col-span-9">
+                                                    <input type="file" className="block w-full text-xs text-slate-400 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-cyan-400 hover:file:bg-slate-700 cursor-pointer" />
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-white mb-2">Briefing Date</label>
+                                                    <DatePickerField value={selectedLeadForEdit.briefingDateVal || ''} onChange={e => handleFieldChange('briefingDateVal', e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded text-white text-sm px-3 py-2 outline-none focus:border-cyan-500" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-white mb-2">Briefed By</label>
+                                                    <CustomSelect value={selectedLeadForEdit.briefedByVal} onChange={v => handleFieldChange('briefedByVal', v)} options={operationsStaff} className="w-full bg-slate-900 text-white text-sm rounded border border-slate-700 px-3 py-2 outline-none focus:border-cyan-500" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-white mb-2">Briefed Method</label>
+                                                    <CustomSelect value={selectedLeadForEdit.briefedMethodVal} onChange={v => handleFieldChange('briefedMethodVal', v)} options={['Call', 'WhatsApp', 'Email', 'In-Person']} className="w-full bg-slate-900 text-white text-sm rounded border border-slate-700 px-3 py-2 outline-none focus:border-cyan-500" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Briefing Topics Section */}
+                                        <div className="pt-4">
+                                            <h3 className="text-sm font-bold text-cyan-400 mb-4">Briefing Topics</h3>
+                                            
+                                            {/* Travel Advisory */}
+                                            <div className="mb-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="text-sm font-bold text-white">Travel Advisory</span>
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-sm text-slate-300">
+                                                    <label className="flex items-center justify-between group cursor-pointer hover:bg-slate-800/30 p-1 rounded">
+                                                        <span>Local Rules & Regulations</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.advLocalRules} onChange={e => handleFieldChange('advLocalRules', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                    <label className="flex items-center justify-between group cursor-pointer hover:bg-slate-800/30 p-1 rounded">
+                                                        <span>Tourism / Green Tax</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.advTourismTax} onChange={e => handleFieldChange('advTourismTax', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                    <label className="flex items-center justify-between group cursor-pointer hover:bg-slate-800/30 p-1 rounded">
+                                                        <span>Travel Restrictions</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.advTravelRestrictions} onChange={e => handleFieldChange('advTravelRestrictions', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                    <label className="flex items-center justify-between group cursor-pointer hover:bg-slate-800/30 p-1 rounded">
+                                                        <span>Permit Requirements</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.advPermitReq} onChange={e => handleFieldChange('advPermitReq', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            {/* Financial Guidance */}
+                                            <div className="mb-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="text-sm font-bold text-white">Financial Guidance</span>
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-sm text-slate-300">
+                                                    <label className="flex items-center justify-between group cursor-pointer hover:bg-slate-800/30 p-1 rounded">
+                                                        <span>Forex</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.finForex} onChange={e => handleFieldChange('finForex', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                    <label className="flex items-center justify-between group cursor-pointer hover:bg-slate-800/30 p-1 rounded">
+                                                        <span>International Card Usage</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.finIntlCard} onChange={e => handleFieldChange('finIntlCard', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                    <label className="flex items-center justify-between group cursor-pointer hover:bg-slate-800/30 p-1 rounded">
+                                                        <span>Currency Exchange</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.finCurrency} onChange={e => handleFieldChange('finCurrency', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                    <label className="flex items-center justify-between group cursor-pointer hover:bg-slate-800/30 p-1 rounded">
+                                                        <span>Local Payment Methods</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.finLocalPayment} onChange={e => handleFieldChange('finLocalPayment', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            {/* Destination Guidance */}
+                                            <div className="mb-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="text-sm font-bold text-white">Destination Guidance</span>
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-sm text-slate-300">
+                                                    <label className="flex items-center justify-between group cursor-pointer hover:bg-slate-800/30 p-1 rounded">
+                                                        <span>Weather & Clothing</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.destWeather} onChange={e => handleFieldChange('destWeather', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                    <label className="flex items-center justify-between group cursor-pointer hover:bg-slate-800/30 p-1 rounded">
+                                                        <span>Safety Tips</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.destSafety} onChange={e => handleFieldChange('destSafety', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                    <label className="flex items-center justify-between group cursor-pointer hover:bg-slate-800/30 p-1 rounded">
+                                                        <span>Local Customs & Etiquette</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.destCustoms} onChange={e => handleFieldChange('destCustoms', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                    <label className="flex items-center justify-between group cursor-pointer hover:bg-slate-800/30 p-1 rounded">
+                                                        <span>Emergency Contacts</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.destEmergency} onChange={e => handleFieldChange('destEmergency', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </FormSection>
+
+                                </div>
+                            ) : (
+                                /* ───────────────────────────────────────────── */
+                                /* DOMESTIC FORM                                 */
+                                /* ───────────────────────────────────────────── */
+                                <div className="space-y-6">
+                                    
+                                    {/* CUSTOMER DETAILS */}
+                                    <FormSection title="Customer Details" titleColor="text-emerald-500">
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">Customer Name</label>
+                                                <input type="text" readOnly value={selectedLeadForEdit.customerName || ''} className={readonlyCls} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">Destination</label>
+                                                <input type="text" readOnly value={selectedLeadForEdit.destination || ''} className={readonlyCls} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">No. of Pax</label>
+                                                <input type="text" readOnly value={selectedLeadForEdit.noOfPax || ''} className={readonlyCls} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">Departure Date</label>
+                                                <input type="text" readOnly value={selectedLeadForEdit.departureDate || selectedLeadForEdit.travelDate || ''} className={readonlyCls} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">Return Date</label>
+                                                <input type="text" readOnly value={selectedLeadForEdit.returnDate || ''} className={readonlyCls} />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">Services</label>
+                                                <input type="text" readOnly value={selectedLeadForEdit.confirmedServices || selectedLeadForEdit.services || ''} className={readonlyCls} />
+                                            </div>
+                                        </div>
+                                    </FormSection>
+
+                                    {/* TRANSPORT DETAILS */}
+                                    <FormSection 
+                                        title="Transport Details"
+                                        action={<button type="button" onClick={() => setViewModal({ show: true, title: 'TRANSPORT DETAILS', content: selectedLeadForEdit.domTransports && selectedLeadForEdit.domTransports.length > 0 ? selectedLeadForEdit.domTransports : 'No transport history available.' })} className="text-xs font-bold text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0 uppercase">View Details</button>}
+                                    >
+                                        <div className="grid grid-cols-12 items-center gap-4 border-b border-slate-700/30 pb-4 mb-4">
+                                            <div className="col-span-4 sm:col-span-3">
+                                                <CustomSelect 
+                                                    value={selectedLeadForEdit.domTransportType} 
+                                                    onChange={v => handleFieldChange('domTransportType', v)} 
+                                                    options={['Flight', 'Train', 'Bus', 'None']} 
+                                                    className={selectCls} 
+                                                />
+                                            </div>
+                                            <div className="col-span-8 sm:col-span-9 flex items-center gap-4">
+                                                {selectedLeadForEdit.domTransportType === 'Bus' && (
+                                                    <>
+                                                        <span className="text-sm font-bold text-white">Ticket Verified</span>
+                                                        <input 
+                                                            type="checkbox" 
+                                                            checked={selectedLeadForEdit.domTicketVerified} 
+                                                            onChange={e => handleFieldChange('domTicketVerified', e.target.checked)} 
+                                                            className="w-4 h-4 rounded text-cyan-500" 
+                                                        />
+                                                    </>
                                                 )}
                                             </div>
-                                        </td>
-                                    </tr>
-                                )) : <tr><td colSpan="12" className="px-6 py-12 text-center text-slate-500">No records found.</td></tr>}
-                            </tbody>
-                        </table>
-                    </div>
-                    <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} totalEntries={filtered.length} entriesPerPage={entriesPerPage} />
-                </div>
-            </div>
+                                        </div>
 
-            {/* ─── QUICK PROFILE VIEW MODAL ───────────────────────────────────────── */}
-            {selectedLeadForView && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[150] p-4">
-                    <div className="bg-[#0f172a] border border-slate-700/50 rounded-lg shadow-2xl w-full max-w-sm p-6">
-                        <div className="flex justify-between items-center mb-4 border-b border-slate-700/50 pb-2">
-                            <h2 className="text-sm font-bold text-white uppercase tracking-wider">Profile Inspector — LMN{selectedLeadForView.id}</h2>
-                            <button type="button" onClick={() => setSelectedLeadForView(null)} className="text-slate-400 hover:text-white cursor-pointer"><X size={20} /></button>
-                        </div>
-                        <div className="space-y-3 text-slate-300 text-sm">
-                            <p className="flex justify-between border-b border-slate-800 pb-1">
-                                <span className="text-slate-500 font-medium">Customer</span> 
-                                <span className="font-bold text-white">{selectedLeadForView.customerName}</span>
-                            </p>
-                            <p className="flex justify-between border-b border-slate-800 pb-1">
-                                <span className="text-slate-500 font-medium">Destination</span> 
-                                <span className="text-cyan-400 font-bold">{selectedLeadForView.destination}</span>
-                            </p>
-                            <p className="flex justify-between border-b border-slate-800 pb-1">
-                                <span className="text-slate-500 font-medium">Travel Date</span> 
-                                <span className="text-slate-300">{selectedLeadForView.travelDate || 'TBD'}</span>
-                            </p>
-                            <p className="flex justify-between border-b border-slate-800 pb-1">
-                                <span className="text-slate-500 font-medium">Return Date</span> 
-                                <span className="text-slate-300">{selectedLeadForView.returnDate || 'TBD'}</span>
-                            </p>
-                            <p className="flex justify-between pb-1">
-                                <span className="text-slate-500 font-medium">Status</span> 
-                                <span className="text-emerald-400 font-bold">{selectedLeadForView.status}</span>
-                            </p>
-                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                                            {selectedLeadForEdit.domTransportType === 'Flight' && (
+                                                <div className="space-y-4">
+                                                    <h4 className="text-sm font-bold text-white border-b border-slate-700/50 pb-2">Flight Details</h4>
+                                                    <div className="flex flex-col gap-3">
+                                                        <div className="flex items-center gap-4 justify-between">
+                                                            <span className="text-sm font-bold text-slate-300 w-32">Baggage Details</span>
+                                                            <div className="flex gap-4 flex-1">
+                                                                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={selectedLeadForEdit.domBagDetails === 'Added'} onChange={() => handleFieldChange('domBagDetails', 'Added')} className="w-4 h-4 text-cyan-500" /><span className="text-sm text-slate-300">Added</span></label>
+                                                                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={selectedLeadForEdit.domBagDetails === 'Not Required'} onChange={() => handleFieldChange('domBagDetails', 'Not Required')} className="w-4 h-4 text-cyan-500" /><span className="text-sm text-slate-300">Not Required</span></label>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-4 justify-between">
+                                                            <span className="text-sm font-bold text-slate-300 w-32">Seat Selection</span>
+                                                            <div className="flex gap-4 flex-1">
+                                                                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={selectedLeadForEdit.domSeatSelection === 'Selected'} onChange={() => handleFieldChange('domSeatSelection', 'Selected')} className="w-4 h-4 text-cyan-500" /><span className="text-sm text-slate-300">Selected</span></label>
+                                                                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={selectedLeadForEdit.domSeatSelection === 'Not Required'} onChange={() => handleFieldChange('domSeatSelection', 'Not Required')} className="w-4 h-4 text-cyan-500" /><span className="text-sm text-slate-300">Not Required</span></label>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-4 justify-between">
+                                                            <span className="text-sm font-bold text-slate-300 w-32">Meal Status</span>
+                                                            <div className="flex gap-4 flex-1">
+                                                                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={selectedLeadForEdit.domMealStatus === 'Added'} onChange={() => handleFieldChange('domMealStatus', 'Added')} className="w-4 h-4 text-cyan-500" /><span className="text-sm text-slate-300">Added</span></label>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-4 justify-between pt-2">
+                                                            <span className="text-sm font-bold text-slate-300 w-32">Boarding Pass Support</span>
+                                                            <div className="flex gap-4 flex-1">
+                                                                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={selectedLeadForEdit.domBoardingPass === 'Team'} onChange={() => handleFieldChange('domBoardingPass', 'Team')} className="w-4 h-4 text-cyan-500" /><span className="text-sm text-slate-300">Team</span></label>
+                                                                <label className="flex items-center gap-2 cursor-pointer"><input type="checkbox" checked={selectedLeadForEdit.domBoardingPass === 'Client'} onChange={() => handleFieldChange('domBoardingPass', 'Client')} className="w-4 h-4 text-cyan-500" /><span className="text-sm text-slate-300">Client</span></label>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {selectedLeadForEdit.domTransportType === 'Train' && (
+                                                <div className="space-y-4 border-l border-slate-700/50 pl-0 sm:pl-8">
+                                                    <h4 className="text-sm font-bold text-white border-b border-slate-700/50 pb-2">Train Details</h4>
+                                                    <div className="flex items-center justify-between gap-4 mt-4">
+                                                        <span className="text-sm font-bold text-slate-300">Seat/Berth Confirmed</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.domSeatBerthConfirmed} onChange={e => handleFieldChange('domSeatBerthConfirmed', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </FormSection>
+
+                                    {/* TRAVEL INSURANCE */}
+                                    {selectedLeadForEdit.insRequired === 'Yes' && (
+                                        <FormSection title="Travel Insurance">
+                                            <div className="flex items-center gap-4">
+                                                <input type="checkbox" checked={selectedLeadForEdit.insIssuedChk} onChange={e => handleFieldChange('insIssuedChk', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                <span className="text-sm text-white font-medium">Issued</span>
+                                            </div>
+                                        </FormSection>
+                                    )}
+
+                                    {/* VENDOR FULFILMENT */}
+                                    <FormSection 
+                                        title="Vendor Fulfilment"
+                                        action={<button type="button" onClick={() => setViewModal({ show: true, title: 'VENDOR FULFILMENT', content: selectedLeadForEdit.vendorRequests && selectedLeadForEdit.vendorRequests.length > 0 ? selectedLeadForEdit.vendorRequests : 'No Vendor history available.' })} className="text-xs font-bold text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0 uppercase">View Details</button>}
+                                    >
+                                        <div className="flex items-center gap-3 mb-6 border-b border-slate-700/50 pb-4">
+                                            <span className="text-xs font-bold text-slate-400">Package Scope:</span>
+                                            <CustomSelect 
+                                                value={selectedLeadForEdit.domVendorType} 
+                                                onChange={v => handleFieldChange('domVendorType', v)} 
+                                                options={['Complete Package', 'Hotel', 'Vehicle']} 
+                                                className="w-48 px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm outline-none focus:border-cyan-500"
+                                            />
+                                        </div>
+                                        
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 min-h-[120px]">
+                                            {selectedLeadForEdit.domVendorType === 'Complete Package' && (
+                                                <div className="space-y-4">
+                                                    <h4 className="text-sm font-bold text-white border-b border-slate-700/50 pb-2">Complete Package Details</h4>
+                                                    <div className="space-y-3">
+                                                        <label className="flex items-center justify-between cursor-pointer">
+                                                            <span className="text-sm text-slate-300">DMC Confirmation Received</span>
+                                                            <input type="checkbox" checked={selectedLeadForEdit.dmcConfReceived} onChange={e => handleFieldChange('dmcConfReceived', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                        </label>
+                                                        <label className="flex items-center justify-between cursor-pointer">
+                                                            <span className="text-sm text-slate-300">Driver Details Received</span>
+                                                            <input type="checkbox" checked={selectedLeadForEdit.dmcDriverDetails} onChange={e => handleFieldChange('dmcDriverDetails', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                        </label>
+                                                        <label className="flex items-center justify-between cursor-pointer">
+                                                            <span className="text-sm text-slate-300">Emergency Contact Received</span>
+                                                            <input type="checkbox" checked={selectedLeadForEdit.dmcEmergencyContactReq} onChange={e => handleFieldChange('dmcEmergencyContactReq', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {selectedLeadForEdit.domVendorType === 'Hotel' && (
+                                                <div className="space-y-4">
+                                                    <h4 className="text-sm font-bold text-white border-b border-slate-700/50 pb-2">Hotel Details</h4>
+                                                    <div className="space-y-3">
+                                                        <label className="flex items-center justify-between cursor-pointer">
+                                                            <span className="text-sm text-slate-300">Hotel Voucher Received</span>
+                                                            <input type="checkbox" checked={selectedLeadForEdit.domHotelVoucherReceived} onChange={e => handleFieldChange('domHotelVoucherReceived', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                        </label>
+                                                        <label className="flex items-center justify-between cursor-pointer">
+                                                            <span className="text-sm text-slate-300">Hotel Contact Shared to Client</span>
+                                                            <input type="checkbox" checked={selectedLeadForEdit.domHotelContactShared} onChange={e => handleFieldChange('domHotelContactShared', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {selectedLeadForEdit.domVendorType === 'Vehicle' && (
+                                                <div className="space-y-4">
+                                                    <h4 className="text-sm font-bold text-white border-b border-slate-700/50 pb-2">Vehicle Details</h4>
+                                                    <div className="space-y-3">
+                                                        <label className="flex items-center justify-between cursor-pointer">
+                                                            <span className="text-sm text-slate-300">Vehicle details received</span>
+                                                            <input type="checkbox" checked={selectedLeadForEdit.domVehicleDetailsReceived} onChange={e => handleFieldChange('domVehicleDetailsReceived', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                        </label>
+                                                        <label className="flex items-center justify-between cursor-pointer">
+                                                            <span className="text-sm text-slate-300">Driver contact shared with client</span>
+                                                            <input type="checkbox" checked={selectedLeadForEdit.domDriverContactShared} onChange={e => handleFieldChange('domDriverContactShared', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center gap-4 pt-4 border-t border-slate-700/50">
+                                            <h3 className="text-sm font-bold text-cyan-400">Special Requirements Status</h3>
+                                            <button type="button" onClick={() => setViewModal({ show: true, title: 'SPECIAL REQUIREMENTS', content: {
+                                                "Veg Meal": selectedLeadForEdit.reqVeg,
+                                                "Wheel Chair": selectedLeadForEdit.reqWheelchair,
+                                                "Senior Citizen": selectedLeadForEdit.reqSenior,
+                                                "Honeymoon Perks": selectedLeadForEdit.reqHoneymoon,
+                                                "Candlelight Dinner": selectedLeadForEdit.reqCandlelight,
+                                                "Floating Breakfast": selectedLeadForEdit.reqFloating,
+                                                "Special Decoration": selectedLeadForEdit.reqDecor,
+                                                "Birthday": selectedLeadForEdit.reqBirthday,
+                                                "Anniversary": selectedLeadForEdit.reqAnniversary,
+                                                "Other": selectedLeadForEdit.reqManualAdd
+                                            } })} className="text-xs font-bold text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0 uppercase">View Details</button>
+                                            <CustomSelect value={selectedLeadForEdit.specialReqStatusVal} onChange={v => handleFieldChange('specialReqStatusVal', v)} options={['Pending', 'Completed', 'Not Applicable']} className="w-48 px-3 py-1.5 bg-slate-900 border border-slate-700 rounded text-white text-sm outline-none focus:border-cyan-500" />
+                                        </div>
+                                    </FormSection>
+
+                                    {/* PAYMENT CLEARANCE */}
+                                    <FormSection title="Payment Clearance">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div className="space-y-3 border-r border-slate-700/50 pr-4">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-white mb-2">Client Payment Status</label>
+                                                    <input type="text" readOnly value={selectedLeadForEdit.clientPayStatus || 'Pending'} className={readonlyCls} />
+                                                </div>
+                                            </div>
+                                            <div className="space-y-3 pl-0 sm:pl-4">
+                                                <label className="block text-xs font-bold text-white mb-2">Vendor Payment Status</label>
+                                                <div className="grid grid-cols-[100px_1fr] items-center gap-2 text-sm text-slate-300">
+                                                    <span>DMC/Vendor</span>
+                                                    <input type="text" readOnly value={selectedLeadForEdit.vendorPayStatus_DMC || 'Pending'} className={readonlyCls} />
+                                                    <span>Hotel 1</span>
+                                                    <input type="text" readOnly value={selectedLeadForEdit.vendorPayStatus_Hotel1 || 'Pending'} className={readonlyCls} />
+                                                    <span>Hotel 2</span>
+                                                    <input type="text" readOnly value={selectedLeadForEdit.vendorPayStatus_Hotel2 || 'Pending'} className={readonlyCls} />
+                                                    <span>Vehicle</span>
+                                                    <input type="text" readOnly value={selectedLeadForEdit.vendorPayStatus_Vehicle || 'Pending'} className={readonlyCls} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </FormSection>
+
+                                    {/* BRIEFING DETAILS */}
+                                    <FormSection title="Briefing Details">
+                                        <div className="space-y-4 border-b border-slate-700/50 pb-6">
+                                            <div className="grid grid-cols-12 items-center gap-4">
+                                                <div className="col-span-4 sm:col-span-3">
+                                                    <span className="text-sm font-bold text-white block">Finalised Itinerary</span>
+                                                </div>
+                                                <div className="col-span-8 sm:col-span-9">
+                                                    <button type="button" onClick={() => setViewModal({ show: true, title: 'FINALISED ITINERARY', content: selectedLeadForEdit.customisationRequests && selectedLeadForEdit.customisationRequests.length > 0 ? selectedLeadForEdit.customisationRequests : { Readymade_Package_Details: selectedLeadForEdit.readymadePackageDetails || 'No itinerary history available.' } })} className="text-xs font-bold text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0 uppercase">View Details</button>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-12 items-center gap-4">
+                                                <div className="col-span-4 sm:col-span-3">
+                                                    <span className="text-sm font-bold text-white block">Service Voucher</span>
+                                                </div>
+                                                <div className="col-span-8 sm:col-span-9">
+                                                    <input type="file" className="block w-full text-xs text-slate-400 file:mr-4 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-bold file:bg-slate-800 file:text-cyan-400 hover:file:bg-slate-700 cursor-pointer" />
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-4">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-white mb-2">Briefing Date</label>
+                                                    <DatePickerField value={selectedLeadForEdit.briefingDateVal || ''} onChange={e => handleFieldChange('briefingDateVal', e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded text-white text-sm px-3 py-2 outline-none focus:border-cyan-500" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-bold text-white mb-2">Briefed By</label>
+                                                    <CustomSelect value={selectedLeadForEdit.briefedByVal} onChange={v => handleFieldChange('briefedByVal', v)} options={operationsStaff} className="w-full bg-slate-900 text-white text-sm rounded border border-slate-700 px-3 py-2 outline-none focus:border-cyan-500" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Briefing Topics Section */}
+                                        <div className="pt-4">
+                                            <h3 className="text-sm font-bold text-cyan-400 mb-4">Briefing Topics</h3>
+                                            
+                                            {/* Travel Advisory */}
+                                            <div className="mb-6">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="text-sm font-bold text-white">Travel Advisory</span>
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-sm text-slate-300 pl-4 sm:pl-7">
+                                                    <label className="flex items-center justify-between cursor-pointer">
+                                                        <span>Local Rules & Regulations</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.advLocalRules} onChange={e => handleFieldChange('advLocalRules', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                    <label className="flex items-center justify-between cursor-pointer">
+                                                        <span>Weather & Clothing</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.advWeatherClothing} onChange={e => handleFieldChange('advWeatherClothing', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                    <label className="flex items-center justify-between cursor-pointer">
+                                                        <span>Permit Requirements (If Applicable)</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.advPermitReq} onChange={e => handleFieldChange('advPermitReq', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                    <label className="flex items-center justify-between cursor-pointer">
+                                                        <span>Safety Guidelines</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.advSafetyGuidelines} onChange={e => handleFieldChange('advSafetyGuidelines', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                    <label className="flex items-center justify-between cursor-pointer">
+                                                        <span>ID Proof Requirement</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.advIdProof} onChange={e => handleFieldChange('advIdProof', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                </div>
+                                            </div>
+
+                                            {/* Journey Guidance */}
+                                            <div className="mb-4">
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className="text-sm font-bold text-white">Journey Guidance</span>
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-2 gap-x-6 text-sm text-slate-300 pl-4 sm:pl-7">
+                                                    <label className="flex items-center justify-between cursor-pointer">
+                                                        <span>Pickup / Boarding Details Shared</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.journPickupDetails} onChange={e => handleFieldChange('journPickupDetails', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                    <div className="hidden sm:block"></div>
+                                                    <label className="flex items-center justify-between cursor-pointer">
+                                                        <span>Hotel Contact Shared</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.journHotelContact} onChange={e => handleFieldChange('journHotelContact', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                    <label className="flex items-center justify-between cursor-pointer">
+                                                        <span>Emergency Contacts</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.journEmergencyContact} onChange={e => handleFieldChange('journEmergencyContact', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                    <label className="flex items-center justify-between cursor-pointer">
+                                                        <span>Hotel Check-in Process Explained</span>
+                                                        <input type="checkbox" checked={selectedLeadForEdit.journHotelCheckin} onChange={e => handleFieldChange('journHotelCheckin', e.target.checked)} className="w-4 h-4 rounded text-cyan-500" />
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </FormSection>
+
+                                </div>
+                            )}
+
+                            <div className="flex items-center justify-end gap-2.5 mt-8 px-6 py-4 flex-shrink-0">
+                                <button type="button" onClick={() => setSelectedLeadForEdit(null)} className="px-5 py-2 bg-transparent border border-slate-700 hover:bg-slate-800 text-slate-300 text-sm font-semibold rounded cursor-pointer uppercase tracking-wider transition-colors">CANCEL</button>
+                                <button type="submit" className="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold rounded shadow cursor-pointer uppercase tracking-wider transition-colors">SAVE FULFILLMENT</button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
 
-            {/* ─── FULFILLMENT MODAL (INTERNATIONAL & DOMESTIC) ────────────────────────────── */}
-            {selectedLeadForEdit && (
-                <div className="fixed inset-0 bg-black/80 flex items-start sm:items-center justify-center z-[150] p-0 sm:p-4">
-                    <div className="bg-[#0f172a] border border-slate-700 rounded-none sm:rounded-xl shadow-2xl w-full sm:max-w-5xl h-full sm:h-[95vh] flex flex-col text-slate-100">
-                        <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] flex-shrink-0 sm:rounded-t-xl">
-                            <h2 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-                                <PlaneTakeoff size={20} className="text-cyan-400" />
-                                {selectedLeadForEdit.tourType === 'Domestic Tour' ? 'Domestic Fulfillment Form' : 'International Fulfillment Form'}
-                            </h2>
-                            <button type="button" onClick={() => setSelectedLeadForEdit(null)} className="text-slate-400 hover:text-white cursor-pointer"><X size={24} /></button>
+            {/* ─── DYNAMIC VIEW MODAL ───────────────────────────────────────── */}
+            {viewModal.show && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[200] p-4">
+                    <div className="bg-[#0f172a] border border-slate-700/50 rounded-lg shadow-2xl w-full max-w-2xl p-0 relative overflow-hidden flex flex-col max-h-[80vh]">
+                        <div className="flex justify-between items-center px-5 py-4 border-b border-slate-700/50 bg-[#0b1329] flex-shrink-0">
+                            <h2 className="text-sm font-bold text-white uppercase tracking-wider">{viewModal.title}</h2>
+                            <button type="button" onClick={() => setViewModal({ show: false, title: '', content: '' })} className="text-slate-400 hover:text-white cursor-pointer transition-colors bg-transparent border-none p-1 rounded-md hover:bg-slate-800"><X size={20} /></button>
                         </div>
-
-                        <form onSubmit={handleEditSubmit} className="flex flex-col flex-1 overflow-hidden">
-                            <div className="px-6 py-6 overflow-y-auto flex-1 bg-[#0f172a] custom-scrollbar">
-                                
-                                {selectedLeadForEdit.tourType === 'International Tour' ? (
-                                    /* ───────────────────────────────────────────── */
-                                    /* INTERNATIONAL FORM                            */
-                                    /* ───────────────────────────────────────────── */
-                                    <div className="space-y-8">
-                                        {/* Header Info Grid (FETCHED / READ ONLY) */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Lead Id</label><input type="text" readOnly value={`LMN${selectedLeadForEdit.id}`} className={readonlyCls} /></div>
-                                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Customer Name</label><input type="text" readOnly value={selectedLeadForEdit.customerName} className={readonlyCls} /></div>
-                                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Destination</label><input type="text" readOnly value={selectedLeadForEdit.destination} className={readonlyCls} /></div>
-                                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Travel Date</label><input type="text" readOnly value={selectedLeadForEdit.travelDate} className={readonlyCls} /></div>
-                                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Return Date</label><input type="text" readOnly value={selectedLeadForEdit.returnDate || 'N/A'} className={readonlyCls} /></div>
-                                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">No. Of Pax</label><input type="text" readOnly value={selectedLeadForEdit.noOfPax || 'N/A'} className={readonlyCls} /></div>
-                                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Sales Executive</label><input type="text" readOnly value={selectedLeadForEdit.salesExecutive} className={readonlyCls} /></div>
-                                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Operations Executive</label><input type="text" readOnly value={selectedLeadForEdit.operationsExecutive} className={readonlyCls} /></div>
-                                        </div>
-
-                                        {/* Document Completed (MANUAL) */}
-                                        <div className="flex items-center gap-4 border-b border-slate-700/50 pb-4">
-                                            <h3 className="text-cyan-400 font-bold whitespace-nowrap">Document Completed</h3>
-                                            <div className="flex flex-col">
-                                                <CustomSelect value={selectedLeadForEdit.docCompleted} onChange={(v) => handleFieldChange('docCompleted', v)} className={`${selectCls} max-w-xs`} placeholder="Select" options={['Pending', 'Partial', 'Completed']} />
-                                                <span className="text-[10px] text-slate-500 mt-1">checklist</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Flight Details */}
-                                        <div className={sectionCls}>
-                                            <h3 className={`${sectionHeadCls} flex items-center gap-2`}>Flight Details <span className="text-[10px] text-slate-500 normal-case font-medium ml-2">View Only</span></h3>
-                                            <div className="space-y-6">
-                                                
-                                                {/* Fetched Flight Blocks */}
-                                                {(() => {
-                                                    const fOnward = selectedLeadForEdit.flights?.[0] || {};
-                                                    const fReturn = selectedLeadForEdit.flights?.[1] || {};
-                                                    const fInternal = selectedLeadForEdit.flights?.[2] || {};
-                                                    return (
-                                                        <>
-                                                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center border-b border-slate-700/30 pb-4">
-                                                                <span className="text-sm text-slate-400 font-bold">Onward</span>
-                                                                <input type="text" readOnly value={fOnward.departureDateTime || ''} className={readonlyCls} placeholder="Date & Time" />
-                                                                <input type="text" readOnly value={fOnward.boardingPoint || ''} className={readonlyCls} placeholder="Boarding Point" />
-                                                                <input type="text" readOnly value={fOnward.deboardingPoint || ''} className={readonlyCls} placeholder="Deboarding Point" />
-                                                            </div>
-                                                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center border-b border-slate-700/30 pb-4">
-                                                                <span className="text-sm text-slate-400 font-bold">Return</span>
-                                                                <input type="text" readOnly value={fReturn.departureDateTime || ''} className={readonlyCls} placeholder="Date & Time" />
-                                                                <input type="text" readOnly value={fReturn.boardingPoint || ''} className={readonlyCls} placeholder="Boarding Point" />
-                                                                <input type="text" readOnly value={fReturn.deboardingPoint || ''} className={readonlyCls} placeholder="Deboarding Point" />
-                                                            </div>
-                                                            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center border-b border-slate-700/30 pb-4">
-                                                                <span className="text-sm text-slate-400 font-bold">Internal</span>
-                                                                <input type="text" readOnly value={fInternal.departureDateTime || ''} className={readonlyCls} placeholder="Date & Time" />
-                                                                <input type="text" readOnly value={fInternal.boardingPoint || ''} className={readonlyCls} placeholder="Boarding Point" />
-                                                                <input type="text" readOnly value={fInternal.deboardingPoint || ''} className={readonlyCls} placeholder="Deboarding Point" />
-                                                            </div>
-                                                        </>
-                                                    )
-                                                })()}
-
-                                                {/* Manual Flight Details */}
-                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-2">
-                                                    <div className="space-y-4">
-                                                        <h4 className="text-xs font-bold text-white border border-slate-700 px-3 py-2 bg-slate-800 rounded">Baggage Details</h4>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-200 mb-1">Baggage Required</label>
-                                                            <CustomSelect value={selectedLeadForEdit.flBaggageReq} onChange={(v) => handleFieldChange('flBaggageReq', v)} className={selectCls} placeholder="Select" options={['Yes', 'No', 'Yes, Only for return']} />
-                                                            {/* <p className="text-[10px] text-slate-500 mt-1">Yes / No / Yes, Only for return</p> */}
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-200 mb-1">Booked By</label>
-                                                            <CustomSelect value={selectedLeadForEdit.flBaggageBookedBy} onChange={(v) => handleFieldChange('flBaggageBookedBy', v)} className={selectCls} placeholder="Select" options={['Client', 'Team']} />
-                                                            {/* <p className="text-[10px] text-slate-500 mt-1">Client / Team</p> */}
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-200 mb-1">Baggage Status</label>
-                                                            <CustomSelect value={selectedLeadForEdit.flBaggageStatus} onChange={(v) => handleFieldChange('flBaggageStatus', v)} className={selectCls} placeholder="Select" options={['Not Required', 'Pending', 'Added']} />
-                                                            {/* <p className="text-[10px] text-slate-500 mt-1">Not Required / Pending / Added</p> */}
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-200 mb-1">Boarding Pass Support</label>
-                                                            <input type="text" placeholder="Enter details" value={selectedLeadForEdit.flBaggageSupport} onChange={(e) => handleFieldChange('flBaggageSupport', e.target.value)} className={inputCls} />
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="space-y-4">
-                                                        <h4 className="text-xs font-bold text-white border border-slate-700 px-3 py-2 bg-slate-800 rounded">Seat Selection</h4>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-200 mb-1">Seat Preference</label>
-                                                            <CustomSelect value={selectedLeadForEdit.flSeatPref} onChange={(v) => handleFieldChange('flSeatPref', v)} className={selectCls} placeholder="Select" options={['Window', 'Aisle', 'Middle']} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-200 mb-1">Seat Selected By</label>
-                                                            <CustomSelect value={selectedLeadForEdit.flSeatBookedBy} onChange={(v) => handleFieldChange('flSeatBookedBy', v)} className={selectCls} placeholder="Select" options={['Client', 'Team']} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-200 mb-1">Booking Status</label>
-                                                            <CustomSelect value={selectedLeadForEdit.flSeatStatus} onChange={(v) => handleFieldChange('flSeatStatus', v)} className={selectCls} placeholder="Select" options={['Not Required', 'Pending', 'Reserved']} />
-                                                            {/* <p className="text-[10px] text-slate-500 mt-1">Not Required / Pending / Reserved</p> */}
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="space-y-4">
-                                                        <h4 className="text-xs font-bold text-white border border-slate-700 px-3 py-2 bg-slate-800 rounded">Meal Preference</h4>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-200 mb-1">Meal Required</label>
-                                                            <CustomSelect value={selectedLeadForEdit.flMealReq} onChange={(v) => handleFieldChange('flMealReq', v)} className={selectCls} placeholder="Select" options={['Yes', 'No']} />
-                                                            {/* <p className="text-[10px] text-slate-500 mt-1">Yes/ No</p> */}
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-200 mb-1">Meal Type</label>
-                                                            <CustomSelect value={selectedLeadForEdit.flMealType} onChange={(v) => handleFieldChange('flMealType', v)} className={selectCls} placeholder="Select" options={['Veg', 'Non-Veg', 'Special']} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-200 mb-1">Meal Booked By</label>
-                                                            <CustomSelect value={selectedLeadForEdit.flMealBookedBy} onChange={(v) => handleFieldChange('flMealBookedBy', v)} className={selectCls} placeholder="Select" options={['Client', 'Team']} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-200 mb-1">Meal Status</label>
-                                                            <CustomSelect value={selectedLeadForEdit.flMealStatus} onChange={(v) => handleFieldChange('flMealStatus', v)} className={selectCls} placeholder="Select" options={['Pending', 'Confirmed']} />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-200 mb-1">Special Instructions</label>
-                                                    <input type="text" placeholder="Enter special instructions" value={selectedLeadForEdit.flSpecialInst} onChange={(e) => handleFieldChange('flSpecialInst', e.target.value)} className={inputCls} />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Travel Insurance */}
-                                        {selectedLeadForEdit.insRequired === 'Yes' && (
-                                            <div className={sectionCls}>
-                                                <h3 className={sectionHeadCls}>Travel Insurance <span className="text-[10px] text-slate-500 normal-case ml-2 font-medium">If they chosen "Yes" Under Insurance required, this part will appear</span></h3>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Insurance Issued</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insIssued} onChange={(v) => handleFieldChange('insIssued', v)} className={selectCls} placeholder="Select" options={['Pending', 'Issued']} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Policy Shared To Client</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insPolicyShared} onChange={(v) => handleFieldChange('insPolicyShared', v)} className={selectCls} placeholder="Select" options={['Yes', 'No']} />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* VISA Details */}
-                                        <div className={sectionCls}>
-                                            <h3 className={sectionHeadCls}>VISA Details</h3>
-                                            {(() => {
-                                                const primaryVisa = selectedLeadForEdit.visas?.[0] || {};
-                                                return (
-                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                        <div>
-                                                            <label className="block text-xs text-slate-500 font-bold mb-1">VISA Type</label>
-                                                            <input type="text" readOnly value={primaryVisa.visaType || 'N/A'} className={readonlyCls} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs text-slate-500 font-bold mb-1">VISA Status</label>
-                                                            <input type="text" readOnly value={primaryVisa.visaStatus || 'N/A'} className={readonlyCls} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs text-slate-500 font-bold mb-1">Transit VISA Required</label>
-                                                            <input type="text" readOnly value={primaryVisa.transitVisaReq || 'N/A'} className={readonlyCls} />
-                                                            <p className="text-[10px] text-slate-500 mt-1">Automatic</p>
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs text-slate-500 font-bold mb-1">VISA Copy Shared</label>
-                                                            <input type="text" readOnly value={primaryVisa.visaCopyShared || 'N/A'} className={readonlyCls} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-200 mb-1">Arrival card Status</label>
-                                                            <CustomSelect value={selectedLeadForEdit.visaArrivalCard} onChange={(v) => handleFieldChange('visaArrivalCard', v)} className={selectCls} placeholder="Select" options={['Pending', 'Completed']} />
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })()}
-                                        </div>
-
-                                        {/* DMC & Hotel & Transport Grid */}
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            
-                                            {/* DMC Fulfilment */}
-                                            <div className={sectionCls}>
-                                                <h3 className={sectionHeadCls}>DMC Fulfilment</h3>
-                                                <div className="space-y-3">
-                                                    {[{id:'dmcConfirmed', l:'DMC Confirmed'}, {id:'dmcHotelVoucher', l:'Hotel Voucher Received'}, {id:'dmcTransferVoucher', l:'Airport Transfer Received'}, {id:'dmcSightseeingVoucher', l:'Sightseeing Voucher Received'}, {id:'dmcEmergencyContact', l:'Emergency Contact Received'}].map(c => (
-                                                        <label key={c.id} className="flex items-center justify-between cursor-pointer group hover:bg-slate-800/50 p-2 rounded">
-                                                            <span className="text-sm font-bold text-slate-200">{c.l}</span>
-                                                            <input type="checkbox" checked={selectedLeadForEdit[c.id]} onChange={(e) => handleFieldChange(c.id, e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-cyan-500" />
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                            </div>
-
-                                            {/* Airport & Local Transport */}
-                                            <div className={sectionCls}>
-                                                <h3 className={`${sectionHeadCls} flex items-center justify-between`}>Airport & Local Transport <span className="text-[10px] text-slate-500 normal-case">View</span></h3>
-                                                <div className="space-y-3">
-                                                    {[{id:'transAirportConf', l:'Airport Transfer Confirmed'}, {id:'transVehicleAssigned', l:'Vehicle Assigned'}, {id:'transDriverDetails', l:'Driver Details Shared'}, {id:'transDriverContact', l:'Driver Contact Shared'}].map(c => (
-                                                        <label key={c.id} className="flex items-center justify-between cursor-pointer group hover:bg-slate-800/50 p-2 rounded">
-                                                            <span className="text-sm font-bold text-slate-200">{c.l}</span>
-                                                            <input type="checkbox" checked={selectedLeadForEdit[c.id]} onChange={(e) => handleFieldChange(c.id, e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-cyan-500" />
-                                                        </label>
-                                                    ))}
-                                                    <label className="flex items-center gap-2 mt-4 cursor-pointer bg-green-950/20 p-2 rounded border border-green-900/30">
-                                                        <input type="checkbox" checked={selectedLeadForEdit.transPtPExplained} onChange={(e) => handleFieldChange('transPtPExplained', e.target.checked)} className="w-4 h-4 rounded text-green-500" />
-                                                        <span className="text-sm text-green-400 font-bold">Point-to-Point Pickup Explained to Client</span>
-                                                    </label>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Hotel Fulfilment */}
-                                        <div className={sectionCls}>
-                                            <h3 className={sectionHeadCls}>Hotel Fulfilment</h3>
-                                            <div className="grid grid-cols-12 gap-4 text-xs font-bold text-slate-400 mb-2 px-2">
-                                                <div className="col-span-6">Hotel Names | Location <span className="text-[10px] font-normal lowercase">(Fetched)</span></div>
-                                                <div className="col-span-3 text-center">Confirmed</div>
-                                                <div className="col-span-3 text-center">Voucher Shared</div>
-                                            </div>
-                                            <div className="space-y-3">
-                                                {selectedLeadForEdit.intHotels?.map((hotel, idx) => (
-                                                    <div key={idx} className="grid grid-cols-12 gap-4 items-center bg-slate-900/50 p-2 rounded border border-slate-700/50">
-                                                        <div className="col-span-6 flex gap-2">
-                                                            <span className="text-slate-500 text-xs mt-2 w-12">Hotel {idx+1}</span>
-                                                            <input type="text" readOnly value={`${hotel.hotelName || 'TBD'} | ${hotel.location || 'TBD'}`} className={readonlyCls} style={{textAlign: 'left'}} />
-                                                        </div>
-                                                        <div className="col-span-3 flex justify-center">
-                                                            <input type="checkbox" checked={hotel.confirmed} onChange={(e) => handleHotelChange('intHotels', idx, 'confirmed', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-cyan-500 cursor-pointer" />
-                                                        </div>
-                                                        <div className="col-span-3 flex justify-center">
-                                                            <input type="checkbox" checked={hotel.voucherShared} onChange={(e) => handleHotelChange('intHotels', idx, 'voucherShared', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-cyan-500 cursor-pointer" />
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Special Requirements */}
-                                        <div className={sectionCls}>
-                                            <h3 className={sectionHeadCls}>Special Requirements</h3>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-200 mb-1">Requirement Status</label>
-                                                    <input type="text" placeholder="Enter status" value={selectedLeadForEdit.reqStatus} onChange={(e) => handleFieldChange('reqStatus', e.target.value)} className={inputCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-200 mb-1">Pending / Completed</label>
-                                                    <CustomSelect value={selectedLeadForEdit.reqCompleted} onChange={(v) => handleFieldChange('reqCompleted', v)} className={selectCls} placeholder="Select" options={['Pending', 'Completed']} />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Payment Clearance */}
-                                        <div className={sectionCls}>
-                                            <h3 className={`${sectionHeadCls} flex items-center gap-2`}>Payment Clearance <span className="text-[10px] text-slate-500 normal-case ml-2 font-medium">automatic</span></h3>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-xs text-slate-500 font-bold mb-1">Client Payment Status</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.clientPayStatus || 'Cleared'} className={`${readonlyCls} text-left`} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs text-slate-500 font-bold mb-1">Payment to Vendor</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.vendorPayStatus || 'Pending'} className={`${readonlyCls} text-left`} />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Pre-Departure Checklist */}
-                                        <div className={sectionCls}>
-                                            <h3 className={sectionHeadCls}>Pre-Departure Checklist</h3>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-6">
-                                                <div className="space-y-2">
-                                                    <h4 className="text-sm font-bold text-white mb-3">Travel Advisory</h4>
-                                                    <label className="flex items-start gap-2 cursor-pointer group"><input type="checkbox" checked={selectedLeadForEdit.chkLocalRules} onChange={(e) => handleFieldChange('chkLocalRules', e.target.checked)} className="mt-1 w-3.5 h-3.5 rounded text-cyan-500" /><span className="text-xs font-bold text-slate-200">Local Rules & Regulations Explained</span></label>
-                                                    <label className="flex items-start gap-2 cursor-pointer group"><input type="checkbox" checked={selectedLeadForEdit.chkDestRestrictions} onChange={(e) => handleFieldChange('chkDestRestrictions', e.target.checked)} className="mt-1 w-3.5 h-3.5 rounded text-cyan-500" /><span className="text-xs font-bold text-slate-200">Destination-Specific Restrictions Explained</span></label>
-                                                    <label className="flex items-start gap-2 cursor-pointer group"><input type="checkbox" checked={selectedLeadForEdit.chkTourismTax} onChange={(e) => handleFieldChange('chkTourismTax', e.target.checked)} className="mt-1 w-3.5 h-3.5 rounded text-cyan-500" /><span className="text-xs font-bold text-slate-200">Tourism Tax / Green Tax Explained</span></label>
-                                                    <label className="flex items-start gap-2 cursor-pointer group"><input type="checkbox" checked={selectedLeadForEdit.chkPermits} onChange={(e) => handleFieldChange('chkPermits', e.target.checked)} className="mt-1 w-3.5 h-3.5 rounded text-cyan-500" /><span className="text-xs font-bold text-slate-200">Permit Requirements Explained</span></label>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <h4 className="text-sm font-bold text-white mb-3">Travel Documentation</h4>
-                                                    <label className="flex items-start gap-2 cursor-pointer group"><input type="checkbox" checked={selectedLeadForEdit.chkBoardingRules} onChange={(e) => handleFieldChange('chkBoardingRules', e.target.checked)} className="mt-1 w-3.5 h-3.5 rounded text-cyan-500" /><span className="text-xs font-bold text-slate-200">Boarding Rules Explained</span></label>
-                                                    <label className="flex items-start gap-2 cursor-pointer group"><input type="checkbox" checked={selectedLeadForEdit.chkIdPassport} onChange={(e) => handleFieldChange('chkIdPassport', e.target.checked)} className="mt-1 w-3.5 h-3.5 rounded text-cyan-500" /><span className="text-xs font-bold text-slate-200">ID / Passport Requirements Explained</span></label>
-                                                    <label className="flex items-start gap-2 cursor-pointer group"><input type="checkbox" checked={selectedLeadForEdit.chkVisaConditions} onChange={(e) => handleFieldChange('chkVisaConditions', e.target.checked)} className="mt-1 w-3.5 h-3.5 rounded text-cyan-500" /><span className="text-xs font-bold text-slate-200">Visa Conditions Explained (International Only)</span></label>
-                                                    <label className="flex items-start gap-2 cursor-pointer group"><input type="checkbox" checked={selectedLeadForEdit.chkInsuranceCov} onChange={(e) => handleFieldChange('chkInsuranceCov', e.target.checked)} className="mt-1 w-3.5 h-3.5 rounded text-cyan-500" /><span className="text-xs font-bold text-slate-200">Travel Insurance Coverage Explained</span></label>
-                                                </div>
-                                                <div className="space-y-2 border-t border-slate-700/50 pt-4">
-                                                    <h4 className="text-sm font-bold text-white mb-3">Financial Guidance</h4>
-                                                    <label className="flex items-start gap-2 cursor-pointer group"><input type="checkbox" checked={selectedLeadForEdit.chkForex} onChange={(e) => handleFieldChange('chkForex', e.target.checked)} className="mt-1 w-3.5 h-3.5 rounded text-cyan-500" /><span className="text-xs font-bold text-slate-200">Forex Requirements Explained</span></label>
-                                                    <label className="flex items-start gap-2 cursor-pointer group"><input type="checkbox" checked={selectedLeadForEdit.chkCurrency} onChange={(e) => handleFieldChange('chkCurrency', e.target.checked)} className="mt-1 w-3.5 h-3.5 rounded text-cyan-500" /><span className="text-xs font-bold text-slate-200">Currency Exchange Guidance Shared</span></label>
-                                                    <label className="flex items-start gap-2 cursor-pointer group"><input type="checkbox" checked={selectedLeadForEdit.chkIntlCard} onChange={(e) => handleFieldChange('chkIntlCard', e.target.checked)} className="mt-1 w-3.5 h-3.5 rounded text-cyan-500" /><span className="text-xs font-bold text-slate-200">International Card Usage Explained</span></label>
-                                                    <label className="flex items-start gap-2 cursor-pointer group"><input type="checkbox" checked={selectedLeadForEdit.chkLocalPayment} onChange={(e) => handleFieldChange('chkLocalPayment', e.target.checked)} className="mt-1 w-3.5 h-3.5 rounded text-cyan-500" /><span className="text-xs font-bold text-slate-200">Local Payment Methods Explained</span></label>
-                                                </div>
-                                                <div className="space-y-2 border-t border-slate-700/50 pt-4">
-                                                    <h4 className="text-sm font-bold text-white mb-3">Destination Guidance</h4>
-                                                    <label className="flex items-start gap-2 cursor-pointer group"><input type="checkbox" checked={selectedLeadForEdit.chkDressCode} onChange={(e) => handleFieldChange('chkDressCode', e.target.checked)} className="mt-1 w-3.5 h-3.5 rounded text-cyan-500" /><span className="text-xs font-bold text-slate-200">Dress Code Guidelines Explained</span></label>
-                                                    <label className="flex items-start gap-2 cursor-pointer group"><input type="checkbox" checked={selectedLeadForEdit.chkWeather} onChange={(e) => handleFieldChange('chkWeather', e.target.checked)} className="mt-1 w-3.5 h-3.5 rounded text-cyan-500" /><span className="text-xs font-bold text-slate-200">Weather & Seasonal Advisory Shared</span></label>
-                                                    <label className="flex items-start gap-2 cursor-pointer group"><input type="checkbox" checked={selectedLeadForEdit.chkLocalCustoms} onChange={(e) => handleFieldChange('chkLocalCustoms', e.target.checked)} className="mt-1 w-3.5 h-3.5 rounded text-cyan-500" /><span className="text-xs font-bold text-slate-200">Local Customs & Etiquette Explained</span></label>
-                                                    <label className="flex items-start gap-2 cursor-pointer group"><input type="checkbox" checked={selectedLeadForEdit.chkSafety} onChange={(e) => handleFieldChange('chkSafety', e.target.checked)} className="mt-1 w-3.5 h-3.5 rounded text-cyan-500" /><span className="text-xs font-bold text-slate-200">Safety Guidelines Shared</span></label>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Customer Acknowledgement */}
-                                        <div className={sectionCls}>
-                                            <h3 className={sectionHeadCls}>Customer Acknowledgement</h3>
-                                            <div className="space-y-4">
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <div className="space-y-3">
-                                                        <label className="flex items-center justify-between cursor-pointer group hover:bg-slate-800/50 p-2 rounded border border-slate-700/30">
-                                                            <span className="text-sm font-bold text-slate-200">Finalised Itinerary Shared</span>
-                                                            <input type="checkbox" checked={selectedLeadForEdit.ackItinerary} onChange={(e) => handleFieldChange('ackItinerary', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-cyan-500" />
-                                                        </label>
-                                                        <label className="flex items-center justify-between cursor-pointer group hover:bg-slate-800/50 p-2 rounded border border-slate-700/30">
-                                                            <span className="text-sm font-bold text-slate-200">Service Voucher Shared</span>
-                                                            <input type="checkbox" checked={selectedLeadForEdit.ackVoucher} onChange={(e) => handleFieldChange('ackVoucher', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-cyan-500" />
-                                                        </label>
-                                                        <label className="flex items-center justify-between cursor-pointer group hover:bg-slate-800/50 p-2 rounded border border-slate-700/30">
-                                                            <span className="text-sm font-bold text-slate-200">Briefing Completed</span>
-                                                            <input type="checkbox" checked={selectedLeadForEdit.ackBriefing} onChange={(e) => handleFieldChange('ackBriefing', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-cyan-500" />
-                                                        </label>
-                                                    </div>
-                                                    <div className="space-y-3">
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-200 mb-1">Briefing Conducted By</label>
-                                                            <CustomSelect value={selectedLeadForEdit.ackBriefingBy} onChange={(v) => handleFieldChange('ackBriefingBy', v)} className={selectCls} placeholder="Name Dropdown" options={['Operations Manager', 'Sales Exec', 'Customer Success']} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-200 mb-1">Briefing Date & Time</label>
-                                                            <DatePickerField type="datetime-local" value={selectedLeadForEdit.ackBriefingDate} onChange={(e) => handleFieldChange('ackBriefingDate', e.target.value)} className={inputCls} />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-200 mb-1">Remarks</label>
-                                                    <textarea rows="2" placeholder="Text Area" value={selectedLeadForEdit.ackRemarks} onChange={(e) => handleFieldChange('ackRemarks', e.target.value)} className={inputCls} />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Department Clearance */}
-                                        <div className={sectionCls} style={{ borderColor: 'rgba(56, 189, 248, 0.4)' }}>
-                                            <h3 className={`${sectionHeadCls} text-sky-400 border-sky-900/50`}>Department Clearance</h3>
-                                            <div className="space-y-6">
-                                                
-                                                {/* Operations (Manual) */}
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-                                                    <div className="space-y-3">
-                                                        <h4 className="text-sm font-bold text-white mb-2">Operations</h4>
-                                                        <label className="flex items-center justify-between cursor-pointer group">
-                                                            <span className="text-sm font-bold text-slate-200">Services Confirmed</span>
-                                                            <input type="checkbox" checked={selectedLeadForEdit.clrOpsServices} onChange={(e) => handleFieldChange('clrOpsServices', e.target.checked)} className="w-4 h-4 rounded border-slate-600 text-cyan-500" />
-                                                        </label>
-                                                        <label className="flex items-center justify-between cursor-pointer group">
-                                                            <span className="text-sm font-bold text-slate-200">Documents Verified</span>
-                                                            <input type="checkbox" checked={selectedLeadForEdit.clrOpsDocs} onChange={(e) => handleFieldChange('clrOpsDocs', e.target.checked)} className="w-4 h-4 rounded border-slate-600 text-cyan-500" />
-                                                        </label>
-                                                    </div>
-                                                    <div className="h-full pt-1">
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Remarks</label>
-                                                        <textarea rows="3" placeholder="Text Area" value={selectedLeadForEdit.clrOpsRemarks} onChange={(e) => handleFieldChange('clrOpsRemarks', e.target.value)} className={inputCls} />
-                                                    </div>
-                                                </div>
-
-                                                {/* Finance */}
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start border-t border-slate-700/50 pt-6">
-                                                    <div className="space-y-3">
-                                                        <h4 className="text-sm font-bold text-white mb-2 flex justify-between">Finance </h4>
-                                                        <label className="flex items-center justify-between cursor-pointer group">
-                                                            <span className="text-sm font-bold text-slate-200">Payment Cleared</span>
-                                                            <input type="checkbox" checked={selectedLeadForEdit.clrFinPayment} onChange={(e) => handleFieldChange('clrFinPayment', e.target.checked)} className="w-4 h-4 rounded border-slate-600 text-cyan-500" />
-                                                        </label>
-                                                        <label className="flex items-center justify-between cursor-pointer group">
-                                                            <span className="text-sm font-bold text-slate-200">Supplier Payments Cleared</span>
-                                                            <input type="checkbox" checked={selectedLeadForEdit.clrFinSupplier} onChange={(e) => handleFieldChange('clrFinSupplier', e.target.checked)} className="w-4 h-4 rounded border-slate-600 text-cyan-500" />
-                                                        </label>
-                                                    </div>
-                                                    <div className="h-full pt-1">
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Remarks</label>
-                                                        <textarea rows="3" placeholder="Remarks" value={selectedLeadForEdit.clrFinRemarks || ''} onChange={(e) => handleFieldChange('clrFinRemarks', e.target.value)} className={inputCls} />
-                                                    </div>
-                                                </div>
-
-                                                {/* Operations Manager Approval */}
-                                                <div className="space-y-4 border-t border-slate-700/50 pt-6">
-                                                    <h4 className="text-sm font-bold text-white mb-2 flex justify-between">Operations Manager Approval  </h4>
-                                                    <label className="flex items-center justify-between max-w-sm cursor-pointer group">
-                                                        <span className="text-sm font-bold text-slate-200">Final Review Completed</span>
-                                                        <input type="checkbox" checked={selectedLeadForEdit.clrMgrReview} onChange={(e) => handleFieldChange('clrMgrReview', e.target.checked)} className="w-4 h-4 rounded border-slate-600 text-cyan-500" />
-                                                    </label>
-                                                    <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-900/50 p-4 border border-slate-700 rounded-lg">
-                                                        <p className="text-xs text-slate-400 italic flex-1">
-                                                            All travel services, documents, payments, and client communication have been completed and approved for travel.
-                                                        </p>
-                                                        <label className="flex items-center gap-2 shrink-0 bg-green-950/30 px-3 py-2 rounded border border-green-900/50 cursor-pointer">
-                                                            <input type="checkbox" checked={selectedLeadForEdit.clrReadyDeparture} onChange={(e) => handleFieldChange('clrReadyDeparture', e.target.checked)} className="w-4 h-4 rounded text-green-500" />
-                                                            <span className="text-sm font-bold text-green-400">Ready for Departure</span>
-                                                        </label>
-                                                    </div>
-                                                </div>
-
-                                            </div>
-                                        </div>
-
-                                    </div>
-                                ) : (
-                                    /* ───────────────────────────────────────────── */
-                                    /* DOMESTIC FORM                                 */
-                                    /* ───────────────────────────────────────────── */
-                                    <div className="space-y-8">
-                                        {/* Header Info Grid (FETCHED / READ ONLY) */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Lead Id</label><input type="text" readOnly value={`LMN${selectedLeadForEdit.id}`} className={readonlyCls} /></div>
-                                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Customer Name</label><input type="text" readOnly value={selectedLeadForEdit.customerName} className={readonlyCls} /></div>
-                                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Destination</label><input type="text" readOnly value={selectedLeadForEdit.destination} className={readonlyCls} /></div>
-                                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Travel Date</label><input type="text" readOnly value={selectedLeadForEdit.travelDate} className={readonlyCls} /></div>
-                                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Return Date</label><input type="text" readOnly value={selectedLeadForEdit.returnDate || 'N/A'} className={readonlyCls} /></div>
-                                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">No. Of Pax</label><input type="text" readOnly value={selectedLeadForEdit.noOfPax || 'N/A'} className={readonlyCls} /></div>
-                                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Sales Executive</label><input type="text" readOnly value={selectedLeadForEdit.salesExecutive} className={readonlyCls} /></div>
-                                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Operations Executive</label><input type="text" readOnly value={selectedLeadForEdit.operationsExecutive} className={readonlyCls} /></div>
-                                        </div>
-
-                                        {/* Document Completed (MANUAL) */}
-                                        <div className="flex items-center gap-4 border-b border-slate-700/50 pb-4">
-                                            <h3 className="text-cyan-400 font-bold whitespace-nowrap">Document Completed</h3>
-                                            <div className="flex flex-col">
-                                                <CustomSelect value={selectedLeadForEdit.docCompleted} onChange={(v) => handleFieldChange('docCompleted', v)} className={`${selectCls} max-w-xs`} placeholder="Select" options={['Pending', 'Partial', 'Completed']} />
-                                                <span className="text-[10px] text-slate-500 mt-1">checklist</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Transport Details */}
-                                        <div className={sectionCls}>
-                                            <h3 className={`${sectionHeadCls} flex items-center gap-2`}>Transport Details <span className="text-[10px] text-slate-500 normal-case font-medium ml-2">View Only</span></h3>
-                                            
-                                            {/* Fetched Transports Map */}
-                                            <div className="space-y-6">
-                                                {selectedLeadForEdit.domTransports?.map((trans, idx) => {
-                                                    const type = trans.transportType || '';
-                                                    return (
-                                                        <div key={idx} className="space-y-6 mb-6 border-b border-slate-700/30 pb-6 last:border-0 last:mb-0 last:pb-0">
-                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                                                <div><label className="block text-xs text-slate-500 font-bold mb-1">Transport Mode</label><input type="text" readOnly value={type} className={readonlyCls} /></div>
-                                                                <div><label className="block text-xs text-slate-500 font-bold mb-1">Booking Status</label><input type="text" readOnly value={trans.bookingStatus || ''} className={readonlyCls} /></div>
-                                                                <div><label className="block text-xs text-slate-500 font-bold mb-1">Ticket Shared to Client</label><input type="text" readOnly value={trans.ticketSharedToClient || ''} className={readonlyCls} /></div>
-                                                            </div>
-
-                                                            {type === 'Flight' && (
-                                                                <div className="space-y-6">
-                                                                    <p className="text-sm font-bold text-red-500">If Flight</p>
-                                                                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center">
-                                                                        <span className="text-sm text-slate-400 font-bold">Onward</span>
-                                                                        <input type="text" readOnly value={trans.flight?.onward?.depDateTime || ''} className={readonlyCls} placeholder="Date & Time" />
-                                                                        <input type="text" readOnly value={trans.flight?.onward?.from || ''} className={readonlyCls} placeholder="Boarding Point" />
-                                                                        <input type="text" readOnly value={trans.flight?.onward?.to || ''} className={readonlyCls} placeholder="Deboarding Point" />
-                                                                    </div>
-                                                                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center">
-                                                                        <span className="text-sm text-slate-400 font-bold">Return</span>
-                                                                        <input type="text" readOnly value={trans.flight?.return?.depDateTime || ''} className={readonlyCls} placeholder="Date & Time" />
-                                                                        <input type="text" readOnly value={trans.flight?.return?.from || ''} className={readonlyCls} placeholder="Boarding Point" />
-                                                                        <input type="text" readOnly value={trans.flight?.return?.to || ''} className={readonlyCls} placeholder="Deboarding Point" />
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
-                                                            {type === 'Bus' && (
-                                                                <div className="space-y-6">
-                                                                    <p className="text-sm font-bold text-red-500">If Bus</p>
-                                                                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center">
-                                                                        <span className="text-sm text-slate-400 font-bold">Onward</span>
-                                                                        <input type="text" readOnly value={trans.bus?.onward?.travelDateTime || ''} className={readonlyCls} placeholder="Departure Date & Time" />
-                                                                        <input type="text" readOnly value={trans.bus?.onward?.boardingPoint || ''} className={readonlyCls} placeholder="Boarding Point" />
-                                                                        <input type="text" readOnly value={trans.bus?.onward?.destination || ''} className={readonlyCls} placeholder="Deboarding Point" />
-                                                                    </div>
-                                                                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center">
-                                                                        <span className="text-sm text-slate-400 font-bold">Return</span>
-                                                                        <input type="text" readOnly value={trans.bus?.return?.travelDateTime || ''} className={readonlyCls} placeholder="Departure Date & Time" />
-                                                                        <input type="text" readOnly value={trans.bus?.return?.boardingPoint || ''} className={readonlyCls} placeholder="Boarding Point" />
-                                                                        <input type="text" readOnly value={trans.bus?.return?.destination || ''} className={readonlyCls} placeholder="Deboarding Point" />
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
-                                                            {type === 'Train' && (
-                                                                <div className="space-y-6">
-                                                                    <p className="text-sm font-bold text-red-500">If Train</p>
-                                                                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center">
-                                                                        <span className="text-sm text-slate-400 font-bold">Onward</span>
-                                                                        <input type="text" readOnly value={trans.train?.onward?.trainName || ''} className={readonlyCls} placeholder="Train Name" />
-                                                                        <input type="text" readOnly value={trans.train?.onward?.trainNo || ''} className={readonlyCls} placeholder="Train Number" />
-                                                                        <input type="text" readOnly value={trans.train?.onward?.date || ''} className={readonlyCls} placeholder="Date & Time" />
-                                                                    </div>
-                                                                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center -mt-2">
-                                                                        <span></span>
-                                                                        <input type="text" readOnly value={trans.train?.onward?.boardingStation || ''} className={readonlyCls} placeholder="Boarding Station" />
-                                                                        <input type="text" readOnly value={trans.train?.onward?.deboardingStation || trans.train?.onward?.destination || ''} className={readonlyCls} placeholder="Deboarding Station" />
-                                                                    </div>
-
-                                                                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center">
-                                                                        <span className="text-sm text-slate-400 font-bold">Return</span>
-                                                                        <input type="text" readOnly value={trans.train?.return?.trainName || ''} className={readonlyCls} placeholder="Train Name" />
-                                                                        <input type="text" readOnly value={trans.train?.return?.trainNo || ''} className={readonlyCls} placeholder="Train Number" />
-                                                                        <input type="text" readOnly value={trans.train?.return?.date || ''} className={readonlyCls} placeholder="Date & Time" />
-                                                                    </div>
-                                                                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-center -mt-2">
-                                                                        <span></span>
-                                                                        <input type="text" readOnly value={trans.train?.return?.boardingStation || ''} className={readonlyCls} placeholder="Boarding Station" />
-                                                                        <input type="text" readOnly value={trans.train?.return?.deboardingStation || trans.train?.return?.destination || ''} className={readonlyCls} placeholder="Deboarding Station" />
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-
-                                            {/* Manual Global Transport Additions (Always shows, matching the spreadsheet) */}
-                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-6 mt-6 border-t border-slate-700/30">
-                                                <div className="space-y-4">
-                                                    <h4 className="text-xs font-bold text-white border border-slate-700 px-3 py-2 bg-slate-800 rounded">Baggage Details</h4>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Baggage Required</label>
-                                                        <CustomSelect value={selectedLeadForEdit.flBaggageReq} onChange={(v) => handleFieldChange('flBaggageReq', v)} className={selectCls} placeholder="Select" options={['Yes', 'No', 'Yes, Only for return']} />
-                                                        <p className="text-[10px] text-slate-500 mt-1">Yes / No / Yes, Only for return</p>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Booked By</label>
-                                                        <CustomSelect value={selectedLeadForEdit.flBaggageBookedBy} onChange={(v) => handleFieldChange('flBaggageBookedBy', v)} className={selectCls} placeholder="Select" options={['Client', 'Team']} />
-                                                        <p className="text-[10px] text-slate-500 mt-1">Client / Team</p>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Baggage Status</label>
-                                                        <CustomSelect value={selectedLeadForEdit.flBaggageStatus} onChange={(v) => handleFieldChange('flBaggageStatus', v)} className={selectCls} placeholder="Select" options={['Not Required', 'Pending', 'Added']} />
-                                                        <p className="text-[10px] text-slate-500 mt-1">Not Required / Pending / Added</p>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Baggage Kg</label>
-                                                        <CustomSelect value={selectedLeadForEdit.flBaggageKg} onChange={(v) => handleFieldChange('flBaggageKg', v)} className={selectCls} placeholder="Select" options={['15 Kg', '20 Kg', '25 Kg', '30 Kg']} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Boarding Pass Support</label>
-                                                        <input type="text" placeholder="Enter details" value={selectedLeadForEdit.flBaggageSupport} onChange={(e) => handleFieldChange('flBaggageSupport', e.target.value)} className={inputCls} />
-                                                    </div>
-                                                </div>
-
-                                                <div className="space-y-4">
-                                                    <h4 className="text-xs font-bold text-white border border-slate-700 px-3 py-2 bg-slate-800 rounded">Seat Selection</h4>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Seat Preference</label>
-                                                        <CustomSelect value={selectedLeadForEdit.flSeatPref} onChange={(v) => handleFieldChange('flSeatPref', v)} className={selectCls} placeholder="Select" options={['Window', 'Aisle', 'Middle']} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Seat Selected By</label>
-                                                        <CustomSelect value={selectedLeadForEdit.flSeatBookedBy} onChange={(v) => handleFieldChange('flSeatBookedBy', v)} className={selectCls} placeholder="Select" options={['Client', 'Team']} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Booking Status</label>
-                                                        <CustomSelect value={selectedLeadForEdit.flSeatStatus} onChange={(v) => handleFieldChange('flSeatStatus', v)} className={selectCls} placeholder="Select" options={['Not Required', 'Pending', 'Reserved']} />
-                                                        <p className="text-[10px] text-slate-500 mt-1">Not Required / Pending / Reserved</p>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div className="space-y-4">
-                                                    <h4 className="text-xs font-bold text-white border border-slate-700 px-3 py-2 bg-slate-800 rounded">Meal Preference</h4>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Meal Required</label>
-                                                        <CustomSelect value={selectedLeadForEdit.flMealReq} onChange={(v) => handleFieldChange('flMealReq', v)} className={selectCls} placeholder="Select" options={['Yes', 'No']} />
-                                                        <p className="text-[10px] text-slate-500 mt-1">Yes/ No</p>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Meal Type</label>
-                                                        <CustomSelect value={selectedLeadForEdit.flMealType} onChange={(v) => handleFieldChange('flMealType', v)} className={selectCls} placeholder="Select" options={['Veg', 'Non-Veg', 'Special']} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Meal Booked By</label>
-                                                        <CustomSelect value={selectedLeadForEdit.flMealBookedBy} onChange={(v) => handleFieldChange('flMealBookedBy', v)} className={selectCls} placeholder="Select" options={['Client', 'Team']} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Meal Status</label>
-                                                        <CustomSelect value={selectedLeadForEdit.flMealStatus} onChange={(v) => handleFieldChange('flMealStatus', v)} className={selectCls} placeholder="Select" options={['Pending', 'Confirmed']} />
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div className="pt-4 mt-6 border-t border-slate-700/30">
-                                                <label className="block text-xs font-bold text-slate-200 mb-1">Special Instructions</label>
-                                                <input type="text" placeholder="on whole for Transport" value={selectedLeadForEdit.flSpecialInst} onChange={(e) => handleFieldChange('flSpecialInst', e.target.value)} className={inputCls} />
-                                            </div>
-                                        </div>
-
-                                        {/* Travel Insurance */}
-                                        {selectedLeadForEdit.insRequired === 'Yes' && (
-                                            <div className={sectionCls}>
-                                                <h3 className={sectionHeadCls}>Travel Insurance <span className="text-[10px] text-slate-500 normal-case ml-2 font-medium">If they chosen "Yes" Under Insurance required, this part will appear</span></h3>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Insurance Issued</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insIssued} onChange={(v) => handleFieldChange('insIssued', v)} className={selectCls} placeholder="Select" options={['Pending', 'Issued']} />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Policy Shared To Client</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insPolicyShared} onChange={(v) => handleFieldChange('insPolicyShared', v)} className={selectCls} placeholder="Select" options={['Yes', 'No']} />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {/* Hotel Fulfilment */}
-                                        <div className={sectionCls}>
-                                            <h3 className={sectionHeadCls}>Hotel Fulfilment</h3>
-                                            <div className="grid grid-cols-12 gap-4 text-xs font-bold text-slate-400 mb-2 px-2">
-                                                <div className="col-span-6">Hotel Names | Location <span className="text-[10px] font-normal lowercase">(Fetched)</span></div>
-                                                <div className="col-span-3 text-center">Confirmed</div>
-                                                <div className="col-span-3 text-center">Voucher Shared</div>
-                                            </div>
-                                            <div className="space-y-3">
-                                                {selectedLeadForEdit.domHotels?.map((hotel, idx) => (
-                                                    <div key={idx} className="grid grid-cols-12 gap-4 items-center bg-slate-900/50 p-2 rounded border border-slate-700/50">
-                                                        <div className="col-span-6 flex gap-2">
-                                                            <span className="text-slate-500 text-xs mt-2 w-12">Hotel {idx+1}</span>
-                                                            <input type="text" readOnly value={`${hotel.hotelName || 'TBD'} | ${hotel.location || 'TBD'}`} className={readonlyCls} style={{textAlign: 'left'}} />
-                                                        </div>
-                                                        <div className="col-span-3 flex justify-center">
-                                                            <input type="checkbox" checked={hotel.confirmed} onChange={(e) => handleHotelChange('domHotels', idx, 'confirmed', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-cyan-500 cursor-pointer" />
-                                                        </div>
-                                                        <div className="col-span-3 flex justify-center">
-                                                            <input type="checkbox" checked={hotel.voucherShared} onChange={(e) => handleHotelChange('domHotels', idx, 'voucherShared', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-cyan-500 cursor-pointer" />
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        {/* Local Transport */}
-                                        <div className={sectionCls}>
-                                            <h3 className={`${sectionHeadCls} flex items-center justify-between`}>Local Transport <span className="text-[10px] text-slate-500 normal-case">View</span></h3>
-                                            <div className="space-y-3">
-                                                <label className="flex items-center gap-4 cursor-pointer group hover:bg-slate-800/50 p-2 rounded max-w-sm">
-                                                    <span className="text-sm font-bold text-slate-200 w-40">Vehicle Assigned</span>
-                                                    <input type="checkbox" checked={selectedLeadForEdit.locTransVehicleAssigned} onChange={(e) => handleFieldChange('locTransVehicleAssigned', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-cyan-500" />
-                                                </label>
-                                                <label className="flex items-center gap-4 cursor-pointer group hover:bg-slate-800/50 p-2 rounded max-w-sm">
-                                                    <span className="text-sm font-bold text-slate-200 w-40">Driver Details Shared</span>
-                                                    <input type="checkbox" checked={selectedLeadForEdit.locTransDriverDetailsShared} onChange={(e) => handleFieldChange('locTransDriverDetailsShared', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-cyan-500" />
-                                                </label>
-                                                <label className="flex items-center gap-4 cursor-pointer group hover:bg-slate-800/50 p-2 rounded max-w-sm">
-                                                    <span className="text-sm font-bold text-slate-200 w-40">Driver Contact Shared</span>
-                                                    <input type="checkbox" checked={selectedLeadForEdit.locTransDriverContactShared} onChange={(e) => handleFieldChange('locTransDriverContactShared', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-cyan-500" />
-                                                </label>
-                                            </div>
-                                        </div>
-
-                                        {/* Special Requirements */}
-                                        <div className={sectionCls}>
-                                            <h3 className={sectionHeadCls}>Special Requirements</h3>
-                                            <p className="text-xs text-slate-400 mb-4 flex gap-2 flex-wrap items-center">
-                                                Chosen Options Will Appear: 
-                                                {specialReqOptions.filter(r => selectedLeadForEdit[r.id]).length > 0 ? (
-                                                    specialReqOptions.filter(r => selectedLeadForEdit[r.id]).map(r => (
-                                                        <span key={r.id} className="bg-slate-800 px-2 py-1 rounded text-cyan-400 font-bold">{r.label}</span>
-                                                    ))
-                                                ) : (
-                                                    <span className="bg-slate-800 px-2 py-1 rounded">None selected</span>
-                                                )}
-                                            </p>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-200 mb-1">Requirement Status</label>
-                                                    <input type="text" placeholder="Enter status" value={selectedLeadForEdit.domSpecialReqStatus} onChange={(e) => handleFieldChange('domSpecialReqStatus', e.target.value)} className={inputCls} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-200 mb-1">Pending / Completed</label>
-                                                    <CustomSelect value={selectedLeadForEdit.domSpecialReqCompleted} onChange={(v) => handleFieldChange('domSpecialReqCompleted', v)} className={selectCls} placeholder="Select" options={['Pending', 'Completed']} />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Payment Clearance */}
-                                        <div className={sectionCls}>
-                                            <h3 className={`${sectionHeadCls} flex items-center gap-2`}>Payment Clearance <span className="text-[10px] text-slate-500 normal-case ml-2 font-medium">automatic</span></h3>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-xs text-slate-500 font-bold mb-1">Client Payment Status</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.clientPayStatus || 'Cleared'} className={`${readonlyCls} text-left`} />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs text-slate-500 font-bold mb-1">Payment to Vendor</label>
-                                                    <input type="text" readOnly value={selectedLeadForEdit.vendorPayStatus || 'Pending'} className={`${readonlyCls} text-left`} />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Customer Acknowledgement */}
-                                        <div className={sectionCls}>
-                                            <h3 className={sectionHeadCls}>Customer Acknowledgement</h3>
-                                            <div className="space-y-4">
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                    <div className="space-y-3">
-                                                        <label className="flex items-center justify-between cursor-pointer group hover:bg-slate-800/50 p-2 rounded border border-slate-700/30">
-                                                            <span className="text-sm font-bold text-slate-200">Finalised Itinerary Shared</span>
-                                                            <input type="checkbox" checked={selectedLeadForEdit.ackItinerary} onChange={(e) => handleFieldChange('ackItinerary', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-cyan-500" />
-                                                        </label>
-                                                        <label className="flex items-center justify-between cursor-pointer group hover:bg-slate-800/50 p-2 rounded border border-slate-700/30">
-                                                            <span className="text-sm font-bold text-slate-200">Service Voucher Shared</span>
-                                                            <input type="checkbox" checked={selectedLeadForEdit.ackVoucher} onChange={(e) => handleFieldChange('ackVoucher', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-cyan-500" />
-                                                        </label>
-                                                        <label className="flex items-center justify-between cursor-pointer group hover:bg-slate-800/50 p-2 rounded border border-slate-700/30">
-                                                            <span className="text-sm font-bold text-slate-200">Briefing Completed</span>
-                                                            <input type="checkbox" checked={selectedLeadForEdit.ackBriefing} onChange={(e) => handleFieldChange('ackBriefing', e.target.checked)} className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-cyan-500" />
-                                                        </label>
-                                                    </div>
-                                                    <div className="space-y-3">
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-200 mb-1">Briefing Conducted By</label>
-                                                            <CustomSelect value={selectedLeadForEdit.ackBriefingBy} onChange={(v) => handleFieldChange('ackBriefingBy', v)} className={selectCls} placeholder="Name Dropdown" options={['Operations Manager', 'Sales Exec', 'Customer Success']} />
-                                                        </div>
-                                                        <div>
-                                                            <label className="block text-xs font-bold text-slate-200 mb-1">Briefing Date & Time</label>
-                                                            <DatePickerField type="datetime-local" value={selectedLeadForEdit.ackBriefingDate} onChange={(e) => handleFieldChange('ackBriefingDate', e.target.value)} className={inputCls} />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-bold text-slate-200 mb-1">Remarks</label>
-                                                    <textarea rows="2" placeholder="Text Area" value={selectedLeadForEdit.ackRemarks} onChange={(e) => handleFieldChange('ackRemarks', e.target.value)} className={inputCls} />
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Department Clearance */}
-                                        <div className={sectionCls} style={{ borderColor: 'rgba(56, 189, 248, 0.4)' }}>
-                                            <h3 className={`${sectionHeadCls} text-sky-400 border-sky-900/50`}>Department Clearance</h3>
-                                            <div className="space-y-6">
-                                                
-                                                {/* Operations (Manual) */}
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
-                                                    <div className="space-y-3">
-                                                        <h4 className="text-sm font-bold text-white mb-2">Operations</h4>
-                                                        <label className="flex items-center justify-between cursor-pointer group">
-                                                            <span className="text-sm font-bold text-slate-200">Services Confirmed</span>
-                                                            <input type="checkbox" checked={selectedLeadForEdit.clrOpsServices} onChange={(e) => handleFieldChange('clrOpsServices', e.target.checked)} className="w-4 h-4 rounded border-slate-600 text-cyan-500" />
-                                                        </label>
-                                                        <label className="flex items-center justify-between cursor-pointer group">
-                                                            <span className="text-sm font-bold text-slate-200">Documents Verified</span>
-                                                            <input type="checkbox" checked={selectedLeadForEdit.clrOpsDocs} onChange={(e) => handleFieldChange('clrOpsDocs', e.target.checked)} className="w-4 h-4 rounded border-slate-600 text-cyan-500" />
-                                                        </label>
-                                                    </div>
-                                                    <div className="h-full pt-1">
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Remarks</label>
-                                                        <textarea rows="3" placeholder="Text Area" value={selectedLeadForEdit.clrOpsRemarks} onChange={(e) => handleFieldChange('clrOpsRemarks', e.target.value)} className={inputCls} />
-                                                    </div>
-                                                </div>
-
-                                                {/* Finance */}
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start border-t border-slate-700/50 pt-6">
-                                                    <div className="space-y-3">
-                                                        <h4 className="text-sm font-bold text-white mb-2 flex justify-between">Finance <span className="text-[10px] text-slate-500 normal-case font-normal bg-slate-800 px-1 rounded">Autofetch</span></h4>
-                                                        <label className="flex items-center justify-between cursor-pointer group">
-                                                            <span className="text-sm font-bold text-slate-200">Payment Cleared</span>
-                                                            <input type="checkbox" checked={selectedLeadForEdit.clrFinPayment} onChange={(e) => handleFieldChange('clrFinPayment', e.target.checked)} className="w-4 h-4 rounded border-slate-600 text-cyan-500" />
-                                                        </label>
-                                                        <label className="flex items-center justify-between cursor-pointer group">
-                                                            <span className="text-sm font-bold text-slate-200">Supplier Payments Cleared</span>
-                                                            <input type="checkbox" checked={selectedLeadForEdit.clrFinSupplier} onChange={(e) => handleFieldChange('clrFinSupplier', e.target.checked)} className="w-4 h-4 rounded border-slate-600 text-cyan-500" />
-                                                        </label>
-                                                    </div>
-                                                    <div className="h-full pt-1">
-                                                        <label className="block text-xs font-bold text-slate-200 mb-1">Remarks</label>
-                                                        <textarea rows="3" placeholder="Remarks" value={selectedLeadForEdit.clrFinRemarks || ''} onChange={(e) => handleFieldChange('clrFinRemarks', e.target.value)} className={inputCls} />
-                                                    </div>
-                                                </div>
-
-                                                {/* Operations Manager Approval */}
-                                                <div className="space-y-4 border-t border-slate-700/50 pt-6">
-                                                    <h4 className="text-sm font-bold text-white mb-2 flex justify-between">Operations Manager Approval <span className="text-[10px] text-slate-500 normal-case font-normal bg-slate-800 px-1 rounded">Autofetch</span></h4>
-                                                    <label className="flex items-center justify-between max-w-sm cursor-pointer group">
-                                                        <span className="text-sm font-bold text-slate-200">Final Review Completed</span>
-                                                        <input type="checkbox" checked={selectedLeadForEdit.clrMgrReview} onChange={(e) => handleFieldChange('clrMgrReview', e.target.checked)} className="w-4 h-4 rounded border-slate-600 text-cyan-500" />
-                                                    </label>
-                                                    <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-900/50 p-4 border border-slate-700 rounded-lg">
-                                                        <p className="text-xs text-slate-400 italic flex-1">
-                                                            All travel services, documents, payments, and client communication have been completed and approved for travel.
-                                                        </p>
-                                                        <label className="flex items-center gap-2 shrink-0 bg-green-950/30 px-3 py-2 rounded border border-green-900/50 cursor-pointer">
-                                                            <input type="checkbox" checked={selectedLeadForEdit.clrReadyDeparture} onChange={(e) => handleFieldChange('clrReadyDeparture', e.target.checked)} className="w-4 h-4 rounded text-green-500" />
-                                                            <span className="text-sm font-bold text-green-400">Ready for Departure</span>
-                                                        </label>
-                                                    </div>
-                                                </div>
-
-                                            </div>
-                                        </div>
-
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="flex items-center justify-end gap-2.5 border-t border-slate-800 px-6 py-4 flex-shrink-0 bg-[#0b1329]">
-                                <button type="button" onClick={() => setSelectedLeadForEdit(null)} className="px-5 py-2 bg-transparent border border-slate-700 hover:bg-slate-800 text-slate-300 text-sm font-semibold rounded cursor-pointer uppercase tracking-wider">CANCEL</button>
-                                <button type="submit" className="px-5 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold rounded shadow cursor-pointer uppercase tracking-wider">SAVE FULFILLMENT</button>
-                            </div>
-                        </form>
+                        <div className="p-5 overflow-y-auto custom-scrollbar flex-1 bg-[#0f172a]">
+                            {renderDataContent(viewModal.content)}
+                        </div>
+                        <div className="px-5 py-3 border-t border-slate-700/50 bg-[#0b1329] flex justify-end flex-shrink-0">
+                            <button type="button" onClick={() => setViewModal({ show: false, title: '', content: '' })} className="px-5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white text-xs font-bold rounded shadow transition-colors cursor-pointer uppercase tracking-wider">Close</button>
+                        </div>
                     </div>
                 </div>
             )}
