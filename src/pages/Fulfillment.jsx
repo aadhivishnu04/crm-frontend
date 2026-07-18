@@ -19,10 +19,10 @@ const INDIAN_DESTINATION_KEYWORDS = [
 ];
 
 const getOperationTourType = (lead) => {
-    const destination = (lead.destination || '').toLowerCase();
+    const destination = (lead.destination || lead.confirmedDestination || lead.destinationRequest || '').toLowerCase();
     if (INDIAN_DESTINATION_KEYWORDS.some(place => destination.includes(place))) return 'Domestic Tour';
     if (destination.trim()) return 'International Tour';
-    return 'International Tour';
+    return lead.tourType || 'International Tour';
 };
 
 const MOCK_LEADS = [
@@ -303,7 +303,8 @@ export default function Fulfillment() {
         const travelDate = lead.travelDate ? new Date(lead.travelDate) : null;
         const returnDate = lead.returnDate ? new Date(lead.returnDate) : null;
 
-        if (lead.status === 'Confirmed Bookings' || lead.status === 'Upcoming Departure') acc['Confirmed Bookings'].push(lead);
+        // FIX: Only push to Fulfillment queue if Ops explicitly sent it via "Upcoming Departure" status
+        if (lead.status === 'Upcoming Departure') acc['Confirmed Bookings'].push(lead);
         if (travelDate && travelDate.getMonth() === SYSTEM_TODAY.getMonth() && travelDate.getFullYear() === SYSTEM_TODAY.getFullYear()) acc['Trips For This Month'].push(lead);
         if (travelDate) {
             const diffDays = Math.ceil((travelDate.getTime() - SYSTEM_TODAY.getTime()) / (1000 * 60 * 60 * 24));
@@ -443,9 +444,22 @@ export default function Fulfillment() {
             }
         });
 
+        // FIX: Ensure all dynamic arrays parsed on load are properly stringified back into JSON 
+        // to prevent 400 Bad Request errors or wiping out Ops data structures.
         const payloadToSave = {
             ...selectedLeadForEdit,
-            fulfillmentData: JSON.stringify(fulfillmentData)
+            fulfillmentData: JSON.stringify(fulfillmentData),
+            passengers: JSON.stringify(selectedLeadForEdit.passengers || []),
+            flights: JSON.stringify(selectedLeadForEdit.flights || []),
+            intTransports: JSON.stringify(selectedLeadForEdit.intTransports || []),
+            visas: JSON.stringify(selectedLeadForEdit.visas || []),
+            domTransports: JSON.stringify(selectedLeadForEdit.domTransports || []),
+            domHotels: JSON.stringify(selectedLeadForEdit.domHotels || []),
+            intHotels: JSON.stringify(selectedLeadForEdit.intHotels || []),
+            domLocalTransports: JSON.stringify(selectedLeadForEdit.domLocalTransports || []),
+            paymentRequests: JSON.stringify(selectedLeadForEdit.paymentRequests || []),
+            vendorRequests: JSON.stringify(selectedLeadForEdit.vendorRequests || []),
+            customisationRequests: JSON.stringify(selectedLeadForEdit.customisationRequests || [])
         };
 
         updateLead(selectedLeadForEdit.id, payloadToSave);

@@ -4,7 +4,7 @@ import {
     CheckSquare, X, Send, Pencil, Mic, Square, Trash2, Play, 
     RefreshCw, Users, ArrowUp, ChevronLeft, ChevronRight, ChevronDown, History,
     Plus, UserPlus, Phone, Mail, Globe, MessageSquare, CreditCard,
-    Flame, Sun, Snowflake, Save, FileText
+    Flame, Sun, Snowflake, Save, FileText, AlertCircle, CheckCircle2
 } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
 
@@ -60,6 +60,26 @@ const formatDateTime = (dateStr) => {
     }
 };
 
+// ─────────────────────────────────────────────
+// COMPONENT – Pagination
+// ─────────────────────────────────────────────
+function Pagination({ currentPage, totalPages, onPageChange, totalEntries, entriesPerPage }) {
+    const from = totalEntries > 0 ? (currentPage - 1) * entriesPerPage + 1 : 0;
+    const to = Math.min(currentPage * entriesPerPage, totalEntries);
+    return (
+        <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-3.5 border-t border-slate-700/20 gap-3">
+            <div className="flex items-center gap-1">
+                <button type="button" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="px-3 py-1.5 rounded text-xs border border-slate-700 bg-transparent text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">Previous</button>
+                {Array.from({ length: totalPages || 1 }, (_, i) => (
+                    <button type="button" key={i + 1} onClick={() => onPageChange(i + 1)} className={`px-3 py-1.5 rounded text-xs border cursor-pointer font-bold transition-all ${currentPage === i + 1 ? 'bg-slate-700 text-white' : 'border-slate-700 bg-transparent text-slate-400 hover:text-white'}`}>{i + 1}</button>
+                ))}
+                <button type="button" onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage >= totalPages} className="px-3 py-1.5 rounded text-xs border border-slate-700 bg-transparent text-slate-200 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer">Next</button>
+            </div>
+            <p className="text-xs text-slate-500">Showing {from}–{to} of {totalEntries} records</p>
+        </div>
+    );
+}
+
 const SalesDashboard = () => {
     // --- USER IDENTIFICATION ---
     const user = getCurrentUser();
@@ -69,6 +89,17 @@ const SalesDashboard = () => {
     
     // Make sure Admin rights are strictly applied
     const isAdmin = user?.role?.toLowerCase() === 'admin' || loggedInUserName.toLowerCase() === 'admin';
+
+    // --- TOAST NOTIFICATIONS ---
+    const [notification, setNotification] = useState({ show: false, type: '', message: '' });
+    const triggerNotification = (type, message) => setNotification({ show: true, type, message });
+    
+    useEffect(() => {
+        if (notification.show) {
+            const t = setTimeout(() => setNotification(prev => ({ ...prev, show: false })), 3000);
+            return () => clearTimeout(t);
+        }
+    }, [notification.show]);
 
     // Shared Input / UI Classes
     const inputCls = "w-full px-3 py-2 sm:py-1.5 bg-slate-900 border border-slate-700 rounded-lg sm:rounded text-white text-sm focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/50 outline-none transition-all";
@@ -88,6 +119,15 @@ const SalesDashboard = () => {
     const [searchPhone, setSearchPhone] = useState('');
     const [searchDestination, setSearchDestination] = useState('');
     const [selectedPlatform, setSelectedPlatform] = useState('All');
+
+    // --- PAGINATION STATES ---
+    const [currentPage, setCurrentPage] = useState(1);
+    const [entriesPerPage] = useState(10);
+
+    // Reset pagination when tabs or filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [activeTab, searchName, searchId, searchPhone, searchDestination, selectedPlatform]);
 
     // --- PAYMENT SEARCH MODAL STATES ---
     const [isPaymentSearchModalOpen, setIsPaymentSearchModalOpen] = useState(false);
@@ -183,13 +223,13 @@ const SalesDashboard = () => {
         leadTemperature: '', objectionTracking: '', bookingProbability: '0%', customerResponse: '', noResponseLogs: [],
         closureReason: '', nextFollowUpDatePostponed: '',
         
-        // Travel Details additions
-        services: '', remarks: '', customisationRequests: [],
+        services: '', remarks: '', customisationRequests: [], customisationAction: '',
         
         // Operation Response
         opsPreparedBy: '', opsCompletedOn: '', opsRemarks: '', opsActionTaken: '',
         opsVerificationStatus: 'Pending Verified', opsSharedWithClient: 'No', 
         packagePreparedFor: '', packageCost: '', operationNotes: '', salesReviewStatus: '',
+        opsCustomisationStatus: '', opsExpectedCompletionDate: '', opsExpectedCompletionTime: '', updateRecords: [],
 
         // Booking Confirmation
         billingName: '', bookingDate: '', operationExecutive: '',
@@ -198,7 +238,6 @@ const SalesDashboard = () => {
         arrivalDate: '', flightStatus: '', visaStatus: '', insuranceStatus: '', 
         confirmedMethod: '', confirmedDate: '', confirmedServices: '', discount: '', finalPackageValue: '', serviceCost: '',
 
-        // Booking Confirmation - Dynamic Fields
         service1Cost: '', service2Cost: '', service3Cost: '', gst: '', tcs: '', passengers: [],
         aadharCopy: '', passportCopy: '', photograph: '', docRemarks: '',
         attachedFiles: [],
@@ -226,12 +265,12 @@ const SalesDashboard = () => {
     // --- AUTO CALCULATION FOR BOOKING PROBABILITY & TEMPERATURE ---
     useEffect(() => {
         let probVal = 0; 
-        const { leadResponse, actionTaken, customerResponse } = editFormData;
+        const { leadResponse, customisationAction, customerResponse } = editFormData;
 
         if (customerResponse === 'Booking Confirmed') { probVal = 100; } 
         else if (customerResponse === 'Negotiation') { probVal = 90; } 
         else if (customerResponse === 'Needs Revision') { probVal = 75; } 
-        else if (actionTaken === 'Customisation Required') { probVal = 50; } 
+        else if (customisationAction === 'Customisation Required') { probVal = 50; } 
         else if (leadResponse === 'Requirement Collected') { probVal = 25; } 
         else if (leadResponse === 'No Response') { probVal = 0; }
 
@@ -240,7 +279,7 @@ const SalesDashboard = () => {
         else if (probVal >= 26 && probVal <= 74) temp = 'Warm';
 
         setEditFormData(prev => ({ ...prev, bookingProbability: `${probVal}%`, leadTemperature: temp }));
-    }, [editFormData.leadResponse, editFormData.customerResponse, editFormData.actionTaken]);
+    }, [editFormData.leadResponse, editFormData.customerResponse, editFormData.customisationAction]);
 
     // --- AUTO CALCULATION FOR CONFIRMED DATE ---
     useEffect(() => {
@@ -415,7 +454,7 @@ const SalesDashboard = () => {
         const currentAction = isOutcome ? editFormData.customerResponse : editFormData.actionTaken;
 
         if (!currentNotes && !currentInteraction && !currentAction) {
-            alert("Please enter notes, interaction type, or action first.");
+            triggerNotification('error', "Please enter notes, interaction type, or action first.");
             return;
         }
         
@@ -430,7 +469,6 @@ const SalesDashboard = () => {
         // Trigger Recycle Bin at 10 logs
         if (updatedCount >= 10) newStatus = 'Recycle Bin';
 
-        // --- NEW RECYCLE BIN RESET CONDITION ---
         if (newStatus === 'Recycle Bin' && updatedCount > 0) {
             updatedHistory = appendHistory(updatedHistory, 'Auto-Moved to Recycle Bin', `Reached max follow-ups. Counter reset to 0. Archiving past attempts.`);
             [...updatedLogs].reverse().forEach(log => {
@@ -456,15 +494,19 @@ const SalesDashboard = () => {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ noResponseLogs: JSON.stringify(updatedLogs), followupCount: updatedCount, history: JSON.stringify(updatedHistory), status: newStatus })
             });
+            triggerNotification('success', "Log saved successfully.");
             await fetchJobs(true);
-        } catch (e) { console.error("Auto-save log failed", e); }
+        } catch (e) { 
+            console.error("Auto-save log failed", e); 
+            triggerNotification('error', "Failed to save log. Network error.");
+        }
     };
 
     // --- PAYMENT HISTORY LOG HANDLER ---
     const handleAddPaymentHistory = () => {
         const { customerPaymentDate, paymentStatus, paymentService, amountReceived, paymentMode } = editFormData;
         if (!amountReceived || !paymentMode) {
-            alert("Please fill in Amount Collected and Payment Mode to save the record.");
+            triggerNotification('error', "Please fill in Amount Collected and Payment Mode to save the record.");
             return;
         }
         
@@ -502,6 +544,7 @@ const SalesDashboard = () => {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ noResponseLogs: JSON.stringify(updatedLogs), followupCount: updatedCount, status: newStatus })
             });
+            triggerNotification('success', "Log deleted.");
             await fetchJobs(true);
         } catch (e) { console.error("Auto-save log delete failed", e); }
     };
@@ -524,6 +567,7 @@ const SalesDashboard = () => {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ noResponseLogs: JSON.stringify(updatedLogs) })
             });
+            triggerNotification('success', "Log updated.");
             await fetchJobs(true);
         } catch (e) { console.error("Auto-save log edit failed", e); }
     };
@@ -607,7 +651,7 @@ const SalesDashboard = () => {
     const handleNewLeadSubmit = async (e) => {
         e.preventDefault();
         if (!newLeadForm.customerName.trim() || !newLeadForm.phone.trim()) {
-            alert('Customer name and phone number are required.');
+            triggerNotification('error', 'Customer name and phone number are required.');
             return;
         }
 
@@ -634,15 +678,16 @@ const SalesDashboard = () => {
                     body: JSON.stringify({ leadId: saved.id, customerName: saved.customerName, destination: saved.destination, email: saved.email, phone: saved.phone })
                 }).catch(err => console.error('Silently failing email trigger:', err));
 
+                triggerNotification('success', 'New lead created successfully.');
                 await fetchJobs();
                 setIsNewLeadModalOpen(false);
             } else {
                 const err = await response.json().catch(() => ({}));
-                alert(`Failed to create lead: ${err.message || err.error || 'Unknown error'}`);
+                triggerNotification('error', `Failed to create lead: ${err.message || err.error || 'Unknown error'}`);
             }
         } catch (error) {
             console.error('New lead submit error:', error);
-            alert('Network error. Check if the backend server is running.');
+            triggerNotification('error', 'Network error. Check if the backend server is running.');
         } finally { setIsSubmittingNewLead(false); }
     };
 
@@ -680,7 +725,7 @@ const SalesDashboard = () => {
             mediaRecorderRef.current.start();
             setIsRecording(true);
             timerRef.current = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
-        } catch (err) { alert('Microphone access denied. Please check system permissions.'); }
+        } catch (err) { triggerNotification('error', 'Microphone access denied. Please check system permissions.'); }
     };
 
     const stopRecording = () => {
@@ -751,7 +796,7 @@ const SalesDashboard = () => {
     };
 
     const handleReassignSubmit = async () => {
-        if (reassignOption === 'employee' && !reassignTargetEmployee) { alert('Please select a sales employee to assign this job.'); return; }
+        if (reassignOption === 'employee' && !reassignTargetEmployee) { triggerNotification('error', 'Please select a sales employee to assign this job.'); return; }
         try {
             const isRecycled = selectedLead.status === 'Recycle Bin' || selectedLead.followupCount >= 10 || selectedLead.followUpCount >= 10;
             
@@ -789,37 +834,28 @@ const SalesDashboard = () => {
 
                 assignPayload.history = JSON.stringify(updatedHistory);
 
-                // 1. Map Assigned User securely
                 await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
-                    method: 'PUT', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify(assignPayload)
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(assignPayload)
                 });
 
-                // 2. Clear Recycle Bin counters via main endpoint
                 await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
-                    method: 'PUT', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify({
-                        followupCount: 0,
-                        followUpCount: 0,
-                        noResponseLogs: JSON.stringify([]),
-                        status: assignPayload.status
-                    })
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ followupCount: 0, followUpCount: 0, noResponseLogs: JSON.stringify([]), status: assignPayload.status })
                 });
             } else {
                 assignPayload.history = JSON.stringify(updatedHistory);
-
                 await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
-                    method: 'PUT', 
-                    headers: { 'Content-Type': 'application/json' }, 
-                    body: JSON.stringify(assignPayload)
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(assignPayload)
                 });
             }
 
+            triggerNotification('success', 'Lead reassigned successfully.');
             await fetchJobs(true);
             setIsReassignModalOpen(false); 
-        } catch (error) { console.error('Reassign error:', error); }
+        } catch (error) { 
+            console.error('Reassign error:', error); 
+            triggerNotification('error', 'Error reassigning lead.');
+        }
     };
 
     const handleOpenEditModal = (lead, targetSection = null) => {
@@ -829,7 +865,6 @@ const SalesDashboard = () => {
         setPlayingIndex(null);
         setEditingLogIndex(null); 
 
-        // If we are in "My Confirmation" tab, ONLY show the Confirmation block expanded.
         setExpandedSections({
             leadInfo: false, 
             salesActivity: activeTab !== 'My Confirmation' && !targetSection, 
@@ -840,7 +875,6 @@ const SalesDashboard = () => {
             paymentInfo: targetSection === 'paymentInfo'
         });
 
-        // Safe JSON Parsing for Previous Attempts
         let parsedNoResponseLogs = [];
         try {
             if (lead.noResponseLogs && lead.noResponseLogs !== '[object Object]') {
@@ -849,7 +883,6 @@ const SalesDashboard = () => {
             }
         } catch (e) { parsedNoResponseLogs = []; }
 
-        // Self Healing Legacy Sync
         let pHistory = [];
         try { pHistory = typeof lead.history === 'string' ? JSON.parse(lead.history) : (lead.history || []); } catch(e){}
 
@@ -903,7 +936,6 @@ const SalesDashboard = () => {
             }];
         }
 
-        // Recover Attached Files
         let parsedFiles = [];
         if (lead.docDriveLink) {
             try {
@@ -916,9 +948,15 @@ const SalesDashboard = () => {
             }
         }
 
-        let derivedActionTaken = lead.actionTaken || '';
-        if (lead.status === 'Customisation Ready') {
-            derivedActionTaken = 'Customisation Required';
+        let parsedUpdateRecords = [];
+        if (lead.updateRecords) {
+            try { parsedUpdateRecords = typeof lead.updateRecords === 'string' ? JSON.parse(lead.updateRecords) : lead.updateRecords; }
+            catch { parsedUpdateRecords = []; }
+        }
+
+        let derivedCustomisationAction = lead.customisationAction || '';
+        if (lead.status === 'Customisation Ready' && !derivedCustomisationAction) {
+            derivedCustomisationAction = 'Customisation Required';
         }
 
         setEditFormData({
@@ -929,15 +967,18 @@ const SalesDashboard = () => {
             travelDate: lead.travelDate || lead.travelDates || lead.dates || '', duration: lead.duration || '', travelBudget: lead.travelBudget || lead.budget || lead.amount || '',
             hotelCategory: lead.hotelCategory || '', noOfAdults: lead.noOfAdults || lead.travellerCount || lead.noOfPax || '2', noOfChildren: lead.noOfChildren || '0', offers: lead.offers || '', departureCity: lead.departureCity || '',
             
-            firstAttempt: lead.firstAttempt || '', leadResponse: lead.leadResponse || '', interactionType: lead.interactionType || '', actionTaken: derivedActionTaken,
+            firstAttempt: lead.firstAttempt || '', leadResponse: lead.leadResponse || '', interactionType: lead.interactionType || '', actionTaken: lead.actionTaken || '',
             leadStatusField: lead.leadStatusField || '', salesNotes: '', outcomeNotes: '', followupDate: lead.nextFollowUp || lead.followupDate || '',
             leadTemperature: lead.leadTemperature || '', objectionTracking: lead.objectionTracking || '', customerResponse: lead.customerResponse || '',
             bookingProbability: lead.bookingProbability || '0%', closureReason: lead.closureReason || '', nextFollowUpDatePostponed: lead.nextFollowUpDatePostponed || '',
             noResponseLogs: parsedNoResponseLogs, history: pHistory, services: lead.services || '', remarks: lead.remarks || '', customisationRequests: parsedCustomisationRequests,
+            customisationAction: derivedCustomisationAction,
             
             opsPreparedBy: lead.opsPreparedBy || '', opsCompletedOn: lead.opsCompletedOn || '', opsRemarks: lead.opsRemarks || '', opsActionTaken: lead.opsActionTaken || '',
             opsVerificationStatus: lead.opsVerificationStatus || 'Pending Verified', opsSharedWithClient: lead.opsSharedWithClient || 'No', 
             packagePreparedFor: lead.packagePreparedFor || '', packageCost: lead.packageCost || '', operationNotes: lead.operationNotes || '', salesReviewStatus: lead.salesReviewStatus || '',
+            opsCustomisationStatus: lead.opsCustomisationStatus || '', opsExpectedCompletionDate: lead.opsExpectedCompletionDate || '', opsExpectedCompletionTime: lead.opsExpectedCompletionTime || '',
+            updateRecords: parsedUpdateRecords,
 
             billingName: lead.billingName || '', bookingDate: lead.bookingDate || '', operationExecutive: lead.operationExecutive || '',
             confirmedTripType: lead.confirmedTripType || lead.tripCategory || lead.tourType || '', confirmedDestination: lead.confirmedDestination || lead.destination || '', confirmedDuration: lead.confirmedDuration || lead.duration || '',
@@ -982,7 +1023,6 @@ const SalesDashboard = () => {
     const handleSubmitEdit = async (e) => {
         e.preventDefault();
         try {
-            // Auto-save pending notes if user forgot to click "Save Log" before submitting
             const isOutcome = editFormData.leadResponse === 'Requirement Collected';
             const pendingNotes = isOutcome ? editFormData.outcomeNotes : editFormData.salesNotes;
             
@@ -998,26 +1038,35 @@ const SalesDashboard = () => {
                 logsCount = updatedLogs.length;
                 currentHistory = appendHistory(currentHistory, `${isOutcome ? 'Outcome Update' : 'Follow-up'}: ${currentInteraction}`, pendingNotes);
             }
-
-            let finalStatus = editFormData.leadStatus;
+let finalStatus = editFormData.leadStatus;
             
-            // Trigger Recycle Bin at 10 logs
             if (logsCount >= 10) finalStatus = 'Recycle Bin';
 
-            if (editFormData.actionTaken === 'Customisation Required' && finalStatus !== 'Recycle Bin' && finalStatus !== 'Move To Operation') {
-                finalStatus = 'Customisation Ready';
-            } else if (finalStatus === 'Customisation Ready' && editFormData.actionTaken !== 'Customisation Required') {
-                finalStatus = 'Sales Assigned'; // Revert back to My Jobs if they change their mind
+            // FIX: Route Customisation Requests properly to Ops
+            if (editFormData.customisationAction === 'Customisation Required' && finalStatus !== 'Recycle Bin' && finalStatus !== 'Move To Operation') {
+                finalStatus = 'Move To Operation'; // Changed from 'Customisation Ready'
+            } else if (finalStatus === 'Customisation Ready' && editFormData.customisationAction !== 'Customisation Required') {
+                finalStatus = 'Sales Assigned';
             }
 
-            // --- AUTO-ROUTE TO OPERATIONS ---
-            if (activeTab === 'My Confirmation' && editFormData.operationExecutive) {
-                finalStatus = 'Move To Operation';
+            if (activeTab === 'Customisation Ready' && editFormData.salesReviewStatus) {
+                if (editFormData.salesReviewStatus === 'Verified & Shared') {
+                    finalStatus = 'Sales Assigned';
+                } else {
+                    finalStatus = 'Move To Operation'; // Kicks back to Ops for revisions
+                }
             }
 
             let updatedHistory = appendHistory( currentHistory, `Lead Profile Updated`, `Status: ${editFormData.leadStatusField || finalStatus} | Stage: ${editFormData.leadResponse || 'N/A'}` );
 
-            // --- NEW RECYCLE BIN RESET CONDITION ---
+            if (activeTab === 'Customisation Ready' && editFormData.salesReviewStatus) {
+                updatedHistory = appendHistory(
+                    updatedHistory,
+                    `Sales Review: ${editFormData.salesReviewStatus}`,
+                    editFormData.salesReviewStatus === 'Verified & Shared' ? 'Package approved and shared with client.' : 'Sent back to Operations for revision.'
+                );
+            }
+
             if (finalStatus === 'Recycle Bin' && logsCount > 0) {
                 updatedHistory = appendHistory(updatedHistory, 'Auto-Moved to Recycle Bin', `Archived ${logsCount} attempts. Follow-up counter reset to 0.`);
                 [...updatedLogs].reverse().forEach(log => {
@@ -1037,10 +1086,8 @@ const SalesDashboard = () => {
                 outcome: editFormData.outcomeVoiceRecordings || []
             };
 
-            // Strict Payload Mapping -> Forcing frontend keys into recognized backend keys
             const payload = {
                 ...editFormData,
-                
                 customerName: editFormData.leadName,
                 profileName: editFormData.leadName,
                 phone: editFormData.mobileNumber,
@@ -1060,12 +1107,10 @@ const SalesDashboard = () => {
                 noOfPax: editFormData.noOfAdults,
                 travellerCount: editFormData.noOfAdults,
                 nextFollowUp: editFormData.followupDate, 
-                
                 packageCost: editFormData.totalPackageCost || editFormData.packageCost, 
                 offers: editFormData.specialOffers || editFormData.offers, 
                 noOfChildren: editFormData.confirmedNoOfChildren || editFormData.noOfChildren,
 
-                // --- MAPPED CRITICAL DYNAMIC FIELDS FOR BACKEND COMPATIBILITY ---
                 service1Cost: editFormData.service1Cost,
                 service2Cost: editFormData.service2Cost,
                 service3Cost: editFormData.service3Cost,
@@ -1096,6 +1141,9 @@ const SalesDashboard = () => {
                 readymadePackageDetails: editFormData.customisationRequests?.[0]?.readymadePackageDetails || '', 
                 turnaroundTime: editFormData.customisationRequests?.[0]?.turnaroundTime || '',
                 customisationStatus: editFormData.customisationRequests?.[0]?.status || 'Pending',
+                customisationAction: editFormData.customisationAction,
+
+                updateRecords: editFormData.updateRecords?.length ? JSON.stringify(editFormData.updateRecords) : null,
                 
                 status: finalStatus, 
                 history: JSON.stringify(updatedHistory)
@@ -1105,11 +1153,18 @@ const SalesDashboard = () => {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
             });
             if (response.ok) { 
+                triggerNotification('success', 'Lead updated successfully.');
                 await fetchJobs(true);
                 setIsEditModalOpen(false); 
             }
-            else { const err = await response.json(); alert(`Update failed: ${err.message || 'Unknown error'}`); }
-        } catch (error) { console.error('Edit submit error:', error); alert('Network error while updating lead.'); }
+            else { 
+                const err = await response.json(); 
+                triggerNotification('error', `Update failed: ${err.message || 'Unknown error'}`); 
+            }
+        } catch (error) { 
+            console.error('Edit submit error:', error); 
+            triggerNotification('error', 'Network error while updating lead.'); 
+        }
     };
 
     const handleInputChange = (e) => {
@@ -1120,17 +1175,16 @@ const SalesDashboard = () => {
     const handleOpenAssignModal = (lead) => { setSelectedLead(lead); setAssignTo(''); setIsAssignModalOpen(true); };
 
     const handleAssignSubmit = async () => {
-        if (!assignTo) { alert('Please select a team or choose self assignment.'); return; }
+        if (!assignTo) { triggerNotification('error', 'Please select a team or choose self assignment.'); return; }
         try {
             const finalAssignee = assignTo === 'Self Assigned' ? loggedInUserName : assignTo;
             let updatedHistory = selectedLead.history || [];
             
-            // Check if the lead is coming out of the Recycle Bin
             const isRecycled = selectedLead.status === 'Recycle Bin' || selectedLead.followupCount >= 10 || selectedLead.followUpCount >= 10;
             
             let assignPayload = { 
                 assignedTo: finalAssignee, 
-                status: 'Sales Assigned' // This ensures it maps to "My Jobs"
+                status: 'Sales Assigned' 
             };
 
             if (isRecycled) {
@@ -1155,23 +1209,13 @@ const SalesDashboard = () => {
 
                 assignPayload.history = JSON.stringify(updatedHistory);
 
-                // 1. Map Assigned User securely
                 await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
-                    method: 'PUT', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(assignPayload)
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(assignPayload)
                 });
                 
-                // 2. Clear Recycle Bin counters via main endpoint
                 await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
-                    method: 'PUT', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        followupCount: 0,
-                        followUpCount: 0,
-                        noResponseLogs: JSON.stringify([]),
-                        status: 'Sales Assigned'
-                    })
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ followupCount: 0, followUpCount: 0, noResponseLogs: JSON.stringify([]), status: 'Sales Assigned' })
                 });
 
             } else {
@@ -1179,15 +1223,17 @@ const SalesDashboard = () => {
                 assignPayload.history = JSON.stringify(updatedHistory);
 
                 await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
-                    method: 'PUT', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(assignPayload)
+                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(assignPayload)
                 });
             }
             
+            triggerNotification('success', `Lead assigned to ${finalAssignee}.`);
             await fetchJobs(true);
             setIsAssignModalOpen(false); 
-        } catch (error) { console.error('Assign error:', error); }
+        } catch (error) { 
+            console.error('Assign error:', error); 
+            triggerNotification('error', 'Assignment failed.');
+        }
     };
 
     // --- HANDOVER TO OPERATION HANDLERS ---
@@ -1203,11 +1249,11 @@ const SalesDashboard = () => {
         const targetId = handoverLead ? handoverLead.id : handoverLeadId;
         
         if (!targetId) { 
-            alert('Please select a job to handover.'); 
+            triggerNotification('error', 'Please select a job to handover.'); 
             return; 
         }
         if (!handoverTarget) { 
-            alert('Please select an Operations Executive to assign this to.'); 
+            triggerNotification('error', 'Please select an Operations Executive to assign this to.'); 
             return; 
         }
 
@@ -1235,14 +1281,15 @@ const SalesDashboard = () => {
             });
 
             if (response.ok) {
+                triggerNotification('success', `Handed over to ${handoverTarget}.`);
                 await fetchJobs(true);
                 setIsHandoverModalOpen(false);
             } else {
-                alert('Failed to handover to operations.');
+                triggerNotification('error', 'Failed to handover to operations.');
             }
         } catch (error) {
             console.error('Handover error:', error);
-            alert('Network error while handing over.');
+            triggerNotification('error', 'Network error while handing over.');
         }
     };
 
@@ -1276,7 +1323,6 @@ const SalesDashboard = () => {
         if (activeTab === 'Recycle') matchTab = isRecycleBin;
         else if (isRecycleBin) matchTab = false; 
         
-        // Filter strictly relies on the assigned user
         else if (activeTab === 'My Jobs') {
             const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required']; 
             matchTab = validActiveStatuses.includes(itemStatus) && item.assignedTo === loggedInUserName;
@@ -1284,7 +1330,6 @@ const SalesDashboard = () => {
         else if (activeTab === 'Customisation Ready') { 
             matchTab = itemStatus === 'Shared to Sales' || itemStatus === 'Customisation Ready'; 
         } 
-        // Filter strictly relies on the assigned user
         else if (activeTab === 'My Confirmation') { 
             matchTab = item.customerResponse === 'Booking Confirmed' && item.assignedTo === loggedInUserName; 
         }
@@ -1303,9 +1348,21 @@ const SalesDashboard = () => {
     });
 
     const probValue = parseInt(editFormData.bookingProbability) || 0;
+    
+    // Pagination slicing
+    const totalPages = Math.max(1, Math.ceil(filteredData.length / entriesPerPage));
+    const paginatedData = filteredData.slice((currentPage - 1) * entriesPerPage, currentPage * entriesPerPage);
 
     return (
         <div className="p-1 sm:p-4 lg:p-6 pt-20 sm:pt-24 lg:pt-24 w-full bg-[#0f172a] min-h-screen font-sans relative text-white">
+            
+            {/* TOAST NOTIFICATION UI */}
+            {notification.show && (
+                <div className={`fixed top-5 left-1/2 -translate-x-1/2 z-[150] flex items-center gap-3 px-4 py-2.5 rounded-xl border shadow-2xl text-xs font-bold bg-[#0d233e] tracking-wide animate-in fade-in slide-in-from-top-4 ${notification.type === 'success' ? 'border-emerald-500 text-emerald-400' : 'border-red-500 text-red-400'}`}>
+                    {notification.type === 'success' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
+                    <span>{notification.message}</span>
+                </div>
+            )}
 
             {/* Header with New Button additions */}
             <div className="mb-6 sm:mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1313,9 +1370,6 @@ const SalesDashboard = () => {
                     <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight uppercase">SALES DASHBOARD</h1>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full md:w-auto">
-                    
-                   
-
                     <button type="button" onClick={handleOpenNewLeadModal}
                         className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-[#0f172a] font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-cyan-500/20 transition-all duration-200">
                         <Plus size={18} strokeWidth={2.5} />
@@ -1326,7 +1380,6 @@ const SalesDashboard = () => {
                         <CreditCard size={18} strokeWidth={2.5} />
                         <span>Add New Payment</span>
                     </button>
-                     {/* NEW COMMON HANDOVER BUTTON */}
                     {(activeTab === 'My Jobs' || activeTab === 'My Confirmation') && (
                         <button type="button" onClick={() => handleOpenHandoverModal(null)}
                             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-purple-500 hover:bg-purple-400 active:bg-purple-600 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-purple-500/20 transition-all duration-200">
@@ -1481,7 +1534,7 @@ const SalesDashboard = () => {
                         <tbody className="block md:table-row-group divide-y-0 md:divide-y divide-slate-700/30">
                             {isLoading ? (
                                 <tr className="block md:table-row"><td colSpan="12" className="block md:table-cell px-4 py-12 text-center text-slate-500">Loading records...</td></tr>
-                            ) : filteredData.length > 0 ? filteredData.map(row => (
+                            ) : paginatedData.length > 0 ? paginatedData.map(row => (
                                 <tr key={row.id} className="block md:table-row bg-[#1e293b] md:bg-transparent border border-slate-700 md:border-none rounded-xl mb-4 md:mb-0 p-3 sm:p-4 md:p-0 hover:bg-slate-800/40 transition-colors shadow-sm md:shadow-none group relative">
 
                                     {(activeTab === 'Jobs' || activeTab === 'Recycle') && (
@@ -1696,7 +1749,6 @@ const SalesDashboard = () => {
                                                 </button>
                                             )}
 
-                                            {/* NEW INDIVIDUAL HANDOVER BUTTON */}
                                             {(activeTab === 'My Jobs' || activeTab === 'My Confirmation') && (
                                                 <button type="button" onClick={() => handleOpenHandoverModal(row)}
                                                     className="p-2 md:p-1.5 text-purple-400 md:text-slate-400 hover:text-purple-400 bg-purple-500/10 md:bg-transparent hover:bg-purple-900/30 rounded-lg transition-colors" title="Handover to Operations">
@@ -1732,6 +1784,17 @@ const SalesDashboard = () => {
                         </tbody>
                     </table>
                 </div>
+
+                {/* PAGINATION CONTROLS */}
+                {filteredData.length > 0 && (
+                    <Pagination 
+                        currentPage={currentPage} 
+                        totalPages={totalPages} 
+                        onPageChange={setCurrentPage} 
+                        totalEntries={filteredData.length} 
+                        entriesPerPage={entriesPerPage} 
+                    />
+                )}
             </div>
 
             {/* PAYMENT SEARCH MODAL */}
@@ -1802,7 +1865,6 @@ const SalesDashboard = () => {
                         </div>
 
                         <form id="new-lead-form" onSubmit={handleNewLeadSubmit} onKeyDown={handlePreventEnterSubmit} className="px-6 py-6 overflow-y-auto flex-1 space-y-7 custom-scrollbar">
-                            {/* SECTION A — CUSTOMER INFORMATION */}
                             <div>
                                 <h3 className="text-sm font-bold text-slate-100 tracking-wide flex items-center gap-2 mb-3">
                                     <Users size={16} className="text-violet-400" /> Customer Information
@@ -1825,7 +1887,6 @@ const SalesDashboard = () => {
                                 </div>
                             </div>
 
-                            {/* SECTION B — TRAVEL REQUIREMENT */}
                             <div>
                                 <h3 className="text-sm font-bold text-slate-100 tracking-wide flex items-center gap-2 mb-3">
                                     <MapPin size={16} className="text-emerald-400" /> Travel Requirement
@@ -1866,7 +1927,6 @@ const SalesDashboard = () => {
                                 </div>
                             </div>
 
-                            {/* SECTION C — LEAD SOURCE */}
                             <div>
                                 <h3 className="text-sm font-bold text-slate-100 tracking-wide flex items-center gap-2 mb-3">
                                     <Target size={16} className="text-blue-400" /> Lead Source
@@ -2185,9 +2245,9 @@ const SalesDashboard = () => {
                                                     </div>
                                                     {renderDatePicker('travelDate', editFormData.travelDate, 'Travel Date', handleInputChange)}
                                                    <div>
-    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
-    {renderDropdown('duration', editFormData.duration, '', ['1 Day (Same Day Return)', '1N / 2D', '2N / 3D', '3N / 4D', '4N / 5D', '5N / 6D', '6N / 7D', '7N / 8D', '8N / 9D', '9N / 10D', '10-15 Days', '15+ Days'], handleInputChange)}
-</div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
+                                                        {renderDropdown('duration', editFormData.duration, '', ['1 Day (Same Day Return)', '1N / 2D', '2N / 3D', '3N / 4D', '4N / 5D', '5N / 6D', '6N / 7D', '7N / 8D', '8N / 9D', '9N / 10D', '10-15 Days', '15+ Days'], handleInputChange)}
+                                                    </div>
                                                     <div className="flex gap-2">
                                                         <div className="w-1/2">
                                                             <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Adults)</label>
@@ -2203,9 +2263,9 @@ const SalesDashboard = () => {
                                                         <input type="text" name="departureCity" value={editFormData.departureCity} onChange={handleInputChange} className={inputCls} />
                                                     </div>
                                                    <div>
-    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Budget</label>
-    {renderDropdown('travelBudget', editFormData.travelBudget, ' ', BUDGET_OPTIONS, handleInputChange)}
-</div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Budget</label>
+                                                        {renderDropdown('travelBudget', editFormData.travelBudget, ' ', BUDGET_OPTIONS, handleInputChange)}
+                                                    </div>
                                                     <div>
                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Type</label>
                                                         {renderDropdown('tourType', editFormData.tourType, ' ', ['Honeymoon', 'Family', 'Solo', 'Friends', 'Corporate', 'Group Tour', 'MICE'], handleInputChange)}
@@ -2223,8 +2283,8 @@ const SalesDashboard = () => {
                                                         {renderDropdown('offers', editFormData.offers, ' ', [{value: 'None', label: 'No Promo Applied'}, 'Early Bird 10% Discount', 'Free Airport Transfer Upgrade', {value: 'Complimentary Honeymoon Cake & Decor', label: 'Complimentary Honeymoon Cake & Decor'}], handleInputChange)}
                                                     </div>
                                                     <div>
-                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Action Taken</label>
-                                                        {renderDropdown('actionTaken', editFormData.actionTaken, ' ', [ 'Customisation Required', 'Readymade Required'], handleInputChange)}
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Customisation Action</label>
+                                                        {renderDropdown('customisationAction', editFormData.customisationAction, ' ', [ 'Customisation Required', 'Readymade Required'], handleInputChange)}
                                                     </div>
                                                     <div className="md:col-span-3">
                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Remarks</label>
@@ -2247,7 +2307,7 @@ const SalesDashboard = () => {
                                             {expandedSections.customisation ? <ChevronDown size={18} className="text-cyan-400"/> : <ChevronRight size={18} className="text-slate-500"/>}
                                         </div>
                                         {expandedSections.customisation && (
-                                            (editFormData.actionTaken === 'Customisation Required' || editFormData.customerResponse === 'Needs Revision') ? (
+                                            (editFormData.customisationAction === 'Customisation Required' || editFormData.customerResponse === 'Needs Revision') ? (
                                                 <div className="mt-4">
                                                     <div className="space-y-4">
                                                         {editFormData.customisationRequests.map((req, index) => (
@@ -2289,6 +2349,7 @@ const SalesDashboard = () => {
                                                         </button>
                                                     </div>
                                                     
+                                                    {/* NOTE: Consider migrating Base64 media storage to AWS S3/Cloudinary URLs in a future backend update to prevent JSON payload size bloat. */}
                                                     {renderVoiceList('voiceRecordings')}
                                                     
                                                     <div className="mt-6 pt-5 border-t border-slate-700/50">
@@ -2296,7 +2357,7 @@ const SalesDashboard = () => {
                                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Received Date & Time</label>
-                                                                <input type="text" readOnly value={editFormData.opsCompletedOn || formatDateTime(new Date().toISOString())} className={`${readonlyCls} text-red-400 font-bold`} placeholder="Date & Time - Auto" />
+                                                                <input type="text" readOnly value={editFormData.opsCompletedOn ? formatDateTime(editFormData.opsCompletedOn) : ''} className={`${readonlyCls} text-red-400 font-bold`} placeholder="Set automatically when Ops pushes to Sales" />
                                                             </div>
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Prepared For</label>
@@ -2310,10 +2371,32 @@ const SalesDashboard = () => {
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Cost</label>
                                                                 <input type="text" name="packageCost" value={editFormData.packageCost || ''} readOnly className={readonlyCls} />
                                                             </div>
-                                                            <div className="sm:col-span-2">
-                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Operation Notes</label>
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Ops Customisation Status</label>
+                                                                <input type="text" readOnly value={editFormData.opsCustomisationStatus || ''} className={readonlyCls} />
+                                                            </div>
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Ops Expected Completion</label>
+                                                                <input type="text" readOnly value={editFormData.opsExpectedCompletionDate ? `${editFormData.opsExpectedCompletionDate} ${editFormData.opsExpectedCompletionTime || ''}` : ''} className={readonlyCls} />
+                                                            </div>
+                                                            <div className="sm:col-span-3">
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Operation Notes (latest)</label>
                                                                 <input type="text" name="operationNotes" value={editFormData.operationNotes || ''} readOnly className={readonlyCls} />
                                                             </div>
+                                                            {editFormData.updateRecords && editFormData.updateRecords.length > 0 && (
+                                                                <div className="sm:col-span-3 mt-2 p-3 bg-[#0b1329] border border-slate-700/50 rounded-lg space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                                                                    <p className="text-[10px] font-bold uppercase text-slate-500 tracking-wider mb-1">Full Ops Update Log</p>
+                                                                    {editFormData.updateRecords.map((rec, idx) => (
+                                                                        <div key={idx} className="text-xs bg-slate-900/60 border border-slate-800 rounded p-2">
+                                                                            <div className="flex justify-between text-[10px] text-slate-500 mb-1">
+                                                                                <span className="font-bold text-cyan-400">{rec.author || 'Operations'}</span>
+                                                                                <span>{rec.date}</span>
+                                                                            </div>
+                                                                            <p className="text-slate-300">{rec.message}</p>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                         <div className="mt-5 pt-4 border-t border-slate-700/50">
                                                             <h4 className="text-sm font-bold text-cyan-400 tracking-wider uppercase mb-3">SALES REVIEW</h4>
@@ -2321,12 +2404,15 @@ const SalesDashboard = () => {
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Review Status</label>
                                                                 {renderDropdown('salesReviewStatus', editFormData.salesReviewStatus, ' ', ['Verified & Shared', ' Clarification / Changes Needed', 'Rejected'], handleInputChange)}
                                                             </div>
+                                                            <p className="text-[10px] sm:text-xs text-slate-500 mt-2 italic">
+                                                                "Verified & Shared" moves this lead to My Jobs for final booking follow-up. "Rejected" or "Clarification / Changes Needed" sends it back to Operations for rework.
+                                                            </p>
                                                         </div>
                                                     </div>
                                                 </div>
                                             ) : (
                                                 <div className="mt-4 px-4 py-5 text-xs sm:text-sm text-slate-500 border border-dashed border-slate-800 rounded-xl text-center">
-                                                    This section appears when Action Taken is "Customisation Required" or Customer Response is "Needs Revision".
+                                                    This section appears when Customisation Action is "Customisation Required" or Customer Response is "Needs Revision".
                                                 </div>
                                             )
                                         )}
@@ -2364,7 +2450,8 @@ const SalesDashboard = () => {
                                                             {renderDatePicker('confirmedDate', editFormData.confirmedDate, 'Confirmed Date', handleInputChange, '', false)}
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Operations Executive</label>
-                                                                {renderDropdown('operationExecutive', editFormData.operationExecutive, 'Select Exec', operationsStaff, handleInputChange, selectCls, false)}
+                                                                {/* NOTE: Readonly here closes Handover Bypass loophole. Use the dedicated Handover to Ops button for state transfer. */}
+                                                                <input type="text" name="operationExecutive" value={editFormData.operationExecutive || ''} readOnly className={readonlyCls} placeholder="Assigned via Handover" />
                                                             </div>
 
                                                             {/* Row 2 */}
@@ -2935,7 +3022,6 @@ const SalesDashboard = () => {
                                         {selectedLead.leadMessage || selectedLead.message || 'No message provided.'}
                                     </p>
                                 </div>
-                                
                             </div>
                         </div>
                     </div>
