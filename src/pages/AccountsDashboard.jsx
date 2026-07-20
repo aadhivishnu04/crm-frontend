@@ -113,8 +113,8 @@ function useLeads(triggerNotification) {
 }
 
 // ─────────────────────────────────────────────
-// BOOKING INSPECTOR MODAL
-// Full Purchase Details form matching wireframe
+// BOOKING INSPECTOR MODAL 
+// (Customer Payment Verification Form)
 // ─────────────────────────────────────────────
 function BookingInspectorModal({ lead, onClose, onMoveToBilling }) {
     const readonlyCls = "w-full px-3 py-2 bg-slate-900/50 border border-slate-800 rounded text-slate-300 text-sm cursor-not-allowed font-medium opacity-90 focus:outline-none";
@@ -124,90 +124,21 @@ function BookingInspectorModal({ lead, onClose, onMoveToBilling }) {
     const dest = (lead.destination || lead.confirmedDestination || '').toLowerCase();
     const isDomestic = INDIA_KEYWORDS.some(kw => dest.includes(kw));
     const tourTypeLabel = isDomestic ? 'Domestic' : 'International';
+    const isInternational = tourTypeLabel === 'International' || String(lead.destinationType).toLowerCase() === 'international';
 
     // ── Calculate duration from dates ───────────────────────────────────
     const calcDuration = () => {
         const start = lead.tourStartDate || lead.travelDate || lead.travelDates;
-        const end = lead.returnDate;
+        const end = lead.returnDate || lead.tourEndDate;
         if (!start || !end) return lead.duration || lead.confirmedDuration || 'N/A';
         const diff = Math.ceil((new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24));
         if (diff > 0) return `${diff} Night${diff > 1 ? 's' : ''} / ${diff + 1} Days`;
         return lead.duration || lead.confirmedDuration || 'N/A';
     };
 
-    // ── Build purchase rows from paymentRequests (ops-confirmation data) ─
-    const payReqs = Array.isArray(lead.paymentRequests) ? lead.paymentRequests : [];
-
-    // Group by service category
-    const transportRows = payReqs.filter(r => {
-        const s = (r.service || '').toLowerCase();
-        return s.includes('flight') || s.includes('train') || s.includes('bus') || s.includes('transport') || s.includes('transfer') || s.includes('ferry');
-    });
-
-    const hotelRows = payReqs.filter(r => {
-        const s = (r.service || '').toLowerCase();
-        return s.includes('hotel') || s.includes('resort') || s.includes('stay') || s.includes('accommodation') || s.includes('room');
-    });
-
-    const localVehicleRows = payReqs.filter(r => {
-        const s = (r.service || '').toLowerCase();
-        return s.includes('vehicle') || s.includes('cab') || s.includes('local') || s.includes('car') || s.includes('taxi') || s.includes('sightseeing') || s.includes('tour');
-    });
-
-    const otherRows = payReqs.filter(r => {
-        const s = (r.service || '').toLowerCase();
-        return !s.includes('flight') && !s.includes('train') && !s.includes('bus') && !s.includes('transport') && !s.includes('transfer') && !s.includes('ferry') &&
-               !s.includes('hotel') && !s.includes('resort') && !s.includes('stay') && !s.includes('accommodation') && !s.includes('room') &&
-               !s.includes('vehicle') && !s.includes('cab') && !s.includes('local') && !s.includes('car') && !s.includes('taxi') && !s.includes('sightseeing') && !s.includes('tour');
-    });
-
-    // ── Amount calculations ─────────────────────────────────────────────
-    const parseAmt = (v) => {
-        if (!v) return 0;
-        return parseFloat(String(v).replace(/[₹,\s]/g, '')) || 0;
-    };
-
-    const totalVendorPaid = payReqs.reduce((sum, r) => sum + parseAmt(r.outAmountPaid), 0);
-    const totalVendorPending = payReqs.reduce((sum, r) => sum + parseAmt(r.amountToPay), 0);
-    const packageCost = parseAmt(lead.totalPackageCost || lead.packageCost || lead.budget);
-    const amountReceived = parseAmt(lead.amountReceived);
-    const pendingAmount = packageCost > 0 ? (packageCost - amountReceived) : parseAmt(lead.balancePending);
-
-    const formatINR = (v) => v > 0 ? `₹${v.toLocaleString('en-IN')}` : '₹0';
-
-    // ── Purchase row component ──────────────────────────────────────────
-    const PurchaseRow = ({ row, isFirst }) => (
-        <tr className={`text-xs ${!isFirst ? 'border-t border-slate-800/50' : ''}`}>
-            <td className="px-4 py-2.5 text-slate-300 font-medium">
-                {row.providerName || row.service || '—'}
-                <span className="block text-[10px] text-slate-500">{row.paymentType || ''}</span>
-            </td>
-            <td className="px-4 py-2.5 font-mono text-slate-200">{row.serviceCost || '—'}</td>
-            <td className="px-4 py-2.5 font-mono text-purple-400">{row.margin || '—'}</td>
-            <td className="px-4 py-2.5 font-mono text-emerald-400 font-bold">{row.outAmountPaid ? `₹${parseAmt(row.outAmountPaid).toLocaleString('en-IN')}` : '—'}</td>
-        </tr>
-    );
-
-    const EmptyRow = ({ label }) => (
-        <tr className="text-xs">
-            <td className="px-4 py-2.5 text-slate-600 italic">{label}</td>
-            <td className="px-4 py-2.5 text-slate-700">—</td>
-            <td className="px-4 py-2.5 text-slate-700">—</td>
-            <td className="px-4 py-2.5 text-slate-700">—</td>
-        </tr>
-    );
-
-    const SectionHeader = ({ icon: Icon, label, color = 'text-slate-400' }) => (
-        <tr className="bg-slate-800/70">
-            <td colSpan={4} className={`px-4 py-2 text-[10px] font-bold uppercase tracking-wider ${color} flex items-center gap-1.5`}>
-                <Icon size={11} className="inline" /> {label}
-            </td>
-        </tr>
-    );
-
     return (
         <div className="fixed inset-0 bg-black/80 flex items-start sm:items-center justify-center z-[150] p-0 sm:p-4">
-            <div className="bg-[#0f172a] border border-slate-700 rounded-none sm:rounded-xl shadow-2xl w-full sm:max-w-4xl h-full sm:h-[95vh] flex flex-col text-slate-100">
+            <div className="bg-[#0f172a] border border-slate-700 rounded-none sm:rounded-xl shadow-2xl w-full sm:max-w-5xl h-full sm:h-[95vh] flex flex-col text-slate-100">
                 
                 {/* ── HEADER ── */}
                 <div className="px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] flex-shrink-0 sm:rounded-t-xl">
@@ -215,282 +146,191 @@ function BookingInspectorModal({ lead, onClose, onMoveToBilling }) {
                         <FileText size={18} className="text-cyan-400" />
                         <div>
                             <h2 className="text-sm font-bold text-white uppercase tracking-wider">
-                                Booking Inspector — <span className="text-cyan-400">LMN{lead.id}</span>
+                                Customer Payment Inspector
                             </h2>
-                            <p className="text-[10px] text-slate-500 mt-0.5">{lead.customerName} · {lead.destination}</p>
+                            <p className="text-[10px] text-slate-500 mt-0.5">Verify initial payment details from Sales</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold px-2 py-1 rounded bg-slate-800 text-slate-400 border border-slate-700">{tourTypeLabel}</span>
-                        <button type="button" onClick={onClose} className="text-slate-400 hover:text-white cursor-pointer ml-2"><X size={20} /></button>
+                        <button type="button" onClick={onClose} className="text-slate-400 hover:text-white cursor-pointer p-1"><X size={20} /></button>
                     </div>
                 </div>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    <div className="px-6 py-5 space-y-6">
-
+                    <div className="px-6 py-6 space-y-8">
+                        
                         {/* ════════════════════════════════════
-                            SECTION 1 — TRIP DETAILS
+                            SECTION 1 — CUSTOMER PAYMENT
                         ════════════════════════════════════ */}
                         <div>
-                            <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-wider mb-3 pb-1.5 border-b border-slate-700/50 flex items-center gap-2">
-                                <MapPin size={13} /> Trip Details
-                                <span className="ml-auto text-[10px] text-orange-400 font-normal italic bg-orange-950/30 px-2 py-0.5 rounded">Data fetched from Sales My Job</span>
-                            </h3>
-                            <div className="grid grid-cols-3 gap-3">
+                            <h3 className="text-lg font-bold text-emerald-400 mb-4 uppercase">Customer Payment</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-x-6 gap-y-4">
                                 <div>
-                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Lead ID</label>
+                                    <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Lead Id</label>
                                     <input type="text" readOnly value={`LMN${lead.id}`} className={readonlyCls} />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Client Name</label>
-                                    <input type="text" readOnly value={lead.customerName || '—'} className={`${readonlyCls} text-white font-bold`} />
+                                    <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Customer Name</label>
+                                    <input type="text" readOnly value={lead.customerName || lead.profileName || '—'} className={`${readonlyCls} text-white font-bold`} />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Destination</label>
-                                    <input type="text" readOnly value={lead.destination || lead.confirmedDestination || '—'} className={`${readonlyCls} text-emerald-400`} />
-                                </div>
-
-                                <div>
-                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Booking Date</label>
-                                    <input type="text" readOnly value={lead.bookingDate || '—'} className={readonlyCls} />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Travel Date</label>
-                                    <input type="text" readOnly value={lead.tourStartDate || lead.travelDate || lead.travelDates || '—'} className={readonlyCls} />
-                                </div>
-                                <div>
-                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Return Date</label>
-                                    <input type="text" readOnly value={lead.returnDate || '—'} className={readonlyCls} />
+                                    <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Booking Confirmed Date</label>
+                                    <input type="text" readOnly value={lead.confirmedDate || lead.bookingDate || '—'} className={readonlyCls} />
                                 </div>
 
                                 <div>
-                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Sales Executive</label>
-                                    <input type="text" readOnly value={lead.salesExecutive || lead.assignedTo || '—'} className={readonlyCls} />
+                                    <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Destination Type</label>
+                                    <input type="text" readOnly value={lead.destinationType || tourTypeLabel || '—'} className={readonlyCls} />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Operations Executive</label>
-                                    <input type="text" readOnly value={lead.operationsExecutive || lead.customisationAssignedTo || '—'} className={readonlyCls} />
+                                    <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Destination</label>
+                                    <input type="text" readOnly value={lead.destination || lead.confirmedDestination || '—'} className={readonlyCls} />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Duration</label>
+                                    <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Duration</label>
                                     <input type="text" readOnly value={calcDuration()} className={readonlyCls} />
                                 </div>
 
                                 <div>
-                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Package Cost</label>
-                                    <input type="text" readOnly value={lead.totalPackageCost || lead.packageCost || lead.budget || '—'} className={`${readonlyCls} text-emerald-400 font-mono font-bold`} />
+                                    <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">No. of Pax <span className="lowercase text-slate-600 font-normal">(Adults | Children)</span></label>
+                                    <input type="text" readOnly value={`${lead.noOfPax || '0'} | ${lead.noOfChildren || lead.confirmedNoOfChildren || '0'}`} className={readonlyCls} />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">GST Inclusion</label>
-                                    <input type="text" readOnly value={lead.gstStatus || 'Excluded'} className={readonlyCls} />
+                                    <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Tour Start Date</label>
+                                    <input type="text" readOnly value={lead.tourStartDate || lead.travelDate || lead.travelDates || '—'} className={`${readonlyCls} text-red-400`} />
                                 </div>
                                 <div>
-                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">TCS Inclusion</label>
-                                    <input type="text" readOnly value={lead.tcsStatus || 'Excluded'} className={readonlyCls} />
+                                    <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Tour End Date</label>
+                                    <input type="text" readOnly value={lead.tourEndDate || lead.returnDate || '—'} className={`${readonlyCls} text-red-400`} />
                                 </div>
+
+                                <div>
+                                    <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Sales Executive</label>
+                                    <input type="text" readOnly value={lead.salesExecutive || lead.assignedTo || '—'} className={readonlyCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Operations Executive</label>
+                                    <input type="text" readOnly value={lead.operationsExecutive || lead.operationExecutive || '—'} className={readonlyCls} />
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Services</label>
+                                    <input type="text" readOnly value={lead.confirmedServices || lead.services || '—'} className={readonlyCls} />
+                                </div>
+
+                                <div>
+                                    <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">GST</label>
+                                    <input type="text" readOnly value={lead.gstInclusion || lead.gstStatus || '—'} className={readonlyCls} />
+                                </div>
+                                {isInternational && (
+                                    <div>
+                                        <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">TCS</label>
+                                        <input type="text" readOnly value={lead.tcsInclusion || lead.tcsStatus || '—'} className={readonlyCls} />
+                                        {/* <p className="text-[10px] text-red-400 mt-1 italic">if destination type = International, it will appear</p> */}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
                         {/* ════════════════════════════════════
-                            SECTION 2 — PURCHASE DETAILS
+                            SECTION 2 — SERVICE DETAILS
                         ════════════════════════════════════ */}
-                        <div>
-                            <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-wider mb-3 pb-1.5 border-b border-slate-700/50 flex items-center gap-2">
-                                <CreditCard size={13} /> Purchase Details
-                            </h3>
-
+                        <div className="pt-4">
+                            <h4 className="text-sm font-bold text-cyan-400 mb-3 uppercase tracking-wider">Service Details</h4>
                             <div className="bg-slate-900 border border-slate-700/50 rounded-lg overflow-hidden">
-                                <table className="w-full text-left text-sm text-slate-300 min-w-[560px]">
-                                    <thead className="bg-slate-800/60 text-[10px] uppercase text-slate-400 tracking-wider">
+                                <table className="w-full text-left text-sm text-slate-300">
+                                    <thead className="bg-slate-800/60 text-[11px] uppercase text-slate-300 font-bold">
                                         <tr>
-                                            <th className="px-4 py-2.5 w-[30%]">Mode / Name</th>
-                                            <th className="px-4 py-2.5">Cost</th>
-                                            <th className="px-4 py-2.5">Margin</th>
-                                            <th className="px-4 py-2.5">Amount Paid</th>
+                                            <th className="px-5 py-3 w-[25%]">Service Name</th>
+                                            <th className="px-5 py-3">Service Cost</th>
+                                            <th className="px-5 py-3">Amount Paid</th>
+                                            <th className="px-5 py-3">Amount Pending</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-800/30">
-
-                                        {/* 1. Transport */}
-                                        <tr className="bg-slate-800/40">
-                                            <td colSpan={4} className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1.5">
-                                                <Truck size={11} className="inline" /> 1. Transport
-                                            </td>
-                                        </tr>
-                                        {transportRows.length > 0
-                                            ? transportRows.map((r, i) => <PurchaseRow key={i} row={r} isFirst={i === 0} />)
-                                            : <EmptyRow label="No transport entries" />
-                                        }
-                                        <tr className="bg-slate-800/20 text-[10px]">
-                                            <td colSpan={2} className="px-4 py-1.5 text-slate-500 italic">Cost from Ops-confirmation</td>
-                                            <td className="px-4 py-1.5 text-slate-500 italic">from Ops-confirmation</td>
-                                            <td className="px-4 py-1.5 text-emerald-600 italic">Total from Account out-payment</td>
-                                        </tr>
-
-                                        {/* 2. Hotel */}
-                                        <tr className="bg-slate-800/40 border-t border-slate-700/30">
-                                            <td colSpan={4} className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                                                <Building2 size={11} className="inline" /> 2. Hotel
-                                            </td>
-                                        </tr>
-                                        {hotelRows.length > 0
-                                            ? hotelRows.map((r, i) => <PurchaseRow key={i} row={r} isFirst={i === 0} />)
-                                            : (
-                                                <>
-                                                    {/* Also pull from domHotels / intHotels as fallback */}
-                                                    {(() => {
-                                                        const hotels = [...(lead.domHotels || []), ...(lead.intHotels || [])].filter(h => h.hotelName);
-                                                        return hotels.length > 0
-                                                            ? hotels.map((h, i) => (
-                                                                <tr key={i} className="text-xs border-t border-slate-800/50">
-                                                                    <td className="px-4 py-2.5 text-slate-300 font-medium">{h.hotelName}<span className="block text-[10px] text-slate-500">{h.location}</span></td>
-                                                                    <td className="px-4 py-2.5 text-slate-600">—</td>
-                                                                    <td className="px-4 py-2.5 text-slate-600">—</td>
-                                                                    <td className="px-4 py-2.5 text-slate-600">—</td>
-                                                                </tr>
-                                                            ))
-                                                            : <EmptyRow label="No hotel entries" />;
-                                                    })()}
-                                                </>
-                                            )
-                                        }
-                                        <tr className="bg-slate-800/20 text-[10px]">
-                                            <td colSpan={2} className="px-4 py-1.5 text-slate-500 italic">Cost from Ops-confirmation</td>
-                                            <td className="px-4 py-1.5 text-slate-500 italic">from Ops-confirmation</td>
-                                            <td className="px-4 py-1.5 text-emerald-600 italic">Total from Account out-payment</td>
-                                        </tr>
-
-                                        {/* 3. Local Vehicle */}
-                                        <tr className="bg-slate-800/40 border-t border-slate-700/30">
-                                            <td colSpan={4} className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-violet-400 flex items-center gap-1.5">
-                                                <Car size={11} className="inline" /> 3. Local Vehicle
-                                            </td>
-                                        </tr>
-                                        {localVehicleRows.length > 0
-                                            ? localVehicleRows.map((r, i) => <PurchaseRow key={i} row={r} isFirst={i === 0} />)
-                                            : (
-                                                <>
-                                                    {(() => {
-                                                        const locTrans = lead.domLocalTransports || [];
-                                                        return locTrans.length > 0
-                                                            ? locTrans.map((t, i) => (
-                                                                <tr key={i} className="text-xs border-t border-slate-800/50">
-                                                                    <td className="px-4 py-2.5 text-slate-300 font-medium">{t.vendor || lead.locTransVendor || '—'}<span className="block text-[10px] text-slate-500">{t.vehicle || lead.locTransVehicle || ''}</span></td>
-                                                                    <td className="px-4 py-2.5 text-slate-600">—</td>
-                                                                    <td className="px-4 py-2.5 text-slate-600">—</td>
-                                                                    <td className="px-4 py-2.5 text-slate-600">—</td>
-                                                                </tr>
-                                                            ))
-                                                            : <EmptyRow label="No local vehicle entries" />;
-                                                    })()}
-                                                </>
-                                            )
-                                        }
-                                        <tr className="bg-slate-800/20 text-[10px]">
-                                            <td colSpan={2} className="px-4 py-1.5 text-slate-500 italic">Cost from Ops-confirmation</td>
-                                            <td className="px-4 py-1.5 text-slate-500 italic">from Ops-confirmation</td>
-                                            <td className="px-4 py-1.5 text-emerald-600 italic">Total from Account out-payment</td>
-                                        </tr>
-
-                                        {/* Other services if any */}
-                                        {otherRows.length > 0 && (
-                                            <>
-                                                <tr className="bg-slate-800/40 border-t border-slate-700/30">
-                                                    <td colSpan={4} className="px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-slate-400">Other Services</td>
-                                                </tr>
-                                                {otherRows.map((r, i) => <PurchaseRow key={i} row={r} isFirst={i === 0} />)}
-                                            </>
-                                        )}
-
-                                        {/* Totals row */}
-                                        {payReqs.length > 0 && (
-                                            <tr className="border-t border-slate-700 bg-slate-900">
-                                                <td className="px-4 py-3 text-xs font-bold text-white" colSpan={2}>Vendor Summary</td>
-                                                <td className="px-4 py-3 text-xs font-bold text-slate-400">Total Pending: <span className="text-orange-400 font-mono">{formatINR(totalVendorPending)}</span></td>
-                                                <td className="px-4 py-3 text-xs font-bold text-emerald-400 font-mono">{formatINR(totalVendorPaid)}</td>
-                                            </tr>
-                                        )}
-
+                                    <tbody className="divide-y divide-slate-800/50">
+                                        {(() => {
+                                            const srvs = lead.confirmedServices ? lead.confirmedServices.split(', ').filter(Boolean) : [];
+                                            if (srvs.length === 0) {
+                                                return (
+                                                    <tr className="hover:bg-slate-800/20">
+                                                        <td className="px-5 py-4">
+                                                            {/* <span className="text-red-400 text-[11px] block">eg. Tour Package<br/>Flights<br/>Travel Insurance</span> */}
+                                                        </td>
+                                                        {/* <td className="px-5 py-4 text-slate-600">—</td>
+                                                        <td className="px-5 py-4 text-red-400 text-[11px] italic">once amount verified, it will be reflected</td>
+                                                        <td className="px-5 py-4 text-slate-600">—</td> */}
+                                                    </tr>
+                                                );
+                                            }
+                                            return srvs.map((s, idx) => {
+                                                const costsObj = typeof lead.serviceCosts === 'string' ? JSON.parse(lead.serviceCosts) : (lead.serviceCosts || {});
+                                                const cost = costsObj[s] || lead[`service${idx + 1}Cost`] || '—';
+                                                
+                                                return (
+                                                    <tr key={idx} className="hover:bg-slate-800/30">
+                                                        <td className="px-5 py-4 font-bold text-white">{s}</td>
+                                                        <td className="px-5 py-4 font-mono text-slate-300">{cost}</td>
+                                                        <td className="px-5 py-4 font-mono text-emerald-400">—</td>
+                                                        <td className="px-5 py-4 font-mono text-orange-400">—</td>
+                                                    </tr>
+                                                );
+                                            });
+                                        })()}
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
                         {/* ════════════════════════════════════
-                            SECTION 3 — CLIENT PAYMENT DETAILS
+                            SECTION 3 — TRANSACTION DETAILS
                         ════════════════════════════════════ */}
-                        <div>
-                            <h3 className="text-xs font-bold text-cyan-400 uppercase tracking-wider mb-3 pb-1.5 border-b border-slate-700/50 flex items-center gap-2">
-                                <DollarSign size={13} /> Client Payment Details
-                            </h3>
-
-                            <div className="bg-slate-900 border border-slate-700/50 rounded-lg overflow-hidden mb-4">
-                                <table className="w-full text-left text-sm text-slate-300">
-                                    <thead className="bg-slate-800/60 text-[10px] uppercase text-slate-400 tracking-wider">
+                        <div className="pt-4 pb-4">
+                            <h4 className="text-sm font-bold text-cyan-400 mb-3 uppercase tracking-wider">Transaction Details</h4>
+                            <div className="bg-slate-900 border border-slate-700/50 rounded-lg overflow-x-auto custom-scrollbar">
+                                <table className="w-full text-left text-sm text-slate-300 min-w-[800px]">
+                                    <thead className="bg-slate-800/60 text-[11px] uppercase text-slate-300 font-bold whitespace-nowrap">
                                         <tr>
-                                            <th className="px-4 py-2.5">Package Cost</th>
-                                            <th className="px-4 py-2.5 text-emerald-400">Amount Paid</th>
-                                            <th className="px-4 py-2.5 text-orange-400">Pending Amount</th>
+                                            <th className="px-4 py-3">No.</th>
+                                            <th className="px-4 py-3">Service</th>
+                                            <th className="px-4 py-3">Amount Received</th>
+                                            <th className="px-4 py-3">Payment Mode</th>
+                                            <th className="px-4 py-3">Transaction Reference</th>
+                                            <th className="px-4 py-3">Payment Date</th>
+                                            <th className="px-4 py-3">Attachment</th>
+                                            <th className="px-4 py-3">Verification Status</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td className="px-4 py-4 font-mono font-bold text-white text-base">{lead.totalPackageCost || lead.packageCost || lead.budget || '—'}</td>
-                                            <td className="px-4 py-4 font-mono font-bold text-emerald-400 text-base">{lead.amountReceived ? `₹${parseAmt(lead.amountReceived).toLocaleString('en-IN')}` : '—'}</td>
-                                            <td className="px-4 py-4 font-mono font-bold text-orange-400 text-base">
-                                                {lead.balancePending
-                                                    ? `₹${parseAmt(lead.balancePending).toLocaleString('en-IN')}`
-                                                    : (pendingAmount > 0 ? formatINR(pendingAmount) : '—')
-                                                }
-                                            </td>
-                                        </tr>
-                                        <tr className="border-t border-slate-800/50 text-[10px]">
-                                            <td className="px-4 py-1.5 text-slate-500 italic">As per package</td>
-                                            <td className="px-4 py-1.5 text-slate-500 italic">Total calculation based on Sales Entry</td>
-                                            <td className="px-4 py-1.5 text-slate-500 italic">Package Cost − Amount Paid</td>
-                                        </tr>
+                                    <tbody className="divide-y divide-slate-800/50 text-xs">
+                                        {(() => {
+                                            const payHistory = Array.isArray(lead.paymentHistoryDetails) ? lead.paymentHistoryDetails : [];
+                                            
+                                            if (payHistory.length === 0) {
+                                                return (
+                                                    <tr>
+                                                        <td colSpan="8" className="px-4 py-6 text-center text-slate-500 italic">No transactions recorded</td>
+                                                    </tr>
+                                                );
+                                            }
+
+                                            return payHistory.map((txn, idx) => (
+                                                <tr key={idx} className="hover:bg-slate-800/30 transition-colors">
+                                                    <td className="px-4 py-4 font-bold">{idx + 1}</td>
+                                                    <td className="px-4 py-4">{txn.service || '—'}</td>
+                                                    <td className="px-4 py-4 font-mono font-bold text-emerald-400">{txn.amount || '—'}</td>
+                                                    <td className="px-4 py-4">{txn.mode || '—'}</td>
+                                                    <td className="px-4 py-4 font-mono text-slate-400">{txn.transactionId || '—'}</td>
+                                                    <td className="px-4 py-4">{txn.date || '—'}</td>
+                                                    <td className="px-4 py-4 text-cyan-400 underline cursor-pointer">{txn.attachment ? 'View' : '—'}</td>
+                                                    <td className="px-4 py-4">
+                                                        <label className="flex items-center gap-2 cursor-pointer select-none border border-slate-700 w-fit px-3 py-1.5 rounded-md hover:bg-slate-800 transition-colors">
+                                                            <input type="checkbox" className="accent-emerald-500 w-3.5 h-3.5 cursor-pointer" defaultChecked={txn.verified} />
+                                                            <span className="font-bold text-slate-300">Verify</span>
+                                                        </label>
+                                                    </td>
+                                                </tr>
+                                            ));
+                                        })()}
                                     </tbody>
                                 </table>
-                            </div>
-
-                            {/* Client Payment History */}
-                            {Array.isArray(lead.paymentHistoryDetails) && lead.paymentHistoryDetails.length > 0 && (
-                                <div className="bg-slate-900/50 border border-slate-700/30 rounded-lg overflow-hidden">
-                                    <div className="px-4 py-2 bg-slate-800/50 text-[10px] font-bold uppercase text-slate-400 tracking-wider">Payment History</div>
-                                    <table className="w-full text-left text-xs text-slate-300">
-                                        <thead className="border-b border-slate-700/50 text-[10px] uppercase text-slate-500">
-                                            <tr>
-                                                <th className="px-4 py-2">Date</th>
-                                                <th className="px-4 py-2">Amount</th>
-                                                <th className="px-4 py-2">Mode</th>
-                                                <th className="px-4 py-2">Transaction ID</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-800/50">
-                                            {lead.paymentHistoryDetails.map((h, i) => (
-                                                <tr key={i} className="hover:bg-slate-800/20">
-                                                    <td className="px-4 py-2.5">{h.date || '—'}</td>
-                                                    <td className="px-4 py-2.5 font-mono text-emerald-400 font-bold">{h.amount || '—'}</td>
-                                                    <td className="px-4 py-2.5">{h.mode || '—'}</td>
-                                                    <td className="px-4 py-2.5 font-mono text-slate-400">{h.transactionId || '—'}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
-
-                            {/* Payment Status */}
-                            <div className="mt-3 flex items-center gap-3 p-3 bg-slate-800/30 border border-slate-700/30 rounded-lg">
-                                <span className="text-xs text-slate-400">Client Payment Status:</span>
-                                <span className={`text-xs font-bold px-2 py-1 rounded border ${lead.paymentStatus === 'Fully Paid' || lead.paymentStatus === 'Cleared'
-                                    ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/40'
-                                    : 'bg-orange-950/40 text-orange-400 border-orange-900/40'}`}>
-                                    {lead.paymentStatus || 'Pending'}
-                                </span>
-                                <span className="text-xs text-slate-400 ml-2">Next Due:</span>
-                                <span className="text-xs font-mono text-slate-300">{lead.nextPaymentDate || lead.paymentDueDate || '—'}</span>
                             </div>
                         </div>
 
@@ -499,17 +339,17 @@ function BookingInspectorModal({ lead, onClose, onMoveToBilling }) {
 
                 {/* ── FOOTER ── */}
                 <div className="flex items-center justify-between border-t border-slate-800 px-6 py-4 bg-[#0b1329] flex-shrink-0 sm:rounded-b-xl">
-                    <button type="button" onClick={onClose} className="px-5 py-2 bg-transparent border border-slate-700 hover:bg-slate-800 text-slate-300 text-xs font-bold rounded cursor-pointer uppercase tracking-wider">
+                    <button type="button" onClick={onClose} className="px-5 py-2.5 bg-transparent border border-slate-600 hover:bg-slate-800 text-slate-300 text-xs font-bold rounded cursor-pointer uppercase tracking-wider transition-colors">
                         Close
                     </button>
                     <button
                         type="button"
                         onClick={() => onMoveToBilling(lead)}
-                        className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded shadow cursor-pointer uppercase tracking-wider flex items-center gap-2 transition-colors"
+                        className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded shadow cursor-pointer uppercase tracking-wider flex items-center gap-2 transition-colors"
                     >
-                        <CheckCircle2 size={14} />
-                        Client &amp; Vendor Payments Cleared: Moving to Billing
-                        <ChevronRight size={14} />
+                        <CheckCircle2 size={15} />
+                        Payment Verified: Move to Billing
+                        <ChevronRight size={15} />
                     </button>
                 </div>
             </div>
@@ -540,7 +380,7 @@ export default function AccountsDashboard() {
     
     // Modals
     const [selectedLeadForView, setSelectedLeadForView] = useState(null);
-    const [selectedLeadForInspect, setSelectedLeadForInspect] = useState(null); // NEW: Booking Inspector
+    const [selectedLeadForInspect, setSelectedLeadForInspect] = useState(null); // Booking Inspector
     const [selectedPaymentReq, setSelectedPaymentReq] = useState(null);
 
     // Filters for "Trip Completed"
@@ -830,7 +670,6 @@ export default function AccountsDashboard() {
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 text-center">
-                                                    {/* VIEW button now opens the Booking Inspector */}
                                                     <button
                                                         type="button"
                                                         onClick={() => setSelectedLeadForInspect(row)}
@@ -1010,6 +849,30 @@ export default function AccountsDashboard() {
                                     <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">TCS Inclusion</label><input type="text" readOnly value={selectedPaymentReq.originalLead?.tcsStatus || 'Excluded'} className={readonlyCls} /></div>
                                     <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Total Package Cost</label><input type="text" readOnly value={selectedPaymentReq.originalLead?.totalPackageCost || selectedPaymentReq.originalLead?.packageCost || 'TBD'} className={`${readonlyCls} text-emerald-400`} /></div>
                                 </div>
+
+                                {/* CONFIRMED SERVICES — fetched from Sales Booking Confirmation entry */}
+                                {(() => {
+                                    const confirmedServicesArr = selectedPaymentReq.originalLead?.confirmedServices
+                                        ? selectedPaymentReq.originalLead.confirmedServices.split(', ').filter(Boolean)
+                                        : [];
+                                    if (confirmedServicesArr.length === 0) return null;
+                                    return (
+                                        <div>
+                                            <div className="flex items-center justify-between border-b border-slate-700/50 pb-2 mb-3">
+                                                <h3 className="text-lg font-bold text-cyan-400 m-0 border-0 pb-0">Confirmed Services</h3>
+                                                <span className="text-xs text-orange-400 font-bold italic bg-orange-950/30 px-2 py-1 rounded">Service & Cost fetched from Sales</span>
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                {confirmedServicesArr.slice(0, 3).map((srv, idx) => (
+                                                    <div key={idx}>
+                                                        <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">{srv} Cost</label>
+                                                        <input type="text" readOnly value={selectedPaymentReq.originalLead?.[`service${idx + 1}Cost`] || 'TBD'} className={readonlyCls} />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
 
                                 {/* VENDOR DETAILS TABLE */}
                                 <div>

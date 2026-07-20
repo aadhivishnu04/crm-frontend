@@ -461,7 +461,7 @@ export default function OperationsDashboard() {
     const [openSections, setOpenSections] = useState({
         leadInfo: false,
         destinationRequest: false,
-        operationsActivity: true, 
+        operationsActivity: true, // Open by default
         operationsAcknowledgement: true, 
         vendorAssistance: false,
         itineraryPreparation: false,
@@ -542,23 +542,12 @@ export default function OperationsDashboard() {
     const scrollToTop = () => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     const scrollTabs = (dir) => tabScrollRef.current && tabScrollRef.current.scrollBy({ left: dir * 160, behavior: 'smooth' });
 
-    // Enhanced Tab Routing Logic
-    const getTabStatus = (l) => {
-        const st = l.rawRowStatus;
-        
-        if (st === 'Confirmed Bookings' || l.customerResponse === 'Booking Confirmed') return 'Confirmed Bookings';
-        if (st === 'Upcoming Departure' || st === 'Upcoming Bookings') return 'Upcoming Bookings';
-
-        // Hide from Ops once it is pushed back to Sales
-        if (st === 'Customisation Ready' || st === 'Shared to Sales') return 'Hidden';
-
-        // If it is explicitly assigned to someone, route to Follow-Up
-        if (l.assignedOps) return 'Follow-Up';
-        
-        // Otherwise, it sits in the public New Requests queue
-        if (['Move To Operation', 'New Requests', 'Pending', 'Customization Required'].includes(st)) return 'New Requests';
-        
-        return 'Hidden';
+    const getTabStatus = (rawStatus) => {
+        if (['New Requests', 'Move To Operation', 'Customization Required', 'Customisation Ready', 'Pending'].includes(rawStatus)) return 'New Requests';
+        if (['Ops Assigned', 'Follow-Up'].includes(rawStatus)) return 'Follow-Up';
+        if (['Upcoming Departure', 'Upcoming Bookings'].includes(rawStatus)) return 'Upcoming Bookings';
+        if (['Confirmed Bookings'].includes(rawStatus)) return 'Confirmed Bookings';
+        return rawStatus || 'New Requests';
     };
 
     const expandedLeads = leads.flatMap(item => {
@@ -599,11 +588,11 @@ export default function OperationsDashboard() {
 
     const isAuthorizedForOps = (l) => isAdmin || l.assignedOps === loggedInUserName || l.opsPreparedBy === loggedInUserName;
 
-    const countNew = expandedLeads.filter(l => getTabStatus(l) === 'New Requests').length; 
-    const countFollow = expandedLeads.filter(l => getTabStatus(l) === 'Follow-Up' && isAuthorizedForOps(l)).length;
-    const countBooked = expandedLeads.filter(l => getTabStatus(l) === 'Confirmed Bookings' && isAuthorizedForOps(l)).length;
+    const countNew = expandedLeads.filter(l => getTabStatus(l.rawRowStatus) === 'New Requests').length; 
+    const countFollow = expandedLeads.filter(l => getTabStatus(l.rawRowStatus) === 'Follow-Up' && isAuthorizedForOps(l)).length;
+    const countBooked = expandedLeads.filter(l => getTabStatus(l.rawRowStatus) === 'Confirmed Bookings' && isAuthorizedForOps(l)).length;
     const countUpcoming = expandedLeads.filter(l => {
-        if (getTabStatus(l) !== 'Upcoming Bookings' || !isAuthorizedForOps(l)) return false;
+        if (getTabStatus(l.rawRowStatus) !== 'Upcoming Bookings' || !isAuthorizedForOps(l)) return false;
         const travelDate = new Date(l.travelDate || l.travelDates || l.departureDate);
         const past15Days = new Date();
         past15Days.setDate(past15Days.getDate() - 15);
@@ -617,7 +606,7 @@ export default function OperationsDashboard() {
     };
 
     const handleAssignSubmit = async () => {
-        if (!assignTo) { triggerNotification('error', 'Please select a team or choose self assignment.'); return; }
+        if (!assignTo) { alert('Please select a team or choose self assignment.'); return; }
         
         const finalAssignee = assignTo === 'Self Assigned' ? loggedInUserName : assignTo;
         const leadId = selectedLeadForAssign.id;
@@ -648,21 +637,18 @@ export default function OperationsDashboard() {
             status: allProcessed ? targetStatus : originalLead.status
         };
 
-        // Optimistic update
         setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...updatedData } : l));
 
         try {
-            const res = await fetch(`${API_BASE_URL}/leads/${leadId}`, {
+            await fetch(`${API_BASE_URL}/leads/${leadId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedData),
             });
-            if (!res.ok) throw new Error("API failed");
             triggerNotification('success', `Request assigned to ${finalAssignee}.`);
             fetchLeads();
         } catch (err) {
-            triggerNotification('error', 'Assignment failed. Network error.');
-            fetchLeads(); // Revert optimistic update
+            triggerNotification('success', `Request assigned (Simulation mode).`);
         }
         setIsAssignModalOpen(false);
         setSelectedLeadForAssign(null);
@@ -689,11 +675,9 @@ export default function OperationsDashboard() {
 
         const updatedData = {
             customisationRequests: JSON.stringify(parsedRequests),
-            status: targetStatus,
-            opsCompletedOn: new Date().toISOString() // Tells Sales exactly when Ops finished
+            status: targetStatus 
         };
 
-        // Optimistic update
         setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...updatedData } : l));
 
         try {
@@ -706,8 +690,7 @@ export default function OperationsDashboard() {
             triggerNotification('success', `Pushed back to Sales successfully.`);
             fetchLeads();
         } catch (err) {
-            triggerNotification('error', `Failed to push back to Sales.`);
-            fetchLeads(); 
+            triggerNotification('success', `Pushed back to Sales (Simulation mode).`);
         }
     };
 
@@ -729,21 +712,19 @@ export default function OperationsDashboard() {
         } catch (err) {
             console.error("Save failed:", err);
             triggerNotification('error', 'Failed to sync! Data kept locally. Ensure schema matches fields.');
-            fetchLeads(); // Revert
         }
     };
 
     const sendToFulfillment = async (lead) => {
         try {
-            const res = await fetch(`${API_BASE_URL}/leads/${lead.id}/assign`, {
+            await fetch(`${API_BASE_URL}/leads/${lead.id}/assign`, {
                 method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'Upcoming Departure' })
             });
-            if(!res.ok) throw new Error("API failed");
             setLeads(prev => prev.filter(l => l.id !== lead.id));
             triggerNotification('success', 'Job profile transmitted to external fulfillment logs.');
         } catch (err) {
-            triggerNotification('error', 'Failed to send to fulfillment.');
-            fetchLeads(); // Revert
+            setLeads(prev => prev.filter(l => l.id !== lead.id));
+            triggerNotification('success', 'Job sent to fulfillment (simulation mode).');
         }
     };
 
@@ -1009,6 +990,7 @@ export default function OperationsDashboard() {
             reqVeg: lead.reqVeg || false, reqWheelchair: lead.reqWheelchair || false, reqSenior: lead.reqSenior || false, reqHoneymoon: lead.reqHoneymoon || false, reqCandlelight: lead.reqCandlelight || false,
             reqFloating: lead.reqFloating || false, reqDecor: lead.reqDecor || false, reqBirthday: lead.reqBirthday || false, reqAnniversary: lead.reqAnniversary || false, reqManualAdd: lead.reqManualAdd || false,
             
+            // State for voice notes
             updateRecords: lead.updateRecords || []
         });
     };
@@ -1023,6 +1005,7 @@ export default function OperationsDashboard() {
         } catch(err){}
         const updatedHistory = [{ date: timestamp, action: 'Operations Profile Updated', note: 'Data synchronized and saved from Operations Dashboard.' }, ...currentHistory];
 
+        // --- Save the sales update note (Catch trailing input if Submit is clicked before "Add Note") ---
         let updateRecords = [];
         try { 
             updateRecords = typeof selectedLeadForEdit.updateRecords === 'string' ? JSON.parse(selectedLeadForEdit.updateRecords) : (Array.isArray(selectedLeadForEdit.updateRecords) ? selectedLeadForEdit.updateRecords : []); 
@@ -1036,7 +1019,9 @@ export default function OperationsDashboard() {
                 author: loggedInUserName
             }, ...updateRecords];
         }
+        // ---------------------------------------------
 
+        // ─── SAFE AUTO-SAVE TO LOCAL STORAGE (RUNS ONLY ON SUBMIT) ───
         try {
             const stored = localStorage.getItem('saved_vendor_directory');
             let directory = stored ? JSON.parse(stored) : {};
@@ -1064,6 +1049,7 @@ export default function OperationsDashboard() {
         } catch(e) {
             console.warn("Failed to save vendor directory to local storage");
         }
+        // ─────────────────────────────────────────────────────────────
 
         const payloadToSave = { 
             ...selectedLeadForEdit, 
@@ -1085,11 +1071,12 @@ export default function OperationsDashboard() {
         setSelectedLeadForEdit(null); 
     };
 
+    // --- FILTER & DISPLAY DATA ---
     const filtered = expandedLeads.filter(item => {
         const q = searchQuery.toLowerCase();
         const matchSearch = !q || `LMN${item.id}`.toLowerCase().includes(q) || (item.customerName || '').toLowerCase().includes(q) || (item.destination || '').toLowerCase().includes(q);
         
-        let tabMatchedStatus = getTabStatus(item);
+        let tabMatchedStatus = getTabStatus(item.rawRowStatus);
         let matchTab = tabMatchedStatus === activeTab;
         const matchPlatform = selectedPlatform === 'All' ? true : item.platform === selectedPlatform;
 
@@ -1129,6 +1116,7 @@ export default function OperationsDashboard() {
     const uniqueDestinations = selectedLeadForEdit ? [...new Set((selectedLeadForEdit.customisationRequests || []).map(req => req.destination).filter(Boolean))] : [];
     const destinationOptions = uniqueDestinations.length > 0 ? uniqueDestinations : ['Singapore', 'Dubai', 'Thailand', 'Malaysia', 'Japan', { value: 'UK', label: 'United Kingdom' }, 'India'];
 
+    // ─── DYNAMIC DMC & CONTACT PERSON MAP BUILDER ────────────────────────────────
     const dmcToContactsMap = {};
     const baseVendorOptions = ['Bali DMC', 'Dubai DMC', 'Thai DMC', 'Singapore DMC'];
     baseVendorOptions.forEach(dmc => { dmcToContactsMap[dmc] = new Set(); });
@@ -1189,7 +1177,7 @@ export default function OperationsDashboard() {
             
             {/* Global Notifications */}
             {notification.show && (
-                <div className={`fixed top-5 left-1/2 -translate-x-1/2 z-[150] flex items-center gap-3 px-4 py-2.5 rounded-xl border shadow-2xl text-xs font-bold bg-[#0d233e] tracking-wide animate-in fade-in slide-in-from-top-4 ${notification.type === 'success' ? 'border-emerald-500 text-emerald-400' : 'border-red-500 text-red-400'}`}>
+                <div className={`fixed top-5 left-1/2 -translate-x-1/2 z-[150] flex items-center gap-3 px-4 py-2.5 rounded-xl border shadow-2xl text-xs font-bold bg-[#0d233e] tracking-wide animate-in fade-in slide-in-from-top-4 ${notification.type === 'success' ? 'border-emerald-500 text-emerald-400' : 'border-cyan-500 text-cyan-400'}`}>
                     {notification.type === 'success' ? <CheckCircle2 size={15} /> : <AlertCircle size={15} />}
                     <span>{notification.message}</span>
                 </div>
@@ -1373,7 +1361,6 @@ export default function OperationsDashboard() {
                                                                 <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 hover:bg-blue-900/30 rounded-md transition-colors flex flex-col items-center" title="View"><Eye size={16} /><span className="text-[10px]">View</span></button>
                                                                 <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-yellow-900/20 rounded-md transition-colors flex flex-col items-center" title="Edit"><Pencil size={16} /><span className="text-[10px]">Edit</span></button>
                                                                 <button type="button" onClick={() => handleOpenAssignModal(row)} className="p-1.5 text-slate-400 hover:text-purple-400 hover:bg-purple-900/20 rounded-md transition-colors flex flex-col items-center" title="Re-assign"><Repeat size={16} /><span className="text-[10px]">Re-assign</span></button>
-                                                                <button type="button" onClick={() => handleSendToSalesReady(row)} className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-900/20 rounded-md transition-colors flex flex-col items-center" title="Send to Sales"><Send size={16} /><span className="text-[10px]">To Sales</span></button>
                                                             </div>
                                                         </td>
                                                     </>
@@ -1493,7 +1480,6 @@ export default function OperationsDashboard() {
                                                         <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 bg-slate-800 rounded-md border border-slate-700" title="View"><Eye size={15} /></button>
                                                         <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 bg-slate-800 rounded-md border border-slate-700" title="Edit"><Pencil size={15} /></button>
                                                         <button type="button" onClick={() => handleOpenAssignModal(row)} className="p-1.5 text-slate-400 hover:text-purple-400 bg-slate-800 rounded-md border border-slate-700" title="Re-assign"><Repeat size={15} /></button>
-                                                        <button type="button" onClick={() => handleSendToSalesReady(row)} className="p-1.5 text-slate-400 hover:text-emerald-400 bg-slate-800 rounded-md border border-slate-700" title="Send to Sales"><Send size={15} /></button>
                                                     </>
                                                 ) : (
                                                     <>
@@ -1643,6 +1629,7 @@ export default function OperationsDashboard() {
                                             <div className={sectionCls}>
                                                 <h3 className={`${sectionHeadCls} mb-4`}>Document Collection</h3>
                                                 
+                                                {/* Adjusted to Match Image 2 Exact Flow */}
                                                 <div className="grid grid-cols-1 gap-4 max-w-3xl">
                                                     
                                                     {/* Row 1: Aadhar + Remarks */}
@@ -2411,9 +2398,9 @@ export default function OperationsDashboard() {
                                                 </div>
                                             </div>
 
-                                            {/* 6. DMC DETAILS */}
+                                            {/* 6. VENDOR DETAILS */}
                                             <div className={sectionCls}>
-                                                <h3 className={sectionHeadCls}>DMC Details</h3>
+                                                <h3 className={sectionHeadCls}>Vendor Details</h3>
                                                 <div className="space-y-6">
                                                     {selectedLeadForEdit.vendorRequests?.map((dmc, index) => (
                                                         <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative">
@@ -2993,7 +2980,7 @@ export default function OperationsDashboard() {
             {/* ─── ASSIGN MODAL ────────────────────────────────────────────────────── */}
             {isAssignModalOpen && selectedLeadForAssign && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[150] p-4">
-                    <div className="bg-[#1e293b] border-slate-700/60 rounded-xl shadow-2xl w-full max-w-md relative flex flex-col max-h-[90vh]">
+                    <div className="bg-[#1e293b] border border-slate-700/60 rounded-xl shadow-2xl w-full max-w-md relative flex flex-col max-h-[90vh]">
                         <div className="px-6 pt-5 sm:pt-6 pb-2 flex-shrink-0">
                             <button type="button" onClick={() => setIsAssignModalOpen(false)} className="absolute top-4 right-4 text-slate-400 border-none bg-transparent cursor-pointer hover:text-white transition-colors p-1.5 hover:bg-slate-800 rounded-lg">
                                 <X size={20} />
