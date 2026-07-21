@@ -165,9 +165,9 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
                     <FileText size={20} className="text-cyan-400 flex-shrink-0" />
                     <div>
                         <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white uppercase m-0">
-                            Customer Payment Inspector
+                            Customer Payment
                         </h2>
-                        <p className="text-xs text-slate-400 mt-0.5 mb-0">Verify initial payment details from Sales</p>
+                        {/* <p className="text-xs text-slate-400 mt-0.5 mb-0">Verify initial payment details from Sales</p> */}
                     </div>
                 </div>
                 <button type="button" onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-800 flex-shrink-0 cursor-pointer border-none bg-transparent">
@@ -182,7 +182,7 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
                         SECTION 1 — CUSTOMER PAYMENT
                     ════════════════════════════════════ */}
                     <div className="p-5 rounded-xl border border-slate-800 bg-slate-900/40 shadow-sm">
-                        <h3 className="text-sm sm:text-base font-bold text-emerald-400 mb-5 pb-2 border-b border-slate-800/60 uppercase tracking-wider">Customer Payment</h3>
+                        {/* <h3 className="text-sm sm:text-base font-bold text-emerald-400 mb-5 pb-2 border-b border-slate-800/60 uppercase tracking-wider">Customer Payment</h3> */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                             <div>
                                 <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Lead Id</label>
