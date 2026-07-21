@@ -199,7 +199,7 @@ const SalesDashboard = () => {
         confirmedMethod: '', confirmedDate: '', confirmedServices: '', discount: '', finalPackageValue: '', serviceCost: '',
 
         // Booking Confirmation - Dynamic Fields
-        service1Cost: '', service2Cost: '', service3Cost: '', gst: '', tcs: '', passengers: [],
+        service1Cost: '', service2Cost: '', service3Cost: '', serviceCosts: {}, gst: '', tcs: '', passengers: [],
         aadharCopy: '', passportCopy: '', photograph: '', docRemarks: '',
         attachedFiles: [],
 
@@ -468,24 +468,39 @@ const SalesDashboard = () => {
     };
 
     // --- PAYMENT HISTORY LOG HANDLER ---
-    const handleAddPaymentHistory = () => {
-        const { customerPaymentDate, paymentStatus, paymentService, amountReceived, paymentMode } = editFormData;
+    // Saving a payment record here immediately syncs it to the backend and
+    // forwards the booking to the Accounts Dashboard ("Confirmed Bookings")
+    // so Accounts can see and verify it right away, instead of waiting for
+    // the whole edit form to be Submitted.
+    const handleAddPaymentHistory = async () => {
+        const { customerPaymentDate, paymentStatus, paymentService, amountReceived, paymentMode, transactionId } = editFormData;
         if (!amountReceived || !paymentMode) {
             alert("Please fill in Amount Collected and Payment Mode to save the record.");
             return;
         }
-        
+
         const newPaymentRecord = {
             date: customerPaymentDate || new Date().toISOString().split('T')[0],
             stage: paymentStatus || 'First Payment',
             service: paymentService || 'Tour Package',
             amount: amountReceived,
-            mode: paymentMode
+            mode: paymentMode,
+            transactionId: transactionId || '',
+            verified: false
         };
 
+        const updatedList = [...(editFormData.paymentHistoryList || []), newPaymentRecord];
+
+        // Don't downgrade a booking that's already further along the Accounts pipeline.
+        const currentStatus = selectedLead?.status || editFormData.leadStatus;
+     const alreadyForwarded = ['Confirmed Bookings', 'Move To Operation', 'Upcoming Departure', 'Trip Completed', 'Trip Closed', 'Handover Completed'].includes(currentStatus);
+        const newStatus = alreadyForwarded ? currentStatus : 'Confirmed Bookings';
+
+        // Optimistic local update so the Payment History table reflects it instantly.
         setEditFormData(prev => ({
             ...prev,
-            paymentHistoryList: [...prev.paymentHistoryList, newPaymentRecord],
+            paymentHistoryList: updatedList,
+            leadStatus: newStatus,
             amountReceived: '',
             transactionId: '',
             customerPaymentDate: '',
@@ -493,6 +508,23 @@ const SalesDashboard = () => {
             paymentStatus: '',
             paymentService: ''
         }));
+
+        if (!selectedLead?.id) return;
+
+        try {
+            await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    paymentHistoryDetails: JSON.stringify(updatedList),
+                    status: newStatus
+                })
+            });
+            await fetchJobs(true);
+        } catch (e) {
+            console.error("Failed to forward payment to Accounts:", e);
+            alert("Payment saved on this screen, but syncing to Accounts failed. It will retry when you click Submit.");
+        }
     };
 
     // --- PREVIOUS ATTEMPTS LOG CRUD HANDLERS ---
@@ -928,6 +960,12 @@ const SalesDashboard = () => {
             derivedActionTaken = 'Customisation Required';
         }
 
+        let parsedServiceCosts = {};
+        if (lead.serviceCosts) {
+            try { parsedServiceCosts = typeof lead.serviceCosts === 'string' ? JSON.parse(lead.serviceCosts) : lead.serviceCosts; }
+            catch { parsedServiceCosts = {}; }
+        }
+
         setEditFormData({
             leadName: lead.customerName || lead.profileName || '', leadSource: lead.platform || 'Website', leadDate: formatDateTime(lead.createdAt || lead.dateAdded) || '',
             mobileNumber: lead.phone || lead.mobileNo || '', emailAddress: lead.email || '', assignedTo: lead.assignedTo || 'Unassigned',
@@ -954,7 +992,7 @@ const SalesDashboard = () => {
             visaStatus: lead.visaStatus || '', insuranceStatus: lead.insuranceStatus || '', confirmedMethod: lead.confirmedMethod || '', confirmedDate: lead.confirmedDate || '',
             confirmedServices: lead.confirmedServices || '', discount: lead.discount || '', finalPackageValue: lead.finalPackageValue || '', serviceCost: lead.serviceCost || '',
             
-            service1Cost: lead.service1Cost || '', service2Cost: lead.service2Cost || '', service3Cost: lead.service3Cost || '',
+            service1Cost: lead.service1Cost || '', service2Cost: lead.service2Cost || '', service3Cost: lead.service3Cost || '', serviceCosts: parsedServiceCosts,
             gst: lead.gstStatus || lead.gstInclusion || '', tcs: lead.tcsStatus || lead.tcsInclusion || '',
             passengers: lead.passengers ? (typeof lead.passengers === 'string' ? JSON.parse(lead.passengers) : lead.passengers) : [],
             aadharCopy: lead.docAadhar || '', passportCopy: lead.docPassport || '', photograph: lead.docPhoto || '', docRemarks: lead.docRemarks || '',
@@ -1076,6 +1114,7 @@ const SalesDashboard = () => {
                 service1Cost: editFormData.service1Cost,
                 service2Cost: editFormData.service2Cost,
                 service3Cost: editFormData.service3Cost,
+                serviceCosts: Object.keys(editFormData.serviceCosts || {}).length ? JSON.stringify(editFormData.serviceCosts) : null,
                 gstStatus: editFormData.gst,
                 tcsStatus: editFormData.tcs,
                 passengers: editFormData.passengers?.length ? JSON.stringify(editFormData.passengers) : null,
@@ -2417,13 +2456,29 @@ const SalesDashboard = () => {
                                                                 </div>
                                                             )}
                                                             
-                                                            {/* Dynamic Service Costs (up to 3 to map to backend) */}
+                                                            {/* Dynamic Service Costs */}
                                                             {(() => {
                                                                 const selectedServicesArr = editFormData.confirmedServices ? editFormData.confirmedServices.split(', ').filter(Boolean) : [];
-                                                                return selectedServicesArr.slice(0, 3).map((srv, idx) => (
+                                                                return selectedServicesArr.map((srv, idx) => (
                                                                     <div key={idx}>
                                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">{srv} Cost</label>
-                                                                        <input type="text" name={`service${idx+1}Cost`} value={editFormData[`service${idx+1}Cost`] || ''} onChange={handleInputChange} className={inputCls} />
+                                                                        <input 
+                                                                            type="text" 
+                                                                            value={(editFormData.serviceCosts && editFormData.serviceCosts[srv]) || editFormData[`service${idx+1}Cost`] || ''} 
+                                                                            onChange={(e) => {
+                                                                                const val = e.target.value;
+                                                                                setEditFormData(prev => {
+                                                                                    const newServiceCosts = { ...(prev.serviceCosts || {}) };
+                                                                                    newServiceCosts[srv] = val;
+                                                                                    return {
+                                                                                        ...prev,
+                                                                                        serviceCosts: newServiceCosts,
+                                                                                        ...(idx < 3 ? { [`service${idx+1}Cost`]: val } : {})
+                                                                                    };
+                                                                                });
+                                                                            }} 
+                                                                            className={inputCls} 
+                                                                        />
                                                                     </div>
                                                                 ));
                                                             })()}
