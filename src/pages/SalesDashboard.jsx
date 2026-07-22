@@ -931,7 +931,11 @@ const SalesDashboard = () => {
 
         let parsedCustomisationRequests = [];
         if (lead.customisationRequests) {
-            try { parsedCustomisationRequests = typeof lead.customisationRequests === 'string' ? JSON.parse(lead.customisationRequests) : lead.customisationRequests; } 
+            try { 
+                const raw = typeof lead.customisationRequests === 'string' ? JSON.parse(lead.customisationRequests) : lead.customisationRequests; 
+                if (Array.isArray(raw)) parsedCustomisationRequests = raw;
+                else if (raw && typeof raw === 'object') parsedCustomisationRequests = [raw]; // legacy single-object shape (e.g. migrated records) — wrap instead of dropping
+            } 
             catch { parsedCustomisationRequests = []; }
         }
         if (!parsedCustomisationRequests || parsedCustomisationRequests.length === 0) {
