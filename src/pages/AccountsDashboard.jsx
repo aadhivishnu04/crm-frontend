@@ -848,6 +848,104 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
 }
 
 // ─────────────────────────────────────────────
+// CUSTOMER PAYMENT / TRANSACTION DETAILS POPUP
+// Reused wherever a "View" action needs to surface the client-side
+// payment summary + transaction history for a lead.
+// ─────────────────────────────────────────────
+function CustomerPaymentDetailsModal({ lead, onClose }) {
+    if (!lead) return null;
+    const readonlyCls = "w-full px-3 py-2 bg-slate-900/50 border border-slate-800 rounded text-slate-300 text-sm cursor-not-allowed font-medium opacity-90 focus:outline-none";
+    const txns = Array.isArray(lead.paymentHistoryDetails) ? lead.paymentHistoryDetails : [];
+
+    return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
+            <div onClick={e => e.stopPropagation()} className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-[#0f172a] border border-slate-700 rounded-xl shadow-2xl custom-scrollbar">
+                {/* HEADER */}
+                <div className="sticky top-0 px-5 sm:px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] rounded-t-xl">
+                    <h2 className="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2 m-0">
+                        <DollarSign size={18} className="text-cyan-400 flex-shrink-0" />
+                        Customer Payment
+                        <span className="text-xs font-mono font-semibold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                            LMN{String(lead.id || '').padStart(4, '0')}
+                        </span>
+                    </h2>
+                    <button type="button" onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-800 cursor-pointer border-none bg-transparent">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                {/* CONTENT */}
+                <div className="p-5 sm:p-6 space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Customer Name</label>
+                            <input type="text" readOnly value={lead.customerName || lead.profileName || 'N/A'} className={readonlyCls} />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Client Paid</label>
+                            <input type="text" readOnly value={lead.amountReceived || '0'} className={`${readonlyCls} text-emerald-400`} />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Client Balance</label>
+                            <input type="text" readOnly value={lead.balancePending || '0'} className={`${readonlyCls} text-red-400`} />
+                        </div>
+                    </div>
+
+                    <div>
+                        <div className="flex items-center justify-between border-b border-slate-700/50 pb-2 mb-3">
+                            <h3 className="text-sm font-bold text-cyan-400 tracking-wider uppercase m-0">Transaction Details</h3>
+                            <span className="text-[10px] text-orange-400 font-bold italic bg-orange-950/30 px-2 py-1 rounded">History of Payment Entry Given by Sales</span>
+                        </div>
+                        <div className="bg-slate-900/50 border border-slate-700/50 rounded overflow-hidden overflow-x-auto">
+                            <table className="w-full text-left text-sm text-slate-300">
+                                <thead className="bg-slate-800 text-xs uppercase text-slate-400">
+                                    <tr>
+                                        <th className="px-4 py-2">Date</th>
+                                        <th className="px-4 py-2">Service</th>
+                                        <th className="px-4 py-2">Amount</th>
+                                        <th className="px-4 py-2">Mode</th>
+                                        <th className="px-4 py-2">Transaction ID</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-700/50">
+                                    {txns.length > 0 ? (
+                                        txns.map((hist, i) => (
+                                            <tr key={i} className="hover:bg-slate-800/30">
+                                                <td className="px-4 py-3">{hist.date || 'TBD'}</td>
+                                                <td className="px-4 py-3">{hist.service || 'N/A'}</td>
+                                                <td className="px-4 py-3 font-mono">{hist.amount || '0'}</td>
+                                                <td className="px-4 py-3">{hist.mode || 'N/A'}</td>
+                                                <td className="px-4 py-3 font-mono">{hist.transactionId || 'N/A'}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td className="px-4 py-3">{lead.nextPaymentDate || 'N/A'}</td>
+                                            <td className="px-4 py-3">Package</td>
+                                            <td className="px-4 py-3 font-mono text-emerald-400">{lead.amountReceived || '0'}</td>
+                                            <td className="px-4 py-3">{lead.paymentMode || 'N/A'}</td>
+                                            <td className="px-4 py-3 font-mono">{lead.transactionId || 'N/A'}</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {/* FOOTER */}
+                <div className="sticky bottom-0 px-5 sm:px-6 py-4 border-t border-slate-800 bg-[#0b1329] flex justify-end rounded-b-xl">
+                    <button type="button" onClick={onClose}
+                        className="px-8 py-2.5 bg-slate-800 hover:bg-slate-700 cursor-pointer text-white text-sm font-bold rounded shadow transition-colors uppercase tracking-wider border-none">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────
 export default function AccountsDashboard() {
@@ -863,7 +961,7 @@ export default function AccountsDashboard() {
 
     const { leads, isLoading, updateLead } = useLeads(triggerNotification);
 
-    const [activeTab, setActiveTab] = useState('Confirmed Bookings');
+    const [activeTab, setActiveTab] = useState('Customer Payment');
     const [searchQuery, setSearchQuery] = useState('');
     const [entriesPerPage] = useState(10);
     const [currentPage, setCurrentPage] = useState(1);
@@ -872,6 +970,7 @@ export default function AccountsDashboard() {
     const [selectedLeadForView, setSelectedLeadForView] = useState(null);
     const [selectedLeadForInspect, setSelectedLeadForInspect] = useState(null); // Booking Inspector
     const [selectedPaymentReq, setSelectedPaymentReq] = useState(null);
+    const [customerPaymentPopupLead, setCustomerPaymentPopupLead] = useState(null); // Vendor Details "View" popup
 
     // Filters for "Trip Completed"
     const [filterStartDate, setFilterStartDate] = useState('');
@@ -895,12 +994,57 @@ const confirmedBookings = leads.filter(l =>
         l.status === 'Move To Operation' || 
         l.status === 'Upcoming Departure' ||
         l.statusCategory === 'Confirmed' ||
+        l.customerResponse === 'Booking Confirmed' ||
         (Array.isArray(l.paymentHistoryDetails) && l.paymentHistoryDetails.length > 0)
     );
+
+    // ── CROSS-EMPLOYEE COVERAGE NOTE ──
+    // `leads` is fetched company-wide (no employee/user filter on the API
+    // call), and the check above matches on `customerResponse` directly
+    // instead of only the `status` field, so a booking confirmed by ANY
+    // sales employee lands here immediately — even if that employee's
+    // workflow hasn't separately pushed status to 'Confirmed Bookings'
+    // (e.g. they haven't logged a payment or assigned an Ops executive yet).
+
+    // ── CUSTOMER PAYMENT: every confirmed booking that has at least one ──
+    // ── customer transaction logged, so it can be opened & verified via ──
+    // ── the same Booking Inspector ("Customer Payment") form.           ──
+    const customerPayments = leads.filter(l =>
+        Array.isArray(l.paymentHistoryDetails) && l.paymentHistoryDetails.length > 0
+    );
+
+    // Single source of truth for a lead's customer-payment summary — pulled
+    // straight from paymentHistoryDetails (the same data the Booking
+    // Inspector / "Customer Payment" form edits & verifies), so every tab
+    // that shows a payment status is always in sync with that form.
+    const getPaymentSummary = (lead) => {
+        const txns = Array.isArray(lead.paymentHistoryDetails) ? lead.paymentHistoryDetails : [];
+        const totalReceived = txns.reduce((sum, t) => {
+            const n = Number(String(t.amount || 0).replace(/[^0-9.-]+/g, '')) || 0;
+            return sum + n;
+        }, 0);
+        const lastTxn = txns.length > 0 ? txns[txns.length - 1] : null;
+        const verified = txns.length > 0 && txns.every(t => t.verified);
+        return {
+            totalReceived,
+            lastPaymentDate: lastTxn?.date || '—',
+            verificationStatus: txns.length === 0 ? 'No Entries' : (verified ? 'Verified' : 'Pending'),
+        };
+    };
+
+    // Vendor payment status for a lead, derived from its paymentRequests —
+    // kept in sync with what's edited on the Vendor Payment / Accounts Edit form.
+    const getVendorPaymentStatus = (lead) => {
+        const reqs = lead.paymentRequests || [];
+        if (reqs.length === 0) return 'N/A';
+        const allPaid = reqs.every(r => r.status === 'Paid' || r.outAmountPaid);
+        return allPaid ? 'Paid' : 'Pending';
+    };
 
     const paymentRequestsList = leads.flatMap(lead => {
         return (lead.paymentRequests || []).map((req, index) => ({
             ...req,
+            service: req.service || req.serviceType || req.providerName || 'Vendor Payment',
             reqIndex: index,
             leadId: lead.id,
             customerName: lead.customerName || lead.profileName,
@@ -908,7 +1052,7 @@ const confirmedBookings = leads.filter(l =>
             operationsExecutive: lead.assignedTo || 'Operations Team', 
             originalLead: lead
         }));
-    }).filter(req => req.service && req.amountToPay); 
+    }).filter(req => (req.providerName || req.service) && req.amountToPay); 
 
     const paymentPending = leads.filter(l => {
         if (!l.paymentStatus) return false;
@@ -932,9 +1076,10 @@ const confirmedBookings = leads.filter(l =>
 
     const getActiveData = () => {
         switch (activeTab) {
+            case 'Customer Payment': return customerPayments;
+            case 'Vendor Payment': return paymentRequestsList;
             case 'Confirmed Bookings': return confirmedBookings;
-            case 'Payment Requests': return paymentRequestsList;
-            case 'Client Payment Pending': return paymentPending;
+            case 'Client Due': return paymentPending;
             case 'Trip Completed': return tripsCompleted;
             default: return [];
         }
@@ -959,9 +1104,10 @@ const confirmedBookings = leads.filter(l =>
     const paginated = filtered.slice((currentPage - 1) * entriesPerPage, currentPage * entriesPerPage);
 
     const categories = [
+        { id: 'Customer Payment', label: 'Customer Payment', icon: DollarSign, count: customerPayments.length },
+        { id: 'Vendor Payment', label: 'Vendor Payment', icon: FileText, count: paymentRequestsList.length },
         { id: 'Confirmed Bookings', label: 'Confirmed Bookings', icon: CheckSquare, count: confirmedBookings.length },
-        { id: 'Payment Requests', label: 'Payment Requests', icon: FileText, count: paymentRequestsList.length },
-        { id: 'Client Payment Pending', label: 'Client Overdue', icon: AlertCircle, count: paymentPending.length },
+        { id: 'Client Due', label: 'Client Due', icon: AlertCircle, count: paymentPending.length },
         { id: 'Trip Completed', label: 'Trip Completed', icon: CheckCircle2, count: tripsCompleted.length },
     ];
 
@@ -1041,7 +1187,7 @@ const confirmedBookings = leads.filter(l =>
                         <p className="text-slate-400 text-sm sm:text-base mt-1">Manage vendor payment requests, client dues, and finalized trip financials.</p>
                     </div>
 
-                    <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
                         {categories.map((cat) => (
                             <div key={cat.id} onClick={() => handleTabChange(cat.id)} className={`relative p-5 rounded-xl cursor-pointer transition-all border ${activeTab === cat.id ? 'ring-2 ring-offset-2 border-slate-500 bg-[#07202a] text-white' : 'bg-transparent border-slate-700/20 text-slate-200 hover:bg-slate-800/30'}`}>
                                 <div className="flex justify-between items-start mb-2">
@@ -1058,8 +1204,9 @@ const confirmedBookings = leads.filter(l =>
                         <div className="flex flex-col sm:flex-row justify-between p-4 sm:p-5 border-b border-slate-700/20 gap-3">
                             <div className="flex flex-col">
                                 <h2 className="text-base sm:text-lg font-bold text-white">{activeTab} <span className="text-slate-400 font-normal text-sm ml-2">({filtered.length} records)</span></h2>
+                                {activeTab === 'Customer Payment' && <span className="text-xs text-slate-500 mt-1 italic">Customer transactions logged against confirmed bookings — verify from the same form used in Confirmed Bookings</span>}
                                 {activeTab === 'Confirmed Bookings' && <span className="text-xs text-slate-500 mt-1 italic">Once sales has given "Booking Confirmed"</span>}
-                                {activeTab === 'Client Payment Pending' && <span className="text-xs text-slate-500 mt-1 italic">Client balance is not 0 or status is not Fully Paid</span>}
+                                {activeTab === 'Client Due' && <span className="text-xs text-slate-500 mt-1 italic">Client balance is not 0 or status is not Fully Paid</span>}
                             </div>
                             <div className="flex items-center gap-3 w-full sm:w-auto">
                                 
@@ -1085,6 +1232,19 @@ const confirmedBookings = leads.filter(l =>
                             <table className="w-full text-left text-sm text-slate-200 min-w-[900px]">
                                 <thead className="bg-slate-900/80 border-b border-slate-700/50 text-xs uppercase tracking-wider text-slate-400 font-semibold">
                                     
+                                    {activeTab === 'Customer Payment' && (
+                                        <tr>
+                                            <th className="px-6 py-4">Lead Id</th>
+                                            <th className="px-6 py-4">Customer Name</th>
+                                            <th className="px-6 py-4">Destination</th>
+                                            <th className="px-6 py-4">Amount Received</th>
+                                            <th className="px-6 py-4">Payment Date</th>
+                                            <th className="px-6 py-4">Sales Executive</th>
+                                            <th className="px-6 py-4">Verification Status</th>
+                                            <th className="px-6 py-4 text-center">Action</th>
+                                        </tr>
+                                    )}
+
                                     {activeTab === 'Confirmed Bookings' && (
                                         <tr>
                                             <th className="px-6 py-4">Lead Id</th>
@@ -1093,31 +1253,37 @@ const confirmedBookings = leads.filter(l =>
                                             <th className="px-6 py-4">Trip Date</th>
                                             <th className="px-6 py-4">Package Cost</th>
                                             <th className="px-6 py-4">Client Payment Status</th>
+                                            <th className="px-6 py-4">Vendor Payment Status</th>
+                                            <th className="px-6 py-4">Trip Status</th>
                                             <th className="px-6 py-4 text-center">Action</th>
                                         </tr>
                                     )}
 
-                                    {activeTab === 'Payment Requests' && (
+                                    {activeTab === 'Vendor Payment' && (
+                                        <tr>
+                                            <th className="px-6 py-4">Lead Id</th>
+                                            <th className="px-6 py-4">Customer Name</th>
+                                            <th className="px-6 py-4">Vendor Name</th>
+                                            <th className="px-6 py-4">Destination</th>
+                                            <th className="px-6 py-4">Amount to Pay</th>
+                                            <th className="px-6 py-4">Due Date</th>
+                                            <th className="px-6 py-4">Operations Exec</th>
+                                            <th className="px-6 py-4">Approval Status</th>
+                                            <th className="px-6 py-4">Payment Status</th>
+                                            <th className="px-6 py-4 text-center">Action</th>
+                                        </tr>
+                                    )}
+
+                                    {activeTab === 'Client Due' && (
                                         <tr>
                                             <th className="px-6 py-4">Lead Id</th>
                                             <th className="px-6 py-4">Customer Name</th>
                                             <th className="px-6 py-4">Destination</th>
-                                            <th className="px-6 py-4">Service</th>
-                                            <th className="px-6 py-4">Operations Exec</th>
-                                            <th className="px-6 py-4">Requested Amount</th>
-                                            <th className="px-6 py-4">Due Date</th>
-                                            <th className="px-6 py-4 text-center">Action</th>
-                                        </tr>
-                                    )}
-
-                                    {activeTab === 'Client Payment Pending' && (
-                                        <tr>
-                                            <th className="px-6 py-4">Lead Id</th>
-                                            <th className="px-6 py-4">Customer Name</th>
-                                            <th className="px-6 py-4">Destination & Date</th>
-                                            <th className="px-6 py-4">Sales Executive</th>
-                                            <th className="px-6 py-4">Package Cost</th>
-                                            <th className="px-6 py-4 text-orange-400">Due Amount</th>
+                                            <th className="px-6 py-4">Tour Date</th>
+                                            <th className="px-6 py-4">Package Value</th>
+                                            <th className="px-6 py-4 text-emerald-400">Amount Received</th>
+                                            <th className="px-6 py-4 text-orange-400">Amount Pending</th>
+                                            <th className="px-6 py-4">Days Left</th>
                                             <th className="px-6 py-4 text-center">Action</th>
                                         </tr>
                                     )}
@@ -1134,57 +1300,107 @@ const confirmedBookings = leads.filter(l =>
 
                                 </thead>
                                 <tbody className="divide-y divide-slate-700/20">
-                                    {isLoading ? <tr><td colSpan="8" className="px-6 py-12 text-center text-slate-500">Querying accounts records...</td></tr> : paginated.length > 0 ? paginated.map((row, idx) => (
+                                    {isLoading ? <tr><td colSpan="10" className="px-6 py-12 text-center text-slate-500">Querying accounts records...</td></tr> : paginated.length > 0 ? paginated.map((row, idx) => (
                                         <tr key={`${row.id}-${idx}`} className="hover:bg-slate-800/30 transition-colors">
                                             
-                                            {/* CONFIRMED BOOKINGS ROW */}
-                                            {activeTab === 'Confirmed Bookings' && (
-                                                <>
-                                                    <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
-                                                    <td className="px-6 py-4 font-bold text-white">{row.customerName}</td>
-                                                    <td className="px-6 py-4 text-emerald-400 flex flex-col gap-0.5">
-                                                        <span className="flex items-center gap-1"><MapPin size={12} />{row.destination}</span>
-                                                        <span className="text-[10px] text-slate-500 uppercase">{row.tourType || row.packageType}</span>
-                                                    </td>
-                                                    <td className="px-6 py-4">{row.travelDates || row.travelDate || row.tourStartDate || 'TBD'}</td>
-                                                    <td className="px-6 py-4 font-mono font-bold text-slate-200">
-                                                        {row.totalPackageCost || row.packageCost || row.budget || 'TBD'}
-                                                    </td>
-                                                    <td className="px-6 py-4">
-                                                        <span className={`px-2 py-1 rounded text-xs font-bold border ${row.paymentStatus === 'Fully Paid' ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/40' : 'bg-orange-950/40 text-orange-400 border-orange-900/40'}`}>
-                                                            {row.paymentStatus || 'Pending'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 py-4 text-center">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setSelectedLeadForInspect(row)}
-                                                            className="text-cyan-400 hover:text-cyan-300 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 px-3 py-1.5 rounded transition-colors cursor-pointer flex items-center justify-center gap-1.5 w-full text-xs font-bold"
-                                                            title="Open Booking Inspector"
-                                                        >
-                                                            <Eye size={14} /> Inspect
-                                                        </button>
-                                                    </td>
-                                                </>
-                                            )}
+                                            {/* CUSTOMER PAYMENT ROW — opens the same Booking Inspector / */}
+                                            {/* "Customer Payment" form used from Confirmed Bookings.    */}
+                                            {activeTab === 'Customer Payment' && (() => {
+                                                const summary = getPaymentSummary(row);
+                                                return (
+                                                    <>
+                                                        <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
+                                                        <td className="px-6 py-4 font-bold text-white">{row.customerName}</td>
+                                                        <td className="px-6 py-4 text-emerald-400"><MapPin size={12} className="inline mr-1"/>{row.destination}</td>
+                                                        <td className="px-6 py-4 font-mono font-bold text-emerald-400">{summary.totalReceived ? `Rs. ${summary.totalReceived.toLocaleString('en-IN')}` : '—'}</td>
+                                                        <td className="px-6 py-4">{summary.lastPaymentDate}</td>
+                                                        <td className="px-6 py-4 text-slate-300">{row.salesExecutive || row.assignedTo || 'Unassigned'}</td>
+                                                        <td className="px-6 py-4">
+                                                            <span className={`px-2 py-1 rounded text-xs font-bold border ${summary.verificationStatus === 'Verified' ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/40' : 'bg-orange-950/40 text-orange-400 border-orange-900/40'}`}>
+                                                                {summary.verificationStatus}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-center">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSelectedLeadForInspect(row)}
+                                                                className="text-cyan-400 hover:text-cyan-300 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 px-3 py-1.5 rounded transition-colors cursor-pointer flex items-center justify-center gap-1.5 w-full text-xs font-bold"
+                                                                title="Open Customer Payment form"
+                                                            >
+                                                                <Pencil size={14} /> Edit
+                                                            </button>
+                                                        </td>
+                                                    </>
+                                                );
+                                            })()}
 
-                                            {/* PAYMENT REQUESTS ROW */}
-                                            {activeTab === 'Payment Requests' && (
+                                            {/* CONFIRMED BOOKINGS ROW */}
+                                            {activeTab === 'Confirmed Bookings' && (() => {
+                                                const summary = getPaymentSummary(row);
+                                                return (
+                                                    <>
+                                                        <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
+                                                        <td className="px-6 py-4 font-bold text-white">{row.customerName}</td>
+                                                        <td className="px-6 py-4 text-emerald-400 flex flex-col gap-0.5">
+                                                            <span className="flex items-center gap-1"><MapPin size={12} />{row.destination}</span>
+                                                            <span className="text-[10px] text-slate-500 uppercase">{row.tourType || row.packageType}</span>
+                                                        </td>
+                                                        <td className="px-6 py-4">{row.travelDates || row.travelDate || row.tourStartDate || 'TBD'}</td>
+                                                        <td className="px-6 py-4 font-mono font-bold text-slate-200">
+                                                            {row.totalPackageCost || row.packageCost || row.budget || 'TBD'}
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className={`px-2 py-1 rounded text-xs font-bold border ${summary.verificationStatus === 'Verified' ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/40' : 'bg-orange-950/40 text-orange-400 border-orange-900/40'}`} title="Called from the Customer Payment form">
+                                                                {summary.verificationStatus}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className={`px-2 py-1 rounded text-xs font-bold border ${getVendorPaymentStatus(row) === 'Paid' ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/40' : 'bg-orange-950/40 text-orange-400 border-orange-900/40'}`}>
+                                                                {getVendorPaymentStatus(row)}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-slate-300">{row.tripStatus || row.status || 'Pending'}</td>
+                                                        <td className="px-6 py-4 text-center">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setSelectedLeadForInspect(row)}
+                                                                className="text-cyan-400 hover:text-cyan-300 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 px-3 py-1.5 rounded transition-colors cursor-pointer flex items-center justify-center gap-1.5 w-full text-xs font-bold"
+                                                                title="Open Booking Inspector"
+                                                            >
+                                                                <Eye size={14} /> Inspect
+                                                            </button>
+                                                        </td>
+                                                    </>
+                                                );
+                                            })()}
+
+                                            {/* VENDOR PAYMENT ROW */}
+                                            {activeTab === 'Vendor Payment' && (
                                                 <>
                                                     <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.leadId}</td>
                                                     <td className="px-6 py-4 font-bold text-white">{row.customerName}</td>
-                                                    <td className="px-6 py-4 text-emerald-400"><MapPin size={12} className="inline mr-1"/>{row.destination}</td>
                                                     <td className="px-6 py-4">
                                                         <div className="flex flex-col gap-0.5">
-                                                            <span className="font-bold text-cyan-400">{row.service}</span>
-                                                            <span className="text-[10px] text-slate-400">{row.providerName} - {row.paymentType}</span>
+                                                            <span className="font-bold text-cyan-400">{row.providerName || '—'}</span>
+                                                            <span className="text-[10px] text-slate-400">{row.service} - {row.paymentType}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="px-6 py-4 text-slate-300">{row.operationsExecutive}</td>
+                                                    <td className="px-6 py-4 text-emerald-400"><MapPin size={12} className="inline mr-1"/>{row.destination}</td>
                                                     <td className="px-6 py-4 font-mono font-bold text-orange-400">{row.amountToPay}</td>
                                                     <td className="px-6 py-4">
                                                         <span className={`text-xs font-bold ${new Date(row.paymentDueDate) < new Date() ? 'text-red-400' : 'text-slate-300'}`}>
                                                             {row.paymentDueDate}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4 text-slate-300">{row.operationsExecutive}</td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`px-2 py-1 rounded text-xs font-bold border ${row.dirStatus === 'Approved' ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/40' : 'bg-slate-800/60 text-slate-400 border-slate-700/40'}`}>
+                                                            {row.dirStatus || 'Pending Review'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-6 py-4">
+                                                        <span className={`px-2 py-1 rounded text-xs font-bold border ${(row.status === 'Paid' || row.outAmountPaid) ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/40' : 'bg-orange-950/40 text-orange-400 border-orange-900/40'}`}>
+                                                            {row.status || (row.outAmountPaid ? 'Paid' : 'Pending')}
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-center">
@@ -1195,27 +1411,35 @@ const confirmedBookings = leads.filter(l =>
                                                 </>
                                             )}
 
-                                            {/* CLIENT PAYMENT PENDING ROW */}
-                                            {activeTab === 'Client Payment Pending' && (
-                                                <>
-                                                    <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
-                                                    <td className="px-6 py-4 font-bold text-white">{row.customerName}</td>
-                                                    <td className="px-6 py-4">
-                                                        <div className="flex flex-col gap-0.5">
-                                                            <span className="text-emerald-400"><MapPin size={12} className="inline mr-1"/>{row.destination}</span>
-                                                            <span className="text-[10px] text-slate-400 bg-slate-800 w-fit px-1.5 rounded mt-0.5">{row.travelDates || row.travelDate || row.tourStartDate || 'TBD'}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-6 py-4">{row.salesExecutive || row.assignedTo || 'Unassigned'}</td>
-                                                    <td className="px-6 py-4 font-mono text-slate-300">{row.totalPackageCost || row.packageCost || row.budget || 'TBD'}</td>
-                                                    <td className="px-6 py-4 font-mono font-black text-orange-400">{row.balancePending || 'Calculate Manually'}</td>
-                                                    <td className="px-6 py-4 text-center">
-                                                        <button type="button" onClick={() => setSelectedLeadForView(row)} className="text-slate-400 hover:text-blue-300 transition-colors cursor-pointer flex items-center justify-center gap-1 w-full" title="View Specifics">
-                                                            <Eye size={16} /> View
-                                                        </button>
-                                                    </td>
-                                                </>
-                                            )}
+                                            {/* CLIENT DUE ROW */}
+                                            {activeTab === 'Client Due' && (() => {
+                                                const summary = getPaymentSummary(row);
+                                                const packageValue = Number(String(row.totalPackageCost || row.packageCost || row.budget || 0).replace(/[^0-9.-]+/g, '')) || 0;
+                                                const amountPending = row.balancePending || (packageValue ? Math.max(packageValue - summary.totalReceived, 0) : 'Calculate Manually');
+                                                const tourDate = row.tourStartDate || row.travelDate || row.travelDates;
+                                                const daysLeft = tourDate && !isNaN(new Date(tourDate)) ? Math.ceil((new Date(tourDate) - new Date()) / (1000 * 60 * 60 * 24)) : null;
+                                                return (
+                                                    <>
+                                                        <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
+                                                        <td className="px-6 py-4 font-bold text-white">{row.customerName}</td>
+                                                        <td className="px-6 py-4 text-emerald-400"><MapPin size={12} className="inline mr-1"/>{row.destination}</td>
+                                                        <td className="px-6 py-4">{tourDate || 'TBD'}</td>
+                                                        <td className="px-6 py-4 font-mono text-slate-300">{packageValue ? `Rs. ${packageValue.toLocaleString('en-IN')}` : 'TBD'}</td>
+                                                        <td className="px-6 py-4 font-mono font-bold text-emerald-400" title="Called from the Customer Payment form">{summary.totalReceived ? `Rs. ${summary.totalReceived.toLocaleString('en-IN')}` : '—'}</td>
+                                                        <td className="px-6 py-4 font-mono font-black text-orange-400">{typeof amountPending === 'number' ? `Rs. ${amountPending.toLocaleString('en-IN')}` : amountPending}</td>
+                                                        <td className="px-6 py-4">
+                                                            {daysLeft !== null ? (
+                                                                <span className={`font-bold ${daysLeft < 7 ? 'text-red-400' : 'text-slate-300'}`}>{daysLeft >= 0 ? `${daysLeft}d` : 'Overdue'}</span>
+                                                            ) : '—'}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-center">
+                                                            <button type="button" onClick={() => setSelectedLeadForInspect(row)} className="text-cyan-400 hover:text-cyan-300 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 px-3 py-1.5 rounded transition-colors cursor-pointer flex items-center justify-center gap-1.5 w-full text-xs font-bold" title="Open Customer Payment form">
+                                                                <Pencil size={14} /> Edit
+                                                            </button>
+                                                        </td>
+                                                    </>
+                                                );
+                                            })()}
 
                                             {/* TRIP COMPLETED ROW */}
                                             {activeTab === 'Trip Completed' && (
@@ -1238,7 +1462,7 @@ const confirmedBookings = leads.filter(l =>
                                             )}
                                             
                                         </tr>
-                                    )) : <tr><td colSpan="8" className="px-6 py-12 text-center text-slate-500">No records found.</td></tr>}
+                                    )) : <tr><td colSpan="10" className="px-6 py-12 text-center text-slate-500">No records found.</td></tr>}
                                 </tbody>
                             </table>
                         </div>
@@ -1384,7 +1608,7 @@ const confirmedBookings = leads.filter(l =>
                                         <div className="pt-4 border-t border-slate-700/50">
                                             <div className="flex items-center justify-between border-b border-slate-700/50 pb-2 mb-3">
                                                 <h3 className="text-sm font-bold text-cyan-400 tracking-wider m-0 uppercase">Confirmed Services</h3>
-                                                <span className="text-xs text-orange-400 font-bold italic bg-orange-950/30 px-2 py-1 rounded">Service & Cost fetched from Sales</span>
+                                                {/* <span className="text-xs text-orange-400 font-bold italic bg-orange-950/30 px-2 py-1 rounded">Service & Cost fetched from Sales</span> */}
                                             </div>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                 {confirmedServicesArr.slice(0, 3).map((srv, idx) => (
@@ -1410,21 +1634,29 @@ const confirmedBookings = leads.filter(l =>
                                                     <th className="px-4 py-2">Amount Paid</th>
                                                     <th className="px-4 py-2">Pending Amount</th>
                                                     <th className="px-4 py-2">Next Payment Date</th>
+                                                    <th className="px-4 py-2 text-center">View</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-700/50">
                                                 {selectedPaymentReq.originalLead?.paymentRequests && selectedPaymentReq.originalLead.paymentRequests.length > 0 ? (
                                                     selectedPaymentReq.originalLead.paymentRequests.map((req, i) => (
                                                         <tr key={i} className="hover:bg-slate-800/30">
-                                                            <td className="px-4 py-3 font-medium">{req.service} <span className="text-[10px] text-slate-500 block">{req.providerName}</span></td>
+                                                            <td className="px-4 py-3 font-medium">{req.service || req.serviceType || 'Vendor Payment'} <span className="text-[10px] text-slate-500 block">{req.providerName}</span></td>
                                                             <td className="px-4 py-3 font-mono">{req.serviceCost || 'TBD'}</td>
                                                             <td className="px-4 py-3 font-mono text-emerald-400">{req.outAmountPaid || '0'}</td>
                                                             <td className="px-4 py-3 font-mono text-orange-400">{req.amountToPay || 'TBD'}</td>
                                                             <td className="px-4 py-3">{req.paymentDueDate || 'TBD'}</td>
+                                                            <td className="px-4 py-3 text-center">
+                                                                <button type="button" onClick={() => setCustomerPaymentPopupLead(selectedPaymentReq.originalLead)}
+                                                                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded cursor-pointer"
+                                                                    title="View Customer Payment / Transaction Details">
+                                                                    <Eye size={13} /> View
+                                                                </button>
+                                                            </td>
                                                         </tr>
                                                     ))
                                                 ) : (
-                                                    <tr><td colSpan="5" className="px-4 py-6 text-center text-slate-500">No vendor payment ledgers exist.</td></tr>
+                                                    <tr><td colSpan="6" className="px-4 py-6 text-center text-slate-500">No vendor payment ledgers exist.</td></tr>
                                                 )}
                                             </tbody>
                                         </table>
@@ -1435,7 +1667,7 @@ const confirmedBookings = leads.filter(l =>
                                 <div className="pt-4 border-t border-slate-700/50">
                                     <div className="flex items-center justify-between border-b border-slate-700/50 pb-2 mb-4">
                                         <h3 className="text-sm font-bold text-cyan-400 tracking-wider uppercase m-0">Client Payment Status</h3>
-                                        <span className="text-xs text-orange-400 font-bold italic bg-orange-950/30 px-2 py-1 rounded">History of Payment Entry Given by Sales</span>
+                                        {/* <span className="text-xs text-orange-400 font-bold italic bg-orange-950/30 px-2 py-1 rounded">History of Payment Entry Given by Sales</span> */}
                                     </div>
                                     
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
@@ -1589,6 +1821,10 @@ const confirmedBookings = leads.filter(l =>
             <button type="button" onClick={scrollToTop} aria-label="Scroll to top" className={`fixed bottom-6 right-5 z-40 p-3 rounded-full bg-slate-800 border border-slate-600 text-slate-300 shadow-lg transition-all duration-300 cursor-pointer hover:bg-slate-700 hover:text-white ${showScrollTop ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
                 <ArrowUp size={18} />
             </button>
+
+            {customerPaymentPopupLead && (
+                <CustomerPaymentDetailsModal lead={customerPaymentPopupLead} onClose={() => setCustomerPaymentPopupLead(null)} />
+            )}
         </div>
     );
 }

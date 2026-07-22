@@ -5,7 +5,7 @@ import {
     ShoppingCart, Target, X, Send, AlertCircle, CheckCircle2,
     Mic, Trash2, Layers, BookmarkCheck, PlaneTakeoff, Info,
     Briefcase, FileText, Activity, ShieldCheck, Share2, Play, Square, Plus,
-    ChevronLeft, ChevronRight, ArrowUp, Copy, ChevronDown, Repeat
+    ChevronLeft, ChevronRight, ArrowUp, Copy, ChevronDown, Repeat, DollarSign
 } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
 
@@ -392,6 +392,104 @@ function Pagination({ currentPage, totalPages, onPageChange, totalEntries, entri
 }
 
 // ─────────────────────────────────────────────
+// CUSTOMER PAYMENT / TRANSACTION DETAILS POPUP
+// Mirrors the Accounts Dashboard "View" popup so Ops sees the exact
+// same customer payment summary + transaction history for a lead.
+// ─────────────────────────────────────────────
+function CustomerPaymentDetailsModal({ lead, onClose }) {
+    if (!lead) return null;
+    const readonlyCls = "w-full px-3 py-2 bg-slate-900/50 border border-slate-800 rounded text-slate-300 text-sm cursor-not-allowed font-medium opacity-90 focus:outline-none";
+    const txns = Array.isArray(lead.paymentHistoryDetails) ? lead.paymentHistoryDetails : [];
+
+    return (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
+            <div onClick={e => e.stopPropagation()} className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-[#0f172a] border border-slate-700 rounded-xl shadow-2xl custom-scrollbar">
+                {/* HEADER */}
+                <div className="sticky top-0 px-5 sm:px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] rounded-t-xl">
+                    <h2 className="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2 m-0">
+                        <DollarSign size={18} className="text-cyan-400 flex-shrink-0" />
+                        Customer Payment
+                        <span className="text-xs font-mono font-semibold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                            LMN{String(lead.id || '').padStart(4, '0')}
+                        </span>
+                    </h2>
+                    <button type="button" onClick={onClose} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-800 cursor-pointer border-none bg-transparent">
+                        <X size={20} />
+                    </button>
+                </div>
+
+                {/* CONTENT */}
+                <div className="p-5 sm:p-6 space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div>
+                            <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Customer Name</label>
+                            <input type="text" readOnly value={lead.customerName || lead.profileName || 'N/A'} className={readonlyCls} />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Client Paid</label>
+                            <input type="text" readOnly value={lead.amountReceived || '0'} className={`${readonlyCls} text-emerald-400`} />
+                        </div>
+                        <div>
+                            <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Client Balance</label>
+                            <input type="text" readOnly value={lead.balancePending || '0'} className={`${readonlyCls} text-red-400`} />
+                        </div>
+                    </div>
+
+                    <div>
+                        <div className="flex items-center justify-between border-b border-slate-700/50 pb-2 mb-3">
+                            <h3 className="text-sm font-bold text-cyan-400 tracking-wider uppercase m-0">Transaction Details</h3>
+                            <span className="text-[10px] text-orange-400 font-bold italic bg-orange-950/30 px-2 py-1 rounded">History of Payment Entry Given by Sales</span>
+                        </div>
+                        <div className="bg-slate-900/50 border border-slate-700/50 rounded overflow-hidden overflow-x-auto">
+                            <table className="w-full text-left text-sm text-slate-300">
+                                <thead className="bg-slate-800 text-xs uppercase text-slate-400">
+                                    <tr>
+                                        <th className="px-4 py-2">Date</th>
+                                        <th className="px-4 py-2">Service</th>
+                                        <th className="px-4 py-2">Amount</th>
+                                        <th className="px-4 py-2">Mode</th>
+                                        <th className="px-4 py-2">Transaction ID</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-700/50">
+                                    {txns.length > 0 ? (
+                                        txns.map((hist, i) => (
+                                            <tr key={i} className="hover:bg-slate-800/30">
+                                                <td className="px-4 py-3">{hist.date || 'TBD'}</td>
+                                                <td className="px-4 py-3">{hist.service || 'N/A'}</td>
+                                                <td className="px-4 py-3 font-mono">{hist.amount || '0'}</td>
+                                                <td className="px-4 py-3">{hist.mode || 'N/A'}</td>
+                                                <td className="px-4 py-3 font-mono">{hist.transactionId || 'N/A'}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td className="px-4 py-3">{lead.nextPaymentDate || 'N/A'}</td>
+                                            <td className="px-4 py-3">Package</td>
+                                            <td className="px-4 py-3 font-mono text-emerald-400">{lead.amountReceived || '0'}</td>
+                                            <td className="px-4 py-3">{lead.paymentMode || 'N/A'}</td>
+                                            <td className="px-4 py-3 font-mono">{lead.transactionId || 'N/A'}</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                {/* FOOTER */}
+                <div className="sticky bottom-0 px-5 sm:px-6 py-4 border-t border-slate-800 bg-[#0b1329] flex justify-end rounded-b-xl">
+                    <button type="button" onClick={onClose}
+                        className="px-8 py-2.5 bg-slate-800 hover:bg-slate-700 cursor-pointer text-white text-sm font-bold rounded shadow transition-colors uppercase tracking-wider border-none">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ─────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────
 export default function OperationsDashboard() {
@@ -447,6 +545,7 @@ export default function OperationsDashboard() {
 
     const [selectedLeadForView, setSelectedLeadForView] = useState(null);
     const [selectedLeadForEdit, setSelectedLeadForEdit] = useState(null);
+    const [customerPaymentPopupLead, setCustomerPaymentPopupLead] = useState(null); // DMC Details "View" popup
     const [leadToFulfill, setLeadToFulfill] = useState(null);
     
     const [operationsStaff, setOperationsStaff] = useState([]);
@@ -736,18 +835,29 @@ export default function OperationsDashboard() {
     const handleSearch = (val) => { setSearchQuery(val); setCurrentPage(1); };
 
     // --- FORM DATA HANDLERS ---
+    // Some records store array-backed fields (like vendorRequests) as a raw
+    // JSON string instead of an already-parsed array. Every read site should
+    // go through this instead of assuming the value is already an array.
+    const toArr = (val) => {
+        if (Array.isArray(val)) return val;
+        if (typeof val === 'string' && val.trim()) {
+            try { const parsed = JSON.parse(val); return Array.isArray(parsed) ? parsed : []; } catch (e) { return []; }
+        }
+        return [];
+    };
+
     const handleArrayChange = (arrayName, index, field, value) => {
-        const newArray = [...selectedLeadForEdit[arrayName]];
+        const newArray = [...toArr(selectedLeadForEdit[arrayName])];
         newArray[index] = { ...newArray[index], [field]: value };
         setSelectedLeadForEdit(prev => ({ ...prev, [arrayName]: newArray }));
     };
 
     const addArrayItem = (arrayName, defaultObj) => {
-        setSelectedLeadForEdit(prev => ({ ...prev, [arrayName]: [...(prev[arrayName] || []), defaultObj] }));
+        setSelectedLeadForEdit(prev => ({ ...prev, [arrayName]: [...toArr(prev[arrayName]), defaultObj] }));
     };
 
     const removeArrayItem = (arrayName, index) => {
-        const newArray = [...selectedLeadForEdit[arrayName]];
+        const newArray = [...toArr(selectedLeadForEdit[arrayName])];
         newArray.splice(index, 1);
         setSelectedLeadForEdit(prev => ({ ...prev, [arrayName]: newArray }));
     };
@@ -1037,7 +1147,7 @@ export default function OperationsDashboard() {
             let directory = stored ? JSON.parse(stored) : {};
             let changed = false;
 
-            selectedLeadForEdit.vendorRequests.forEach(req => {
+            toArr(selectedLeadForEdit.vendorRequests).forEach(req => {
                 const dmc = req.vendorDmcName?.trim();
                 const contact = req.vendorContactPerson?.trim();
                 
@@ -1164,7 +1274,7 @@ export default function OperationsDashboard() {
     } catch(e) {}
 
     if (selectedLeadForEdit && selectedLeadForEdit.vendorRequests) {
-        selectedLeadForEdit.vendorRequests.forEach(req => {
+        toArr(selectedLeadForEdit.vendorRequests).forEach(req => {
             const dReq = req.vendorDmcName;
             const cReq = req.vendorContactPerson;
             if (dReq) {
@@ -1884,9 +1994,16 @@ export default function OperationsDashboard() {
                                             <div className={sectionCls}>
                                                 <h3 className={sectionHeadCls}>DMC Details</h3>
                                                 <div className="space-y-6">
-                                                    {selectedLeadForEdit.vendorRequests?.map((dmc, index) => (
+                                                    {toArr(selectedLeadForEdit.vendorRequests).map((dmc, index) => (
                                                         <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative">
-                                                            {index > 0 && <button type="button" onClick={() => removeArrayItem('vendorRequests', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
+                                                            <div className="absolute top-2 right-2 flex items-center gap-2">
+                                                                <button type="button" onClick={() => setCustomerPaymentPopupLead(selectedLeadForEdit)}
+                                                                    className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded cursor-pointer"
+                                                                    title="View Customer Payment / Transaction Details">
+                                                                    <Eye size={13} /> View
+                                                                </button>
+                                                                {index > 0 && <button type="button" onClick={() => removeArrayItem('vendorRequests', index)} className="text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
+                                                            </div>
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">DMC Name</label><CustomSelect value={dmc.vendorDmcName} onChange={v => handleArrayChange('vendorRequests', index, 'vendorDmcName', v)} className={selectCls} options={finalDmcOptions} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Contact Person</label><CustomSelect value={dmc.vendorContactPerson} onChange={v => handleArrayChange('vendorRequests', index, 'vendorContactPerson', v)} className={selectCls} options={getContactsForDMC(dmc.vendorDmcName)} /></div>
@@ -1962,7 +2079,7 @@ export default function OperationsDashboard() {
                                                 <h3 className={sectionHeadCls}>Vendor Payment Request</h3>
                                                 <div className="space-y-6">
                                                     {selectedLeadForEdit.paymentRequests?.map((req, index) => {
-                                                        const matchedVendor = (selectedLeadForEdit.vendorRequests || []).find(v => v.vendorDmcName === req.providerName);
+                                                        const matchedVendor = toArr(selectedLeadForEdit.vendorRequests).find(v => v.vendorDmcName === req.providerName);
                                                         return (
                                                         <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative">
                                                             <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-slate-400 border border-slate-700 rounded">PAYMENT {index + 1}</span>
@@ -1972,10 +2089,14 @@ export default function OperationsDashboard() {
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Vendor / DMC Name</label>
                                                                     <select value={req.providerName} onChange={(e) => handleArrayChange('paymentRequests', index, 'providerName', e.target.value)} className={selectCls}>
                                                                         <option value="" disabled hidden>Select Vendor</option>
-                                                                        {(selectedLeadForEdit.vendorRequests || []).map((v, i) => (
+                                                                        {toArr(selectedLeadForEdit.vendorRequests).map((v, i) => (
                                                                             <option key={i} value={v.vendorDmcName || ''}>{v.vendorDmcName || 'DMC Record'}</option>
                                                                         ))}
                                                                     </select>
+                                                                </div>
+                                                                <div>
+                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Service</label>
+                                                                    <input type="text" value={req.service ?? (matchedVendor?.servicesConfirmed || '')} onChange={(e) => handleArrayChange('paymentRequests', index, 'service', e.target.value)} className={inputCls} placeholder="e.g. Hotel, Airport Transfer" />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Service Cost</label>
@@ -1995,7 +2116,7 @@ export default function OperationsDashboard() {
                                                             </div>
                                                         </div>
                                                     )})}
-                                                    <button type="button" onClick={() => addArrayItem('paymentRequests', { providerName: '', paymentType: '', currency: '', amountToPay: '', paymentDueDate: '', paymentAccountDetails: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md transition-colors cursor-pointer"><Plus size={14} /> Add Payment Request</button>
+                                                    <button type="button" onClick={() => addArrayItem('paymentRequests', { service: '', providerName: '', paymentType: '', currency: '', amountToPay: '', paymentDueDate: '', paymentAccountDetails: '' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md transition-colors cursor-pointer"><Plus size={14} /> Add Payment Request</button>
                                                 </div>
                                             </div>
                                         </div>
@@ -2412,7 +2533,7 @@ export default function OperationsDashboard() {
                                             <div className={sectionCls}>
                                                 <h3 className={sectionHeadCls}>Vendor Details</h3>
                                                 <div className="space-y-6">
-                                                    {selectedLeadForEdit.vendorRequests?.map((dmc, index) => (
+                                                    {toArr(selectedLeadForEdit.vendorRequests).map((dmc, index) => (
                                                         <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative">
                                                             {index > 0 && <button type="button" onClick={() => removeArrayItem('vendorRequests', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
                                                             
@@ -2521,7 +2642,7 @@ export default function OperationsDashboard() {
                                                 <h3 className={sectionHeadCls}>Vendor Payment Request</h3>
                                                 <div className="space-y-6">
                                                     {selectedLeadForEdit.paymentRequests?.map((req, index) => {
-                                                        const matchedVendor = (selectedLeadForEdit.vendorRequests || []).find(v => v.vendorDmcName === req.providerName);
+                                                        const matchedVendor = toArr(selectedLeadForEdit.vendorRequests).find(v => v.vendorDmcName === req.providerName);
                                                         return (
                                                         <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative">
                                                             <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-slate-400 border border-slate-700 rounded">PAYMENT {index + 1}</span>
@@ -2535,7 +2656,7 @@ export default function OperationsDashboard() {
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Vendor / DMC / Hotel Name</label>
                                                                     <select value={req.providerName} onChange={(e) => handleArrayChange('paymentRequests', index, 'providerName', e.target.value)} className={selectCls}>
                                                                         <option value="" disabled hidden>Select Vendor</option>
-                                                                        {(selectedLeadForEdit.vendorRequests || []).map((v, i) => (
+                                                                        {toArr(selectedLeadForEdit.vendorRequests).map((v, i) => (
                                                                             <option key={i} value={v.vendorDmcName || ''}>{v.vendorDmcName || 'DMC Record'}</option>
                                                                         ))}
                                                                     </select>
@@ -2687,7 +2808,7 @@ export default function OperationsDashboard() {
                                                 
                                                 {openSections.vendorAssistance && (
                                                     <div className="animate-in slide-in-from-top-2 fade-in">
-                                                        {selectedLeadForEdit.vendorRequests?.map((req, index) => (
+                                                        {toArr(selectedLeadForEdit.vendorRequests).map((req, index) => (
                                                             <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative mb-4 mt-2">
                                                                 {selectedLeadForEdit.vendorRequests.length > 1 && (
                                                                     <span className="absolute -top-2.5 left-3 bg-[#0f172a] px-2 text-xs font-bold text-cyan-400 border border-slate-700 rounded">VENDOR {index + 1}</span>
@@ -3145,6 +3266,10 @@ export default function OperationsDashboard() {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {customerPaymentPopupLead && (
+                <CustomerPaymentDetailsModal lead={customerPaymentPopupLead} onClose={() => setCustomerPaymentPopupLead(null)} />
             )}
         </div>
     );  
