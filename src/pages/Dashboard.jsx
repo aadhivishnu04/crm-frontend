@@ -705,7 +705,9 @@ const Dashboard = () => {
 
                             let payReqs = [];
                             try { 
-                                payReqs = typeof lead.paymentRequests === 'string' ? JSON.parse(lead.paymentRequests) : (lead.paymentRequests || []); 
+                                const rawPayReqs = typeof lead.paymentRequests === 'string' ? JSON.parse(lead.paymentRequests) : lead.paymentRequests;
+                                if (Array.isArray(rawPayReqs)) payReqs = rawPayReqs;
+                                else if (rawPayReqs && typeof rawPayReqs === 'object') payReqs = [rawPayReqs]; // legacy single-object shape — wrap instead of dropping
                             } catch(e) {}
                             
                             let leadVendorTotalPaid = 0;

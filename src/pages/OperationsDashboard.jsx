@@ -554,9 +554,11 @@ export default function OperationsDashboard() {
         let parsedRequests = [];
         if (item.customisationRequests) {
             try { 
-                parsedRequests = typeof item.customisationRequests === 'string' 
+                const raw = typeof item.customisationRequests === 'string' 
                     ? JSON.parse(item.customisationRequests) 
                     : item.customisationRequests; 
+                if (Array.isArray(raw)) parsedRequests = raw;
+                else if (raw && typeof raw === 'object') parsedRequests = [raw]; // legacy single-object shape — wrap instead of dropping
             } catch { parsedRequests = []; }
         }
 
@@ -618,9 +620,10 @@ export default function OperationsDashboard() {
 
         let parsedRequests = [];
         try {
-            parsedRequests = typeof originalLead.customisationRequests === 'string'
+            const raw = typeof originalLead.customisationRequests === 'string'
                 ? JSON.parse(originalLead.customisationRequests)
                 : (originalLead.customisationRequests || []);
+            parsedRequests = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? [raw] : []);
         } catch(e) { parsedRequests = []; }
 
         if (parsedRequests.length > 0 && parsedRequests[reqIndex]) {
@@ -664,9 +667,10 @@ export default function OperationsDashboard() {
 
         let parsedRequests = [];
         try {
-            parsedRequests = typeof originalLead.customisationRequests === 'string'
+            const raw = typeof originalLead.customisationRequests === 'string'
                 ? JSON.parse(originalLead.customisationRequests)
                 : (originalLead.customisationRequests || []);
+            parsedRequests = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? [raw] : []);
         } catch(e) { parsedRequests = []; }
 
         if (parsedRequests.length > 0 && parsedRequests[reqIndex]) {
@@ -759,7 +763,11 @@ export default function OperationsDashboard() {
         if (val) {
             try { arr = typeof val === 'string' ? JSON.parse(val) : val; } catch(e){}
         }
-        return Array.isArray(arr) && arr.length > 0 ? arr : (defaultItem !== null ? [defaultItem] : []);
+        if (Array.isArray(arr) && arr.length > 0) return arr;
+        // Legacy/corrupted shape: a single stringified object instead of an array.
+        // Wrap it so existing saved data isn't silently discarded on next edit.
+        if (arr && typeof arr === 'object' && !Array.isArray(arr) && Object.keys(arr).length > 0) return [arr];
+        return defaultItem !== null ? [defaultItem] : [];
     };
 
     // --- DIRECT FILE UPLOADER LOGIC ---
@@ -891,9 +899,11 @@ export default function OperationsDashboard() {
         let parsedCustomisationRequests = [];
         if (lead.customisationRequests) {
             try { 
-                parsedCustomisationRequests = typeof lead.customisationRequests === 'string' 
+                const raw = typeof lead.customisationRequests === 'string' 
                     ? JSON.parse(lead.customisationRequests) 
                     : lead.customisationRequests; 
+                if (Array.isArray(raw)) parsedCustomisationRequests = raw;
+                else if (raw && typeof raw === 'object') parsedCustomisationRequests = [raw]; // legacy single-object shape — wrap instead of dropping
             } catch { parsedCustomisationRequests = []; }
         }
         

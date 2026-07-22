@@ -9,7 +9,7 @@ import Layout from './components/Layout';
 import ProtectedRoute from './routes/ProtectedRoute';
 import PlaceholderPage from './pages/PlaceholderPage';
 
-// 👇 Imported components
+// Imported components
 import LeadsManager from './pages/LeadsManager';
 import EmployeeManagement from './pages/EmployeeManagement';
 import SalesDashboard from './pages/SalesDashboard';
@@ -17,7 +17,18 @@ import OperationsDashboard from './pages/OperationsDashboard';
 import Fulfillment from './pages/Fulfillment';
 import Reports from './pages/Reports';
 import Campaigns from './pages/Campaigns'; 
-import AccountsDashboard from './pages/AccountsDashboard'; // 👈 Imported the new Accounts component
+import AccountsDashboard from './pages/AccountsDashboard';
+import { ErrorBoundary } from 'react-error-boundary';
+
+// 👇 1. Define a Fallback UI to show when AccountsDashboard crashes
+function ErrorFallback({ error }) {
+  return (
+    <div role="alert" style={{ padding: '20px', border: '1px solid red', borderRadius: '8px', margin: '20px' }}>
+      <h2 style={{ color: 'red' }}>⚠️ Something went wrong in Accounts!</h2>
+      <pre style={{ whiteSpace: 'pre-wrap' }}>{error.message}</pre>
+    </div>
+  );
+}
 
 function App() {
   return (
@@ -40,8 +51,15 @@ function App() {
           <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
             <Route path="/employees" element={<EmployeeManagement />} />
             
-            {/* 👇 Added Accounts Route (Restricted to Admin. Add ROLES.ACCOUNTS if applicable) */}
-            <Route path="/accounts" element={<AccountsDashboard />} />
+            {/* 👇 2. Wrapped AccountsDashboard in the ErrorBoundary */}
+            <Route 
+              path="/accounts" 
+              element={
+                <ErrorBoundary FallbackComponent={ErrorFallback}>
+                  <AccountsDashboard />
+                </ErrorBoundary>
+              } 
+            />
           </Route>
 
           {/* ADMIN + MARKETING Routes */}
