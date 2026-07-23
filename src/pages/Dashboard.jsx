@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
     Users, 
     ClipboardList, 
@@ -33,11 +33,12 @@ import {
     AlertTriangle,
     BookmarkCheck,
     PlaneTakeoff,
-    PackageCheck
+    PackageCheck,
+    AlarmClock
 } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
 import { ROLES } from '../utils/permissions';
-import logo from '../assets/logo (1).svg'; // <-- Added import for the logo based on your folder structure
+import logo from '../assets/logo (2).png'; // <-- Added import for the logo based on your folder structure
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
 const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
@@ -614,7 +615,86 @@ const Dashboard = () => {
         } catch (err) { console.error(err); }
     };
 
-    const filteredEvents = events.filter(e => {
+    // ─── AUTO-DERIVED REMINDERS (Sales follow-up dates + Operations/Accounts payment due dates + Fulfillment dates) ───
+    // Every lead record is shared across Sales, Operations, Fulfillment and Accounts. Instead of manually
+    // re-entering dates into the Calendar, we scan allLeads on every refresh and surface each department's
+    // follow-up / due dates here automatically as read-only reminders.
+    const safeParseList = (raw) => {
+        try {
+            const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
+            if (Array.isArray(parsed)) return parsed;
+            if (parsed && typeof parsed === 'object') return [parsed];
+        } catch (e) { /* ignore malformed JSON */ }
+        return [];
+    };
+
+    const crmReminders = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const derived = [];
+
+        const addReminder = (lead, dateVal, title, type) => {
+            if (!dateVal) return;
+            const d = new Date(dateVal);
+            if (isNaN(d.getTime())) return;
+            d.setHours(0, 0, 0, 0);
+            const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const daysLeft = Math.round((d.getTime() - today.getTime()) / 86400000);
+            derived.push({
+                id: `auto-${lead.id}-${type}-${dateStr}-${title}`,
+                title: `${title} — ${lead.customerName || lead.profileName || 'Customer'}`,
+                date: dateStr,
+                time: '09:00',
+                category: type,
+                daysLeft,
+                customerName: lead.customerName || lead.profileName || 'Customer',
+                destination: lead.destination || '',
+                leadId: lead.id,
+                auto: true,
+            });
+        };
+
+        (allLeads || []).forEach(lead => {
+            if (!lead) return;
+
+            // Sales — Next Follow-Up date
+            addReminder(lead, lead.followupDate || lead.nextFollowUp, 'Follow-Up', 'Follow-Up');
+
+            // Operations & Accounts — Payment Due dates
+            safeParseList(lead.paymentRequests).forEach(req => {
+                if (req?.paymentDueDate) addReminder(lead, req.paymentDueDate, `Payment Due (${req.providerName || req.serviceType || 'Vendor'})`, 'Due Date');
+            });
+            safeParseList(lead.domHotels).forEach(h => {
+                if (h?.paymentDueDate) addReminder(lead, h.paymentDueDate, `Hotel Payment Due (${h.hotelName || 'Hotel'})`, 'Due Date');
+            });
+            safeParseList(lead.domLocalTransports).forEach(t => {
+                if (t?.paymentDueDate) addReminder(lead, t.paymentDueDate, `Transport Payment Due (${t.serviceProvider || 'Vendor'})`, 'Due Date');
+            });
+
+            // Fulfillment — Travel / Briefing dates
+            if (lead.travelDate) addReminder(lead, lead.travelDate, 'Trip Travel Date', 'Fulfillment');
+            if (lead.briefingDateVal) addReminder(lead, lead.briefingDateVal, 'Guest Briefing Due', 'Fulfillment');
+        });
+
+        const seen = new Set();
+        return derived
+            .filter(r => (seen.has(r.id) ? false : (seen.add(r.id), true)))
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+    }, [allLeads]);
+
+    // Follow-up / due-date items landing within the next 5 days (also surfaces anything already overdue, up to 14 days back)
+    const dueSoonAlerts = useMemo(() => (
+        crmReminders
+            .filter(r => r.daysLeft <= 5 && r.daysLeft >= -14)
+            .sort((a, b) => a.daysLeft - b.daysLeft)
+    ), [crmReminders]);
+
+    // Combined list (manual reminders + auto-derived ones) used by the "All Reminders" modal
+    const allReminderItems = useMemo(() => (
+        [...events, ...crmReminders].sort((a, b) => new Date(a.date) - new Date(b.date))
+    ), [events, crmReminders]);
+
+    const filteredEvents = [...events, ...crmReminders].filter(e => {
         if (!e.date) return false;
         const eventDate = new Date(e.date + 'T00:00:00');
         return eventDate.toDateString() === currentDate.toDateString();
@@ -688,8 +768,12 @@ const Dashboard = () => {
                                     : (lead.paymentHistoryList || []); 
                             } catch(e) {}
                             
-                            if (Array.isArray(paymentHistory) && paymentHistory.length > 0) {
+                            // Money In: mirrors AccountsDashboard's "Customer Payment" ledger —
+                            // only leads with an actual paymentHistoryDetails array count toward the total.
+                            const hasPaymentHistory = Array.isArray(paymentHistory) && paymentHistory.length > 0;
+                            if (hasPaymentHistory) {
                                 totalReceived = paymentHistory.reduce((sum, p) => sum + parseAmt(p.amount), 0);
+                                calcTotalIn += totalReceived;
                             } else {
                                 totalReceived = parseAmt(lead.amountReceived);
                             }
@@ -701,7 +785,6 @@ const Dashboard = () => {
                             lead.computedBalancePending = balancePending;
                             lead.computedPackageCost = packageCost;
 
-                            calcTotalIn += amountReceived;
                             calcPending += balancePending;
 
                             let payReqs = [];
@@ -711,11 +794,16 @@ const Dashboard = () => {
                                 else if (rawPayReqs && typeof rawPayReqs === 'object') payReqs = [rawPayReqs]; // legacy single-object shape — wrap instead of dropping
                             } catch(e) {}
                             
+                            // Money Out: pulls from every vendor request (same rows AccountsDashboard's
+                            // "Vendor Payment" tab lists), but sums outAmountPaid — the amount Operations
+                            // has actually paid the vendor — matching the "Paid Ops" figure shown per lead below.
                             let leadVendorTotalPaid = 0;
                             payReqs.forEach(req => {
-                                const outAmt = parseAmt(req.outAmountPaid);
-                                calcTotalOut += outAmt;
-                                leadVendorTotalPaid += outAmt;
+                                if ((req.providerName || req.service) && req.amountToPay) {
+                                    const outAmt = parseAmt(req.outAmountPaid);
+                                    leadVendorTotalPaid += outAmt;
+                                    calcTotalOut += outAmt;
+                                }
                             });
 
                             if (amountReceived > 0 || balancePending > 0 || leadVendorTotalPaid > 0) {
@@ -1161,20 +1249,21 @@ const Dashboard = () => {
 
             <Modal open={allRemindersModalOpen} onClose={() => setAllRemindersModalOpen(false)} title="All Scheduled Reminders" maxWidth="max-w-2xl">
                 <div className="space-y-2.5 overflow-y-auto max-h-[60vh] pr-1 custom-scrollbar">
-                    {events.length === 0 ? (
+                    {allReminderItems.length === 0 ? (
                         <p className="text-slate-500 text-center py-10 text-sm">No reminders found across any dates.</p>
                     ) : (
-                        events.map((ev) => (
-                            <div key={ev.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-3.5 rounded-xl border border-slate-100 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
+                        allReminderItems.map((ev) => (
+                            <div key={ev.id} className={`flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-3.5 rounded-xl border transition-colors ${ev.auto ? 'border-blue-100 dark:border-blue-700/30 bg-blue-50/40 dark:bg-blue-900/10 hover:bg-blue-100/50 dark:hover:bg-blue-900/20' : 'border-slate-100 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}>
                                 <div className="min-w-0">
                                     <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">{ev.title}</h4>
                                     <p className="text-xs text-slate-500 mt-1.5 flex flex-wrap items-center gap-2">
                                         <span className="bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-lg text-[10px] text-slate-600 dark:text-slate-400 font-mono whitespace-nowrap">{ev.date}</span>
-                                        <span className="flex items-center gap-1 whitespace-nowrap"><Clock size={11} /> {ev.time}</span>
+                                        {!ev.auto && <span className="flex items-center gap-1 whitespace-nowrap"><Clock size={11} /> {ev.time}</span>}
                                         <span className="text-[9px] uppercase border border-slate-200 dark:border-slate-600 px-1.5 py-0.5 rounded-lg font-bold text-slate-400 whitespace-nowrap">{ev.category}</span>
+                                        {ev.auto && <span className="text-[9px] uppercase bg-blue-500/10 text-blue-500 border border-blue-500/20 px-1.5 py-0.5 rounded-lg font-bold whitespace-nowrap">Auto</span>}
                                     </p>
                                 </div>
-                                <button onClick={() => deleteEvent(ev.id)} className="self-end sm:self-center p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"><Trash2 size={15} /></button>
+                                {!ev.auto && <button onClick={() => deleteEvent(ev.id)} className="self-end sm:self-center p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"><Trash2 size={15} /></button>}
                             </div>
                         ))
                     )}
@@ -1217,7 +1306,7 @@ const Dashboard = () => {
             <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-200/80 dark:border-slate-700/30 shadow-sm dark:shadow-none flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-5 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-blue-500/3 dark:to-blue-500/5 pointer-events-none rounded-2xl" />
                 <div className="min-w-0 relative flex items-center gap-3 sm:gap-4">
-                    <div className="bg-white dark:bg-slate-100 rounded-lg px-3 py-2 flex-shrink-0 shadow-sm">
+                    <div className="bg-white rounded-xl px-3.5 py-2 flex-shrink-0 border border-slate-200/60 shadow-sm">
                         <img src={logo} alt="i>Tour by Rethink Ways Pvt. Ltd." className="h-10 sm:h-12 lg:h-14 w-auto block" />
                     </div>
                     <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 dark:text-white mb-1 tracking-tight truncate">Welcome Back, {displayHeaderName}</h1>
@@ -1572,6 +1661,41 @@ const Dashboard = () => {
                             </div>
                         </div>
                     </div>
+
+                    {/* ── 6TH ROW: Due & Follow-Up Alerts (next 5 days) ── */}
+                    <div className="grid grid-cols-1 gap-4 sm:gap-5">
+                        <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-amber-900/30 rounded-2xl p-4 sm:p-5 shadow-sm">
+                            <div className="flex justify-between items-center mb-4">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 flex-shrink-0">
+                                        <AlarmClock size={16} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Due & Follow-Up Alerts</h2>
+                                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Sales, Ops, Fulfillment &amp; Accounts · next 5 days</p>
+                                    </div>
+                                </div>
+                                <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{dueSoonAlerts.length} Alert{dueSoonAlerts.length !== 1 ? 's' : ''}</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[280px] overflow-y-auto custom-scrollbar">
+                                {dueSoonAlerts.length === 0 ? (
+                                    <div className="col-span-full text-center py-8 text-slate-400 text-xs">Nothing due or following up in the next 5 days.</div>
+                                ) : (
+                                    dueSoonAlerts.map(alert => (
+                                        <div key={alert.id} className="flex items-start justify-between gap-2 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/10 p-3 rounded-xl hover:bg-amber-100/80 dark:hover:bg-amber-500/10 transition-colors">
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{alert.title}</p>
+                                                <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide">{alert.category} · <span className="font-bold text-slate-700 dark:text-slate-300">{alert.date}</span></p>
+                                            </div>
+                                            <span className={`text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide flex-shrink-0 ${alert.daysLeft < 0 ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : alert.daysLeft <= 1 ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'}`}>
+                                                {alert.daysLeft < 0 ? `${Math.abs(alert.daysLeft)}d overdue` : alert.daysLeft === 0 ? 'Today' : `${alert.daysLeft}d left`}
+                                            </span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             ) : (
                 /* ─── NON-SALES DEFAULT DASHBOARD LAYOUT ─── */
@@ -1696,9 +1820,11 @@ const Dashboard = () => {
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">{event.title}</h4>
-                                                        <p className="text-[9px] text-slate-400 flex items-center gap-1 mt-0.5"><Clock size={9}/> {event.time}</p>
+                                                        <p className="text-[9px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                                            {event.auto ? <span className="uppercase tracking-wide text-blue-500 font-bold">{event.category}</span> : <><Clock size={9}/> {event.time}</>}
+                                                        </p>
                                                     </div>
-                                                    <button onClick={() => deleteEvent(event.id)} className="text-slate-400 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><Trash2 size={11}/></button>
+                                                    {!event.auto && <button onClick={() => deleteEvent(event.id)} className="text-slate-400 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><Trash2 size={11}/></button>}
                                                 </div>
                                             );
                                         })
@@ -1924,6 +2050,41 @@ const Dashboard = () => {
                                                     <span className="hidden sm:inline text-[9px] font-bold text-slate-500 dark:text-slate-400 capitalize uppercase tracking-wide">{member.status}</span>
                                                 </div>
                                             </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ── Due & Follow-Up Alerts (next 5 days) ── */}
+                    <div className="grid grid-cols-1 gap-4 sm:gap-5">
+                        <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-amber-900/30 rounded-2xl p-4 sm:p-5 shadow-sm">
+                            <div className="flex justify-between items-center mb-4">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 flex-shrink-0">
+                                        <AlarmClock size={16} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Due & Follow-Up Alerts</h2>
+                                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Sales, Ops, Fulfillment &amp; Accounts · next 5 days</p>
+                                    </div>
+                                </div>
+                                <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{dueSoonAlerts.length} Alert{dueSoonAlerts.length !== 1 ? 's' : ''}</span>
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[280px] overflow-y-auto custom-scrollbar">
+                                {dueSoonAlerts.length === 0 ? (
+                                    <div className="col-span-full text-center py-8 text-slate-400 text-xs">Nothing due or following up in the next 5 days.</div>
+                                ) : (
+                                    dueSoonAlerts.map(alert => (
+                                        <div key={alert.id} className="flex items-start justify-between gap-2 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/10 p-3 rounded-xl hover:bg-amber-100/80 dark:hover:bg-amber-500/10 transition-colors">
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{alert.title}</p>
+                                                <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide">{alert.category} · <span className="font-bold text-slate-700 dark:text-slate-300">{alert.date}</span></p>
+                                            </div>
+                                            <span className={`text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide flex-shrink-0 ${alert.daysLeft <= 1 ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'}`}>
+                                                {alert.daysLeft < 0 ? `${Math.abs(alert.daysLeft)}d overdue` : alert.daysLeft === 0 ? 'Today' : `${alert.daysLeft}d left`}
+                                            </span>
                                         </div>
                                     ))
                                 )}

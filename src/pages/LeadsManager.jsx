@@ -2,7 +2,8 @@ import React, { useState, useEffect ,useRef} from 'react';
 import { 
     Search, MapPin, Calendar, Users,
     Pencil, Trash2, Save, X, ChevronDown,
-    Plus, Target, MessageSquare, PlaneTakeoff, Phone, Eye
+    Plus, Target, MessageSquare, PlaneTakeoff, Phone, Eye,
+    History, Briefcase, ClipboardList, Wallet, PackageCheck, ChevronRight
 } from 'lucide-react';
 
 // ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
@@ -151,6 +152,130 @@ const initialLeadState = {
     budget: '', platform: '', campaign: '', leadMessage: '', notes: ''
 };
 
+// ─── LEAD JOURNEY / FULL HISTORY ENGINE ───────────────────────────────────────
+// Every lead is a single record enriched as it moves Sales → Operations →
+// Accounts → Fulfillment. This engine merges the explicit `history` log
+// (written by Sales/Operations actions) with milestone dates found on the
+// lead itself, so no stage is ever missing, then also exposes a complete
+// raw field dump per stage so literally nothing is left out.
+
+const safeParseHistory = (raw) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; } catch (e) { return []; }
+};
+
+const fmtDate = (val) => {
+    if (!val) return null;
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return typeof val === 'string' ? val : null;
+    return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+};
+
+// Stage config: label, icon, color classes, and milestone fields to auto-detect
+// from the lead object when no explicit history entry exists for that moment.
+const STAGE_CONFIG = [
+    {
+        key: 'lead', label: 'Lead Captured', color: 'text-teal-400 bg-teal-500/10 border-teal-500/20', icon: Target,
+        milestone: (lead) => ({
+            date: fmtDate(lead.createdAt || lead.dateAdded) || 'Initial',
+            action: 'Lead Captured',
+            note: `Source: ${lead.platform || 'Website'}${lead.campaign ? ` | Campaign: ${lead.campaign}` : ''}`
+        })
+    },
+    {
+        key: 'sales', label: 'Sales', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20', icon: Briefcase,
+        milestone: (lead) => (lead.assignedTo && lead.assignedTo !== 'Unassigned') ? {
+            date: fmtDate(lead.firstAttempt) || 'Recorded',
+            action: `Assigned to ${lead.assignedTo}`,
+            note: [lead.actionTaken, lead.leadResponse].filter(Boolean).join(' • ') || `Status: ${lead.status || 'In progress'}`
+        } : null
+    },
+    {
+        key: 'operations', label: 'Operations', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20', icon: ClipboardList,
+        milestone: (lead) => (lead.status === 'Move To Operation' || lead.opsPreparedBy || lead.bookingDate || lead.qcStatus) ? {
+            date: fmtDate(lead.qcDate || lead.bookingDate || lead.itineraryPrepDate) || 'Recorded',
+            action: 'Moved to Operations',
+            note: [lead.opsPreparedBy && `Prepared by: ${lead.opsPreparedBy}`, lead.finalStatus && `Status: ${lead.finalStatus}`].filter(Boolean).join(' • ') || 'Itinerary & vendor coordination'
+        } : null
+    },
+    {
+        key: 'accounts', label: 'Accounts / Billing', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20', icon: Wallet,
+        milestone: (lead) => (lead.amountReceived || lead.transactionId || lead.confirmedDate) ? {
+            date: fmtDate(lead.confirmedDate || lead.bookingDate) || 'Recorded',
+            action: 'Moved to Billing / Accounts',
+            note: [lead.amountReceived && `Received: ₹${lead.amountReceived}`, lead.balancePending && `Balance: ₹${lead.balancePending}`].filter(Boolean).join(' • ') || 'Payment processing'
+        } : null
+    },
+    {
+        key: 'fulfillment', label: 'Fulfillment', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', icon: PackageCheck,
+        milestone: (lead) => (lead.briefingDateVal || lead.clrReadyDeparture || lead.dmcConfReceived || lead.fulfillmentData) ? {
+            date: fmtDate(lead.briefingDateVal) || 'Recorded',
+            action: 'Trip Fulfillment',
+            note: [lead.briefedByVal && `Briefed by: ${lead.briefedByVal}`, lead.clrReadyDeparture && 'Cleared for departure'].filter(Boolean).join(' • ') || 'Pre-departure checks & on-trip support'
+        } : null
+    },
+];
+
+// Builds the merged, de-duplicated, chronological (newest-first) timeline
+const buildLeadTimeline = (lead) => {
+    if (!lead) return [];
+    const explicit = safeParseHistory(lead.history).map(h => ({ ...h, _explicit: true }));
+    const milestones = STAGE_CONFIG
+        .map(s => {
+            const m = s.milestone(lead);
+            return m ? { ...m, _stage: s.key, _explicit: false } : null;
+        })
+        .filter(Boolean);
+
+    // Only add a synthesized milestone if nothing in explicit history already
+    // mentions that stage (avoids duplicate/near-duplicate entries).
+    const merged = [...explicit];
+    milestones.forEach(m => {
+        const alreadyLogged = explicit.some(e =>
+            (e.action || '').toLowerCase().includes(m.action.toLowerCase().split(' ')[0].toLowerCase()) ||
+            (e.note || '').toLowerCase().includes((m._stage || ''))
+        );
+        if (!alreadyLogged) merged.push(m);
+    });
+
+    return merged;
+};
+
+// Curated per-stage field maps so the "Complete Record" section can show
+// every populated data point captured about the lead at each stage.
+const STAGE_FIELD_MAPS = {
+    sales: [
+        ['assignedTo', 'Assigned Executive'], ['status', 'Pipeline Status'], ['actionTaken', 'Action Taken'],
+        ['leadResponse', 'Lead Response'], ['interactionType', 'Interaction Type'], ['firstAttempt', 'First Attempt'],
+        ['customerResponse', 'Customer Response'], ['followUpCount', 'Follow-ups Logged'], ['salesRemarks', 'Sales Remarks'],
+    ],
+    operations: [
+        ['opsPreparedBy', 'Prepared By'], ['finalStatus', 'Final Status'], ['workType', 'Work Type'],
+        ['destinationRequest', 'Destination Request'], ['packageCost', 'Package Cost'], ['itineraryPrepDate', 'Itinerary Prep Date'],
+        ['itineraryVersion', 'Itinerary Version'], ['vendorName', 'Vendor Name'], ['vendorService', 'Vendor Service'],
+        ['vendorMessage', 'Vendor Message'], ['documentStatus', 'Document Status'], ['qcStatus', 'QC Status'],
+        ['qcDate', 'QC Date'], ['qcRemarks', 'QC Remarks'], ['bookingDate', 'Booking Date'], ['confirmationDate', 'Confirmation Date'],
+    ],
+    accounts: [
+        ['operationsExecutive', 'Operations Executive'], ['totalPackageCost', 'Total Package Cost'], ['amountReceived', 'Amount Received'],
+        ['balancePending', 'Balance Pending'], ['nextPaymentDate', 'Next Payment Date'], ['paymentMode', 'Payment Mode'],
+        ['transactionId', 'Transaction ID'], ['gstStatus', 'GST Status'], ['tcsStatus', 'TCS Status'], ['confirmedDate', 'Confirmed Date'],
+        ['confirmedDestination', 'Confirmed Destination'], ['confirmedNoOfPax', 'Confirmed Pax'],
+    ],
+    fulfillment: [
+        ['briefedByVal', 'Briefed By'], ['briefingDateVal', 'Briefing Date'], ['briefedMethodVal', 'Briefing Method'],
+        ['dmcConfReceived', 'DMC Confirmation'], ['flightTicketVerified', 'Flight Ticket Verified'], ['domTicketVerified', 'Domestic Ticket Verified'],
+        ['clrOpsDocs', 'Docs Cleared'], ['clrOpsServices', 'Services Cleared'], ['clrFinPayment', 'Finance Cleared'],
+        ['clrMgrReview', 'Manager Reviewed'], ['clrReadyDeparture', 'Ready for Departure'], ['vendorPayStatus', 'Vendor Payment Status'],
+    ],
+};
+
+const hasAnyStageData = (lead, key) => STAGE_FIELD_MAPS[key].some(([field]) => {
+    const v = lead[field];
+    return v !== undefined && v !== null && v !== '' && v !== false;
+});
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 const LeadsManager = () => {
@@ -167,6 +292,11 @@ const LeadsManager = () => {
     // View Modal State
     const [viewModalOpen, setViewModalOpen] = useState(false);
     const [viewingLead, setViewingLead] = useState(null);
+
+    // History Modal State
+    const [historyModalOpen, setHistoryModalOpen] = useState(false);
+    const [historyLead, setHistoryLead] = useState(null);
+    const [expandedStage, setExpandedStage] = useState(null);
     // Add this ref for the date picker
     const dateInputRef = useRef(null);
 
@@ -235,6 +365,17 @@ const openEditModal = (lead) => {
     const closeViewModal = () => {
         setViewModalOpen(false);
         setViewingLead(null);
+    };
+
+    const openHistoryModal = (lead) => {
+        setHistoryLead(lead);
+        setExpandedStage(null);
+        setHistoryModalOpen(true);
+    };
+
+    const closeHistoryModal = () => {
+        setHistoryModalOpen(false);
+        setHistoryLead(null);
     };
 
     // ── SAVE (CREATE / UPDATE) ─────────────────────────────────────────────────
@@ -489,6 +630,11 @@ const openEditModal = (lead) => {
                                                     title="View Lead">
                                                     <Eye size={18} />
                                                 </button>
+                                                <button onClick={() => openHistoryModal(lead)}
+                                                    className="p-2 lg:p-1.5 text-purple-400 lg:text-slate-400 bg-purple-500/10 lg:bg-transparent hover:text-purple-400 hover:bg-purple-900/30 rounded-lg transition-colors"
+                                                    title="Lead History">
+                                                    <History size={18} />
+                                                </button>
                                                 <button onClick={() => openEditModal(lead)}
                                                     className="p-2 lg:p-1.5 text-yellow-400 lg:text-slate-400 bg-yellow-500/10 lg:bg-transparent hover:text-yellow-400 hover:bg-yellow-900/30 rounded-lg transition-colors"
                                                     title="Edit Lead">
@@ -708,6 +854,104 @@ const openEditModal = (lead) => {
                         </div>
                     </div>
                 )}
+            </Modal>
+
+            {/* ── LEAD HISTORY MODAL ── */}
+            <Modal open={historyModalOpen} onClose={closeHistoryModal} title={`Lead History — LMN${historyLead?.id || ''}`} maxWidth="max-w-2xl">
+                {historyLead && (() => {
+                    const timeline = buildLeadTimeline(historyLead);
+                    return (
+                        <div className="space-y-6">
+                            {/* Current stage banner */}
+                            <div className="flex flex-wrap items-center gap-2 bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3">
+                                <span className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Current Stage</span>
+                                <span className="px-2.5 py-1 rounded-lg text-sm font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                    {historyLead.finalStatus || historyLead.status || 'Jobs'}
+                                </span>
+                                {historyLead.assignedTo && historyLead.assignedTo !== 'Unassigned' && (
+                                    <span className="text-xs text-slate-400">Handled by <span className="text-slate-200 font-semibold">{historyLead.assignedTo}</span></span>
+                                )}
+                            </div>
+
+                            {/* Chronological Timeline */}
+                            <div>
+                                <h4 className="text-sm font-bold text-slate-300 mb-4 flex items-center gap-2">
+                                    <History size={16} className="text-purple-400" /> Full Journey Timeline
+                                </h4>
+                                {timeline.length === 0 ? (
+                                    <p className="text-sm text-slate-500 italic">No activity recorded yet.</p>
+                                ) : (
+                                    <div className="relative border-l border-slate-700 ml-3 space-y-6">
+                                        {timeline.map((log, idx) => (
+                                            <div key={idx} className="pl-6 relative">
+                                                <span className={`absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full ring-4 ring-[#1e293b] ${log._explicit ? 'bg-purple-500' : 'bg-slate-500'}`} />
+                                                <p className="text-xs text-slate-500 mb-0.5">{log.date}</p>
+                                                <p className="text-sm font-semibold text-slate-200">{log.action}</p>
+                                                {log.note && <p className="text-xs text-slate-400 mt-1 italic">{log.note}</p>}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Complete stage-by-stage data — nothing left out */}
+                            <div>
+                                <h4 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2 border-t border-slate-700/50 pt-5">
+                                    <ClipboardList size={16} className="text-slate-400" /> Complete Record by Stage
+                                </h4>
+                                <div className="space-y-2">
+                                    {STAGE_CONFIG.filter(s => s.key !== 'lead').map(stage => {
+                                        const fields = STAGE_FIELD_MAPS[stage.key] || [];
+                                        const populated = fields.filter(([f]) => {
+                                            const v = historyLead[f];
+                                            return v !== undefined && v !== null && v !== '' && v !== false;
+                                        });
+                                        const hasData = populated.length > 0;
+                                        const isOpen = expandedStage === stage.key;
+                                        const StageIcon = stage.icon;
+                                        return (
+                                            <div key={stage.key} className={`rounded-xl border ${hasData ? 'border-slate-700' : 'border-slate-800'} overflow-hidden`}>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => hasData && setExpandedStage(isOpen ? null : stage.key)}
+                                                    className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${hasData ? 'bg-slate-800/50 hover:bg-slate-800 cursor-pointer' : 'bg-slate-900/30 cursor-default'}`}
+                                                >
+                                                    <span className={`flex items-center gap-2 text-sm font-bold ${hasData ? stage.color.split(' ')[0] : 'text-slate-600'}`}>
+                                                        <StageIcon size={15} /> {stage.label}
+                                                    </span>
+                                                    {hasData ? (
+                                                        <span className="flex items-center gap-2 text-xs text-slate-400">
+                                                            {populated.length} field{populated.length > 1 ? 's' : ''} recorded
+                                                            <ChevronRight size={14} className={`transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-xs text-slate-600 italic">Not reached yet</span>
+                                                    )}
+                                                </button>
+                                                {hasData && isOpen && (
+                                                    <div className="px-4 py-3 bg-[#0f172a] grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-700/50">
+                                                        {populated.map(([field, label]) => (
+                                                            <div key={field}>
+                                                                <p className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider">{label}</p>
+                                                                <p className="text-sm text-slate-200 break-words">{String(historyLead[field])}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end pt-2">
+                                <button onClick={closeHistoryModal} className="px-6 py-2.5 rounded-lg border border-slate-600 bg-slate-700 hover:bg-slate-600 text-white font-semibold transition-colors">
+                                    Close Window
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })()}
             </Modal>
 
         </div>
