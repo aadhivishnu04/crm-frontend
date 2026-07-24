@@ -38,7 +38,6 @@ import {
 } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
 import { ROLES } from '../utils/permissions';
-import logo from '../assets/logo (2).png'; // <-- Added import for the logo based on your folder structure
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
 const API_BASE_URL = "https://crm-backend-f9n8.onrender.com/api";
@@ -255,6 +254,9 @@ const Dashboard = () => {
     // Extracted live payment breakdowns & active alerts
     const [payments, setPayments] = useState({ totalIn: 0, totalOut: 0, pending: 0 });
     const [individualPayments, setIndividualPayments] = useState([]);
+    const [moneyInEntries, setMoneyInEntries] = useState([]);
+    const [moneyOutEntries, setMoneyOutEntries] = useState([]);
+    const [paymentLedgerTab, setPaymentLedgerTab] = useState('in'); // 'in' | 'out'
     const [paymentModalOpen, setPaymentModalOpen] = useState(false); 
     const [fulfillmentAlerts, setFulfillmentAlerts] = useState([]);
 
@@ -755,6 +757,8 @@ const Dashboard = () => {
                         const today = new Date();
                         const alertsCalculated = [];
                         const indPaymentList = [];
+                        const moneyInList = [];
+                        const moneyOutList = [];
 
                         const processedLeads = leadsData.map(lead => {
                             const parseAmt = (v) => parseFloat(String(v).replace(/[₹,\s]/g, '')) || 0;
@@ -774,6 +778,26 @@ const Dashboard = () => {
                             if (hasPaymentHistory) {
                                 totalReceived = paymentHistory.reduce((sum, p) => sum + parseAmt(p.amount), 0);
                                 calcTotalIn += totalReceived;
+
+                                // Individual Money In entries — one row per transaction logged
+                                // against this booking (matches AccountsDashboard's Transaction
+                                // Details / Customer Payment history for Confirmed Bookings).
+                                paymentHistory.forEach((txn, txnIdx) => {
+                                    const txnAmt = parseAmt(txn.amount);
+                                    if (txnAmt > 0) {
+                                        moneyInList.push({
+                                            id: `${lead.id}-in-${txnIdx}`,
+                                            leadId: lead.id,
+                                            customerName: lead.customerName || lead.profileName || 'N/A',
+                                            destination: lead.destination || 'N/A',
+                                            amount: txnAmt,
+                                            service: txn.service || '',
+                                            mode: txn.mode || '',
+                                            date: txn.date || '',
+                                            rawLead: lead
+                                        });
+                                    }
+                                });
                             } else {
                                 totalReceived = parseAmt(lead.amountReceived);
                             }
@@ -798,11 +822,36 @@ const Dashboard = () => {
                             // "Vendor Payment" tab lists), but sums outAmountPaid — the amount Operations
                             // has actually paid the vendor — matching the "Paid Ops" figure shown per lead below.
                             let leadVendorTotalPaid = 0;
-                            payReqs.forEach(req => {
+                            payReqs.forEach((req, reqIdx) => {
                                 if ((req.providerName || req.service) && req.amountToPay) {
-                                    const outAmt = parseAmt(req.outAmountPaid);
+                                    const isMarkedPaid = req.paymentStatus === 'Paid' || req.status === 'Paid';
+                                    // Fallback: some legacy/older vendor requests were marked "Paid"
+                                    // via the status checkbox before the exact Amount Paid field
+                                    // existed, so outAmountPaid may be blank — fall back to the
+                                    // requested amount so those still count toward Money Out.
+                                    const outAmt = req.outAmountPaid
+                                        ? parseAmt(req.outAmountPaid)
+                                        : (isMarkedPaid ? parseAmt(req.amountToPay) : 0);
                                     leadVendorTotalPaid += outAmt;
                                     calcTotalOut += outAmt;
+
+                                    // Individual Money Out entries — one row per vendor payment
+                                    // request actually paid (matches AccountsDashboard's Vendor
+                                    // Payment tab / Payment Requests section).
+                                    if (outAmt > 0) {
+                                        moneyOutList.push({
+                                            id: `${lead.id}-out-${reqIdx}`,
+                                            leadId: lead.id,
+                                            customerName: lead.customerName || lead.profileName || 'N/A',
+                                            destination: lead.destination || 'N/A',
+                                            amount: outAmt,
+                                            provider: req.outProviderName || req.providerName || 'Vendor',
+                                            service: req.service || req.outService || '',
+                                            mode: req.outTransactionMode || '',
+                                            date: req.paymentDueDate || '',
+                                            rawLead: lead
+                                        });
+                                    }
                                 }
                             });
 
@@ -845,6 +894,8 @@ const Dashboard = () => {
                         
                         setPayments({ totalIn: calcTotalIn, totalOut: calcTotalOut, pending: calcPending });
                         setIndividualPayments(indPaymentList.sort((a, b) => b.pending - a.pending));
+                        setMoneyInEntries(moneyInList.sort((a, b) => b.amount - a.amount));
+                        setMoneyOutEntries(moneyOutList.sort((a, b) => b.amount - a.amount));
                         setFulfillmentAlerts(alertsCalculated.sort((a,b) => a.daysLeft - b.daysLeft));
                     }
                 }
@@ -1306,9 +1357,6 @@ const Dashboard = () => {
             <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-200/80 dark:border-slate-700/30 shadow-sm dark:shadow-none flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-5 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-blue-500/3 dark:to-blue-500/5 pointer-events-none rounded-2xl" />
                 <div className="min-w-0 relative flex items-center gap-3 sm:gap-4">
-                    <div className="bg-white rounded-xl px-3.5 py-2 flex-shrink-0 border border-slate-200/60 shadow-sm">
-                        <img src={logo} alt="i>Tour by Rethink Ways Pvt. Ltd." className="h-10 sm:h-12 lg:h-14 w-auto block" />
-                    </div>
                     <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 dark:text-white mb-1 tracking-tight truncate">Welcome Back, {displayHeaderName}</h1>
                 </div>
                 <div className="flex items-center w-full lg:w-auto gap-2.5 sm:gap-3 relative">
@@ -1714,53 +1762,66 @@ const Dashboard = () => {
                                     </div>
                                 </div>
                             </div>
-                            <div className="flex gap-3 mb-4 text-[14px] font-bold border border-slate-100 dark:border-slate-700/40 rounded-xl p-2.5 flex-shrink-0 bg-slate-50 dark:bg-slate-800/30">
-                                <div className="flex-1">
-                                    <span className="block text-slate-400 text-[12px] uppercase tracking-widest mb-0.5">Money In</span>
-                                    <span className="text-emerald-500 font-mono">₹{payments.totalIn.toLocaleString('en-IN')}</span>
-                                </div>
-                                <div className="w-px bg-slate-200 dark:bg-slate-700/50" />
-                                <div className="flex-1">
-                                    <span className="block text-slate-400 text-[12px] uppercase tracking-widest mb-0.5">Money Out</span>
-                                    <span className="text-rose-400 font-mono">₹{payments.totalOut.toLocaleString('en-IN')}</span>
-                                </div>
+                            <div className="flex gap-2.5 mb-4 flex-shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setPaymentLedgerTab('in')}
+                                    className={`flex-1 text-left rounded-xl p-2.5 border transition-colors cursor-pointer ${paymentLedgerTab === 'in' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}
+                                >
+                                    <span className="block text-slate-400 text-[12px] uppercase tracking-widest mb-0.5 font-bold">Money In</span>
+                                    <span className="text-emerald-500 font-mono text-[14px] font-bold">₹{payments.totalIn.toLocaleString('en-IN')}</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setPaymentLedgerTab('out')}
+                                    className={`flex-1 text-left rounded-xl p-2.5 border transition-colors cursor-pointer ${paymentLedgerTab === 'out' ? 'bg-rose-500/10 border-rose-500/30' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}
+                                >
+                                    <span className="block text-slate-400 text-[12px] uppercase tracking-widest mb-0.5 font-bold">Money Out</span>
+                                    <span className="text-rose-400 font-mono text-[14px] font-bold">₹{payments.totalOut.toLocaleString('en-IN')}</span>
+                                </button>
                             </div>
-                            
+
                             <div className="space-y-2.5 overflow-y-auto flex-1 pr-0.5 custom-scrollbar">
-                                {individualPayments.length === 0 ? (
-                                    <div className="text-center py-12 text-slate-400 text-xs">No live transaction profiles tracked.</div>
+                                {paymentLedgerTab === 'in' ? (
+                                    moneyInEntries.length === 0 ? (
+                                        <div className="text-center py-12 text-slate-400 text-xs">No booking confirmation payments logged yet.</div>
+                                    ) : (
+                                        moneyInEntries.slice(0, 5).map(entry => (
+                                            <div key={entry.id} onClick={() => setSelectedPaymentLead(entry.rawLead)} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/30 bg-slate-50/50 dark:bg-slate-800/20 space-y-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700/60 transition-all group">
+                                                <div className="flex justify-between items-start gap-2">
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-base font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{entry.customerName}</p>
+                                                        <p className="text-[14px] text-slate-400 flex items-center gap-1 truncate mt-0.5"><MapPin size={9}/> {entry.destination} · LMN{entry.leadId}</p>
+                                                    </div>
+                                                    <span className="text-[14px] font-bold text-emerald-500 font-mono flex-shrink-0">₹{entry.amount.toLocaleString('en-IN')}</span>
+                                                </div>
+                                                <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-700/30 text-[12px]">
+                                                    <span className="text-slate-400">{entry.service || 'Booking payment'}{entry.mode ? ` · ${entry.mode}` : ''}</span>
+                                                    <span className="text-slate-400 font-mono">{entry.date || '—'}</span>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )
                                 ) : (
-                                    individualPayments.slice(0, 5).map(pay => (
-                                        <div key={pay.id} onClick={() => setSelectedPaymentLead(pay.rawLead)} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/30 bg-slate-50/50 dark:bg-slate-800/20 space-y-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700/60 transition-all group">
-                                            <div className="flex justify-between items-start gap-2">
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="text-base font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{pay.customerName}</p>
-                                                    <p className="text-[14px] text-slate-400 flex items-center gap-1 truncate mt-0.5"><MapPin size={9}/> {pay.destination} · LMN{pay.id}</p>
+                                    moneyOutEntries.length === 0 ? (
+                                        <div className="text-center py-12 text-slate-400 text-xs">No vendor payments recorded yet.</div>
+                                    ) : (
+                                        moneyOutEntries.slice(0, 5).map(entry => (
+                                            <div key={entry.id} onClick={() => setSelectedPaymentLead(entry.rawLead)} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/30 bg-slate-50/50 dark:bg-slate-800/20 space-y-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700/60 transition-all group">
+                                                <div className="flex justify-between items-start gap-2">
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="text-base font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{entry.customerName}</p>
+                                                        <p className="text-[14px] text-slate-400 flex items-center gap-1 truncate mt-0.5"><MapPin size={9}/> {entry.destination} · LMN{entry.leadId}</p>
+                                                    </div>
+                                                    <span className="text-[14px] font-bold text-rose-400 font-mono flex-shrink-0">₹{entry.amount.toLocaleString('en-IN')}</span>
                                                 </div>
-                                                <span className={`text-[14px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
-                                                    pay.paymentStatus === 'Fully Paid' || pay.paymentStatus === 'Cleared' 
-                                                        ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' 
-                                                        : 'bg-orange-500/10 text-orange-400 border-orange-500/20'
-                                                }`}>
-                                                    {pay.paymentStatus}
-                                                </span>
-                                            </div>
-                                            <div className="grid grid-cols-3 gap-1 pt-2 border-t border-slate-100 dark:border-slate-700/30 text-[12px] font-mono">
-                                                <div>
-                                                    <span className="text-slate-400 block text-[12px] uppercase tracking-wide mb-0.5">Received</span>
-                                                    <span className="text-emerald-500 font-bold">₹{pay.received.toLocaleString('en-IN')}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="text-slate-400 block text-[12px] uppercase tracking-wide mb-0.5">Paid Ops</span>
-                                                    <span className="text-rose-400 font-bold">₹{pay.vendorPaid.toLocaleString('en-IN')}</span>
-                                                </div>
-                                                <div>
-                                                    <span className="text-slate-400 block text-[12px] uppercase tracking-wide mb-0.5">Balance</span>
-                                                    <span className="text-amber-400 font-bold">₹{pay.pending.toLocaleString('en-IN')}</span>
+                                                <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-700/30 text-[12px]">
+                                                    <span className="text-slate-400 truncate">{entry.provider}{entry.service ? ` · ${entry.service}` : ''}</span>
+                                                    <span className="text-slate-400 font-mono flex-shrink-0">{entry.date || '—'}</span>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))
+                                        ))
+                                    )
                                 )}
                             </div>
                         </div>
@@ -2229,44 +2290,68 @@ const Dashboard = () => {
                 </>
             )}
 
-            <Modal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} title="All Payment List" maxWidth="max-w-3xl">
+            <Modal open={paymentModalOpen} onClose={() => setPaymentModalOpen(false)} title={paymentLedgerTab === 'in' ? 'All Money In Entries' : 'All Money Out Entries'} maxWidth="max-w-3xl">
+                <div className="flex gap-2 mb-4">
+                    <button
+                        type="button"
+                        onClick={() => setPaymentLedgerTab('in')}
+                        className={`flex-1 text-center py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-colors cursor-pointer border ${paymentLedgerTab === 'in' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40 text-slate-400'}`}
+                    >
+                        Money In · ₹{payments.totalIn.toLocaleString('en-IN')}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setPaymentLedgerTab('out')}
+                        className={`flex-1 text-center py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-colors cursor-pointer border ${paymentLedgerTab === 'out' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40 text-slate-400'}`}
+                    >
+                        Money Out · ₹{payments.totalOut.toLocaleString('en-IN')}
+                    </button>
+                </div>
                 <div className="max-h-[60vh] overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
-                    {individualPayments.length === 0 ? (
-                        <p className="text-slate-500 text-center py-10 text-sm">No payment ledgers available to display.</p>
+                    {paymentLedgerTab === 'in' ? (
+                        moneyInEntries.length === 0 ? (
+                            <p className="text-slate-500 text-center py-10 text-sm">No booking confirmation payments logged yet.</p>
+                        ) : (
+                            moneyInEntries.map(entry => (
+                                <div key={entry.id} onClick={() => setSelectedPaymentLead(entry.rawLead)} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-700/30 bg-slate-50 dark:bg-[#0d1526] space-y-2 hover:border-emerald-500/30 hover:shadow-sm transition-all cursor-pointer">
+                                    <div className="flex justify-between items-start gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{entry.customerName}</p>
+                                            <p className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-1 truncate">
+                                                <MapPin size={11} className="text-violet-400" /> {entry.destination} <span className="text-slate-300 dark:text-slate-600">·</span> <span className="font-mono bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded-lg text-[9px]">LMN{entry.leadId}</span>
+                                            </p>
+                                        </div>
+                                        <span className="text-sm font-bold text-emerald-500 font-mono flex-shrink-0">₹{entry.amount.toLocaleString('en-IN')}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-700/30 text-[11px]">
+                                        <span className="text-slate-400">{entry.service || 'Booking payment'}{entry.mode ? ` · ${entry.mode}` : ''}</span>
+                                        <span className="text-slate-400 font-mono">{entry.date || '—'}</span>
+                                    </div>
+                                </div>
+                            ))
+                        )
                     ) : (
-                        individualPayments.map(pay => (
-                            <div key={pay.id} onClick={() => setSelectedPaymentLead(pay.rawLead)} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-700/30 bg-slate-50 dark:bg-[#0d1526] space-y-3 hover:border-emerald-500/30 hover:shadow-sm transition-all cursor-pointer">
-                                <div className="flex justify-between items-start gap-3">
-                                    <div className="min-w-0 flex-1">
-                                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{pay.customerName}</p>
-                                        <p className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-1 truncate">
-                                            <MapPin size={11} className="text-violet-400" /> {pay.destination} <span className="text-slate-300 dark:text-slate-600">·</span> <span className="font-mono bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded-lg text-[9px]">LMN{pay.id}</span>
-                                        </p>
+                        moneyOutEntries.length === 0 ? (
+                            <p className="text-slate-500 text-center py-10 text-sm">No vendor payments recorded yet.</p>
+                        ) : (
+                            moneyOutEntries.map(entry => (
+                                <div key={entry.id} onClick={() => setSelectedPaymentLead(entry.rawLead)} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-700/30 bg-slate-50 dark:bg-[#0d1526] space-y-2 hover:border-rose-500/30 hover:shadow-sm transition-all cursor-pointer">
+                                    <div className="flex justify-between items-start gap-3">
+                                        <div className="min-w-0 flex-1">
+                                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{entry.customerName}</p>
+                                            <p className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-1 truncate">
+                                                <MapPin size={11} className="text-violet-400" /> {entry.destination} <span className="text-slate-300 dark:text-slate-600">·</span> <span className="font-mono bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded-lg text-[9px]">LMN{entry.leadId}</span>
+                                            </p>
+                                        </div>
+                                        <span className="text-sm font-bold text-rose-400 font-mono flex-shrink-0">₹{entry.amount.toLocaleString('en-IN')}</span>
                                     </div>
-                                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-xl border uppercase tracking-wide flex-shrink-0 ${
-                                        pay.paymentStatus === 'Fully Paid' || pay.paymentStatus === 'Cleared' 
-                                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' 
-                                            : 'bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20'
-                                    }`}>
-                                        {pay.paymentStatus}
-                                    </span>
-                                </div>
-                                <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-100 dark:border-slate-700/30">
-                                    <div className="bg-emerald-500/5 p-2.5 rounded-xl border border-emerald-500/10">
-                                        <span className="text-slate-400 block text-[9px] uppercase font-bold tracking-wide mb-1">Received</span>
-                                        <span className="text-emerald-500 font-bold text-sm font-mono truncate block">₹{pay.received.toLocaleString('en-IN')}</span>
-                                    </div>
-                                    <div className="bg-rose-500/5 p-2.5 rounded-xl border border-rose-500/10">
-                                        <span className="text-slate-400 block text-[9px] uppercase font-bold tracking-wide mb-1">Ops Paid</span>
-                                        <span className="text-rose-500 font-bold text-sm font-mono truncate block">₹{pay.vendorPaid.toLocaleString('en-IN')}</span>
-                                    </div>
-                                    <div className="bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/10">
-                                        <span className="text-slate-400 block text-[9px] uppercase font-bold tracking-wide mb-1">Balance</span>
-                                        <span className="text-amber-500 font-bold text-sm font-mono truncate block">₹{pay.pending.toLocaleString('en-IN')}</span>
+                                    <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-700/30 text-[11px]">
+                                        <span className="text-slate-400 truncate">{entry.provider}{entry.service ? ` · ${entry.service}` : ''}</span>
+                                        <span className="text-slate-400 font-mono flex-shrink-0">{entry.date || '—'}</span>
                                     </div>
                                 </div>
-                            </div>
-                        ))
+                            ))
+                        )
                     )}
                 </div>
                 <div className="mt-5 flex justify-end">

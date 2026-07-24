@@ -1122,11 +1122,12 @@ const confirmedBookings = leads.filter(l =>
     ];
 
     const handlePaymentReqOpen = (req) => {
+        const alreadyPaid = req.paymentStatus === 'Paid' || req.status === 'Paid';
         setSelectedPaymentReq({
             ...req,
             outService: req.outService || req.service || '',
             outProviderName: req.outProviderName || req.providerName || '',
-            outAmountPaid: req.outAmountPaid || '',
+            outAmountPaid: req.outAmountPaid || (alreadyPaid ? req.amountToPay : '') || '',
             outTransactionMode: req.outTransactionMode || '',
             outDepositedBank: req.outDepositedBank || '',
             outTransactionId: req.outTransactionId || '',
@@ -1639,7 +1640,14 @@ const confirmedBookings = leads.filter(l =>
                                 </CollapsibleSection>
 
                                 {/* SERVICE DETAILS */}
-                                <CollapsibleSection title="Service Details" icon={DollarSign} titleColorCls="text-cyan-400" defaultOpen={true}>
+                                <CollapsibleSection
+                                    title="Service Details"
+                                    icon={DollarSign}
+                                    titleColorCls="text-cyan-400"
+                                    defaultOpen={true}
+                                    viewDetailsLabel="View Customer Payment"
+                                    onViewDetails={() => setCustomerPaymentPopupLead(selectedPaymentReq.originalLead)}
+                                >
                                     <div className="bg-[#0f172a] border border-slate-700/50 rounded-lg overflow-hidden mt-3">
                                         <table className="w-full text-left text-sm text-slate-300">
                                             <thead className="bg-slate-800/60 text-[11px] uppercase text-slate-300 font-bold">
@@ -1695,6 +1703,7 @@ const confirmedBookings = leads.filter(l =>
                                                     <th className="px-4 py-3">No.</th>
                                                     <th className="px-4 py-3">Vendor Name</th>
                                                     <th className="px-4 py-3">Amount to Pay</th>
+                                                    <th className="px-4 py-3">Amount Paid</th>
                                                     <th className="px-4 py-3">Currency</th>
                                                     <th className="px-4 py-3">Payment Due Date</th>
                                                     <th className="px-4 py-3">Payment Status</th>
@@ -1714,6 +1723,9 @@ const confirmedBookings = leads.filter(l =>
                                                         <input type="text" value={selectedPaymentReq.amountToPay || ''} onChange={e => setSelectedPaymentReq({...selectedPaymentReq, amountToPay: e.target.value})} className={`${inputCls} font-mono text-orange-400`} placeholder="0.00" />
                                                     </td>
                                                     <td className="px-4 py-4">
+                                                        <input type="text" value={selectedPaymentReq.outAmountPaid || ''} onChange={e => setSelectedPaymentReq({...selectedPaymentReq, outAmountPaid: e.target.value})} className={`${inputCls} font-mono text-emerald-400`} placeholder="0.00" title="Actual amount paid to the vendor — drives Money Out totals" />
+                                                    </td>
+                                                    <td className="px-4 py-4">
                                                         <CustomSelect
                                                             value={selectedPaymentReq.currency}
                                                             onChange={v => setSelectedPaymentReq({...selectedPaymentReq, currency: v})}
@@ -1731,7 +1743,11 @@ const confirmedBookings = leads.filter(l =>
                                                                 type="checkbox"
                                                                 className="accent-emerald-500 w-3.5 h-3.5 cursor-pointer"
                                                                 checked={selectedPaymentReq.paymentStatus === 'Paid'}
-                                                                onChange={e => setSelectedPaymentReq({...selectedPaymentReq, paymentStatus: e.target.checked ? 'Paid' : 'Yet to Pay'})}
+                                                                onChange={e => setSelectedPaymentReq({
+                                                                    ...selectedPaymentReq,
+                                                                    paymentStatus: e.target.checked ? 'Paid' : 'Yet to Pay',
+                                                                    outAmountPaid: e.target.checked && !selectedPaymentReq.outAmountPaid ? selectedPaymentReq.amountToPay : selectedPaymentReq.outAmountPaid
+                                                                })}
                                                             />
                                                             <span className={`font-bold whitespace-nowrap ${selectedPaymentReq.paymentStatus === 'Paid' ? 'text-emerald-400' : 'text-slate-300'}`}>
                                                                 {selectedPaymentReq.paymentStatus === 'Paid' ? 'Paid' : 'Yet to Pay'}
