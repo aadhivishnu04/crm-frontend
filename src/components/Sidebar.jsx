@@ -144,11 +144,7 @@ const Sidebar = () => {
                 </div>
 
                 {/* Brand Logo */}
-                <div className="flex items-center justify-center px-4 pt-6 pb-4 flex-shrink-0">
-                    <div className="w-full bg-white rounded-xl px-4 py-4 border border-slate-200/60 shadow-sm flex items-center justify-center">
-                        <img src={logo} alt="i>Tour by Rethink Ways Pvt. Ltd." className="h-16 w-auto max-w-full block" />
-                    </div>
-                </div>
+                 
 
                 {/* Scrollable Navigation List */}
                 <nav className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-6 space-y-2 custom-scrollbar">
