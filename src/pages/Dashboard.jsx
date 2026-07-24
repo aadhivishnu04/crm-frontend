@@ -41,7 +41,7 @@ import { ROLES } from '../utils/permissions';
 import logo from '../assets/logo (2).png'; // <-- Added import for the logo based on your folder structure
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
+const API_BASE_URL = "https://crm-backend-f9n8.onrender.com/api";
 
 // ─── INDIA DESTINATION MATCHER ───────────────────────────────────────────────
 const INDIA_KEYWORDS = [

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 
 // ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
+const API_BASE_URL = "https://crm-backend-f9n8.onrender.com/api";
 
 const INDIAN_DESTINATION_KEYWORDS = [
     'india', 'chennai', 'mumbai', 'delhi', 'new delhi', 'bangalore', 'bengaluru',

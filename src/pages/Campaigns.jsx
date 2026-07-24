@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Megaphone, Plus, Trash2, Pencil, Save, X, Search, AlertCircle, Check } from 'lucide-react';
 
-const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
+const API_BASE_URL = "https://crm-backend-f9n8.onrender.com/api";
 
 const Campaigns = () => {
     const [campaigns, setCampaigns] = useState([]);

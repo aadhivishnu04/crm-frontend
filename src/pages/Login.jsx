@@ -5,7 +5,7 @@ import { ROLES } from '../utils/permissions';
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
 // Unified API base URL to prevent IP/Port mismatches across devices
-const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
+const API_BASE_URL = "https://crm-backend-f9n8.onrender.com/api";
 
 // Helper function to map database designations to frontend app roles
 const getRoleFromDesignation = (designation) => {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { FileSpreadsheet, Eye, Pencil, Trash2, ArrowUpDown, Plus, X, ChevronDown, Settings } from 'lucide-react';
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
+const API_BASE_URL = "https://crm-backend-f9n8.onrender.com/api";
 
 // ─── STYLING CONFIGURATIONS ───────────────────────────────────────────────────
 const STATUS_STYLES = {
