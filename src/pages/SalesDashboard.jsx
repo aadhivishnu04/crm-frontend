@@ -1328,7 +1328,7 @@ const SalesDashboard = () => {
         
         // Filter strictly relies on the assigned user
         else if (activeTab === 'My Jobs') {
-            const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required']; 
+            const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required', 'Customisation Ready']; 
             matchTab = validActiveStatuses.includes(itemStatus) && item.assignedTo === loggedInUserName;
         } 
         else if (activeTab === 'Customisation Ready') { 
@@ -1398,7 +1398,7 @@ const SalesDashboard = () => {
                         if (cat.id === 'Recycle') return isRecycleBin;
                         if (isRecycleBin) return false;
                         
-                        const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required'];
+                        const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required', 'Customisation Ready'];
                         
                         if (cat.id === 'My Jobs') return validActiveStatuses.includes(itemStatus) && d.assignedTo === loggedInUserName;
                         if (cat.id === 'Customisation Ready') return itemStatus === 'Shared to Sales' || itemStatus === 'Customisation Ready';
@@ -1434,7 +1434,7 @@ const SalesDashboard = () => {
                             if (cat.id === 'Recycle') return isRecycleBin;
                             if (isRecycleBin) return false;
                             
-                            const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required'];
+                            const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required', 'Customisation Ready'];
                             
                             if (cat.id === 'My Jobs') return validActiveStatuses.includes(itemStatus) && d.assignedTo === loggedInUserName;
                             if (cat.id === 'Customisation Ready') return itemStatus === 'Shared to Sales' || itemStatus === 'Customisation Ready';

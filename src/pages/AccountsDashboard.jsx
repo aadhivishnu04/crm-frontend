@@ -5,6 +5,7 @@ import {
     CheckSquare, FileText, X, ArrowUp, DollarSign, Wallet,
     ChevronRight, ChevronDown, Plus, Printer
 } from 'lucide-react';
+import logoAsset from '../assets/logo (2).png';
 
 // ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
 const API_BASE_URL = "https://crm-backend-f9n8.onrender.com/api";
@@ -12,7 +13,7 @@ const API_BASE_URL = "https://crm-backend-f9n8.onrender.com/api";
 // ─────────────────────────────────────────────
 // PRO-FORMA INVOICE GENERATOR (per service, print/download PDF)
 // ─────────────────────────────────────────────
-const LOGO_DATA_URI = "data:image/png;base64,PLACEHOLDER";
+const LOGO_DATA_URI = logoAsset;
 
 const COMPANY_INFO = {
     name: "Rethink Ways Pvt. Ltd.",
@@ -375,8 +376,20 @@ function generateReceiptHTML({ prNo, lead, txn, paymentDateLabel, generatedDateL
 </html>`;
 }
 
+// Persistent, ever-increasing PR (Payment Receipt) number — starts at 0000 and
+// bumps by exactly 1 every time a receipt is actually generated/downloaded,
+// regardless of which lead or transaction it belongs to. Stored in localStorage
+// so the sequence survives page reloads and new sessions on this device.
+const PR_COUNTER_KEY = 'itour_pr_receipt_counter';
+function getNextPrNumber() {
+    const current = parseInt(localStorage.getItem(PR_COUNTER_KEY), 10);
+    const next = Number.isFinite(current) ? current + 1 : 0;
+    localStorage.setItem(PR_COUNTER_KEY, String(next));
+    return `PR ${String(next).padStart(4, '0')}`;
+}
+
 function printPaymentReceipt(lead, txn, index) {
-    const prNo = `PR ${1000 + (Number(lead.id) || 0) * 10 + index}`;
+    const prNo = getNextPrNumber();
     const paymentDateLabel = txn.date ? formatInvoiceDate(txn.date) : formatInvoiceDate();
     const generatedDateLabel = formatInvoiceDate(); // today — when the receipt is generated
 
@@ -583,6 +596,7 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
     const [transactions, setTransactions] = useState(
         Array.isArray(lead.paymentHistoryDetails) ? lead.paymentHistoryDetails : []
     );
+    const [receiptPreview, setReceiptPreview] = useState(null); // { txn, index } — editable copy before printing
 
     const INDIA_KEYWORDS = ['india','chennai','mumbai','delhi','bangalore','bengaluru','hyderabad','kolkata','pune','goa','kochi','cochin','kerala','jaipur','udaipur','jodhpur','agra','varanasi','rishikesh','manali','shimla','ooty','kodaikanal','munnar','mysore','pondicherry','puducherry','andaman','lakshadweep','kashmir','ladakh','leh','darjeeling','gangtok','sikkim','meghalaya','assam','tamil nadu','karnataka','maharashtra','rajasthan','gujarat','uttarakhand','kanyakumari'];
     const dest = (lead.destination || lead.confirmedDestination || '').toLowerCase();
@@ -603,6 +617,20 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
         const updated = [...transactions];
         updated[idx] = { ...updated[idx], verified: !updated[idx].verified };
         setTransactions(updated);
+    };
+
+    const handleOpenReceiptPreview = (txn, idx) => {
+        if (!txn.verified) return; // safety guard — button is disabled anyway when unverified
+        setReceiptPreview({
+            index: idx,
+            service: txn.service || '',
+            amount: txn.amount || '',
+            mode: txn.mode || '',
+            transactionId: txn.transactionId || '',
+            date: txn.date || '',
+            customerName: lead.customerName || lead.profileName || 'Guest',
+            customerCity: lead.city || lead.location || lead.customerCity || '',
+        });
     };
 
     const handleSaveVerifications = () => {
@@ -840,9 +868,14 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
                                                 <td className="px-4 py-4 text-center">
                                                     <button
                                                         type="button"
-                                                        onClick={() => printPaymentReceipt(lead, txn, idx)}
-                                                        title="Print / Download Payment Receipt"
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-cyan-500/10 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300 text-xs font-bold cursor-pointer transition-colors whitespace-nowrap"
+                                                        disabled={!txn.verified}
+                                                        onClick={() => handleOpenReceiptPreview(txn, idx)}
+                                                        title={txn.verified ? "Review & Generate Payment Receipt" : "Verify this transaction first to generate a receipt"}
+                                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-bold transition-colors whitespace-nowrap ${
+                                                            txn.verified
+                                                                ? 'bg-cyan-500/10 border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300 cursor-pointer'
+                                                                : 'bg-slate-800/40 border-slate-700/50 text-slate-500 cursor-not-allowed opacity-60'
+                                                        }`}
                                                     >
                                                         <Printer size={13} /> Generate Receipt
                                                     </button>
@@ -872,6 +905,75 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
                     Save Verifications
                 </button>
             </div>
+
+            {/* ── EDITABLE RECEIPT PREVIEW (only reachable for verified transactions) ── */}
+            {receiptPreview && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setReceiptPreview(null)}>
+                    <div onClick={e => e.stopPropagation()} className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-[#0f172a] border border-slate-700 rounded-xl shadow-2xl custom-scrollbar">
+                        <div className="sticky top-0 px-5 py-4 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] rounded-t-xl">
+                            <h3 className="text-base font-bold text-white flex items-center gap-2 m-0">
+                                <Printer size={18} className="text-cyan-400 flex-shrink-0" />
+                                Review Receipt Before Printing
+                            </h3>
+                            <button type="button" onClick={() => setReceiptPreview(null)} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-800 cursor-pointer border-none bg-transparent">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-5 space-y-4">
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="col-span-2">
+                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Customer Name</label>
+                                    <input type="text" value={receiptPreview.customerName} onChange={e => setReceiptPreview({...receiptPreview, customerName: e.target.value})} className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-slate-200 text-sm focus:outline-none focus:border-cyan-500" />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Customer City</label>
+                                    <input type="text" value={receiptPreview.customerCity} onChange={e => setReceiptPreview({...receiptPreview, customerCity: e.target.value})} className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-slate-200 text-sm focus:outline-none focus:border-cyan-500" />
+                                </div>
+                                <div className="col-span-2">
+                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Service</label>
+                                    <input type="text" value={receiptPreview.service} onChange={e => setReceiptPreview({...receiptPreview, service: e.target.value})} className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-slate-200 text-sm focus:outline-none focus:border-cyan-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Amount</label>
+                                    <input type="text" value={receiptPreview.amount} onChange={e => setReceiptPreview({...receiptPreview, amount: e.target.value})} className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-emerald-400 font-mono text-sm focus:outline-none focus:border-cyan-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Payment Date</label>
+                                    <input type="text" value={receiptPreview.date} onChange={e => setReceiptPreview({...receiptPreview, date: e.target.value})} className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-slate-200 text-sm focus:outline-none focus:border-cyan-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Payment Mode</label>
+                                    <input type="text" value={receiptPreview.mode} onChange={e => setReceiptPreview({...receiptPreview, mode: e.target.value})} className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-slate-200 text-sm focus:outline-none focus:border-cyan-500" />
+                                </div>
+                                <div>
+                                    <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Transaction Reference</label>
+                                    <input type="text" value={receiptPreview.transactionId} onChange={e => setReceiptPreview({...receiptPreview, transactionId: e.target.value})} className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-slate-200 font-mono text-sm focus:outline-none focus:border-cyan-500" />
+                                </div>
+                            </div>
+                        </div>
+                        <div className="sticky bottom-0 px-5 py-4 border-t border-slate-800 bg-[#0b1329] flex justify-end gap-3 rounded-b-xl">
+                            <button type="button" onClick={() => setReceiptPreview(null)} className="px-4 py-2 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-700 text-sm font-semibold cursor-pointer bg-transparent">
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    printPaymentReceipt(
+                                        { ...lead, customerName: receiptPreview.customerName, customerCity: receiptPreview.customerCity },
+                                        { service: receiptPreview.service, amount: receiptPreview.amount, mode: receiptPreview.mode, transactionId: receiptPreview.transactionId, date: receiptPreview.date },
+                                        receiptPreview.index
+                                    );
+                                    setReceiptPreview(null);
+                                }}
+                                className="px-4 py-2 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-bold shadow-lg cursor-pointer border-none flex items-center gap-2"
+                            >
+                                <Printer size={15} /> Print / Download
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
@@ -921,7 +1023,7 @@ function CustomerPaymentDetailsModal({ lead, onClose }) {
                     <div>
                         <div className="flex items-center justify-between border-b border-slate-700/50 pb-2 mb-3">
                             <h3 className="text-sm font-bold text-cyan-400 tracking-wider uppercase m-0">Transaction Details</h3>
-                            <span className="text-[10px] text-orange-400 font-bold italic bg-orange-950/30 px-2 py-1 rounded">History of Payment Entry Given by Sales</span>
+                       
                         </div>
                         <div className="bg-slate-900/50 border border-slate-700/50 rounded overflow-hidden overflow-x-auto">
                             <table className="w-full text-left text-sm text-slate-300">
