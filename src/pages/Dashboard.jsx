@@ -118,7 +118,7 @@ const ProgressBar = ({ value, max, color }) => {
     );
 };
 
-const Modal = ({ open, onClose, title, children, maxWidth = "max-w-md" }) => {
+const Modal = ({ open, onClose, title, children, maxWidth = "max-w-md", icon: TitleIcon = null, iconColorCls = "text-slate-400 dark:text-white" }) => {
     useEffect(() => {
         if (open) document.body.style.overflow = 'hidden';
         else document.body.style.overflow = '';
@@ -132,7 +132,10 @@ const Modal = ({ open, onClose, title, children, maxWidth = "max-w-md" }) => {
             <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onClose} />
             <div className={`relative z-10 bg-white dark:bg-[#141b2d] border border-slate-200/80 dark:border-slate-700/50 rounded-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] w-full ${maxWidth} p-5 sm:p-6 max-h-[calc(100vh-24px)] sm:max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col`}>
                 <div className="flex justify-between items-center mb-5 sticky top-0 bg-white dark:bg-[#141b2d] z-20 pb-3 border-b border-slate-100 dark:border-slate-700/40">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white truncate pr-4 tracking-tight">{title}</h3>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white truncate pr-4 tracking-tight flex items-center gap-2">
+                        {TitleIcon && <TitleIcon size={18} className={`${iconColorCls} flex-shrink-0`} />}
+                        {title}
+                    </h3>
                     <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors flex-shrink-0">
                         <X size={18} />
                     </button>
@@ -152,7 +155,7 @@ const Field = ({ label, children, className = '' }) => (
 
 const Input = ({ className = '', ...props }) => (
     <input
-        className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all ${className}`}
+        className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:cursor-pointer ${className}`}
         {...props}
     />
 );
@@ -222,7 +225,6 @@ const Select = ({ options, value, onChange, placeholder = "", className = '', al
                 className={`w-full appearance-none bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2.5 pr-8 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer ${className}`}
             >
                 {placeholder && <option value="" disabled>{placeholder}</option>}
-                {!placeholder && <option value="" disabled></option>}
                 {options.map(o => <option key={o} value={o}>{o}</option>)}
                 {allowCustom && <option value="__CUSTOM__" className="font-semibold text-blue-600 dark:text-blue-400">Add Custom Entry...</option>}
             </select>
@@ -243,6 +245,12 @@ const Dashboard = () => {
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     const [stats, setStats] = useState({ todayLeads: 0, pendingLeads: 0, pendingQuotation: 0, tripConfirmation: 0, totalLeads: 0 });
     const [time, setTime] = useState(new Date());
+    const greetingLabel = (() => {
+        const h = time.getHours();
+        if (h < 12) return 'Good Morning';
+        if (h < 17) return 'Good Afternoon';
+        return 'Good Evening';
+    })();
 
     // Analytics core data sets
     const [tripRegionCounts, setTripRegionCounts] = useState({ india: 0, international: 0 });
@@ -673,6 +681,11 @@ const Dashboard = () => {
                 if (t?.paymentDueDate) addReminder(lead, t.paymentDueDate, `Transport Payment Due (${t.serviceProvider || 'Vendor'})`, 'Due Date');
             });
 
+            // Sales — Tentative Travel Date (captured on lead creation, before a confirmed
+            // Fulfillment travel date exists). Once Fulfillment confirms lead.travelDate,
+            // that takes over below and we stop surfacing the tentative one.
+            if (lead.travelDates && !lead.travelDate) addReminder(lead, lead.travelDates, 'Tentative Travel Date', 'Sales');
+
             // Fulfillment — Travel / Briefing dates
             if (lead.travelDate) addReminder(lead, lead.travelDate, 'Trip Travel Date', 'Fulfillment');
             if (lead.briefingDateVal) addReminder(lead, lead.briefingDateVal, 'Guest Briefing Due', 'Fulfillment');
@@ -691,6 +704,46 @@ const Dashboard = () => {
             .sort((a, b) => a.daysLeft - b.daysLeft)
     ), [crmReminders]);
 
+    const [topDestinations, setTopDestinations] = useState([]);
+    const [topDestinationsModalOpen, setTopDestinationsModalOpen] = useState(false);
+    const [topDestFilter, setTopDestFilter] = useState('today'); // 'today' | 'week' | 'month' | 'all'
+
+    // Top Destinations — computed client-side from allLeads so it can be filtered by
+    // date range. Defaults to "Today"; falls back to the backend all-time snapshot
+    // (topDestinations state, populated from /api/top-destinations) only until allLeads
+    // has loaded, or when the "All Time" filter is picked and allLeads is unavailable.
+    const filteredTopDestinations = useMemo(() => {
+        if (!allLeads || allLeads.length === 0) return topDestFilter === 'all' ? topDestinations : [];
+
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const startOfWeek = new Date(startOfToday);
+        startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        const cutoff = topDestFilter === 'today' ? startOfToday
+            : topDestFilter === 'week' ? startOfWeek
+            : topDestFilter === 'month' ? startOfMonth
+            : null; // 'all' — no cutoff
+
+        const counts = {};
+        allLeads.forEach(lead => {
+            if (!lead?.destination) return;
+            if (cutoff) {
+                if (!lead.createdAt) return;
+                const created = new Date(lead.createdAt);
+                if (isNaN(created.getTime()) || created < cutoff) return;
+            }
+            const name = lead.destination.trim();
+            if (!name) return;
+            counts[name] = (counts[name] || 0) + 1;
+        });
+
+        return Object.entries(counts)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count);
+    }, [allLeads, topDestFilter, topDestinations]);
+
     // Combined list (manual reminders + auto-derived ones) used by the "All Reminders" modal
     const allReminderItems = useMemo(() => (
         [...events, ...crmReminders].sort((a, b) => new Date(a.date) - new Date(b.date))
@@ -701,9 +754,6 @@ const Dashboard = () => {
         const eventDate = new Date(e.date + 'T00:00:00');
         return eventDate.toDateString() === currentDate.toDateString();
     });
-
-    const [topDestinations, setTopDestinations] = useState([]);
-    const [topDestinationsModalOpen, setTopDestinationsModalOpen] = useState(false);
 
     useEffect(() => {
         const timer = setInterval(() => setTime(new Date()), 1000);
@@ -1215,9 +1265,9 @@ const Dashboard = () => {
                                 <Users size={14} className="text-violet-400" /> CUSTOMER INFORMATION	
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                                <Field label="Customer Name"><Input value={leadForm.customerName} onChange={e => setLeadForm({ ...leadForm, customerName: e.target.value })} autoFocus /></Field>
-                                <Field label="Mobile Number"><Input type="tel" value={leadForm.phone} onChange={e => setLeadForm({ ...leadForm, phone: e.target.value })} /></Field>
-                                <Field label="Email Address"><Input type="email" value={leadForm.email} onChange={e => setLeadForm({ ...leadForm, email: e.target.value })} /></Field>
+                                <Field label="Customer Name"><Input placeholder="" value={leadForm.customerName} onChange={e => setLeadForm({ ...leadForm, customerName: e.target.value })} autoFocus /></Field>
+                                <Field label="Mobile Number"><Input type="tel" placeholder="" value={leadForm.phone} onChange={e => setLeadForm({ ...leadForm, phone: e.target.value })} /></Field>
+                                <Field label="Email Address"><Input type="email" placeholder="" value={leadForm.email} onChange={e => setLeadForm({ ...leadForm, email: e.target.value })} /></Field>
                             </div>
                         </div>
                         <div>
@@ -1225,13 +1275,13 @@ const Dashboard = () => {
                                 <MapPin size={14} className="text-emerald-400" /> TRAVEL REQUIREMENT	
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                                <Field label="Destination"><Input value={leadForm.destination} onChange={e => setLeadForm({ ...leadForm, destination: e.target.value })} /></Field>
-                                <Field label="Tentative Travel Date"><Input value={leadForm.travelDates} onChange={e => setLeadForm({ ...leadForm, travelDates: e.target.value })} /></Field>
+                                <Field label="Destination"><Input placeholder="" value={leadForm.destination} onChange={e => setLeadForm({ ...leadForm, destination: e.target.value })} /></Field>
+                                <Field label="Tentative Travel Date"><Input placeholder="" value={leadForm.travelDates} onChange={e => setLeadForm({ ...leadForm, travelDates: e.target.value })} /></Field>
                                 <Field label="Number of Adults"><Select options={PAX_OPTIONS} value={leadForm.pax} onChange={v => setLeadForm({ ...leadForm, pax: v })} placeholder="" /></Field>
                                 <Field label="Number of Children"><Select options={CHILDREN_OPTIONS} value={leadForm.childrenPax} onChange={v => setLeadForm({ ...leadForm, childrenPax: v })} placeholder="" /></Field>
                                 <Field label="Budgett"><Select options={BUDGET_OPTIONS} value={leadForm.budget} onChange={v => setLeadForm({ ...leadForm, budget: v })} placeholder="" allowCustom={true} /></Field>
                                 <Field label="Package Type"><Select options={PACKAGE_TYPES} value={leadForm.packageType} onChange={v => setLeadForm({ ...leadForm, packageType: v })} placeholder="" allowCustom={true} /></Field>
-                            <Field label="Message from Lead"><TextArea rows="3" value={leadForm.leadMessage} onChange={e => setLeadForm({ ...leadForm, leadMessage: e.target.value })} /></Field>
+                            <Field label="Message from Lead"><TextArea rows="3" placeholder="" value={leadForm.leadMessage} onChange={e => setLeadForm({ ...leadForm, leadMessage: e.target.value })} /></Field>
                                 
                             </div>
                         </div>
@@ -1281,7 +1331,7 @@ const Dashboard = () => {
                 </div>
             </Modal>
 
-            <Modal open={eventModalOpen} onClose={() => setEventModalOpen(false)} title="Add Calendar Reminder">
+            <Modal open={eventModalOpen} onClose={() => setEventModalOpen(false)} title="Add Calendar Reminder" icon={Calendar} iconColorCls="text-white">
                 <div className="px-1 py-1">
                     <Field label="Reminder Title"><Input value={eventForm.title} onChange={e => setEventForm(f => ({ ...f, title: e.target.value }))} autoFocus /></Field>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -1292,8 +1342,8 @@ const Dashboard = () => {
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 mt-5">
                     <button onClick={() => setEventModalOpen(false)} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
-                    <button onClick={saveEvent} disabled={!eventForm.title.trim() || !eventForm.date} className="w-full sm:flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 order-1 sm:order-2">
-                        <Save size={16} /> Add Reminder
+                    <button onClick={saveEvent} disabled={!eventForm.title.trim() || !eventForm.date} className="w-full sm:flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:bg-slate-400 dark:disabled:bg-slate-600 disabled:shadow-none disabled:cursor-not-allowed text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 order-1 sm:order-2">
+                        <Save size={16} className="text-white" /> Add Reminder
                     </button>
                 </div>
             </Modal>
@@ -1357,7 +1407,7 @@ const Dashboard = () => {
             <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-200/80 dark:border-slate-700/30 shadow-sm dark:shadow-none flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-5 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-blue-500/3 dark:to-blue-500/5 pointer-events-none rounded-2xl" />
                 <div className="min-w-0 relative flex items-center gap-3 sm:gap-4">
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 dark:text-white mb-1 tracking-tight truncate">Welcome Back, {displayHeaderName}</h1>
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 dark:text-white mb-1 tracking-tight truncate">{greetingLabel}, {displayHeaderName}</h1>
                 </div>
                 <div className="flex items-center w-full lg:w-auto gap-2.5 sm:gap-3 relative">
                     <button
@@ -1503,17 +1553,38 @@ const Dashboard = () => {
 
                         {/* 3. Top Destinations */}
                         <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
-                            <div className="flex justify-between items-center mb-4">
+                            <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Top Destinations</h2>
                                 </div>
                                 <button type="button" onClick={() => setTopDestinationsModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">View All</button>
                             </div>
+                            <div className="flex gap-1.5 mb-3 flex-shrink-0">
+                                {[
+                                    { id: 'today', label: 'Today' },
+                                    { id: 'week', label: 'Week' },
+                                    { id: 'month', label: 'Month' },
+                                    { id: 'all', label: 'All Time' },
+                                ].map(f => (
+                                    <button
+                                        key={f.id}
+                                        type="button"
+                                        onClick={() => setTopDestFilter(f.id)}
+                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-colors border ${
+                                            topDestFilter === f.id
+                                                ? 'bg-amber-500/15 border-amber-500/40 text-amber-500'
+                                                : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                                        }`}
+                                    >
+                                        {f.label}
+                                    </button>
+                                ))}
+                            </div>
                             <div className="space-y-1 flex-1 mt-1 overflow-y-auto max-h-[320px] custom-scrollbar">
-                                {topDestinations.length === 0 ? (
-                                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No destination data yet.</div>
+                                {filteredTopDestinations.length === 0 ? (
+                                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No destination data {topDestFilter === 'today' ? 'for today yet' : topDestFilter === 'week' ? 'for this week yet' : topDestFilter === 'month' ? 'for this month yet' : 'yet'}.</div>
                                 ) : (
-                                    topDestinations.slice(0, 5).map((dest, idx) => (
+                                    filteredTopDestinations.slice(0, 5).map((dest, idx) => (
                                         <div key={idx} onClick={() => handleDestinationClick(dest.name)} className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/30 px-2 py-2.5 -mx-1 rounded-xl transition-all">
                                             <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
                                                 <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xs font-bold border border-amber-500/15 flex-shrink-0">{idx + 1}</div>
@@ -1545,7 +1616,7 @@ const Dashboard = () => {
                                 <button onClick={openAddTask} className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-violet-500/20">
                                     <Plus size={13} /> Add Task
                                 </button>
-                            </div>
+                            </div>  
                             <div className="space-y-1 flex-1 overflow-y-auto max-h-[320px] custom-scrollbar pr-1">
                                 {filteredTasks.length === 0 && <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No tasks here. Add one!</div>}
                                 {filteredTasks.map(task => (
@@ -2010,17 +2081,38 @@ const Dashboard = () => {
                         </div>
 
                         <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
-                            <div className="flex justify-between items-center mb-4">
+                            <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Top Destinations</h2>
                                 </div>
                                 <button type="button" onClick={() => setTopDestinationsModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">View All</button>
                             </div>
+                            <div className="flex gap-1.5 mb-3 flex-shrink-0">
+                                {[
+                                    { id: 'today', label: 'Today' },
+                                    { id: 'week', label: 'Week' },
+                                    { id: 'month', label: 'Month' },
+                                    { id: 'all', label: 'All Time' },
+                                ].map(f => (
+                                    <button
+                                        key={f.id}
+                                        type="button"
+                                        onClick={() => setTopDestFilter(f.id)}
+                                        className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-colors border ${
+                                            topDestFilter === f.id
+                                                ? 'bg-amber-500/15 border-amber-500/40 text-amber-500'
+                                                : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                                        }`}
+                                    >
+                                        {f.label}
+                                    </button>
+                                ))}
+                            </div>
                             <div className="space-y-1 flex-1 mt-1">
-                                {topDestinations.length === 0 ? (
-                                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No destination data yet.<br />Add some leads!</div>
+                                {filteredTopDestinations.length === 0 ? (
+                                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No destination data {topDestFilter === 'today' ? 'for today yet' : topDestFilter === 'week' ? 'for this week yet' : topDestFilter === 'month' ? 'for this month yet' : 'yet'}.<br />Add some leads!</div>
                                 ) : (
-                                    topDestinations.slice(0, 5).map((dest, idx) => (
+                                    filteredTopDestinations.slice(0, 5).map((dest, idx) => (
                                         <div 
                                             key={idx} 
                                             onClick={() => handleDestinationClick(dest.name)}
@@ -2360,23 +2452,48 @@ const Dashboard = () => {
             </Modal>
 
             <Modal open={topDestinationsModalOpen} onClose={() => setTopDestinationsModalOpen(false)} title="Top Destinations Breakdown" maxWidth="max-w-2xl">
-                <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
-                    {topDestinations.map((dest, idx) => (
-                        <div 
-                            key={idx} 
-                            onClick={() => {
-                                setTopDestinationsModalOpen(false);
-                                handleDestinationClick(dest.name);
-                            }}
-                            className="flex items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-700/30 p-3.5 bg-slate-50 dark:bg-[#0d1526] cursor-pointer hover:border-amber-500/30 hover:bg-amber-50/50 dark:hover:bg-slate-800/60 transition-all"
+                <div className="flex gap-1.5 mb-4 flex-shrink-0">
+                    {[
+                        { id: 'today', label: 'Today' },
+                        { id: 'week', label: 'This Week' },
+                        { id: 'month', label: 'This Month' },
+                        { id: 'all', label: 'All Time' },
+                    ].map(f => (
+                        <button
+                            key={f.id}
+                            type="button"
+                            onClick={() => setTopDestFilter(f.id)}
+                            className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-colors border ${
+                                topDestFilter === f.id
+                                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-500'
+                                    : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                            }`}
                         >
-                            <div className="flex items-center gap-3 min-w-0 pr-3">
-                                <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold flex-shrink-0 text-xs border border-amber-500/15">{idx + 1}</div>
-                                <span className="font-bold text-slate-700 dark:text-slate-200 text-sm truncate">{dest.name}</span>
-                            </div>
-                            <span className="font-bold font-mono text-slate-800 dark:text-white flex-shrink-0 text-sm">{dest.count} <span className="text-slate-400 text-xs font-normal">leads</span></span>
-                        </div>
+                            {f.label}
+                        </button>
                     ))}
+                </div>
+                <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                    {filteredTopDestinations.length === 0 ? (
+                        <p className="text-slate-500 text-center py-10 text-sm">No destination data {topDestFilter === 'today' ? 'for today' : topDestFilter === 'week' ? 'for this week' : topDestFilter === 'month' ? 'for this month' : ''} yet.</p>
+                    ) : (
+                        filteredTopDestinations.map((dest, idx) => (
+                            <div 
+                                key={idx} 
+                                onClick={() => {
+                                    setTopDestinationsModalOpen(false);
+                                    handleDestinationClick(dest.name);
+                                }}
+                                className="flex items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-700/30 p-3.5 bg-slate-50 dark:bg-[#0d1526] cursor-pointer hover:border-amber-500/30 hover:bg-amber-50/50 dark:hover:bg-slate-800/60 transition-all"
+                            >
+                                <div className="flex items-center gap-3 min-w-0 pr-3">
+                                    <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold flex-shrink-0 text-xs border border-amber-500/15">{idx + 1}</div>
+                                    <span className="font-bold text-slate-700 dark:text-slate-200 text-sm truncate">{dest.name}</span>
+                                </div>
+                                <span className="font-bold font-mono text-slate-800 dark:text-white flex-shrink-0 text-sm">{dest.count} <span className="text-slate-400 text-xs font-normal">leads</span></span>
+                            </div>
+                        ))
+                    )}
                 </div>
             </Modal>
 
