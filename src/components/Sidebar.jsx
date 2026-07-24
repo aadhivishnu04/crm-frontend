@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { MENU_ITEMS } from '../utils/permissions';
 import { getCurrentUser, logoutUser } from '../utils/auth';
-import logo from '../assets/logo (2).png';
+ 
 
 const Sidebar = () => {
     const user = getCurrentUser();
