@@ -36,6 +36,21 @@ const BUDGET_OPTIONS = ['Under ₹25,000', '₹25,000 - ₹50,000', '₹50,000 -
 const PAX_OPTIONS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10+'];
 const CHILDREN_OPTIONS = ['0', '1', '2', '3', '4', '5+'];
 
+// Utility to format ISO/yyyy-mm-dd strings to DD-MM-YYYY
+const formatDMY = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+        const dateObj = new Date(dateStr);
+        if (isNaN(dateObj.getTime())) return dateStr;
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = dateObj.getFullYear();
+        return `${day}-${month}-${year}`;
+    } catch (e) {
+        return dateStr;
+    }
+};
+
 // Utility to format ISO strings to highly readable strings
 const formatDateTime = (dateStr) => {
     if (!dateStr) return '';
@@ -364,6 +379,29 @@ const SalesDashboard = () => {
 
     const renderArrayDropdown = (field, value, index, defaultOption, optionsList) => {
         const handleSelect = (e) => handleCustomisationChange(index, field, e.target.value);
+        const optionValues = optionsList.map(opt => typeof opt === 'object' ? opt.value : opt);
+        const isOthersTrigger = value && ['others', 'other'].includes(String(value).toLowerCase());
+        const isManual = value && (isOthersTrigger || !optionValues.includes(value));
+
+        if (isManual) {
+            return (
+                <div className="relative flex items-center">
+                    <input
+                        type="text"
+                        value={isOthersTrigger ? '' : value}
+                        onChange={(e) => handleCustomisationChange(index, field, e.target.value)}
+                        placeholder="Type here..."
+                        autoFocus
+                        className={`${selectCls} pr-8`}
+                    />
+                    <button type="button" onClick={() => handleCustomisationChange(index, field, '')}
+                        className="absolute right-2 text-slate-400 hover:text-red-400 p-0.5" title="Back to dropdown">
+                        <X size={14} />
+                    </button>
+                </div>
+            );
+        }
+
         return (
             <select value={value || ''} onChange={handleSelect} className={selectCls}>
                 {defaultOption !== null && <option value="" disabled hidden>{defaultOption}</option>}
@@ -378,6 +416,33 @@ const SalesDashboard = () => {
 
     const renderDropdown = (name, value, defaultOption, optionsList, onChangeHandler, customClass = selectCls, disabled = false) => {
         const handleSelect = (e) => onChangeHandler(e);
+        const optionValues = optionsList.map(opt => typeof opt === 'object' ? opt.value : opt);
+        const isOthersTrigger = value && ['others', 'other'].includes(String(value).toLowerCase());
+        const isManual = value && (isOthersTrigger || !optionValues.includes(value));
+
+        if (isManual) {
+            return (
+                <div className="relative flex items-center">
+                    <input
+                        type="text"
+                        name={name}
+                        value={isOthersTrigger ? '' : value}
+                        onChange={onChangeHandler}
+                        disabled={disabled}
+                        placeholder="Type here..."
+                        autoFocus
+                        className={`${customClass} pr-8 ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-900/50' : ''}`}
+                    />
+                    {!disabled && (
+                        <button type="button" onClick={() => onChangeHandler({ target: { name, value: '', type: 'text' } })}
+                            className="absolute right-2 text-slate-400 hover:text-red-400 p-0.5" title="Back to dropdown">
+                            <X size={14} />
+                        </button>
+                    )}
+                </div>
+            );
+        }
+
         return (
             <select name={name} value={value || ''} onChange={handleSelect} disabled={disabled} className={`${customClass} ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-900/50' : ''}`}>
                 {defaultOption !== null && <option value="" disabled hidden>{defaultOption}</option>}
@@ -687,6 +752,28 @@ const SalesDashboard = () => {
 
     const renderNewLeadDropdown = (name, value, placeholder, options) => {
         const handleSelect = (e) => setNewLeadForm(prev => ({ ...prev, [name]: e.target.value }));
+        const isOthersTrigger = value && ['others', 'other'].includes(String(value).toLowerCase());
+        const isManual = value && (isOthersTrigger || !options.includes(value));
+
+        if (isManual) {
+            return (
+                <div className="relative flex items-center">
+                    <input
+                        type="text"
+                        value={isOthersTrigger ? '' : value}
+                        onChange={(e) => setNewLeadForm(prev => ({ ...prev, [name]: e.target.value }))}
+                        placeholder="Type here..."
+                        autoFocus
+                        className={`${selectCls} pr-8`}
+                    />
+                    <button type="button" onClick={() => setNewLeadForm(prev => ({ ...prev, [name]: '' }))}
+                        className="absolute right-2 text-slate-400 hover:text-red-400 p-0.5" title="Back to dropdown">
+                        <X size={14} />
+                    </button>
+                </div>
+            );
+        }
+
         return (
             <select name={name} value={value || ''} onChange={handleSelect} className={selectCls}>
                 {placeholder && <option value="" disabled hidden>{placeholder}</option>}
@@ -888,23 +975,9 @@ const SalesDashboard = () => {
             }
         } catch (e) { parsedNoResponseLogs = []; }
 
-        // Self Healing Legacy Sync
         let pHistory = [];
         try { pHistory = typeof lead.history === 'string' ? JSON.parse(lead.history) : (lead.history || []); } catch(e){}
 
-        if (parsedNoResponseLogs.length === 0 && (lead.followupCount > 0 || lead.followUpCount > 0)) {
-            const recoveredLogs = pHistory.filter(h => 
-                h.action && (h.action.toLowerCase().includes('follow') || h.action.toLowerCase().includes('response') || h.action.toLowerCase().includes('log') || h.action.toLowerCase().includes('attempt'))
-            ).map(h => ({ timestamp: formatDateTime(h.date), interaction: 'Legacy Record', action: h.action, notes: h.note || 'Historical entry' }));
-            
-            if (recoveredLogs.length > 0) { parsedNoResponseLogs = recoveredLogs; } 
-            else {
-                const dummyCount = lead.followupCount || lead.followUpCount || 1;
-                for (let i=0; i<dummyCount; i++) {
-                    parsedNoResponseLogs.push({ timestamp: formatDateTime(lead.createdAt || lead.dateAdded) || 'Legacy Date', interaction: 'Legacy Record', action: 'Previous Activity', notes: 'Migrated from legacy system' });
-                }
-            }
-        }
 
         let parsedVoice = { customisation: [], sales: [], outcome: [] };
         if (lead.voiceBinaryFile) {
@@ -1629,7 +1702,7 @@ const SalesDashboard = () => {
                                             </td>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none">
                                                 <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Next Followup</span>
-                                                <span className="text-sm text-slate-300">{row.followupDate || row.nextFollowUp || '—'}</span>
+                                                <span className="text-sm text-slate-300">{formatDMY(row.followupDate || row.nextFollowUp) || '—'}</span>
                                             </td>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none">
                                                 <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Priority</span>
@@ -1678,7 +1751,7 @@ const SalesDashboard = () => {
                                             </td>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none">
                                                 <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Next Followup</span>
-                                                <span className="text-sm text-slate-300">{row.followupDate || '—'}</span>
+                                                <span className="text-sm text-slate-300">{formatDMY(row.followupDate) || '—'}</span>
                                             </td>
                                             <td className="flex justify-between items-center md:table-cell py-2.5 md:py-4 px-2 md:px-4 border-b border-slate-700/50 md:border-none">
                                                 <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Priority</span>
@@ -2103,7 +2176,7 @@ const SalesDashboard = () => {
                                                     </div>
                                                 </div>
 
-                                                {editFormData.leadResponse === 'No Response' && (
+                                                {(
                                                     <div className="mt-5 p-4 bg-[#091124] border border-slate-700/60 rounded-xl">
                                                         <div className="flex justify-between items-center mb-4">
                                                             <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
@@ -2270,7 +2343,7 @@ const SalesDashboard = () => {
                                                     </div>
                                                     <div>
                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Offers</label>
-                                                        {renderDropdown('offers', editFormData.offers, ' ', [{value: 'None', label: 'No Promo Applied'}, 'Early Bird 10% Discount', 'Free Airport Transfer Upgrade', {value: 'Complimentary Honeymoon Cake & Decor', label: 'Complimentary Honeymoon Cake & Decor'}], handleInputChange)}
+                                                        {renderDropdown('offers', editFormData.offers, ' ', [{value: 'None', label: 'No Promo Applied'}, 'Early Bird 10% Discount', 'Free Airport Transfer Upgrade', {value: 'Complimentary Honeymoon Cake & Decor', label: 'Complimentary Honeymoon Cake & Decor'}, 'Others'], handleInputChange)}
                                                     </div>
                                                     <div>
                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Action Taken</label>
@@ -2346,7 +2419,7 @@ const SalesDashboard = () => {
                                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Received Date & Time</label>
-                                                                <input type="text" readOnly value={editFormData.opsCompletedOn || formatDateTime(new Date().toISOString())} className={`${readonlyCls} text-red-400 font-bold`} placeholder="Date & Time - Auto" />
+                                                                <input type="text" readOnly value={formatDateTime(editFormData.opsCompletedOn) || ''} className={`${readonlyCls} text-red-400 font-bold`} placeholder="Pending — awaiting Operations" />
                                                             </div>
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Prepared For</label>
@@ -2354,7 +2427,7 @@ const SalesDashboard = () => {
                                                             </div>
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-bold text-white mb-1">Prepared By</label>
-                                                                <input type="text" readOnly value={editFormData.opsPreparedBy || editFormData.assignedTo || ''} className={`${readonlyCls} text-red-400 text-[10px] sm:text-xs font-bold`} placeholder="Operations Executive name" />
+                                                                <input type="text" readOnly value={editFormData.opsPreparedBy || ''} className={`${readonlyCls} text-red-400 text-[10px] sm:text-xs font-bold`} placeholder="Pending — awaiting Operations" />
                                                             </div>
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Cost</label>
@@ -3028,7 +3101,7 @@ const SalesDashboard = () => {
                                     displayHistory = selectedLead.history;
                                 } else {
                                     if (selectedLead.status === 'Move To Operation') {
-                                        displayHistory.push({ date: selectedLead.opsCompletedOn || 'Recent', action: 'Moved to Operations', note: `Prepared by: ${selectedLead.opsPreparedBy || 'Ops Team'}` });
+                                        displayHistory.push({ date: formatDateTime(selectedLead.opsCompletedOn) || 'Recent', action: 'Moved to Operations', note: `Prepared by: ${selectedLead.opsPreparedBy || 'Ops Team'}` });
                                     }
                                     if (selectedLead.assignedTo && selectedLead.assignedTo !== 'Unassigned') {
                                         displayHistory.push({ date: 'Previously', action: `Assigned to ${selectedLead.assignedTo}`, note: `Current Status: ${selectedLead.status}` });

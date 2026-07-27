@@ -553,6 +553,10 @@ export default function OperationsDashboard() {
     const [assignTo, setAssignTo] = useState('');
     const [selectedLeadForAssign, setSelectedLeadForAssign] = useState(null);
 
+    const [leadToComplete, setLeadToComplete] = useState(null);
+    const [completeForm, setCompleteForm] = useState({ packagePreparedFor: '', packageCost: '', operationNotes: '' });
+
+
     // Recording global state for Main Note Logger
     const [isRecording, setIsRecording] = useState(false);
 
@@ -756,7 +760,21 @@ export default function OperationsDashboard() {
         setSelectedLeadForAssign(null);
     };
 
-    const handleSendToSalesReady = async (row) => {
+    const handleOpenCompleteModal = (row) => {
+        setLeadToComplete(row);
+        setCompleteForm({
+            packagePreparedFor: row.customerName || row.profileName || '',
+            packageCost: row.packageCost || row.totalPackageCost || row.budget || '',
+            operationNotes: ''
+        });
+    };
+
+    const handleCloseCompleteModal = () => {
+        setLeadToComplete(null);
+        setCompleteForm({ packagePreparedFor: '', packageCost: '', operationNotes: '' });
+    };
+
+    const handleSendToSalesReady = async (row, responseData = {}) => {
         const leadId = row.id;
         const reqIndex = row.reqIndex;
         const targetStatus = 'Customisation Ready'; 
@@ -778,7 +796,12 @@ export default function OperationsDashboard() {
 
         const updatedData = {
             customisationRequests: JSON.stringify(parsedRequests),
-            status: targetStatus 
+            status: targetStatus,
+            opsCompletedOn: new Date().toISOString(),
+            opsPreparedBy: loggedInUserName,
+            packagePreparedFor: responseData.packagePreparedFor || '',
+            packageCost: responseData.packageCost || '',
+            operationNotes: responseData.operationNotes || ''
         };
 
         setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...updatedData } : l));
@@ -796,6 +819,17 @@ export default function OperationsDashboard() {
             triggerNotification('success', `Pushed back to Sales (Simulation mode).`);
         }
     };
+
+    const handleSubmitCompleteModal = async () => {
+        if (!leadToComplete) return;
+        if (!completeForm.packageCost || !String(completeForm.packageCost).trim()) {
+            alert('Please enter the package cost before sending to Sales.');
+            return;
+        }
+        await handleSendToSalesReady(leadToComplete, completeForm);
+        handleCloseCompleteModal();
+    };
+
 
     const updateLead = async (id, updatedData) => {
         setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updatedData } : l));
@@ -1481,6 +1515,7 @@ export default function OperationsDashboard() {
                                                                 <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 hover:bg-blue-900/30 rounded-md transition-colors flex flex-col items-center" title="View"><Eye size={16} /><span className="text-[10px]">View</span></button>
                                                                 <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-yellow-900/20 rounded-md transition-colors flex flex-col items-center" title="Edit"><Pencil size={16} /><span className="text-[10px]">Edit</span></button>
                                                                 <button type="button" onClick={() => handleOpenAssignModal(row)} className="p-1.5 text-slate-400 hover:text-purple-400 hover:bg-purple-900/20 rounded-md transition-colors flex flex-col items-center" title="Re-assign"><Repeat size={16} /><span className="text-[10px]">Re-assign</span></button>
+                                                                <button type="button" onClick={() => handleOpenCompleteModal(row)} className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-900/20 rounded-md transition-colors flex flex-col items-center" title="Complete & Send to Sales"><Send size={16} /><span className="text-[10px]">To Sales</span></button>
                                                             </div>
                                                         </td>
                                                     </>
@@ -1600,6 +1635,7 @@ export default function OperationsDashboard() {
                                                         <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 bg-slate-800 rounded-md border border-slate-700" title="View"><Eye size={15} /></button>
                                                         <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 bg-slate-800 rounded-md border border-slate-700" title="Edit"><Pencil size={15} /></button>
                                                         <button type="button" onClick={() => handleOpenAssignModal(row)} className="p-1.5 text-slate-400 hover:text-purple-400 bg-slate-800 rounded-md border border-slate-700" title="Re-assign"><Repeat size={15} /></button>
+                                                        <button type="button" onClick={() => handleOpenCompleteModal(row)} className="p-1.5 text-slate-400 hover:text-emerald-400 bg-slate-800 rounded-md border border-slate-700" title="Complete & Send to Sales"><Send size={15} /></button>
                                                     </>
                                                 ) : (
                                                     <>
@@ -3245,6 +3281,39 @@ export default function OperationsDashboard() {
                         <div className="flex justify-center gap-2">
                             <button type="button" onClick={() => setLeadToFulfill(null)} className="flex-1 py-2 rounded bg-slate-900 border border-slate-700 text-slate-300 text-xs font-semibold cursor-pointer">Cancel</button>
                             <button type="button" onClick={() => sendToFulfillment(leadToFulfill)} className="flex-1 py-2 rounded bg-orange-500 text-slate-900 font-black text-xs cursor-pointer">Send</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── COMPLETE & SEND TO SALES MODAL ────────────────────────────────────── */}
+            {leadToComplete && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[150] p-4">
+                    <div className="bg-[#1e293b] border-0 rounded-xl shadow-2xl w-full max-w-md p-6">
+                        <div className="flex justify-between items-center mb-1">
+                            <h3 className="text-sm font-bold text-white uppercase tracking-wide">Complete & Send to Sales</h3>
+                            <button type="button" onClick={handleCloseCompleteModal} className="text-slate-400 hover:text-white bg-transparent border-none cursor-pointer"><X size={18} /></button>
+                        </div>
+                        <p className="text-slate-400 mb-4 text-xs">LMN{leadToComplete.id} — {leadToComplete.customerName || leadToComplete.profileName || 'N/A'}</p>
+
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-[11px] font-medium text-slate-300 mb-1">Package Prepared For</label>
+                                <input type="text" value={completeForm.packagePreparedFor} onChange={(e) => setCompleteForm(f => ({ ...f, packagePreparedFor: e.target.value }))} className={inputCls} />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-medium text-slate-300 mb-1">Package Cost</label>
+                                <input type="text" value={completeForm.packageCost} onChange={(e) => setCompleteForm(f => ({ ...f, packageCost: e.target.value }))} className={inputCls} placeholder="₹" />
+                            </div>
+                            <div>
+                                <label className="block text-[11px] font-medium text-slate-300 mb-1">Operation Notes</label>
+                                <textarea value={completeForm.operationNotes} onChange={(e) => setCompleteForm(f => ({ ...f, operationNotes: e.target.value }))} className={`${inputCls} min-h-[70px] resize-none`} placeholder="Notes for Sales..." />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-center gap-2 mt-5">
+                            <button type="button" onClick={handleCloseCompleteModal} className="flex-1 py-2 rounded bg-slate-900 border border-slate-700 text-slate-300 text-xs font-semibold cursor-pointer">Cancel</button>
+                            <button type="button" onClick={handleSubmitCompleteModal} className="flex-1 py-2 rounded bg-emerald-500 text-slate-900 font-black text-xs cursor-pointer">Send to Sales</button>
                         </div>
                     </div>
                 </div>

@@ -224,9 +224,9 @@ const Select = ({ options, value, onChange, placeholder = "", className = '', al
                 }}
                 className={`w-full appearance-none bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2.5 pr-8 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer ${className}`}
             >
-                {placeholder && <option value="" disabled>{placeholder}</option>}
+                <option value="" disabled hidden>{placeholder}</option>
                 {options.map(o => <option key={o} value={o}>{o}</option>)}
-                {allowCustom && <option value="__CUSTOM__" className="font-semibold text-blue-600 dark:text-blue-400">Add Custom Entry...</option>}
+                {allowCustom && <option value="__CUSTOM__" className="font-semibold text-blue-600 dark:text-blue-400">Manual+</option>}
             </select>
             <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
         </div>
@@ -1266,9 +1266,9 @@ const Dashboard = () => {
                                 <Users size={14} className="text-violet-400" /> CUSTOMER INFORMATION	
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-                                <Field label="Customer Name"><Input placeholder="" value={leadForm.customerName} onChange={e => setLeadForm({ ...leadForm, customerName: e.target.value })} autoFocus /></Field>
-                                <Field label="Mobile Number"><Input type="tel" placeholder="" value={leadForm.phone} onChange={e => setLeadForm({ ...leadForm, phone: e.target.value })} /></Field>
-                                <Field label="Email Address"><Input type="email" placeholder="" value={leadForm.email} onChange={e => setLeadForm({ ...leadForm, email: e.target.value })} /></Field>
+                                <Field label="Customer Name"><Input value={leadForm.customerName} onChange={e => setLeadForm({ ...leadForm, customerName: e.target.value })} autoFocus /></Field>
+                                <Field label="Mobile Number"><Input type="tel" value={leadForm.phone} onChange={e => setLeadForm({ ...leadForm, phone: e.target.value })} /></Field>
+                                <Field label="Email Address"><Input type="email" value={leadForm.email} onChange={e => setLeadForm({ ...leadForm, email: e.target.value })} /></Field>
                             </div>
                         </div>
                         <div>
@@ -1276,13 +1276,13 @@ const Dashboard = () => {
                                 <MapPin size={14} className="text-emerald-400" /> TRAVEL REQUIREMENT	
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                                <Field label="Destination"><Input placeholder="" value={leadForm.destination} onChange={e => setLeadForm({ ...leadForm, destination: e.target.value })} /></Field>
-                                <Field label="Tentative Travel Date"><Input placeholder="" value={leadForm.travelDates} onChange={e => setLeadForm({ ...leadForm, travelDates: e.target.value })} /></Field>
-                                <Field label="Number of Adults"><Select options={PAX_OPTIONS} value={leadForm.pax} onChange={v => setLeadForm({ ...leadForm, pax: v })} placeholder="" /></Field>
-                                <Field label="Number of Children"><Select options={CHILDREN_OPTIONS} value={leadForm.childrenPax} onChange={v => setLeadForm({ ...leadForm, childrenPax: v })} placeholder="" /></Field>
-                                <Field label="Budgett"><Select options={BUDGET_OPTIONS} value={leadForm.budget} onChange={v => setLeadForm({ ...leadForm, budget: v })} placeholder="" allowCustom={true} /></Field>
-                                <Field label="Package Type"><Select options={PACKAGE_TYPES} value={leadForm.packageType} onChange={v => setLeadForm({ ...leadForm, packageType: v })} placeholder="" allowCustom={true} /></Field>
-                            <Field label="Message from Lead"><TextArea rows="3" placeholder="" value={leadForm.leadMessage} onChange={e => setLeadForm({ ...leadForm, leadMessage: e.target.value })} /></Field>
+                                <Field label="Destination"><Input value={leadForm.destination} onChange={e => setLeadForm({ ...leadForm, destination: e.target.value })} /></Field>
+                                <Field label="Tentative Travel Date"><DateInput value={leadForm.travelDates} onChange={e => setLeadForm({ ...leadForm, travelDates: e.target.value })} /></Field>
+                                <Field label="Number of Adults"><Select options={PAX_OPTIONS} value={leadForm.pax} onChange={v => setLeadForm({ ...leadForm, pax: v })} /></Field>
+                                <Field label="Number of Children"><Select options={CHILDREN_OPTIONS} value={leadForm.childrenPax} onChange={v => setLeadForm({ ...leadForm, childrenPax: v })} /></Field>
+                                <Field label="Budget"><Select options={BUDGET_OPTIONS} value={leadForm.budget} onChange={v => setLeadForm({ ...leadForm, budget: v })} allowCustom={true} /></Field>
+                                <Field label="Package Type"><Select options={PACKAGE_TYPES} value={leadForm.packageType} onChange={v => setLeadForm({ ...leadForm, packageType: v })} allowCustom={true} /></Field>
+                            <Field label="Message from Lead"><TextArea rows="3" value={leadForm.leadMessage} onChange={e => setLeadForm({ ...leadForm, leadMessage: e.target.value })} /></Field>
                                 
                             </div>
                         </div>
@@ -1292,8 +1292,8 @@ const Dashboard = () => {
                                 <Target size={14} className="text-blue-400" /> LEAD SOURCE	
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-                                <Field label="Platform"><Select options={PLATFORM_OPTIONS} value={leadForm.platform} onChange={v => setLeadForm({ ...leadForm, platform: v })} placeholder="" allowCustom={true} /></Field>
-                                <Field label="Campaign Name"><Select options={campaignOptions} value={leadForm.campaign} onChange={v => setLeadForm({ ...leadForm, campaign: v })} placeholder="" allowCustom={true} /></Field>
+                                <Field label="Platform"><Select options={PLATFORM_OPTIONS} value={leadForm.platform} onChange={v => setLeadForm({ ...leadForm, platform: v })} allowCustom={true} /></Field>
+                                <Field label="Campaign Name"><Select options={campaignOptions} value={leadForm.campaign} onChange={v => setLeadForm({ ...leadForm, campaign: v })} allowCustom={true} /></Field>
                             </div>
                         </div>
                      
