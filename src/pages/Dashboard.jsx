@@ -40,7 +40,7 @@ import { getCurrentUser } from '../utils/auth';
 import { ROLES } from '../utils/permissions';
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend-f9n8.onrender.com/api";
+const API_BASE_URL = "https://crm-backend-l87w.onrender.com/api";
 
 // ─── INDIA DESTINATION MATCHER ───────────────────────────────────────────────
 const INDIA_KEYWORDS = [
@@ -371,11 +371,16 @@ const Dashboard = () => {
     
     // Form handlers
     const [leadModalOpen, setLeadModalOpen] = useState(false);
-    const [leadForm, setLeadForm] = useState({
+    const emptyLeadForm = {
         customerName: '', phone: '', email: '', destination: '',
-        travelDates: '', pax: '', childrenPax: '0', packageType: 'Custom / Flexible',
+        travelDates: '', pax: '', childrenPax: '', packageType: '',
         budget: '', platform: '', campaign: '', leadMessage: '', notes: ''
-    });
+    };
+    const [leadForm, setLeadForm] = useState(emptyLeadForm);
+    const closeLeadModal = () => {
+        setLeadModalOpen(false);
+        setLeadForm(emptyLeadForm);
+    };
 
     const [campaignOptions, setCampaignOptions] = useState([]);
     const PACKAGE_TYPES = ['Custom / Flexible', 'Honeymoon', 'Family Tour', 'Group Tour', 'Corporate Trip', 'Solo Backpacking'];
@@ -416,11 +421,7 @@ const Dashboard = () => {
                 .then(data => console.log("Email server response:", data))
                 .catch(err => console.error("Silently failing email trigger:", err));
 
-                setLeadForm({
-                    customerName: '', phone: '', email: '', destination: '',
-                    travelDates: '', pax: '', childrenPax: '0', packageType: 'Custom / Flexible',
-                    budget: '', platform: '', campaign: '', leadMessage: '', notes: ''
-                });
+                setLeadForm(emptyLeadForm);
                 setLeadModalOpen(false);
             } else {
                 showToast("Failed to save lead.", "error");
@@ -1257,7 +1258,7 @@ const Dashboard = () => {
                 </div>
             </Modal>
 
-            <Modal open={leadModalOpen} onClose={() => setLeadModalOpen(false)} title="Add New Travel Lead" maxWidth="max-w-4xl">
+            <Modal open={leadModalOpen} onClose={closeLeadModal} title="Add New Travel Lead" maxWidth="max-w-4xl">
                 <div className="flex flex-col h-full">
                     <div className="space-y-5 flex-1 px-1 py-1">
                         <div>
@@ -1298,7 +1299,7 @@ const Dashboard = () => {
                      
                     </div>
                     <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100 dark:border-slate-700/40 mt-5 sticky bottom-0 bg-white dark:bg-[#141b2d] pb-1 z-20">
-                        <button onClick={() => setLeadModalOpen(false)} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
+                        <button onClick={closeLeadModal} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
                         <button onClick={saveLead} disabled={!leadForm.customerName.trim()} className="w-full sm:flex-1 py-2.5 rounded-xl bg-[#06BC7D] hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 order-1 sm:order-2">
                             <Save size={16} /> Save New Lead
                         </button>
@@ -1335,8 +1336,8 @@ const Dashboard = () => {
                 <div className="px-1 py-1">
                     <Field label="Reminder Title"><Input value={eventForm.title} onChange={e => setEventForm(f => ({ ...f, title: e.target.value }))} autoFocus /></Field>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                        <Field label="Date"><Input type="date" value={eventForm.date} onChange={e => setEventForm(f => ({ ...f, date: e.target.value }))} /></Field>
-                        <Field label="Time"><Input type="time" value={eventForm.time} onChange={e => setEventForm(f => ({ ...f, time: e.target.value }))} /></Field>
+                        <Field label="Date"><Input type="date" value={eventForm.date} onChange={e => setEventForm(f => ({ ...f, date: e.target.value }))} onClick={(e) => e.target.showPicker && e.target.showPicker()} className="cursor-pointer" /></Field>
+                        <Field label="Time"><Input type="time" value={eventForm.time} onChange={e => setEventForm(f => ({ ...f, time: e.target.value }))} onClick={(e) => e.target.showPicker && e.target.showPicker()} className="cursor-pointer" /></Field>
                     </div>
                     <Field label="Category"><Select options={EVENT_CATEGORIES} value={eventForm.category} onChange={v => setEventForm(f => ({ ...f, category: v }))} placeholder="" /></Field>
                 </div>

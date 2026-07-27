@@ -8,7 +8,7 @@ import {
 import logoAsset from '../assets/logo (2).png';
 
 // ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend-f9n8.onrender.com/api";
+const API_BASE_URL = "https://crm-backend-l87w.onrender.com/api";
 
 // ─────────────────────────────────────────────
 // PRO-FORMA INVOICE GENERATOR (per service, print/download PDF)
