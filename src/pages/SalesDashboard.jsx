@@ -8,6 +8,19 @@ import {
 } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
 
+// ─── DOMESTIC DESTINATION DETECTION (kept in sync with OperationsDashboard.jsx) ──
+const INDIAN_DESTINATION_KEYWORDS = [
+    'goa', 'kerala', 'kashmir', 'ladakh', 'leh', 'manali', 'shimla', 'darjeeling',
+    'gangtok', 'sikkim', 'meghalaya', 'assam', 'tamil nadu', 'karnataka', 'maharashtra',
+    'rajasthan', 'gujarat', 'uttarakhand', 'puducherry', 'andaman', 'lakshadweep', 'kanyakumari',
+    'india', 'delhi', 'mumbai', 'chennai', 'bangalore', 'hyderabad', 'kolkata'
+];
+const getDefaultTripType = (lead) => {
+    const destination = (lead.confirmedDestination || lead.destination || '').toLowerCase();
+    if (!destination) return '';
+    return INDIAN_DESTINATION_KEYWORDS.some(place => destination.includes(place)) ? 'Domestic' : 'International';
+};
+
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
 const API_BASE_URL = "https://crm-backend-l87w.onrender.com/api";
 
@@ -164,6 +177,10 @@ const SalesDashboard = () => {
 
     const handleCurrentPassengerChange = (e) => {
         const { name, value } = e.target;
+        if (name === 'aadharNumber') {
+            setCurrentPassenger(prev => ({ ...prev, aadharNumber: value.replace(/\D/g, '').slice(0, 12) }));
+            return;
+        }
         setCurrentPassenger(prev => ({ ...prev, [name]: value }));
     };
 
@@ -1062,7 +1079,7 @@ const SalesDashboard = () => {
             packagePreparedFor: lead.packagePreparedFor || '', packageCost: lead.packageCost || '', operationNotes: lead.operationNotes || '', salesReviewStatus: lead.salesReviewStatus || '',
 
             billingName: lead.billingName || '', bookingDate: lead.bookingDate || '', operationExecutive: lead.operationExecutive || '',
-            confirmedTripType: lead.confirmedTripType || lead.tripCategory || lead.tourType || '', confirmedDestination: lead.confirmedDestination || lead.destination || '', confirmedDuration: lead.confirmedDuration || lead.duration || '',
+            confirmedTripType: lead.confirmedTripType || lead.tripCategory || getDefaultTripType(lead), confirmedDestination: lead.confirmedDestination || lead.destination || '', confirmedDuration: lead.confirmedDuration || lead.duration || '',
             noOfPax: lead.noOfPax || lead.travellerCount || '', confirmedNoOfChildren: lead.confirmedNoOfChildren || lead.noOfChildren || '0', transportMode: lead.transportMode || '',
             departureDate: lead.departureDate || '', tourStartDate: lead.tourStartDate || '', returnDate: lead.returnDate || '', travelEndDate: lead.travelEndDate || '', tourEndDate: lead.tourEndDate || lead.travelEndDate || '',
             totalPackageCost: lead.totalPackageCost || lead.amount || lead.budget || '', specialOffers: lead.specialOffers || '', arrivalDate: lead.arrivalDate || '', flightStatus: lead.flightStatus || '',
@@ -1377,7 +1394,53 @@ const SalesDashboard = () => {
         { id: 'Recycle', label: 'RECYCLE LEADS', icon: Trash2 },
     ];
 
-    const filteredData = jobs.filter(item => {
+    // ─── Expand "Customisation Ready" leads into one row PER destination ───────
+    // A lead can carry several customisationRequests (destinations), and Operations
+    // now marks each one ready individually (see OperationsDashboard.jsx). Previously
+    // the whole lead showed as a single bundled row here even with 5 destinations
+    // inside it. Now each destination Operations has actually marked ready gets its
+    // own row, so e.g. Bali/Malaysia/Japan for the same lead show up separately.
+    const customisationReadyRows = jobs.flatMap(item => {
+        const itemStatus = item.status || 'Jobs';
+        const isRecycleBin = (item.followupCount >= 10 || item.followUpCount >= 10 || itemStatus === 'Recycle Bin');
+        if (isRecycleBin) return [];
+        if (itemStatus !== 'Shared to Sales' && itemStatus !== 'Customisation Ready') return [];
+
+        let parsedRequests = [];
+        if (item.customisationRequests) {
+            try {
+                const raw = typeof item.customisationRequests === 'string' ? JSON.parse(item.customisationRequests) : item.customisationRequests;
+                if (Array.isArray(raw)) parsedRequests = raw;
+                else if (raw && typeof raw === 'object') parsedRequests = [raw];
+            } catch { parsedRequests = []; }
+        }
+
+        // Only destinations Operations actually marked ready belong in Sales's queue —
+        // a destination still sitting in Follow-Up on the Ops side isn't ready yet.
+        const readyIndices = parsedRequests.reduce((acc, r, idx) => { if (r.status === 'Customisation Ready') acc.push(idx); return acc; }, []);
+
+        if (readyIndices.length === 0) {
+            // Legacy lead with no per-destination status recorded — fall back to a
+            // single row using the lead's own top-level fields, same as before.
+            return [{ ...item, uniqueKey: `${item.id}-0`, reqIndex: 0 }];
+        }
+
+        return readyIndices.map(idx => {
+            const req = parsedRequests[idx];
+            return {
+                ...item,
+                uniqueKey: `${item.id}-${idx}`,
+                reqIndex: idx,
+                destination: req.destination || item.destination,
+                packagePreparedFor: req.packagePreparedFor || item.packagePreparedFor,
+                packageCost: req.packageCost || item.packageCost,
+                operationNotes: req.operationNotes || item.operationNotes,
+                opsCompletedOn: req.opsCompletedOn || item.opsCompletedOn,
+            };
+        });
+    });
+
+    const filteredData = (activeTab === 'Customisation Ready' ? customisationReadyRows : jobs).filter(item => {
         const displayId = `LMN${item.id || ''}`.toLowerCase();
         const name = (item.customerName || item.profileName || '').toLowerCase();
         const dest = (item.destination || '').toLowerCase();
@@ -1405,7 +1468,7 @@ const SalesDashboard = () => {
             matchTab = validActiveStatuses.includes(itemStatus) && item.assignedTo === loggedInUserName;
         } 
         else if (activeTab === 'Customisation Ready') { 
-            matchTab = itemStatus === 'Shared to Sales' || itemStatus === 'Customisation Ready'; 
+            matchTab = true; // customisationReadyRows is already pre-filtered to the right leads/destinations
         } 
         // Filter strictly relies on the assigned user
         else if (activeTab === 'My Confirmation') { 
@@ -1465,7 +1528,7 @@ const SalesDashboard = () => {
                 {categories.map((cat) => {
                     const Icon = cat.icon;
                     const isActive = activeTab === cat.id;
-                    const count = jobs.filter(d => {
+                    const count = cat.id === 'Customisation Ready' ? customisationReadyRows.length : jobs.filter(d => {
                         const itemStatus = d.status || 'Jobs';
                         const isRecycleBin = (d.followupCount >= 10 || d.followUpCount >= 10 || itemStatus === 'Recycle Bin');
                         if (cat.id === 'Recycle') return isRecycleBin;
@@ -1474,7 +1537,6 @@ const SalesDashboard = () => {
                         const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required', 'Customisation Ready'];
                         
                         if (cat.id === 'My Jobs') return validActiveStatuses.includes(itemStatus) && d.assignedTo === loggedInUserName;
-                        if (cat.id === 'Customisation Ready') return itemStatus === 'Shared to Sales' || itemStatus === 'Customisation Ready';
                         if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && d.assignedTo === loggedInUserName;
                         return itemStatus === cat.id;
                     }).length;
@@ -1501,7 +1563,7 @@ const SalesDashboard = () => {
                     {categories.map((cat) => {
                         const Icon = cat.icon;
                         const isActive = activeTab === cat.id;
-                        const count = jobs.filter(d => {
+                        const count = cat.id === 'Customisation Ready' ? customisationReadyRows.length : jobs.filter(d => {
                             const itemStatus = d.status || 'Jobs';
                             const isRecycleBin = (d.followupCount >= 10 || d.followUpCount >= 10 || itemStatus === 'Recycle Bin');
                             if (cat.id === 'Recycle') return isRecycleBin;
@@ -1510,7 +1572,6 @@ const SalesDashboard = () => {
                             const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required', 'Customisation Ready'];
                             
                             if (cat.id === 'My Jobs') return validActiveStatuses.includes(itemStatus) && d.assignedTo === loggedInUserName;
-                            if (cat.id === 'Customisation Ready') return itemStatus === 'Shared to Sales' || itemStatus === 'Customisation Ready';
                             if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && d.assignedTo === loggedInUserName;
                             return itemStatus === cat.id;
                         }).length;
@@ -1605,7 +1666,7 @@ const SalesDashboard = () => {
                             {isLoading ? (
                                 <tr className="block md:table-row"><td colSpan="12" className="block md:table-cell px-4 py-12 text-center text-slate-500">Loading records...</td></tr>
                             ) : filteredData.length > 0 ? filteredData.map(row => (
-                                <tr key={row.id} className="block md:table-row bg-[#1e293b] md:bg-transparent border border-slate-700 md:border-none rounded-xl mb-4 md:mb-0 p-3 sm:p-4 md:p-0 hover:bg-slate-800/40 transition-colors shadow-sm md:shadow-none group relative">
+                                <tr key={row.uniqueKey || row.id} className="block md:table-row bg-[#1e293b] md:bg-transparent border border-slate-700 md:border-none rounded-xl mb-4 md:mb-0 p-3 sm:p-4 md:p-0 hover:bg-slate-800/40 transition-colors shadow-sm md:shadow-none group relative">
 
                                     {(activeTab === 'Jobs' || activeTab === 'Recycle') && (
                                         <>
@@ -2138,7 +2199,7 @@ const SalesDashboard = () => {
                                         {expandedSections.salesActivity && (
                                             <div className="mt-4 space-y-4">
                                                 <div className="relative">
-                                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 items-start">
+                                                    <div className={`grid grid-cols-1 ${editFormData.leadResponse === 'Requirement Collected' ? 'sm:grid-cols-2' : 'sm:grid-cols-3'} gap-3 sm:gap-4 items-start`}>
                                                         <div>
                                                             <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Lead Response</label>
                                                             {renderDropdown('leadResponse', editFormData.leadResponse, '', ['No Response', 'Requirement Collected'], handleInputChange)}
@@ -2147,10 +2208,12 @@ const SalesDashboard = () => {
                                                             <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Interaction Type</label>
                                                             {renderDropdown('interactionType', editFormData.interactionType, '', ['WhatsApp', 'Call', 'Email'], handleInputChange)}
                                                         </div>
-                                                        <div>
-                                                            <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Action Taken</label>
-                                                            {renderDropdown('actionTaken', editFormData.actionTaken, '', ['Sample Itinerary Shared', 'Follow-up Scheduled', 'Requirement Message Sent', 'Voice Note Sent','Promotional Offer Sent', 'Invalid Lead','Wrong Number','Others'], handleInputChange)}
-                                                        </div>
+                                                        {editFormData.leadResponse !== 'Requirement Collected' && (
+                                                            <div>
+                                                                <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Action Taken</label>
+                                                                {renderDropdown('actionTaken', editFormData.actionTaken, '', ['Sample Itinerary Shared', 'Follow-up Scheduled', 'Requirement Message Sent', 'Voice Note Sent','Promotional Offer Sent', 'Invalid Lead','Wrong Number','Others'], handleInputChange)}
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     
                                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4">
@@ -2499,7 +2562,7 @@ const SalesDashboard = () => {
                                                             </div>
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
-                                                                {renderDropdown('confirmedDuration', editFormData.confirmedDuration, '', ['1 Day (Same Day Return)', '1N / 2D', '2N / 3D', '3N / 4D', '4N / 5D', '5N / 6D', '6N / 7D', '7N / 8D', '8N / 9D', '9N / 10D', '10-15 Days', '15+ Days'], handleInputChange, selectCls, false)}
+                                                                {renderDropdown('confirmedDuration', editFormData.confirmedDuration, '', ['1 Day (Same Day Return)', '1N / 2D', '2N / 3D', '3N / 4D', '4N / 5D', '5N / 6D', '6N / 7D', '7N / 8D', '8N / 9D', '9N / 10D', 'Others'], handleInputChange, selectCls, false)}
                                                             </div>
 
                                                             {/* Row 3 */}
@@ -2518,7 +2581,7 @@ const SalesDashboard = () => {
                                                             {renderDatePicker('tourEndDate', editFormData.tourEndDate, 'Tour End Date', handleInputChange, '', false)}
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Services</label>
-                                                                {renderMultiSelect('confirmedServices', editFormData.confirmedServices, ['Flight Booking', 'Hotel Booking', 'Train Booking', 'Bus Booking', 'VISA Apply', 'Travel Insurance'], false)}
+                                                                {renderMultiSelect('confirmedServices', editFormData.confirmedServices, ['Flight Booking', 'Hotel Booking', 'Train Booking', 'Bus Booking', 'VISA Apply', 'Travel Insurance','Tour Package'], false)}
                                                             </div>
 
                                                             {/* Row 5 */}
@@ -2582,9 +2645,10 @@ const SalesDashboard = () => {
                                                         </label>
                                                         <input type="text" name="fullName" value={currentPassenger.fullName} onChange={handleCurrentPassengerChange} className={inputCls} />
                                                     </div>
+                                                    
                                                     <div>
                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Date of Birth</label>
-                                                        <input type="date" name="dob" value={currentPassenger.dob} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                        <input type="date" name="dob" value={currentPassenger.dob} onChange={handleCurrentPassengerChange} className={`${inputCls} [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer`} />
                                                     </div>
                                                     <div>
                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Gender</label>
@@ -2597,7 +2661,7 @@ const SalesDashboard = () => {
                                                     </div>
                                                     <div>
                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Aadhar Card Number</label>
-                                                        <input type="text" name="aadharNumber" value={currentPassenger.aadharNumber} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                        <input type="text" name="aadharNumber" value={currentPassenger.aadharNumber} onChange={handleCurrentPassengerChange} maxLength={12} inputMode="numeric" className={inputCls} />
                                                     </div>
 
                                                     {editFormData.confirmedTripType === 'International' && (
@@ -2616,11 +2680,11 @@ const SalesDashboard = () => {
                                                             </div>
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Issue Date</label>
-                                                                <input type="date" name="passportIssueDate" value={currentPassenger.passportIssueDate} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                                <input type="date" name="passportIssueDate" value={currentPassenger.passportIssueDate} onChange={handleCurrentPassengerChange} className={`${inputCls} [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer`} />
                                                             </div>
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Passport Expiry Date</label>
-                                                                <input type="date" name="passportExpiryDate" value={currentPassenger.passportExpiryDate} onChange={handleCurrentPassengerChange} className={inputCls} />
+                                                                <input type="date" name="passportExpiryDate" value={currentPassenger.passportExpiryDate} onChange={handleCurrentPassengerChange} className={`${inputCls} [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-100 [&::-webkit-calendar-picker-indicator]:cursor-pointer`} />
                                                             </div>
                                                         </>
                                                     )}

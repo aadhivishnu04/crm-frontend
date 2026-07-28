@@ -29,8 +29,8 @@ export const MENU_ITEMS = [
     
     // Common for ALL users
     { 
-        path: '/dashboard', 
-        label: 'Dashboard', 
+        path: '/home', 
+        label: 'Home', 
         icon: LayoutDashboard, 
         roles: [ROLES.ADMIN, ROLES.SALES, ROLES.OPERATION, ROLES.MARKETING, ROLES.EMPLOYEE] 
     },

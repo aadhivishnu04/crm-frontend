@@ -5,7 +5,7 @@ import {
     ShoppingCart, Target, X, Send, AlertCircle, CheckCircle2,
     Mic, Trash2, Layers, BookmarkCheck, PlaneTakeoff, Info,
     Briefcase, FileText, Activity, ShieldCheck, Share2, Play, Square, Plus,
-    ChevronLeft, ChevronRight, ArrowUp, Copy, ChevronDown, Repeat, DollarSign
+    ChevronLeft, ChevronRight, ArrowUp, Copy, ChevronDown, Repeat, DollarSign, Undo2
 } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
 
@@ -44,12 +44,23 @@ const getDaysToDeparture = (dateString) => {
     return `${diffDays} Days`;
 };
 
+// ─── SHARED DATE DISPLAY FORMATTER (DD-MM-YYYY, numeric) ───────────────────────
+const formatDisplayDate = (dateVal) => {
+    if (!dateVal) return 'N/A';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return String(dateVal); // not a parseable date — show raw value instead of "Invalid Date"
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+};
+
 // ─── DYNAMIC MESSAGE GENERATOR FOR VENDOR ASSISTANCE ──────────────────────────
 const generateVendorMessage = (req, lead) => {
     const contact = req.vendorContactPerson || '[Contact Person - Vendor Assistance]';
     const dest = lead.destination || '[Destination - Vendor Assistance]';
     const pkg = lead.packageType || lead.tourType || '[Package Type - Lead Info]';
-    const tDate = lead.travelDate || lead.travelDates || '[Travel Date - Destination Request]';
+    const tDate = (lead.travelDate || lead.travelDates) ? formatDisplayDate(lead.travelDate || lead.travelDates).replace(/-/g, '/') : '[Travel Date - Destination Request]';
     const dur = lead.duration || '[Duration - Destination Request]';
     const paxA = lead.noOfAdults || '[No. of Adults - Destination Request]';
     const paxC = lead.noOfChildren || '[No. of Children - Destination Request]';
@@ -57,8 +68,8 @@ const generateVendorMessage = (req, lead) => {
     const vType = req.vendorVisaType || '[VISA Type]';
     const srv = req.vendorService;
 
-    const checkIn = req.vendorCheckInDate || '[Check-in Date - Vendor Assistance]';
-    const checkOut = req.vendorCheckOutDate || '[Check-out Date - Vendor Assistance]';
+    const checkIn = req.vendorCheckInDate ? formatDisplayDate(req.vendorCheckInDate) : '[Check-in Date - Vendor Assistance]';
+    const checkOut = req.vendorCheckOutDate ? formatDisplayDate(req.vendorCheckOutDate) : '[Check-out Date - Vendor Assistance]';
     const roomsReq = req.vendorRoomsRequired || '[Rooms Required - Vendor Assistance]';
     const vehType = req.vendorVehicleType || '[Vehicle Type]';
     const pickup = req.vendorPickupLocation || '[Pickup Location]';
@@ -646,7 +657,7 @@ export default function OperationsDashboard() {
     const scrollTabs = (dir) => tabScrollRef.current && tabScrollRef.current.scrollBy({ left: dir * 160, behavior: 'smooth' });
 
     const getTabStatus = (rawStatus) => {
-        if (['New Requests', 'Move To Operation', 'Customization Required', 'Customisation Ready', 'Pending'].includes(rawStatus)) return 'New Requests';
+        if (['New Requests', 'Move To Operation', 'Customization Required', 'Pending'].includes(rawStatus)) return 'New Requests';
         if (['Ops Assigned', 'Follow-Up'].includes(rawStatus)) return 'Follow-Up';
         if (['Upcoming Departure', 'Upcoming Bookings'].includes(rawStatus)) return 'Upcoming Bookings';
         if (['Confirmed Bookings'].includes(rawStatus)) return 'Confirmed Bookings';
@@ -677,7 +688,20 @@ export default function OperationsDashboard() {
                     customisationType: req.customisationType || item.customisationType,
                     requirements: req.requirements || item.requirements,
                     turnaroundTime: req.turnaroundTime || req.requiredByDate || item.turnaroundTime,
-                    assignedOps: req.assignedTo || item.operationExecutive || ''
+                    assignedOps: req.assignedTo || item.operationExecutive || '',
+                    // Per-request Ops tracking fields. Legacy leads only ever had these saved at the
+                    // lead level (one value shared for the whole lead), so we can't know what each
+                    // destination's real individual value was. Rather than showing that one old value
+                    // on EVERY destination (which is misleading), only the first request inherits it —
+                    // every other destination shows blank/"Not Set" until someone fills in its own data.
+                    workType: req.workType || (index === 0 ? item.workType : ''),
+                    opsCustomisationStatus: req.opsCustomisationStatus || (index === 0 ? item.opsCustomisationStatus : ''),
+                    opsExpectedCompletionDate: req.opsExpectedCompletionDate || (index === 0 ? item.opsExpectedCompletionDate : ''),
+                    opsExpectedCompletionTime: req.opsExpectedCompletionTime || (index === 0 ? item.opsExpectedCompletionTime : ''),
+                    opsCompletedOn: req.opsCompletedOn || (index === 0 ? item.opsCompletedOn : ''),
+                    packagePreparedFor: req.packagePreparedFor || (index === 0 ? item.packagePreparedFor : ''),
+                    packageCost: req.packageCost || (index === 0 ? (item.packageCost || item.totalPackageCost) : ''),
+                    operationNotes: req.operationNotes || (index === 0 ? item.operationNotes : '')
                 };
             });
         }
@@ -760,10 +784,63 @@ export default function OperationsDashboard() {
         setSelectedLeadForAssign(null);
     };
 
+    // --- Send a job from "My Jobs" (Follow-Up) back to "Jobs" (New Requests) ---
+    // Unlike Re-assign (which just changes who it's assigned to and keeps it in Follow-Up),
+    // this un-assigns the request and drops its status back to Pending so it reappears
+    // in the New Requests queue for anyone to pick up again.
+    const handleSendBackToJobs = async (row) => {
+        const leadId = row.id;
+        const reqIndex = row.reqIndex;
+        const requestStatus = 'Pending';
+        // Lead-level status uses Sales's own vocabulary ('Move To Operation' = "with Operations,
+        // awaiting pickup") rather than 'Pending', so the lead still shows up correctly badged
+        // in SalesDashboard.jsx (which doesn't recognize 'Pending' at all) instead of vanishing.
+        const leadLevelStatus = 'Move To Operation';
+
+        const originalLead = leads.find(l => l.id === leadId);
+        if (!originalLead) return;
+
+        let parsedRequests = [];
+        try {
+            const raw = typeof originalLead.customisationRequests === 'string'
+                ? JSON.parse(originalLead.customisationRequests)
+                : (originalLead.customisationRequests || []);
+            parsedRequests = Array.isArray(raw) ? raw : (raw && typeof raw === 'object' ? [raw] : []);
+        } catch(e) { parsedRequests = []; }
+
+        if (parsedRequests.length > 0 && parsedRequests[reqIndex]) {
+            parsedRequests[reqIndex].status = requestStatus;
+            parsedRequests[reqIndex].assignedTo = '';
+        }
+
+        // If other requests on this same lead are still actively assigned, don't drag the
+        // whole lead's top-level status backwards — only this specific request goes back.
+        const anyStillFollowUp = parsedRequests.some(r => r.status === 'Follow-Up' || r.status === 'Customisation Ready');
+
+        const updatedData = {
+            customisationRequests: JSON.stringify(parsedRequests),
+            status: anyStillFollowUp ? originalLead.status : leadLevelStatus
+        };
+
+        setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...updatedData } : l));
+
+        try {
+            await fetch(`${API_BASE_URL}/leads/${leadId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedData),
+            });
+            triggerNotification('success', 'Job sent back to New Requests.');
+            fetchLeads();
+        } catch (err) {
+            triggerNotification('success', 'Job sent back to New Requests (Simulation mode).');
+        }
+    };
+
     const handleOpenCompleteModal = (row) => {
         setLeadToComplete(row);
         setCompleteForm({
-            packagePreparedFor: row.customerName || row.profileName || '',
+            packagePreparedFor: row.packagePreparedFor || row.customerName || row.profileName || '',
             packageCost: row.packageCost || row.totalPackageCost || row.budget || '',
             operationNotes: ''
         });
@@ -791,12 +868,35 @@ export default function OperationsDashboard() {
         } catch(e) { parsedRequests = []; }
 
         if (parsedRequests.length > 0 && parsedRequests[reqIndex]) {
-            parsedRequests[reqIndex].status = targetStatus;
+            // Package details go on THIS destination's request, not the whole lead — a lead with
+            // 5 destinations sent to Sales one at a time each keeps its own cost/notes instead of
+            // the last one submitted overwriting all the others.
+            parsedRequests[reqIndex] = {
+                ...parsedRequests[reqIndex],
+                status: targetStatus,
+                opsCompletedOn: new Date().toISOString(),
+                opsPreparedBy: loggedInUserName,
+                packagePreparedFor: responseData.packagePreparedFor || '',
+                packageCost: responseData.packageCost || '',
+                operationNotes: responseData.operationNotes || ''
+            };
         }
+
+        // Only bump the lead's overall status to "Customisation Ready" (which is what pulls it
+        // into Sales's queue) once EVERY destination on this lead has been sent — a single
+        // destination being done shouldn't yank the whole lead over while others are still
+        // in Follow-Up.
+        // A lead with no per-destination requests array has nothing else to wait on,
+        // so sending it to Sales should complete immediately. Only leads that actually
+        // have multiple destinations need to wait for every one to reach targetStatus.
+        const allSentToSales = parsedRequests.length === 0 || parsedRequests.every(r => r.status === targetStatus);
 
         const updatedData = {
             customisationRequests: JSON.stringify(parsedRequests),
-            status: targetStatus,
+            status: allSentToSales ? targetStatus : originalLead.status,
+            // SalesDashboard.jsx has no per-destination view — it only ever reads these fields
+            // at the lead level (read-only summary). So keep mirroring the latest submission up
+            // top too, or Sales would just see blank package details.
             opsCompletedOn: new Date().toISOString(),
             opsPreparedBy: loggedInUserName,
             packagePreparedFor: responseData.packagePreparedFor || '',
@@ -813,7 +913,7 @@ export default function OperationsDashboard() {
                 body: JSON.stringify(updatedData),
             });
             if (!res.ok) throw new Error('Update failed');
-            triggerNotification('success', `Pushed back to Sales successfully.`);
+            triggerNotification('success', allSentToSales ? 'All destinations ready — lead pushed to Sales.' : `Destination sent to Sales — waiting on ${parsedRequests.filter(r => r.status !== targetStatus).length} more.`);
             fetchLeads();
         } catch (err) {
             triggerNotification('success', `Pushed back to Sales (Simulation mode).`);
@@ -1012,7 +1112,7 @@ export default function OperationsDashboard() {
             return;
         }
 
-        const timestamp = new Date().toLocaleString('en-IN', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+        const timestamp = new Date().toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
         
         let currentRecords = [];
         try { 
@@ -1099,6 +1199,9 @@ export default function OperationsDashboard() {
         const domLocalTransports = safeParseArray(lead.domLocalTransports, { serviceProvider: '', vehicleType: '', contactPerson: '', driverName: '', vehicleNumber: '', status: '', pickupPoint: '', pickupDate: '', duration: '', dropPoint: '', dropDate: '', tollParking: '', cost: '', markup: '', paymentDueDate: '', notes: '' });
         const paymentRequests = safeParseArray(lead.paymentRequests, { serviceType: 'Complete Package', providerName: '', paymentDueDate: '', paymentType: '', amountToPay: '' });
 
+        const editReqIndex = typeof lead.reqIndex === 'number' ? lead.reqIndex : 0;
+        const currentReq = parsedCustomisationRequests[editReqIndex] || {};
+
         let calculatedPriority = lead.priority || 'Low';
         const today = new Date(); today.setHours(0,0,0,0);
         
@@ -1129,7 +1232,11 @@ export default function OperationsDashboard() {
             customisationType: lead.customisationType || '', customerName: lead.customerName || lead.profileName || '', mobileNumber: lead.phone || lead.mobileNumber || '', salesExecutive: lead.salesExecutive || '',
             destinationRequest: lead.destinationRequest || '', tourType: getOperationTourType(lead), duration: lead.duration || '', noOfAdults: lead.noOfAdults || '', noOfChildren: lead.noOfChildren || '', hotelCategory: lead.hotelCategory || '',
             travelDate: lead.travelDate || lead.travelDates || '', travelMonth: lead.travelMonth || '', budget: lead.budget || lead.amount || '', readymadePackageDetails: lead.readymadePackageDetails || '',
-            turnaroundTime: lead.turnaroundTime || '', salesRemarks: lead.salesRemarks || '', voiceNote: lead.voiceNote || '', destination: lead.destination || '', workType: lead.workType || '',
+            turnaroundTime: lead.turnaroundTime || '', salesRemarks: lead.salesRemarks || '', voiceNote: lead.voiceNote || '', destination: lead.destination || '', workType: currentReq.workType || lead.workType || '',
+            reqIndex: editReqIndex,
+            opsCustomisationStatus: currentReq.opsCustomisationStatus || lead.opsCustomisationStatus || '',
+            opsExpectedCompletionDate: currentReq.opsExpectedCompletionDate || lead.opsExpectedCompletionDate || '',
+            opsExpectedCompletionTime: currentReq.opsExpectedCompletionTime || lead.opsExpectedCompletionTime || '',
             rateSource: lead.rateSource || '', priority: calculatedPriority, status: lead.status || '', activityType: lead.activityType || '', activityOutcome: lead.activityOutcome || '', notes: lead.notes || '',
             nextActionRequired: lead.nextActionRequired || '', nextActionDate: lead.nextActionDate || '', 
             
@@ -1142,7 +1249,7 @@ export default function OperationsDashboard() {
             domTransportType: lead.domTransportType || lead.transportMode || '', specialOffers: lead.specialOffers || lead.offers || '', arrivalDate: lead.arrivalDate || '', departureDate: lead.departureDate || '', returnDate: lead.returnDate || '',
             insRequired: lead.insRequired || '', insProvider: lead.insProvider || '', insPolicyNo: lead.insPolicyNo || '', insCost: lead.insCost || '', insMarkup: lead.insMarkup || '', insStatus: lead.insStatus || '', insPolicyShared: lead.insPolicyShared || '',
             reqVeg: lead.reqVeg || false, reqWheelchair: lead.reqWheelchair || false, reqSenior: lead.reqSenior || false, reqHoneymoon: lead.reqHoneymoon || false, reqCandlelight: lead.reqCandlelight || false,
-            reqFloating: lead.reqFloating || false, reqDecor: lead.reqDecor || false, reqBirthday: lead.reqBirthday || false, reqAnniversary: lead.reqAnniversary || false, reqManualAdd: lead.reqManualAdd || false,
+            reqFloating: lead.reqFloating || false, reqDecor: lead.reqDecor || false, reqBirthday: lead.reqBirthday || false, reqAnniversary: lead.reqAnniversary || false, reqManualAdd: lead.reqManualAdd || false, reqManualAddText: lead.reqManualAddText || '',
             
             // State for voice notes
             updateRecords: lead.updateRecords || []
@@ -1151,13 +1258,23 @@ export default function OperationsDashboard() {
 
     const handleEditSubmit = (e) => {
         e.preventDefault();
-        const timestamp = new Date().toLocaleString('en-IN', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+        const timestamp = new Date().toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+
+        // --- Route to Sales when Ops marks the itinerary as shared with Sales ---
+        // NOTE: this only flags the lead for Sales (sharedWithSales / sharedWithSalesDate) —
+        // it does NOT touch req.status / lead.status, so the lead is not pulled out of
+        // Operations' own "My Jobs" (Follow-Up) tab. It shows up in both places.
+        const isSharedWithSales = selectedLeadForEdit.opsCustomisationStatus === 'Itinerary Shared with Sales';
         
         let currentHistory = [];
         try { 
             currentHistory = typeof selectedLeadForEdit.history === 'string' ? JSON.parse(selectedLeadForEdit.history) : (Array.isArray(selectedLeadForEdit.history) ? selectedLeadForEdit.history : []); 
         } catch(err){}
-        const updatedHistory = [{ date: timestamp, action: 'Operations Profile Updated', note: 'Data synchronized and saved from Operations Dashboard.' }, ...currentHistory];
+        const updatedHistory = [
+            { date: timestamp, action: 'Operations Profile Updated', note: 'Data synchronized and saved from Operations Dashboard.' },
+            ...(isSharedWithSales ? [{ date: timestamp, action: 'Itinerary Shared with Sales', note: `Operations (${loggedInUserName}) marked the itinerary ready and shared it with Sales.` }] : []),
+            ...currentHistory
+        ];
 
         // --- Save the sales update note (Catch trailing input if Submit is clicked before "Add Note") ---
         let updateRecords = [];
@@ -1205,6 +1322,21 @@ export default function OperationsDashboard() {
         }
         // ─────────────────────────────────────────────────────────────
 
+        // --- Write per-destination Ops fields (workType, status, expected completion) onto
+        // the SPECIFIC customisation request being edited, not the whole lead — a lead can
+        // have multiple destinations/requests and each needs its own tracking data. ---
+        const editReqIdx = typeof selectedLeadForEdit.reqIndex === 'number' ? selectedLeadForEdit.reqIndex : 0;
+        const updatedCustomisationRequests = (selectedLeadForEdit.customisationRequests || []).map((req, idx) =>
+            idx === editReqIdx ? {
+                ...req,
+                workType: selectedLeadForEdit.workType,
+                opsCustomisationStatus: selectedLeadForEdit.opsCustomisationStatus,
+                opsExpectedCompletionDate: selectedLeadForEdit.opsExpectedCompletionDate,
+                opsExpectedCompletionTime: selectedLeadForEdit.opsExpectedCompletionTime,
+                ...(isSharedWithSales ? { opsCompletedOn: new Date().toISOString() } : {})
+            } : req
+        );
+
         const payloadToSave = { 
             ...selectedLeadForEdit, 
             vendorRequests: JSON.stringify(selectedLeadForEdit.vendorRequests),
@@ -1215,13 +1347,19 @@ export default function OperationsDashboard() {
             domHotels: JSON.stringify(selectedLeadForEdit.domHotels),
             domLocalTransports: JSON.stringify(selectedLeadForEdit.domLocalTransports),
             paymentRequests: JSON.stringify(selectedLeadForEdit.paymentRequests),
-            customisationRequests: JSON.stringify(selectedLeadForEdit.customisationRequests),
+            customisationRequests: JSON.stringify(updatedCustomisationRequests),
             history: JSON.stringify(updatedHistory),
             updateRecords: JSON.stringify(updateRecords),
-            opsUpdateToSalesMessage: '' 
+            opsUpdateToSalesMessage: '',
+            ...(isSharedWithSales ? {
+                sharedWithSales: true,
+                sharedWithSalesDate: new Date().toISOString(),
+                sharedWithSalesBy: loggedInUserName
+            } : {})
         };
         
         updateLead(selectedLeadForEdit.id, payloadToSave);
+        triggerNotification('success', isSharedWithSales ? 'Itinerary shared — lead directed to Sales for review.' : 'Job details saved successfully!');
         setSelectedLeadForEdit(null); 
     };
 
@@ -1478,7 +1616,7 @@ export default function OperationsDashboard() {
                                                         </td>
                                                         <td className="px-6 py-4 text-sm">{row.customisationType || 'N/A'}</td>
                                                         <td className="px-6 py-4 text-sm">{row.salesExecutive || 'N/A'}</td>
-                                                        <td className="px-6 py-4 text-sm text-slate-400">{row.createdAt ? new Date(row.createdAt).toLocaleString('en-IN') : 'N/A'}</td>
+                                                        <td className="px-6 py-4 text-sm text-slate-400">{row.createdAt ? new Date(row.createdAt).toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A'}</td>
                                                         <td className="px-6 py-4 text-right whitespace-nowrap">
                                                             <div className="flex items-center justify-end gap-2">
                                                                 <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 hover:bg-blue-900/30 rounded-md transition-colors flex flex-col items-center" title="View"><Eye size={16} /><span className="text-[10px]">View</span></button>
@@ -1515,6 +1653,7 @@ export default function OperationsDashboard() {
                                                                 <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 hover:bg-blue-900/30 rounded-md transition-colors flex flex-col items-center" title="View"><Eye size={16} /><span className="text-[10px]">View</span></button>
                                                                 <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-yellow-900/20 rounded-md transition-colors flex flex-col items-center" title="Edit"><Pencil size={16} /><span className="text-[10px]">Edit</span></button>
                                                                 <button type="button" onClick={() => handleOpenAssignModal(row)} className="p-1.5 text-slate-400 hover:text-purple-400 hover:bg-purple-900/20 rounded-md transition-colors flex flex-col items-center" title="Re-assign"><Repeat size={16} /><span className="text-[10px]">Re-assign</span></button>
+                                                                <button type="button" onClick={() => handleSendBackToJobs(row)} className="p-1.5 text-slate-400 hover:text-orange-400 hover:bg-orange-900/20 rounded-md transition-colors flex flex-col items-center" title="Send back to New Requests (Jobs)"><Undo2 size={16} /><span className="text-[10px]">Back to Jobs</span></button>
                                                                 <button type="button" onClick={() => handleOpenCompleteModal(row)} className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-900/20 rounded-md transition-colors flex flex-col items-center" title="Complete & Send to Sales"><Send size={16} /><span className="text-[10px]">To Sales</span></button>
                                                             </div>
                                                         </td>
@@ -1635,6 +1774,7 @@ export default function OperationsDashboard() {
                                                         <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 bg-slate-800 rounded-md border border-slate-700" title="View"><Eye size={15} /></button>
                                                         <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 bg-slate-800 rounded-md border border-slate-700" title="Edit"><Pencil size={15} /></button>
                                                         <button type="button" onClick={() => handleOpenAssignModal(row)} className="p-1.5 text-slate-400 hover:text-purple-400 bg-slate-800 rounded-md border border-slate-700" title="Re-assign"><Repeat size={15} /></button>
+                                                        <button type="button" onClick={() => handleSendBackToJobs(row)} className="p-1.5 text-slate-400 hover:text-orange-400 bg-slate-800 rounded-md border border-slate-700" title="Send back to New Requests (Jobs)"><Undo2 size={15} /></button>
                                                         <button type="button" onClick={() => handleOpenCompleteModal(row)} className="p-1.5 text-slate-400 hover:text-emerald-400 bg-slate-800 rounded-md border border-slate-700" title="Complete & Send to Sales"><Send size={15} /></button>
                                                     </>
                                                 ) : (
@@ -1682,11 +1822,11 @@ export default function OperationsDashboard() {
                             <FileText size={20} className="text-cyan-400 flex-shrink-0" />
                             <span className="truncate hidden sm:inline">
                                 {activeTab === 'Confirmed Bookings'
-                                    ? `Confirmed Booking — ${selectedLeadForEdit.tourType === 'International Tour' ? 'Intl' : 'Dom'}`
-                                    : 'CRM Handover Sheet'}
+                                    ? 'Booking Details'
+                                    : 'Operations'}
                             </span>
                             <span className="text-sm font-mono font-semibold text-slate-400 bg-slate-800 px-2 py-0.5 rounded border border-slate-700 flex-shrink-0">
-                                LMN{String(selectedLeadForEdit.id || '').padStart(4, '0')}
+                                LMN{String(selectedLeadForEdit.id || '').padStart(4, '0')} | {selectedLeadForEdit.customerName || selectedLeadForEdit.profileName || 'N/A'}
                             </span>
                         </h2>
                         
@@ -1785,43 +1925,40 @@ export default function OperationsDashboard() {
                                             <div className={sectionCls}>
                                                 <h3 className={`${sectionHeadCls} mb-4`}>Document Collection</h3>
                                                 
-                                                {/* Adjusted to Match Image 2 Exact Flow */}
+                                                {/* Sequence: Aadhar | Passport, Pan | Photograph, View Document | Remarks */}
                                                 <div className="grid grid-cols-1 gap-4 max-w-3xl">
-                                                    
-                                                    {/* Row 1: Aadhar + Remarks */}
-                                                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 border-b border-slate-700/30 pb-3">
-                                                        <div className="flex items-center gap-3 w-48 shrink-0">
+
+                                                    {/* Row 1: Aadhar + Passport */}
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-b border-slate-700/30 pb-3">
+                                                        <div className="flex items-center gap-3">
                                                             <input type="checkbox" checked={selectedLeadForEdit.docAadhar === 'Received'} readOnly className="w-5 h-5 accent-emerald-500 cursor-not-allowed" />
                                                             <label className="text-sm font-medium text-slate-300">Aadhar Copy Received</label>
                                                         </div>
-                                                        <div className="flex-1">
-                                                            <label className="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Remarks</label>
-                                                            <input type="text" readOnly value={selectedLeadForEdit.docRemarks || ''} className={readonlyCls} />
+                                                        <div className="flex items-center gap-3">
+                                                            <input type="checkbox" checked={selectedLeadForEdit.docPassport === 'Received'} readOnly className="w-5 h-5 accent-emerald-500 cursor-not-allowed" />
+                                                            <label className="text-sm font-medium text-slate-300">Passport Copy Received</label>
                                                         </div>
                                                     </div>
 
-                                                    {/* Row 2: PAN + Documents/Drive Link */}
-                                                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 border-b border-slate-700/30 pb-3">
-                                                        <div className="flex items-center gap-3 w-48 shrink-0">
-                                                            <input type="checkbox" checked={selectedLeadForEdit.docPan === 'Received'} readOnly className="w-5 h-5 accent-emerald-500 cursor-not-allowed" />
-                                                            <label className="text-sm font-medium text-slate-300">Pan Copy Received</label>
+                                                    {/* Row 2: PAN + Photograph */}
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-b border-slate-700/30 pb-3">
+                                                        
+                                                        <div className="flex items-center gap-3">
+                                                            <input type="checkbox" checked={selectedLeadForEdit.docPhoto === 'Received'} readOnly className="w-5 h-5 accent-emerald-500 cursor-not-allowed" />
+                                                            <label className="text-sm font-medium text-slate-300">Photographs</label>
                                                         </div>
-                                                        <div className="flex-1">
+                                                    </div>
+
+                                                    {/* Row 3: View Document + Remarks */}
+                                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                        <div>
                                                             <label className="block text-[10px] uppercase font-semibold text-slate-500 mb-1">View Documents</label>
                                                             <input type="text" readOnly value={selectedLeadForEdit.docDriveLink || ''} className={readonlyCls} />
                                                         </div>
-                                                    </div>
-
-                                                    {/* Row 3: Passport */}
-                                                    <div className="flex items-center gap-3 border-b border-slate-700/30 pb-3">
-                                                        <input type="checkbox" checked={selectedLeadForEdit.docPassport === 'Received'} readOnly className="w-5 h-5 accent-emerald-500 cursor-not-allowed" />
-                                                        <label className="text-sm font-medium text-slate-300">Passport Copy Received</label>
-                                                    </div>
-
-                                                    {/* Row 4: Photographs */}
-                                                    <div className="flex items-center gap-3">
-                                                        <input type="checkbox" checked={selectedLeadForEdit.docPhoto === 'Received'} readOnly className="w-5 h-5 accent-emerald-500 cursor-not-allowed" />
-                                                        <label className="text-sm font-medium text-slate-300">Photographs</label>
+                                                        <div>
+                                                            <label className="block text-[10px] uppercase font-semibold text-slate-500 mb-1">Remarks</label>
+                                                            <input type="text" readOnly value={selectedLeadForEdit.docRemarks || ''} className={readonlyCls} />
+                                                        </div>
                                                     </div>
 
                                                 </div>
@@ -1839,25 +1976,25 @@ export default function OperationsDashboard() {
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booking Handled By</label>
-                                                                    <CustomSelect value={flight.flightResponsibility} onChange={(v) => handleArrayChange('flights', index, 'flightResponsibility', v)} className={selectCls} options={['In-House', 'Client', 'Vendor', 'Team/Myself']} />
+                                                                    <CustomSelect value={flight.flightResponsibility} onChange={(v) => handleArrayChange('flights', index, 'flightResponsibility', v)} className={selectCls} options={['In-House', 'Client', 'Vendor/Team']} hideDefaultManual />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booking Status</label>
-                                                                    <CustomSelect value={flight.bookingStatus} onChange={(v) => handleArrayChange('flights', index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Confirmed','Ticket Issued', 'Cancelled','Rescheduled']} />
+                                                                    <CustomSelect value={flight.bookingStatus} onChange={(v) => handleArrayChange('flights', index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Confirmed','Ticket Issued', 'Cancelled','Rescheduled']} hideDefaultManual />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Booking Date</label><DatePickerField type="date" value={flight.bookingDate} onChange={(e) => handleArrayChange('flights', index, 'bookingDate', e.target.value)} className={inputCls} /></div>
 
                                                                 {/* Conditional Rendering based on "red instructions" */}
-                                                                {['Vendor', 'Team/Myself'].includes(flight.flightResponsibility) && (
+                                                                {['Vendor/Team'].includes(flight.flightResponsibility) && (
                                                                     <>
                                                                         <div className="sm:col-span-3 border-t border-slate-700/30 my-1 pt-3"></div>
                                                                         <div>
                                                                             <label className="block text-xs font-medium text-slate-400 mb-1">Flight Type</label>
-                                                                            <CustomSelect value={flight.flightType} onChange={(v) => handleArrayChange('flights', index, 'flightType', v)} className={selectCls} options={['One Way', 'Round Trip', 'Multi City']} />
+                                                                            <CustomSelect value={flight.flightType} onChange={(v) => handleArrayChange('flights', index, 'flightType', v)} className={selectCls} options={['One Way', 'Round Trip', 'Multi City']} hideDefaultManual />
                                                                         </div>
                                                                         <div>
                                                                             <label className="block text-xs font-medium text-slate-400 mb-1">Booking Through</label>
-                                                                            <CustomSelect value={flight.bookedThrough} onChange={(v) => handleArrayChange('flights', index, 'bookedThrough', v)} className={selectCls} options={['Airline Website', 'Vendor Website','Other']} />
+                                                                            <CustomSelect value={flight.bookedThrough} onChange={(v) => handleArrayChange('flights', index, 'bookedThrough', v)} className={selectCls} options={['Airline Website', 'Vendor Website','Other']} hideDefaultManual />
                                                                         </div>
                                                                         <div><label className="block text-xs font-medium text-slate-400 mb-1">PNR Number</label><input type="text" value={flight.pnr} onChange={(e) => handleArrayChange('flights', index, 'pnr', e.target.value)} className={inputCls} /></div>
                                                                         
@@ -1883,16 +2020,7 @@ export default function OperationsDashboard() {
                                                                     </>
                                                                 )}
                                                             </div>
-                                                            {['Vendor', 'Team/Myself'].includes(flight.flightResponsibility) && (
-                                                                <div className="flex gap-4 mt-4">
-                                                                    {flight.flightType === 'Round Trip' && (
-                                                                        <button type="button" className="text-cyan-400 font-bold text-xs flex items-center gap-1 hover:text-cyan-300"><Plus size={14} /> Add Return Details</button>
-                                                                    )}
-                                                                    {flight.flightType === 'Multi City' && (
-                                                                        <button type="button" className="text-cyan-400 font-bold text-xs flex items-center gap-1 hover:text-cyan-300"><Plus size={14} /> Add Flight Route</button>
-                                                                    )}
-                                                                </div>
-                                                            )}
+                                                            
                                                         </div>
                                                     ))}
                                                     <button type="button" onClick={() => addArrayItem('flights', { flightResponsibility: '', bookingStatus: '', bookingDate: '', flightType: '', bookedThrough: '', pnr: '', boardingPoint: '', deboardingPoint: '', departureDateTime: '', arrivalDateTime: '', attachedFiles: [], flightCost: '', ticketShared: 'No' })} className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded-md cursor-pointer"><Plus size={14} /> Add Flight</button>
@@ -1909,7 +2037,7 @@ export default function OperationsDashboard() {
                                                             {index > 0 && <button type="button" onClick={() => removeArrayItem('visas', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
                                                             
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Destination</label><input type="text" value={visa.destination} onChange={(e) => handleArrayChange('visas', index, 'destination', e.target.value)} className={inputCls} /></div>
+                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Destination</label><input type="text" value={visa.destination || selectedLeadForEdit.confirmedDestination || selectedLeadForEdit.destination || ''} onChange={(e) => handleArrayChange('visas', index, 'destination', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">VISA Type</label>
                                                                     <CustomSelect value={visa.visaType} onChange={v => handleArrayChange('visas', index, 'visaType', v)} className={selectCls} options={['VISA-Free', 'VISA-On-Arrival', 'Traditional', 'e-VISA']} />
@@ -1919,17 +2047,25 @@ export default function OperationsDashboard() {
                                                                     <CustomSelect value={visa.appliedBy} onChange={v => handleArrayChange('visas', index, 'appliedBy', v)} className={selectCls} options={['In-House', 'Client', 'VISA Partner']} />
                                                                 </div>
 
-                                                                <div>
-                                                                    <label className="block text-xs font-medium text-slate-400 mb-1">Application Status</label>
-                                                                    <CustomSelect value={visa.applicationStatus} onChange={v => handleArrayChange('visas', index, 'applicationStatus', v)} className={selectCls} options={['Not Started', 'Documents Pending', 'Applied', 'Under Process','Approved','Rejected','Cancelled']} />
-                                                                </div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">Application Date</label><DatePickerField type="date" value={visa.applicationDate} onChange={(e) => handleArrayChange('visas', index, 'applicationDate', e.target.value)} className={inputCls} /></div>
+                                                                {visa.visaType !== 'VISA-Free' && (
+                                                                    <div>
+                                                                        <label className="block text-xs font-medium text-slate-400 mb-1">Application Status</label>
+                                                                        <CustomSelect value={visa.applicationStatus} onChange={v => handleArrayChange('visas', index, 'applicationStatus', v)} className={selectCls} options={['Not Started', 'Documents Pending', 'Applied', 'Under Process','Approved','Rejected','Cancelled']} />
+                                                                    </div>
+                                                                )}
+                                                                {visa.visaType !== 'VISA-Free' && (
+                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">Application Date</label><DatePickerField type="date" value={visa.applicationDate} onChange={(e) => handleArrayChange('visas', index, 'applicationDate', e.target.value)} className={inputCls} /></div>
+                                                                )}
                                                                 {visa.visaType === 'Traditional' && (
                                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Appointment Date</label><DatePickerField type="date" value={visa.appointmentDate} onChange={(e) => handleArrayChange('visas', index, 'appointmentDate', e.target.value)} className={inputCls} /></div>
                                                                 )}
 
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Issue Date</label><DatePickerField type="date" value={visa.visaApprovalDate} onChange={(e) => handleArrayChange('visas', index, 'visaApprovalDate', e.target.value)} className={inputCls} /></div>
-                                                                <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Expiry Date</label><DatePickerField type="date" value={visa.visaExpiryDate} onChange={(e) => handleArrayChange('visas', index, 'visaExpiryDate', e.target.value)} className={inputCls} /></div>
+                                                                {visa.visaType !== 'VISA-Free' && (
+                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Issue Date</label><DatePickerField type="date" value={visa.visaApprovalDate} onChange={(e) => handleArrayChange('visas', index, 'visaApprovalDate', e.target.value)} className={inputCls} /></div>
+                                                                )}
+                                                                {visa.visaType !== 'VISA-Free' && (
+                                                                    <div><label className="block text-xs font-medium text-slate-400 mb-1">VISA Expiry Date</label><DatePickerField type="date" value={visa.visaExpiryDate} onChange={(e) => handleArrayChange('visas', index, 'visaExpiryDate', e.target.value)} className={inputCls} /></div>
+                                                                )}
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Remarks</label>
                                                                     <input type="text" value={visa.remarks || ''} onChange={(e) => handleArrayChange('visas', index, 'remarks', e.target.value)} className={inputCls} />
@@ -2032,6 +2168,7 @@ export default function OperationsDashboard() {
                                                 <div className="space-y-6">
                                                     {toArr(selectedLeadForEdit.vendorRequests).map((dmc, index) => (
                                                         <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative">
+                                                            <div className="absolute top-2 left-4 text-xs font-bold text-cyan-400">DMC-{index + 1}</div>
                                                             <div className="absolute top-2 right-2 flex items-center gap-2">
                                                                 <button type="button" onClick={() => setCustomerPaymentPopupLead(selectedLeadForEdit)}
                                                                     className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded cursor-pointer"
@@ -2040,7 +2177,7 @@ export default function OperationsDashboard() {
                                                                 </button>
                                                                 {index > 0 && <button type="button" onClick={() => removeArrayItem('vendorRequests', index)} className="text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
                                                             </div>
-                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">DMC Name</label><CustomSelect value={dmc.vendorDmcName} onChange={v => handleArrayChange('vendorRequests', index, 'vendorDmcName', v)} className={selectCls} options={finalDmcOptions} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Contact Person</label><CustomSelect value={dmc.vendorContactPerson} onChange={v => handleArrayChange('vendorRequests', index, 'vendorContactPerson', v)} className={selectCls} options={getContactsForDMC(dmc.vendorDmcName)} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Mobile Number</label><input type="text" value={dmc.vendorContactMobile || ''} onChange={e => handleArrayChange('vendorRequests', index, 'vendorContactMobile', e.target.value)} className={inputCls} /></div>
@@ -2056,21 +2193,31 @@ export default function OperationsDashboard() {
                                                                 <div className="sm:col-span-3 mt-2 border-t border-slate-700/30 pt-3">
                                                                     <label className="block text-xs font-medium text-slate-300 mb-2">Services Included</label>
                                                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                                                        {['Hotel', 'Airport Transfer', 'Local Transfer', 'Sightseeing', 'Activities', 'Refreshment Room', 'All', 'Others'].map(service => {
+                                                                        {['Tour Package', 'Hotel', 'Airport Transfer', 'Local Transfer', 'Sightseeing', 'Activities', 'Refreshment Room', 'All', 'Others'].map(service => {
                                                                             const servicesArr = dmc.servicesConfirmed ? dmc.servicesConfirmed.split(', ') : [];
                                                                             const isChecked = servicesArr.includes(service);
+                                                                            const allServiceNames = ['Tour Package', 'Hotel', 'Airport Transfer', 'Local Transfer', 'Sightseeing', 'Activities', 'Refreshment Room' ];
                                                                             return (
                                                                                 <label key={service} className="flex items-center gap-2 text-xs font-medium text-slate-300 cursor-pointer">
                                                                                     <input type="checkbox" checked={isChecked} onChange={(e) => {
                                                                                         let newArr = [...servicesArr];
-                                                                                        if (e.target.checked) newArr.push(service);
-                                                                                        else newArr = newArr.filter(s => s !== service);
-                                                                                        handleArrayChange('vendorRequests', index, 'servicesConfirmed', newArr.join(', '));
+                                                                                        if (service === 'All') {
+                                                                                            newArr = e.target.checked ? ['All', ...allServiceNames] : [];
+                                                                                        } else {
+                                                                                            if (e.target.checked) newArr.push(service);
+                                                                                            else newArr = newArr.filter(s => s !== service);
+                                                                                            if (!e.target.checked) newArr = newArr.filter(s => s !== 'All');
+                                                                                            else if (allServiceNames.every(s => newArr.includes(s))) newArr.push('All');
+                                                                                        }
+                                                                                        handleArrayChange('vendorRequests', index, 'servicesConfirmed', [...new Set(newArr)].join(', '));
                                                                                     }} className="w-4 h-4 accent-cyan-500" /> {service}
                                                                                 </label>
                                                                             );
                                                                         })}
                                                                     </div>
+                                                                    {(dmc.servicesConfirmed || '').split(', ').includes('Others') && (
+                                                                        <input type="text" value={dmc.servicesOthersText || ''} onChange={e => handleArrayChange('vendorRequests', index, 'servicesOthersText', e.target.value)} className={`${inputCls} mt-2`} placeholder="Specify other service" />
+                                                                    )}
                                                                 </div>
 
                                                                 <div className="sm:col-span-3 mt-2 border-t border-slate-700/30 pt-3">
@@ -2108,6 +2255,9 @@ export default function OperationsDashboard() {
                                                         </label>
                                                     ))}
                                                 </div>
+                                                {selectedLeadForEdit.reqManualAdd && (
+                                                    <input type="text" value={selectedLeadForEdit.reqManualAddText || ''} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, reqManualAddText: e.target.value })} className={`${inputCls} mt-3`} placeholder="Specify other requirement" />
+                                                )}
                                             </div>
 
                                             {/* 9. VENDOR PAYMENT REQUEST */}
@@ -2571,9 +2721,10 @@ export default function OperationsDashboard() {
                                                 <div className="space-y-6">
                                                     {toArr(selectedLeadForEdit.vendorRequests).map((dmc, index) => (
                                                         <div key={index} className="p-4 bg-slate-950/50 rounded-lg border border-slate-700/50 relative">
+                                                            <div className="absolute top-2 left-4 text-xs font-bold text-cyan-400">Vendor-{index + 1}</div>
                                                             {index > 0 && <button type="button" onClick={() => removeArrayItem('vendorRequests', index)} className="absolute top-2 right-2 text-slate-500 hover:text-red-400 bg-transparent border-none cursor-pointer"><Trash2 size={16} /></button>}
                                                             
-                                                            <div className="mb-4">
+                                                            <div className="mb-4 mt-6">
                                                                 <label className="block text-xs font-medium text-slate-400 mb-1">Service Type</label>
                                                                 <CustomSelect value={dmc.vendorService || ''} onChange={v => handleArrayChange('vendorRequests', index, 'vendorService', v)} className={`${selectCls} w-full sm:w-1/3`} options={['Complete Package', 'Hotel Only', 'Vehicle Only']} />
                                                             </div>
@@ -2591,21 +2742,31 @@ export default function OperationsDashboard() {
                                                                         <div className="sm:col-span-3 mt-2 border-t border-slate-700/30 pt-3">
                                                                             <label className="block text-xs font-medium text-slate-300 mb-2">Services Included</label>
                                                                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                                                                {['Hotel', 'Airport Transfer', 'Local Transfer', 'Sightseeing', 'Activities', 'Refreshment Room', 'All', 'Others'].map(service => {
+                                                                                {['Tour Package', 'Hotel', 'Airport Transfer', 'Local Transfer', 'Sightseeing', 'Activities', 'Refreshment Room', 'All', 'Others'].map(service => {
                                                                                     const servicesArr = dmc.servicesConfirmed ? dmc.servicesConfirmed.split(', ') : [];
                                                                                     const isChecked = servicesArr.includes(service);
+                                                                                    const allServiceNames = ['Tour Package', 'Hotel', 'Airport Transfer', 'Local Transfer', 'Sightseeing', 'Activities', 'Refreshment Room', 'Others'];
                                                                                     return (
                                                                                         <label key={service} className="flex items-center gap-2 text-xs font-medium text-slate-300 cursor-pointer">
                                                                                             <input type="checkbox" checked={isChecked} onChange={(e) => {
                                                                                                 let newArr = [...servicesArr];
-                                                                                                if (e.target.checked) newArr.push(service);
-                                                                                                else newArr = newArr.filter(s => s !== service);
-                                                                                                handleArrayChange('vendorRequests', index, 'servicesConfirmed', newArr.join(', '));
+                                                                                                if (service === 'All') {
+                                                                                                    newArr = e.target.checked ? ['All', ...allServiceNames] : [];
+                                                                                                } else {
+                                                                                                    if (e.target.checked) newArr.push(service);
+                                                                                                    else newArr = newArr.filter(s => s !== service);
+                                                                                                    if (!e.target.checked) newArr = newArr.filter(s => s !== 'All');
+                                                                                                    else if (allServiceNames.every(s => newArr.includes(s))) newArr.push('All');
+                                                                                                }
+                                                                                                handleArrayChange('vendorRequests', index, 'servicesConfirmed', [...new Set(newArr)].join(', '));
                                                                                             }} className="w-4 h-4 accent-cyan-500" /> {service}
                                                                                         </label>
                                                                                     );
                                                                                 })}
                                                                             </div>
+                                                                            {(dmc.servicesConfirmed || '').split(', ').includes('Others') && (
+                                                                                <input type="text" value={dmc.servicesOthersText || ''} onChange={e => handleArrayChange('vendorRequests', index, 'servicesOthersText', e.target.value)} className={`${inputCls} mt-2`} placeholder="Specify other service" />
+                                                                            )}
                                                                         </div>
                                                                         <div className="sm:col-span-3 mt-2 border-t border-slate-700/30 pt-3">
                                                                             <label className="block text-xs font-medium text-slate-400 mb-2">Upload Documents</label>
@@ -2671,6 +2832,9 @@ export default function OperationsDashboard() {
                                                         </label>
                                                     ))}
                                                 </div>
+                                                {selectedLeadForEdit.reqManualAdd && (
+                                                    <input type="text" value={selectedLeadForEdit.reqManualAddText || ''} onChange={e => setSelectedLeadForEdit({ ...selectedLeadForEdit, reqManualAddText: e.target.value })} className={`${inputCls} mt-3`} placeholder="Specify other requirement" />
+                                                )}
                                             </div>
 
                                             {/* 8. VENDOR PAYMENT REQUEST */}
@@ -2731,7 +2895,7 @@ export default function OperationsDashboard() {
                                             </h3>
                                             {openSections.leadInfo && (
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4 animate-in slide-in-from-top-2 fade-in">
-                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Date</label><input type="text" readOnly value={selectedLeadForEdit.dateAdded || selectedLeadForEdit.createdAt || selectedLeadForEdit.date || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Date</label><input type="text" readOnly value={formatDisplayDate(selectedLeadForEdit.dateAdded || selectedLeadForEdit.createdAt || selectedLeadForEdit.date)} className={readonlyCls} /></div>
                                                     <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Source</label><input type="text" readOnly value={selectedLeadForEdit.platform || selectedLeadForEdit.leadSource || ''} className={readonlyCls} /></div>
                                                     <div><label className="block text-xs font-bold text-slate-400 mb-1">Campaign</label><input type="text" readOnly value={selectedLeadForEdit.campaign || ''} className={readonlyCls} /></div>
                                                     <div><label className="block text-xs font-bold text-slate-400 mb-1">Lead Name</label><input type="text" readOnly value={selectedLeadForEdit.customerName || selectedLeadForEdit.leadName || ''} className={readonlyCls} /></div>
@@ -2763,7 +2927,7 @@ export default function OperationsDashboard() {
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mt-4 animate-in slide-in-from-top-2 fade-in">
                                                     <div><label className="block text-xs font-bold text-slate-400 mb-1">Destination</label><input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.destination || selectedLeadForEdit.destination || ''} className={readonlyCls} /></div>
                                                     <div><label className="block text-xs font-bold text-slate-400 mb-1">Customisation Type</label><input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.customisationType || selectedLeadForEdit.customisationType || ''} className={readonlyCls} /></div>
-                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Required By</label><input type="text" readOnly value={selectedLeadForEdit.customisationRequests?.[0]?.requiredByDate || selectedLeadForEdit.customisationRequests?.[0]?.turnaroundTime || ''} className={readonlyCls} /></div>
+                                                    <div><label className="block text-xs font-bold text-slate-400 mb-1">Required By</label><input type="text" readOnly value={formatDisplayDate(selectedLeadForEdit.customisationRequests?.[0]?.requiredByDate || selectedLeadForEdit.customisationRequests?.[0]?.turnaroundTime)} className={readonlyCls} /></div>
                                                     <div><label className="block text-xs font-bold text-slate-400 mb-1">Package Type</label><input type="text" readOnly value={selectedLeadForEdit.tourType || selectedLeadForEdit.packageType || ''} className={readonlyCls} /></div>
                                                     <div><label className="block text-xs font-bold text-slate-400 mb-1">Travel Date</label><DatePickerField type="date" readOnly value={selectedLeadForEdit.travelDate || selectedLeadForEdit.travelDates || ''} className={readonlyCls} /></div>
                                                     <div><label className="block text-xs font-bold text-slate-400 mb-1">Duration</label><input type="text" readOnly value={selectedLeadForEdit.duration || ''} className={readonlyCls} /></div>
@@ -2805,12 +2969,13 @@ export default function OperationsDashboard() {
                                                             className={selectCls} 
                                                             options={destinationOptions} 
                                                             placeholder=" "
+                                                            hideDefaultManual={true}
                                                         />
                                                     </div>
                                                 
                                                     <div>
                                                         <label className="block text-xs font-bold text-slate-300 mb-1.5">Work Type</label>
-                                                        <CustomSelect value={selectedLeadForEdit.workType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, workType: v })} className={selectCls} options={[  'Vendor Assistance', 'Self Preparation','Rate Modification']} />
+                                                        <CustomSelect value={selectedLeadForEdit.workType} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, workType: v })} className={selectCls} options={[  'Vendor Assistance', 'Self Preparation','Rate Modification']} hideDefaultManual={true} />
                                                     </div>
 
                                                     {selectedLeadForEdit.workType === 'Rate Modification' && (
@@ -2822,6 +2987,7 @@ export default function OperationsDashboard() {
                                                                 className={selectCls} 
                                                                 options={['Existing Rate Available', 'Vendor Verification Required' ]} 
                                                                 placeholder=" "
+                                                                hideDefaultManual={true}
                                                             />
                                                         </div>
                                                     )}
@@ -2831,7 +2997,7 @@ export default function OperationsDashboard() {
 
 
                                         {/* Section 4: VENDOR ASSISTANCE */}
-                                        {(selectedLeadForEdit.workType === 'Vendor Assistance' || selectedLeadForEdit.workType === 'Rate Modification') && (
+                                        {(selectedLeadForEdit.workType === 'Vendor Assistance' || (selectedLeadForEdit.workType === 'Rate Modification' && selectedLeadForEdit.rateSource !== 'Existing Rate Available')) && (
                                             <div className={sectionCls}>
                                                 <h3 className={`${sectionHeadCls} cursor-pointer hover:text-white transition-colors`} 
                                                     style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}
