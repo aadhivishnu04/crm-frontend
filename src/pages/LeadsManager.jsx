@@ -194,7 +194,7 @@ import React, { useState, useEffect ,useRef} from 'react';
     // timeline (kept from the original implementation).
     const STAGE_CONFIG = [
         { key: 'lead', label: 'Lead Captured', color: 'text-teal-400 bg-teal-500/10 border-teal-500/20', icon: Target },
-        { key: 'sales', label: 'Sales', color: 'text-purple-400 bg-purple-500/10 border-purple-500/20', icon: Briefcase },
+        { key: 'sales', label: 'Sales', color: 'text-white-400 bg-purple-500/10 border-purple-500/20', icon: Briefcase },
         { key: 'operations', label: 'Operations', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20', icon: ClipboardList },
         { key: 'accounts', label: 'Accounts / Billing', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20', icon: Wallet },
         { key: 'fulfillment', label: 'Fulfillment', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', icon: PackageCheck },
@@ -1036,7 +1036,7 @@ import React, { useState, useEffect ,useRef} from 'react';
                                 {/* Chronological Timeline — diamond markers, oldest → newest */}
                                 <div>
                                     <h4 className="text-sm font-bold text-slate-300 mb-1 flex items-center gap-2">
-                                        <History size={16} className="text-purple-400" /> Full Journey
+                                        <History size={16} className="text--400" /> Full Journey
                                     </h4>
                                     <div className="h-px bg-emerald-500/40 mb-4" />
                                     {timeline.length === 0 ? (
