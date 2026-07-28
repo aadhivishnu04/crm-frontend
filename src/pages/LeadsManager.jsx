@@ -1,4 +1,4 @@
-    import React, { useState, useEffect ,useRef} from 'react';
+import React, { useState, useEffect ,useRef} from 'react';
     import { 
         Search, MapPin, Calendar, Users,
         Pencil, Trash2, Save, X, ChevronDown,
@@ -200,12 +200,83 @@
         { key: 'fulfillment', label: 'Fulfillment', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', icon: PackageCheck },
     ];
 
+    // Classifies one raw `history` log entry (written by SalesDashboard's
+    // appendHistory()) into the exact mockup step titles: Lead Assigned,
+    // Lead Response Status, Lead Response Status - Requirement Collected,
+    // Readymade Shared - Followup, Sales Followup. Returns null for entries
+    // that don't correspond to a Full Journey row (e.g. "Lead Created", which
+    // feeds the header's "Lead Created" date instead).
+    const classifySalesEntry = (h, lead) => {
+        const action = h.action || '';
+        const note = h.note || '';
+
+        if (/^Lead Created$/i.test(action)) return null;
+        if (/^Auto-Moved to Recycle Bin$/i.test(action) || /^Archived Cycle:/i.test(action)) return null;
+
+        // Lead Assigned
+        const assignMatch = action.match(/^(?:Recovered & )?Assigned to (.+)$/i);
+        if (assignMatch) {
+            return { title: 'Lead Assigned', parts: [{ label: 'Assigned by', value: assignMatch[1].trim() }] };
+        }
+
+        // Follow-up (before Requirement Collected) → Lead Response Status
+        const fu = action.match(/^Follow-up:\s*(.*)$/i);
+        if (fu) {
+            return {
+                title: 'Lead Response Status',
+                parts: [
+                    { label: 'Interaction Type', value: fu[1] },
+                    { label: 'Action Taken', value: note },
+                ],
+            };
+        }
+
+        // Outcome Update (after Requirement Collected) → Readymade Shared -
+        // Followup / Sales Followup, both rendered as "Sales Track -
+        // Customer Response | Next Followup: Date"
+        const ou = action.match(/^Outcome Update:\s*(.*)$/i);
+        if (ou) {
+            const title = /readymade/i.test(note) ? 'Readymade Shared - Followup' : 'Sales Followup';
+            return {
+                title,
+                parts: [
+                    { label: 'Sales Track - Customer Response', value: note },
+                    lead.nextFollowUpDatePostponed ? { label: 'Next Followup', value: lead.nextFollowUpDatePostponed } : null,
+                ],
+            };
+        }
+
+        // Lead Profile Updated → only surfaced when it captures Requirement
+        // Collected (readymade / customisation), matching the mockup's
+        // "Lead Response Status - Requirement Collected" rows
+        if (/^Lead Profile Updated$/i.test(action)) {
+            const stageMatch = note.match(/Stage:\s*([^|]+)/i);
+            const stage = stageMatch ? stageMatch[1].trim() : '';
+            if (/Requirement Collected/i.test(stage)) {
+                const actionTaken = lead.actionTaken || '';
+                const suffix = /readymade/i.test(actionTaken) ? ' (Readymade Shared)' : /customisation/i.test(actionTaken) ? ' (Customisation Required)' : '';
+                return {
+                    title: 'Lead Response Status - Requirement Collected',
+                    parts: [
+                        { label: 'Interaction Type', value: lead.interactionType },
+                        { label: 'Travel Details - Action Taken', value: `${actionTaken}${suffix}` },
+                    ],
+                };
+            }
+            return null;
+        }
+
+        // Fallback — show whatever was actually logged rather than dropping it
+        return { title: action, parts: [splitLabelValue(note)].filter(Boolean) };
+    };
+
     // Builds the full, oldest → newest chronological journey for one lead.
     //
     // Sales-side granularity (assign / follow-up / outcome / readymade / etc.)
     // already comes for free from the explicit `history` log written by
     // SalesDashboard's own appendHistory() calls — it is pushed newest-first, so
-    // we simply reverse it to read oldest-first, exactly like the mockup.
+    // we simply reverse it to read oldest-first, exactly like the mockup, then
+    // classify each entry into the exact mockup step title.
     //
     // Everything after "Sent To Operations" is synthesized from the fields each
     // downstream dashboard (Operations/Accounts/Fulfillment) already saves onto
@@ -214,14 +285,18 @@
     const buildLeadTimeline = (lead) => {
         if (!lead) return [];
 
-        // 1) Sales-side explicit log — oldest first
-        const explicit = safeParseHistory(lead.history).slice().reverse().map(h => ({
-            date: h.date,
-            stage: 'sales',
-            title: h.action,
-            parts: [splitLabelValue(h.note)].filter(Boolean),
-            _explicit: true,
-        }));
+        // 1) Sales-side explicit log — oldest first, classified into mockup titles
+        const explicit = safeParseHistory(lead.history).slice().reverse().map(h => {
+            const classified = classifySalesEntry(h, lead);
+            if (!classified) return null;
+            return {
+                date: h.date,
+                stage: 'sales',
+                title: classified.title,
+                parts: (classified.parts || []).filter(p => p && (p.value || p.label)),
+                _explicit: true,
+            };
+        }).filter(Boolean);
 
         const synthesized = [];
         const push = (stage, title, dateVal, parts) => synthesized.push({
@@ -260,21 +335,14 @@
             ]);
         }
 
-        // 4) Itinerary shared with Sales
-        if (lead.opsCustomisationStatus === 'Itinerary Shared with Sales' || lead.sharedWithSales) {
-            push('operations', 'Itinerary Shared With Sales', lead.sharedWithSalesDate || lead.opsCompletedOn, [
-                lead.sharedWithSalesBy ? { label: 'By', value: lead.sharedWithSalesBy } : null,
-            ]);
-        }
-
-        // 5) Back to Sales Board
+        // 4) Back to Sales Board
         if (lead.sharedWithSales) {
             push('operations', 'Back to Sales Board', lead.sharedWithSalesDate, [
                 { label: 'Destination shared by ops', value: lead.destinationRequest || lead.destination }
             ]);
         }
 
-        // 6) Sales follow-up after itinerary return (customer response / booking confirmed)
+        // 5) Sales follow-up after itinerary return (customer response / booking confirmed)
         if (lead.customerResponse) {
             push('sales', 'Sales Followup', lead.confirmedDate || lead.lastFollowUpDate, [
                 { label: 'Sales Track - Customer Response', value: lead.customerResponse },
@@ -288,7 +356,7 @@
             push('accounts', 'Moved to All Confirmation Boards', lead.confirmedDate, []);
         }
 
-        // 7) Accounts — payment stages
+        // 6) Accounts — payment stages
         if (lead.amountReceived || lead.paymentStatus) {
             push('accounts', 'Customer Payment', lead.nextPaymentDate || lead.confirmedDate, [
                 { label: 'Payment Stage', value: lead.paymentMode ? `${lead.paymentMode} • ₹${lead.amountReceived || 0} received` : `₹${lead.amountReceived || 0} received` }
@@ -300,7 +368,7 @@
             ]);
         }
 
-        // 8) Fulfillment — briefing, vendor payment, travel ready, trip completed
+        // 7) Fulfillment — briefing, vendor payment, travel ready, trip completed
         if (lead.briefingDateVal || lead.briefedByVal) {
             push('fulfillment', 'Briefing Completed', lead.briefingDateVal, [
                 { label: 'by', value: lead.briefedByVal }
@@ -735,7 +803,7 @@
                         </table>
                     </div>
                 </div>
-
+                                
                 {/* ── ADD/EDIT LEAD MODAL ── */}
                 <Modal open={leadModalOpen} onClose={closeModal} title={editingId ? `Edit Travel Lead (LMN${editingId})` : "Add New Lead"} maxWidth="max-w-4xl">
                     {/* Scrollable Form Body */}
@@ -938,20 +1006,31 @@
                 </Modal>
 
                 {/* ── LEAD HISTORY MODAL ── */}
-                <Modal open={historyModalOpen} onClose={closeHistoryModal} title={`Lead History — LMN${historyLead?.id || ''}`} maxWidth="max-w-2xl">
+                <Modal open={historyModalOpen} onClose={closeHistoryModal} title={`Lead History - LMN${historyLead?.id || ''} | ${historyLead?.customerName || 'N/A'}`} maxWidth="max-w-2xl">
                     {historyLead && (() => {
                         const timeline = buildLeadTimeline(historyLead);
+                        const rawHistory = safeParseHistory(historyLead.history); // newest-first
+                        const createdEntry = rawHistory.find(h => /^Lead Created$/i.test(h.action || ''));
+                        const leadCreated = fmtDate(historyLead.createdAt) || createdEntry?.date || null;
+                        const leadUpdated = fmtDate(historyLead.updatedAt) || rawHistory[0]?.date || null;
                         return (
                             <div className="space-y-6">
                                 {/* Current stage banner */}
-                                <div className="flex flex-wrap items-center gap-2 bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3">
-                                    <span className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Current Stage</span>
-                                    <span className="px-2.5 py-1 rounded-lg text-sm font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                                        {historyLead.finalStatus || historyLead.status || 'Jobs'}
-                                    </span>
-                                    {historyLead.assignedTo && historyLead.assignedTo !== 'Unassigned' && (
-                                        <span className="text-xs text-slate-400">Handled by <span className="text-slate-200 font-semibold">{historyLead.assignedTo}</span></span>
-                                    )}
+                                <div className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 space-y-1.5">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Current Stage</span>
+                                        <span className="px-2.5 py-1 rounded-lg text-sm font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                            {historyLead.finalStatus || historyLead.status || 'Jobs'}
+                                        </span>
+                                        {historyLead.assignedTo && historyLead.assignedTo !== 'Unassigned' && (
+                                            <span className="text-xs text-slate-400">Handled By: <span className="text-slate-200 font-semibold">{historyLead.assignedTo}</span></span>
+                                        )}
+                                    </div>
+                                    <p className="text-sm font-bold text-slate-100">{historyLead.leadResponse || historyLead.status || 'N/A'}</p>
+                                    <div className="text-xs text-slate-400 space-y-0.5">
+                                        <p>Lead Created: <span className="text-slate-300">{leadCreated || 'N/A'}</span></p>
+                                        <p>Lead Updated: <span className="text-slate-300">{leadUpdated || 'N/A'}</span></p>
+                                    </div>
                                 </div>
 
                                 {/* Chronological Timeline — diamond markers, oldest → newest */}
