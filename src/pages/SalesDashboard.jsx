@@ -4,7 +4,7 @@ import {
     CheckSquare, X, Send, Pencil, Mic, Square, Trash2, Play, 
     RefreshCw, Users, ArrowUp, ChevronLeft, ChevronRight, ChevronDown, History,
     Plus, UserPlus, Phone, Mail, Globe, MessageSquare, CreditCard,
-    Flame, Sun, Snowflake, Save, FileText
+    Flame, Sun, Snowflake, Save, FileText, Briefcase, ClipboardList, Wallet, PackageCheck
 } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
 
@@ -88,6 +88,272 @@ const formatDateTime = (dateStr) => {
     }
 };
 
+// ─── LEAD JOURNEY / FULL HISTORY ENGINE ───────────────────────────────────────
+// Every lead is a single record enriched as it moves Sales → Operations →
+// Accounts → Fulfillment. This engine merges the explicit `history` log
+// (written by Sales' own actions — assign, follow-up, outcome, etc.) with a
+// set of granular, auto-detected milestones for everything that happens
+// further down the pipeline, so "Lead Journey" reads as one continuous,
+// chronological story exactly like the Lead History mockup.
+
+const safeParseHistory = (raw) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; } catch (e) { return []; }
+};
+
+const safeParseArr = (raw) => {
+    if (!raw) return [];
+    if (Array.isArray(raw)) return raw;
+    try { const p = JSON.parse(raw); return Array.isArray(p) ? p : []; } catch (e) { return []; }
+};
+
+const fmtHistoryDate = (val) => {
+    if (!val) return null;
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return typeof val === 'string' ? val : null;
+    return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+};
+
+// Splits a "Label: Value" style string into { label, value } so the label can
+// render in plain bold text and the dynamic value can render highlighted,
+// same as the DD_Month_YYYY mockups (black label, red dynamic value).
+const splitLabelValue = (text) => {
+    if (!text) return null;
+    const idx = text.indexOf(':');
+    if (idx === -1) return { label: text.trim(), value: null };
+    return { label: text.slice(0, idx).trim(), value: text.slice(idx + 1).trim() };
+};
+
+// Stage config used for the "Complete Record by Stage" accordion below the
+// timeline.
+const STAGE_CONFIG = [
+    { key: 'lead', label: 'Lead Captured', color: 'text-teal-400 bg-teal-500/10 border-teal-500/20', icon: Target },
+    { key: 'sales', label: 'Sales', color: 'text-white-400 bg-purple-500/10 border-purple-500/20', icon: Briefcase },
+    { key: 'operations', label: 'Operations', color: 'text-blue-400 bg-blue-500/10 border-blue-500/20', icon: ClipboardList },
+    { key: 'accounts', label: 'Accounts / Billing', color: 'text-amber-400 bg-amber-500/10 border-amber-500/20', icon: Wallet },
+    { key: 'fulfillment', label: 'Fulfillment', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', icon: PackageCheck },
+];
+
+// Classifies one raw `history` log entry into the exact mockup step titles:
+// Lead Assigned, Lead Response Status, Lead Response Status - Requirement
+// Collected, Readymade Shared - Followup, Sales Followup. Returns null for
+// entries that don't correspond to a Lead Journey row (e.g. "Lead Created",
+// which feeds the header's "Lead Created" date instead).
+const classifySalesEntry = (h, lead) => {
+    const action = h.action || '';
+    const note = h.note || '';
+
+    if (/^Lead Created$/i.test(action)) return null;
+    if (/^Auto-Moved to Recycle Bin$/i.test(action) || /^Archived Cycle:/i.test(action)) return null;
+
+    // Lead Assigned
+    const assignMatch = action.match(/^(?:Recovered & )?Assigned to (.+)$/i);
+    if (assignMatch) {
+        return { title: 'Lead Assigned', parts: [{ label: 'Assigned by', value: assignMatch[1].trim() }] };
+    }
+
+    // Follow-up (before Requirement Collected) → Lead Response Status
+    const fu = action.match(/^Follow-up:\s*(.*)$/i);
+    if (fu) {
+        return {
+            title: 'Lead Response Status',
+            parts: [
+                { label: 'Interaction Type', value: fu[1] },
+                { label: 'Action Taken', value: note },
+            ],
+        };
+    }
+
+    // Outcome Update (after Requirement Collected) → Readymade Shared -
+    // Followup / Sales Followup, both rendered as "Sales Track -
+    // Customer Response | Next Followup: Date"
+    const ou = action.match(/^Outcome Update:\s*(.*)$/i);
+    if (ou) {
+        const title = /readymade/i.test(note) ? 'Readymade Shared - Followup' : 'Sales Followup';
+        return {
+            title,
+            parts: [
+                { label: 'Sales Track - Customer Response', value: note },
+                lead.nextFollowUpDatePostponed ? { label: 'Next Followup', value: lead.nextFollowUpDatePostponed } : null,
+            ],
+        };
+    }
+
+    // Lead Profile Updated → only surfaced when it captures Requirement
+    // Collected (readymade / customisation), matching the mockup's
+    // "Lead Response Status - Requirement Collected" rows
+    if (/^Lead Profile Updated$/i.test(action)) {
+        const stageMatch = note.match(/Stage:\s*([^|]+)/i);
+        const stage = stageMatch ? stageMatch[1].trim() : '';
+        if (/Requirement Collected/i.test(stage)) {
+            const actionTaken = lead.actionTaken || '';
+            const suffix = /readymade/i.test(actionTaken) ? ' (Readymade Shared)' : /customisation/i.test(actionTaken) ? ' (Customisation Required)' : '';
+            return {
+                title: 'Lead Response Status - Requirement Collected',
+                parts: [
+                    { label: 'Interaction Type', value: lead.interactionType },
+                    { label: 'Travel Details - Action Taken', value: `${actionTaken}${suffix}` },
+                ],
+            };
+        }
+        return null;
+    }
+
+    // Fallback — show whatever was actually logged rather than dropping it
+    return { title: action, parts: [splitLabelValue(note)].filter(Boolean) };
+};
+
+// Builds the full, oldest → newest chronological journey for one lead/job.
+//
+// Sales-side granularity (assign / follow-up / outcome / readymade / etc.)
+// already comes for free from the explicit `history` log written by
+// appendHistory() — it is stored newest-first, so we simply reverse it to
+// read oldest-first, exactly like the mockup, then classify each entry into
+// the exact mockup step title.
+//
+// Everything after "Sent To Operations" is synthesized from the fields each
+// downstream dashboard (Operations/Accounts/Fulfillment) already saves onto
+// the lead record, in pipeline order, so nothing needs to change in those
+// files for the journey to stay accurate as those forms are filled in.
+const buildLeadTimeline = (lead) => {
+    if (!lead) return [];
+
+    // 1) Sales-side explicit log — oldest first, classified into mockup titles
+    const explicit = safeParseHistory(lead.history).slice().reverse().map(h => {
+        const classified = classifySalesEntry(h, lead);
+        if (!classified) return null;
+        return {
+            date: h.date,
+            stage: 'sales',
+            title: classified.title,
+            parts: (classified.parts || []).filter(p => p && (p.value || p.label)),
+            _explicit: true,
+        };
+    }).filter(Boolean);
+
+    const synthesized = [];
+    const push = (stage, title, dateVal, parts) => synthesized.push({
+        date: fmtHistoryDate(dateVal) || 'Recorded',
+        stage, title,
+        parts: (parts || []).filter(p => p && (p.value || p.label)),
+        _explicit: false,
+    });
+
+    // 2) Sent to Operations
+    const custReqs = safeParseArr(lead.customisationRequests);
+    if (lead.status === 'Move To Operation' || lead.sentToOperationsDate || custReqs.length) {
+        const destinations = custReqs.map(r => r.destination || r.destinationRequest).filter(Boolean).join(', ')
+            || lead.destinationRequest || lead.destination;
+        push('operations', 'Sent To Operations', lead.sentToOperationsDate || lead.movedToOpsDate, [
+            { label: 'Destination', value: destinations || 'N/A' }
+        ]);
+    }
+
+    // 3) Ops assignment / per-destination work updates (repeats — one per
+    // customisation request / vendor destination touched by Operations)
+    custReqs.forEach(req => {
+        if (req.opsCustomisationStatus || req.workType || req.opsAssignedBy) {
+            push('operations', req.opsAssignedBy ? `Assigned By ${req.opsAssignedBy}` : 'Operations Update', req.opsExpectedCompletionDate, [
+                { label: 'Destination', value: req.destination || req.destinationRequest || lead.destination },
+                { label: 'Work Type', value: req.workType },
+                { label: 'Customisation Status', value: req.opsCustomisationStatus },
+                req.operationsExecutive ? { label: null, value: req.operationsExecutive } : null,
+            ]);
+        }
+    });
+    if (lead.opsPreparedBy && custReqs.length === 0) {
+        push('operations', `Assigned By ${lead.opsPreparedBy}`, lead.opsCompletedOn, [
+            { label: 'Destination', value: lead.destinationRequest || lead.destination },
+            { label: 'Customisation Status', value: lead.opsCustomisationStatus },
+        ]);
+    }
+
+    // 4) Back to Sales Board
+    if (lead.sharedWithSales) {
+        push('operations', 'Back to Sales Board', lead.sharedWithSalesDate, [
+            { label: 'Destination shared by ops', value: lead.destinationRequest || lead.destination }
+        ]);
+    }
+
+    // 5) Sales follow-up after itinerary return (customer response / booking confirmed)
+    if (lead.customerResponse) {
+        push('sales', 'Sales Followup', lead.confirmedDate || lead.lastFollowUpDate, [
+            { label: 'Sales Track - Customer Response', value: lead.customerResponse },
+            lead.nextFollowUpDatePostponed ? { label: 'Next Followup', value: lead.nextFollowUpDatePostponed } : null,
+        ]);
+    }
+    if (lead.customerResponse === 'Booking Confirmed') {
+        push('sales', 'Sales Followup', lead.confirmedDate, [
+            { label: 'Booking Confirmed | Next Followup', value: lead.nextFollowUpDatePostponed || lead.confirmedDate }
+        ]);
+        push('accounts', 'Moved to All Confirmation Boards', lead.confirmedDate, []);
+    }
+
+    // 6) Accounts — payment stages
+    if (lead.amountReceived || lead.paymentStatus) {
+        push('accounts', 'Customer Payment', lead.nextPaymentDate || lead.confirmedDate, [
+            { label: 'Payment Stage', value: lead.paymentMode ? `${lead.paymentMode} • ₹${lead.amountReceived || 0} received` : `₹${lead.amountReceived || 0} received` }
+        ]);
+    }
+    if (lead.paymentStatus === 'Fully Paid' || (lead.balancePending !== undefined && Number(lead.balancePending) === 0 && lead.amountReceived)) {
+        push('accounts', 'Customer Payment', lead.fullyPaidDate || lead.nextPaymentDate, [
+            { label: 'Payment Stage', value: 'Fully Paid' }
+        ]);
+    }
+
+    // 7) Fulfillment — briefing, vendor payment, travel ready, trip completed
+    if (lead.briefingDateVal || lead.briefedByVal) {
+        push('fulfillment', 'Briefing Completed', lead.briefingDateVal, [
+            { label: 'by', value: lead.briefedByVal }
+        ]);
+    }
+    if (lead.vendorPayStatus === 'Paid' || lead.vendorPayStatus === 'Completed' || lead.clrFinSupplier) {
+        push('fulfillment', 'Vendor Payment Completed', lead.briefingDateVal, []);
+    }
+    if (lead.clrReadyDeparture) {
+        push('fulfillment', 'Travel Ready', lead.tourStartDate || lead.travelDate || lead.travelDates, [
+            { label: 'Travel Date', value: lead.tourStartDate || lead.travelDate || lead.travelDates }
+        ]);
+    }
+    if (lead.status === 'Trip Completed' || lead.reviewStatus) {
+        push('fulfillment', 'Trip Completed', lead.returnDate || lead.travelDates, [
+            { label: 'Review Status', value: lead.reviewStatus || 'Pending Review' }
+        ]);
+    }
+
+    return [...explicit, ...synthesized];
+};
+
+// Curated per-stage field maps so the "Complete Record" section can show
+// every populated data point captured about the lead at each stage.
+const STAGE_FIELD_MAPS = {
+    sales: [
+        ['assignedTo', 'Assigned Executive'], ['status', 'Pipeline Status'], ['actionTaken', 'Action Taken'],
+        ['leadResponse', 'Lead Response'], ['interactionType', 'Interaction Type'], ['firstAttempt', 'First Attempt'],
+        ['customerResponse', 'Customer Response'], ['followUpCount', 'Follow-ups Logged'], ['salesRemarks', 'Sales Remarks'],
+    ],
+    operations: [
+        ['opsPreparedBy', 'Prepared By'], ['finalStatus', 'Final Status'], ['workType', 'Work Type'],
+        ['destinationRequest', 'Destination Request'], ['packageCost', 'Package Cost'], ['itineraryPrepDate', 'Itinerary Prep Date'],
+        ['itineraryVersion', 'Itinerary Version'], ['vendorName', 'Vendor Name'], ['vendorService', 'Vendor Service'],
+        ['vendorMessage', 'Vendor Message'], ['documentStatus', 'Document Status'], ['qcStatus', 'QC Status'],
+        ['qcDate', 'QC Date'], ['qcRemarks', 'QC Remarks'], ['bookingDate', 'Booking Date'], ['confirmationDate', 'Confirmation Date'],
+    ],
+    accounts: [
+        ['operationsExecutive', 'Operations Executive'], ['totalPackageCost', 'Total Package Cost'], ['amountReceived', 'Amount Received'],
+        ['balancePending', 'Balance Pending'], ['nextPaymentDate', 'Next Payment Date'], ['paymentMode', 'Payment Mode'],
+        ['transactionId', 'Transaction ID'], ['gstStatus', 'GST Status'], ['tcsStatus', 'TCS Status'], ['confirmedDate', 'Confirmed Date'],
+        ['confirmedDestination', 'Confirmed Destination'], ['confirmedNoOfPax', 'Confirmed Pax'],
+    ],
+    fulfillment: [
+        ['briefedByVal', 'Briefed By'], ['briefingDateVal', 'Briefing Date'], ['briefedMethodVal', 'Briefing Method'],
+        ['dmcConfReceived', 'DMC Confirmation'], ['flightTicketVerified', 'Flight Ticket Verified'], ['domTicketVerified', 'Domestic Ticket Verified'],
+        ['clrOpsDocs', 'Docs Cleared'], ['clrOpsServices', 'Services Cleared'], ['clrFinPayment', 'Finance Cleared'],
+        ['clrMgrReview', 'Manager Reviewed'], ['clrReadyDeparture', 'Ready for Departure'], ['vendorPayStatus', 'Vendor Payment Status'],
+    ],
+};
+
 const SalesDashboard = () => {
     // --- USER IDENTIFICATION ---
     const user = getCurrentUser();
@@ -131,6 +397,7 @@ const SalesDashboard = () => {
     const [assignTo, setAssignTo] = useState('');
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+    const [expandedStage, setExpandedStage] = useState(null);
 
     // --- HANDOVER TO OPERATION MODAL STATES ---
     const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
@@ -1864,7 +2131,7 @@ const SalesDashboard = () => {
                                     <td className="flex justify-between items-center md:table-cell py-3 md:py-4 px-2 md:px-4 mt-1 md:mt-0 md:text-center whitespace-nowrap">
                                         <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Actions</span>
                                         <div className="flex items-center justify-end md:justify-center gap-1.5 sm:gap-2">
-                                            <button type="button" onClick={() => { setSelectedLead(row); setIsHistoryModalOpen(true); }}
+                                            <button type="button" onClick={() => { setSelectedLead(row); setExpandedStage(null); setIsHistoryModalOpen(true); }}
                                                 className="p-2 md:p-1.5 text-purple-400 md:text-slate-400 hover:text-purple-400 bg-purple-500/10 md:bg-transparent hover:bg-purple-900/30 rounded-lg transition-colors" title="View History">
                                                 <History size={18} />
                                             </button>
@@ -3145,44 +3412,151 @@ const SalesDashboard = () => {
                 </div>
             )}
 
-            {/* HISTORY MODAL */}
+            {/* SALES HISTORY MODAL — Lead Journey, matching the mockup exactly */}
             {isHistoryModalOpen && selectedLead && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-                    <div className="bg-[#0f172a] border border-slate-700/50 rounded-xl shadow-2xl w-full max-w-lg relative flex flex-col max-h-[90vh]">
+                    <div className="bg-[#0f172a] border border-slate-700/50 rounded-xl shadow-2xl w-full max-w-2xl relative flex flex-col max-h-[90vh]">
                         <div className="px-6 pt-6 pb-3 sm:pb-2 border-b border-slate-700/50 flex-shrink-0 flex justify-between items-center">
                             <h2 className="text-lg sm:text-xl font-bold text-white pr-6 truncate flex items-center gap-2">
                                 <History size={20} className="text-purple-400" />
-                                Lead History (LMN{selectedLead.id})
+                                Lead History - LMN{selectedLead.id} | {selectedLead.customerName || 'N/A'}
                             </h2>
                             <button type="button" onClick={() => setIsHistoryModalOpen(false)} className="text-slate-400 bg-transparent border-none cursor-pointer hover:text-white transition-colors p-1.5 hover:bg-slate-800 rounded-lg">
                                 <X size={20} />
                             </button>
                         </div>
-                        <div className="px-6 py-6 overflow-y-auto space-y-4 flex-1 custom-scrollbar">
+                        <div className="px-6 py-6 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
                             {(() => {
-                                let displayHistory = [];
-                                if (selectedLead.history && selectedLead.history.length > 0) {
-                                    displayHistory = selectedLead.history;
-                                } else {
-                                    if (selectedLead.status === 'Move To Operation') {
-                                        displayHistory.push({ date: formatDateTime(selectedLead.opsCompletedOn) || 'Recent', action: 'Moved to Operations', note: `Prepared by: ${selectedLead.opsPreparedBy || 'Ops Team'}` });
-                                    }
-                                    if (selectedLead.assignedTo && selectedLead.assignedTo !== 'Unassigned') {
-                                        displayHistory.push({ date: 'Previously', action: `Assigned to ${selectedLead.assignedTo}`, note: `Current Status: ${selectedLead.status}` });
-                                    }
-                                    displayHistory.push({ date: formatDateTime(selectedLead.createdAt || selectedLead.dateAdded) || 'Initial', action: 'Lead Captured', note: `Source: ${selectedLead.platform || 'Website'} | Campaign: ${selectedLead.campaign || 'N/A'}` });
-                                }
+                                const timeline = buildLeadTimeline(selectedLead);
+                                const rawHistory = safeParseHistory(selectedLead.history); // newest-first
+                                const createdEntry = rawHistory.find(h => /^Lead Created$/i.test(h.action || ''));
+                                const leadCreated = fmtHistoryDate(selectedLead.createdAt) || createdEntry?.date || null;
+                                const leadUpdated = fmtHistoryDate(selectedLead.updatedAt) || rawHistory[0]?.date || null;
                                 return (
-                                    <div className="relative border-l border-slate-700 ml-3 space-y-6">
-                                        {displayHistory.map((log, index) => (
-                                            <div key={index} className="pl-6 relative">
-                                                <span className="absolute -left-[5px] top-1.5 w-2.5 h-2.5 rounded-full bg-purple-500 ring-4 ring-[#0f172a]" />
-                                                <p className="text-xs text-slate-400 mb-0.5">{log.date}</p>
-                                                <p className="text-sm font-medium text-slate-200">{log.action}</p>
-                                                {log.note && <p className="text-xs text-slate-500 mt-1 italic">{log.note}</p>}
+                                    <>
+                                        {/* Current stage banner */}
+                                        <div className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 space-y-1.5">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Current Stage</span>
+                                                <span className="px-2.5 py-1 rounded-lg text-sm font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                                    {selectedLead.finalStatus || selectedLead.status || 'Jobs'}
+                                                </span>
+                                                {selectedLead.assignedTo && selectedLead.assignedTo !== 'Unassigned' && (
+                                                    <span className="text-xs text-slate-400">Handled By: <span className="text-slate-200 font-semibold">{selectedLead.assignedTo}</span></span>
+                                                )}
                                             </div>
-                                        ))}
-                                    </div>
+                                            <p className="text-sm font-bold text-slate-100">{selectedLead.leadResponse || selectedLead.status || 'N/A'}</p>
+                                            <div className="text-xs text-slate-400 space-y-0.5">
+                                                <p>Lead Created: <span className="text-slate-300">{leadCreated || 'N/A'}</span></p>
+                                                <p>Lead Updated: <span className="text-slate-300">{leadUpdated || 'N/A'}</span></p>
+                                            </div>
+                                        </div>
+
+                                        {/* Chronological Timeline — diamond markers, oldest → newest */}
+                                        <div>
+                                            <h4 className="text-sm font-bold text-slate-300 mb-1 flex items-center gap-2">
+                                                <History size={16} className="text-cyan-400" /> Lead Journey
+                                            </h4>
+                                            <div className="h-px bg-emerald-500/40 mb-4" />
+                                            {timeline.length === 0 ? (
+                                                <p className="text-sm text-slate-500 italic">No activity recorded yet.</p>
+                                            ) : (
+                                                <div className="relative border-l-2 border-slate-700 ml-2 space-y-5">
+                                                    {timeline.map((log, idx) => {
+                                                        const isCurrent = idx === timeline.length - 1;
+                                                        const stageColor = STAGE_CONFIG.find(s => s.key === log.stage)?.color?.split(' ')[0] || 'text-slate-300';
+                                                        const body = (
+                                                            <>
+                                                                <p className="text-xs text-slate-500 mb-0.5">{log.date}</p>
+                                                                <p className={`text-sm font-bold ${stageColor}`}>{log.title}</p>
+                                                                {log.parts && log.parts.length > 0 && (
+                                                                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                                                                        {log.parts.map((p, pi) => (
+                                                                            <span key={pi}>
+                                                                                {pi > 0 && ' | '}
+                                                                                {p.label && <span className="text-slate-400">{p.label}{p.value ? ': ' : ''}</span>}
+                                                                                {p.value && <span className="text-rose-400 font-semibold">{p.value}</span>}
+                                                                            </span>
+                                                                        ))}
+                                                                    </p>
+                                                                )}
+                                                            </>
+                                                        );
+                                                        return (
+                                                            <div key={idx} className="pl-6 relative">
+                                                                <span className={`absolute -left-[7px] top-1 w-3 h-3 rotate-45 ring-4 ring-[#0f172a] ${isCurrent ? 'bg-blue-500' : (log._explicit ? 'bg-purple-500' : 'bg-slate-500')}`} />
+                                                                {isCurrent ? (
+                                                                    <div className="border border-blue-500/60 bg-blue-500/5 rounded-lg px-3 py-2 -mt-1">
+                                                                        {body}
+                                                                    </div>
+                                                                ) : body}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {/* terminal dot, matches mockup's closing marker */}
+                                                    <div className="pl-6 relative -mt-3">
+                                                        <span className="absolute -left-[4px] top-0 w-1.5 h-1.5 rounded-full bg-slate-500" />
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Complete stage-by-stage data — nothing left out */}
+                                        <div>
+                                            <h4 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2 border-t border-slate-700/50 pt-5">
+                                                <ClipboardList size={16} className="text-slate-400" /> Complete Record by Stage
+                                            </h4>
+                                            <div className="space-y-2">
+                                                {STAGE_CONFIG.filter(s => s.key !== 'lead').map(stage => {
+                                                    const fields = STAGE_FIELD_MAPS[stage.key] || [];
+                                                    const populated = fields.filter(([f]) => {
+                                                        const v = selectedLead[f];
+                                                        return v !== undefined && v !== null && v !== '' && v !== false;
+                                                    });
+                                                    const hasData = populated.length > 0;
+                                                    const isOpen = expandedStage === stage.key;
+                                                    const StageIcon = stage.icon;
+                                                    return (
+                                                        <div key={stage.key} className={`rounded-xl border ${hasData ? 'border-slate-700' : 'border-slate-800'} overflow-hidden`}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => hasData && setExpandedStage(isOpen ? null : stage.key)}
+                                                                className={`w-full flex items-center justify-between px-4 py-3 text-left transition-colors ${hasData ? 'bg-slate-800/50 hover:bg-slate-800 cursor-pointer' : 'bg-slate-900/30 cursor-default'}`}
+                                                            >
+                                                                <span className={`flex items-center gap-2 text-sm font-bold ${hasData ? stage.color.split(' ')[0] : 'text-slate-600'}`}>
+                                                                    <StageIcon size={15} /> {stage.label}
+                                                                </span>
+                                                                {hasData ? (
+                                                                    <span className="flex items-center gap-2 text-xs text-slate-400">
+                                                                        {populated.length} field{populated.length > 1 ? 's' : ''} recorded
+                                                                        <ChevronRight size={14} className={`transition-transform ${isOpen ? 'rotate-90' : ''}`} />
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-xs text-slate-600 italic">Not reached yet</span>
+                                                                )}
+                                                            </button>
+                                                            {hasData && isOpen && (
+                                                                <div className="px-4 py-3 bg-[#0f172a] grid grid-cols-1 sm:grid-cols-2 gap-3 border-t border-slate-700/50">
+                                                                    {populated.map(([field, label]) => (
+                                                                        <div key={field}>
+                                                                            <p className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider">{label}</p>
+                                                                            <p className="text-sm text-slate-200 break-words">{String(selectedLead[field])}</p>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex justify-end pt-2">
+                                            <button type="button" onClick={() => setIsHistoryModalOpen(false)} className="px-6 py-2.5 rounded-lg border border-slate-600 bg-slate-700 hover:bg-slate-600 text-white font-semibold transition-colors">
+                                                Close Window
+                                            </button>
+                                        </div>
+                                    </>
                                 );
                             })()}
                         </div>
