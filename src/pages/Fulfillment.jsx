@@ -550,8 +550,10 @@ export default function Fulfillment() {
         const travelDate = lead.travelDate ? new Date(lead.travelDate) : null;
         const returnDate = lead.returnDate ? new Date(lead.returnDate) : null;
 
-        // FIX: Only push to Fulfillment queue if Ops explicitly sent it via "Upcoming Departure" status
-        if (lead.status === 'Upcoming Departure') acc['Confirmed Bookings'].push(lead);
+        // Push to Fulfillment's Confirmed Bookings queue if Ops explicitly sent it via "Upcoming
+        // Departure" status, OR the lead already carries the "Booking Confirmed" tag from Sales —
+        // that should surface here automatically instead of waiting on a manual Ops handover.
+        if (lead.status === 'Upcoming Departure' || lead.customerResponse === 'Booking Confirmed') acc['Confirmed Bookings'].push(lead);
         if (travelDate && travelDate.getMonth() === SYSTEM_TODAY.getMonth() && travelDate.getFullYear() === SYSTEM_TODAY.getFullYear()) acc['Trips For This Month'].push(lead);
         if (travelDate) {
             const diffDays = Math.ceil((travelDate.getTime() - SYSTEM_TODAY.getTime()) / (1000 * 60 * 60 * 24));

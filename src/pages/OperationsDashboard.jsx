@@ -915,7 +915,9 @@ export default function OperationsDashboard() {
 
     const getTabStatus = (rawStatus) => {
         if (['New Requests', 'Move To Operation', 'Customization Required', 'Pending'].includes(rawStatus)) return 'New Requests';
-        if (['Ops Assigned', 'Follow-Up'].includes(rawStatus)) return 'Follow-Up';
+        // 'Customisation Ready' = already shared back to Sales, but it should still stay
+        // visible in Operations' own "My Jobs" (Follow-Up) as a copy, not disappear.
+        if (['Ops Assigned', 'Follow-Up', 'Customisation Ready'].includes(rawStatus)) return 'Follow-Up';
         if (['Upcoming Departure', 'Upcoming Bookings'].includes(rawStatus)) return 'Upcoming Bookings';
         if (['Confirmed Bookings'].includes(rawStatus)) return 'Confirmed Bookings';
         return rawStatus || 'New Requests';
@@ -933,14 +935,22 @@ export default function OperationsDashboard() {
             } catch { parsedRequests = []; }
         }
 
+        // "Booking Confirmed" is the tag Sales sets on the lead (customerResponse). It should
+        // only push the row into Confirmed Bookings once Operations has actually assigned it —
+        // until then it stays visible (with the tag shown) in New Requests / My Jobs so someone
+        // in Ops can pick it up. See handleAssignSubmit for where the actual routing happens.
+        const bookingConfirmedTag = item.customerResponse === 'Booking Confirmed';
+
         if (parsedRequests && parsedRequests.length > 0) {
             return parsedRequests.map((req, index) => {
                 let rawRowStatus = (req.status && req.status !== 'Pending') ? req.status : 'Pending';
+                const isAssigned = !!(req.assignedTo || item.operationExecutive);
                 return {
                     ...item,
                     uniqueKey: `${item.id}-${index}`,
                     reqIndex: index,
-                    rawRowStatus: item.customerResponse === 'Booking Confirmed' ? 'Confirmed Bookings' : (rawRowStatus || 'New Requests'),
+                    bookingConfirmedTag,
+                    rawRowStatus: (bookingConfirmedTag && isAssigned) ? 'Confirmed Bookings' : (rawRowStatus || 'New Requests'),
                     destination: req.destination || item.destination,
                     customisationType: req.customisationType || item.customisationType,
                     requirements: req.requirements || item.requirements,
@@ -967,7 +977,8 @@ export default function OperationsDashboard() {
             ...item, 
             uniqueKey: `${item.id}-0`, 
             reqIndex: 0, 
-            rawRowStatus: item.customerResponse === 'Booking Confirmed' ? 'Confirmed Bookings' : (item.status || 'New Requests'),
+            bookingConfirmedTag,
+            rawRowStatus: (bookingConfirmedTag && item.operationExecutive) ? 'Confirmed Bookings' : (item.status || 'New Requests'),
             assignedOps: item.operationExecutive || ''
         }];
     });
@@ -975,7 +986,11 @@ export default function OperationsDashboard() {
     const isAuthorizedForOps = (l) => isAdmin || l.assignedOps === loggedInUserName || l.opsPreparedBy === loggedInUserName;
 
     const countNew = expandedLeads.filter(l => getTabStatus(l.rawRowStatus) === 'New Requests').length; 
-    const countFollow = expandedLeads.filter(l => getTabStatus(l.rawRowStatus) === 'Follow-Up' && isAuthorizedForOps(l)).length;
+    // "My Jobs" (Follow-Up) keeps counting an assigned item for the rest of its life in
+    // Operations — even after it moves on to Confirmed Bookings or Upcoming Bookings — so
+    // it stays visible in both places at once. Only the unassigned "Jobs" (New Requests)
+    // pool ever drops an item purely because it got assigned.
+    const countFollow = expandedLeads.filter(l => getTabStatus(l.rawRowStatus) !== 'New Requests' && isAuthorizedForOps(l)).length;
     const countBooked = expandedLeads.filter(l => getTabStatus(l.rawRowStatus) === 'Confirmed Bookings' && isAuthorizedForOps(l)).length;
     const countUpcoming = expandedLeads.filter(l => {
         if (getTabStatus(l.rawRowStatus) !== 'Upcoming Bookings' || !isAuthorizedForOps(l)) return false;
@@ -997,10 +1012,13 @@ export default function OperationsDashboard() {
         const finalAssignee = assignTo === 'Self Assigned' ? loggedInUserName : assignTo;
         const leadId = selectedLeadForAssign.id;
         const reqIndex = selectedLeadForAssign.reqIndex;
-        const targetStatus = 'Follow-Up';
 
         const originalLead = leads.find(l => l.id === leadId);
         if (!originalLead) return;
+
+        // If Sales already tagged this lead "Booking Confirmed", assigning it here sends it
+        // straight to Confirmed Bookings; otherwise it goes to My Jobs (Follow-Up) as usual.
+        const targetStatus = originalLead.customerResponse === 'Booking Confirmed' ? 'Confirmed Bookings' : 'Follow-Up';
 
         let parsedRequests = [];
         try {
@@ -1015,7 +1033,7 @@ export default function OperationsDashboard() {
             parsedRequests[reqIndex].assignedTo = finalAssignee;
         }
 
-        const allProcessed = parsedRequests.every(r => r.status === 'Follow-Up' || r.status === 'Customisation Ready');
+        const allProcessed = parsedRequests.every(r => r.status === 'Follow-Up' || r.status === 'Customisation Ready' || r.status === 'Confirmed Bookings');
 
         const updatedData = {
             customisationRequests: JSON.stringify(parsedRequests),
@@ -1027,15 +1045,29 @@ export default function OperationsDashboard() {
         setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...updatedData } : l));
 
         try {
-            await fetch(`${API_BASE_URL}/leads/${leadId}`, {
+            const response = await fetch(`${API_BASE_URL}/leads/${leadId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedData),
             });
-            triggerNotification('success', `Request assigned to ${finalAssignee}.`);
-            fetchLeads();
+
+            if (!response.ok) {
+                // The server rejected the update — don't report success, and don't call
+                // fetchLeads() here, or the optimistic update above gets silently
+                // overwritten with the old (unchanged) data, making the lead appear to
+                // snap back into My Jobs with no visible error.
+                const err = await response.json().catch(() => ({}));
+                triggerNotification('error', `Failed to move to Confirmed Bookings: ${err.message || 'Server rejected the update.'}`);
+                setLeads(prev => prev.map(l => l.id === leadId ? originalLead : l));
+            } else {
+                triggerNotification('success', `Request assigned to ${finalAssignee}.`);
+                fetchLeads();
+            }
         } catch (err) {
-            triggerNotification('success', `Request assigned (Simulation mode).`);
+            // Genuine network failure — the optimistic UI update never made it to the
+            // server either, so reflect that instead of claiming success.
+            triggerNotification('error', 'Network error — assignment was not saved. Please try again.');
+            setLeads(prev => prev.map(l => l.id === leadId ? originalLead : l));
         }
         setIsAssignModalOpen(false);
         setSelectedLeadForAssign(null);
@@ -1627,6 +1659,13 @@ export default function OperationsDashboard() {
         
         let tabMatchedStatus = getTabStatus(item.rawRowStatus);
         let matchTab = tabMatchedStatus === activeTab;
+        // "My Jobs" (Follow-Up) keeps listing an assigned item even after it progresses to
+        // Confirmed Bookings / Upcoming Bookings, so it appears in both tabs at once. Only
+        // the unassigned "Jobs" (New Requests) pool ever loses an item purely because it
+        // got assigned.
+        if (activeTab === 'Follow-Up') {
+            matchTab = tabMatchedStatus !== 'New Requests';
+        }
         const matchPlatform = selectedPlatform === 'All' ? true : item.platform === selectedPlatform;
 
         let isAuthorized = true;
@@ -1871,7 +1910,14 @@ export default function OperationsDashboard() {
                                                                 <span className="text-xs text-slate-500">{row.duration || 'N/A'}</span>
                                                             </div>
                                                         </td>
-                                                        <td className="px-6 py-4 text-sm">{row.customisationType || 'N/A'}</td>
+                                                        <td className="px-6 py-4 text-sm">
+                                                            <div className="flex flex-col gap-1 items-start">
+                                                                <span>{row.customisationType || 'N/A'}</span>
+                                                                {row.bookingConfirmedTag && (
+                                                                    <span className="px-2 py-0.5 bg-emerald-950/50 text-emerald-400 border border-emerald-800/50 rounded font-bold text-[10px] whitespace-nowrap">Booking Confirmed</span>
+                                                                )}
+                                                            </div>
+                                                        </td>
                                                         <td className="px-6 py-4 text-sm">{row.salesExecutive || 'N/A'}</td>
                                                         <td className="px-6 py-4 text-sm text-slate-400">{row.createdAt ? new Date(row.createdAt).toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A'}</td>
                                                         <td className="px-6 py-4 text-right whitespace-nowrap">
@@ -1931,7 +1977,7 @@ export default function OperationsDashboard() {
                                                         </td>
                                                         <td className="px-6 py-4">
                                                             <div className="flex flex-col text-sm">
-                                                                <span className="text-emerald-400 font-medium">{row.confirmedDestination || row.destination || 'N/A'}</span>
+                                                                <span className="text-emerald-400 font-medium">{row.destination || row.confirmedDestination || 'N/A'}</span>
                                                                 <span className="text-xs text-slate-400">{row.packageType || row.tourType || 'N/A'}</span>
                                                                 <span className="text-xs text-slate-500">{row.duration || 'N/A'}</span>
                                                             </div>
@@ -2021,6 +2067,11 @@ export default function OperationsDashboard() {
                                                         {getDaysToDeparture(row.tourStartDate || row.travelDate)}
                                                     </span>
                                                 )}
+                                                {activeTab === 'New Requests' && row.bookingConfirmedTag && (
+                                                    <span className="px-2 py-0.5 bg-emerald-950/50 text-emerald-400 border border-emerald-800/50 rounded font-bold text-[10px]">
+                                                        Booking Confirmed
+                                                    </span>
+                                                )}
                                             </div>
                                             <div className="flex items-center gap-1.5">
                                                 {activeTab === 'New Requests' ? (
@@ -2054,7 +2105,7 @@ export default function OperationsDashboard() {
                                                 <span className="text-slate-400 text-xs">📞 {row.phone || row.mobileNo || 'N/A'}</span>
                                             </div>
                                             <div className="flex items-center gap-3">
-                                                <span className="text-emerald-400 text-xs font-medium flex items-center gap-1"><MapPin size={11} />{activeTab === 'New Requests' || activeTab === 'Follow-Up' ? row.destination : (row.confirmedDestination || row.destination)}</span>
+                                                <span className="text-emerald-400 text-xs font-medium flex items-center gap-1"><MapPin size={11} />{row.destination || row.confirmedDestination || 'N/A'}</span>
                                                 <span className="text-slate-500 text-xs">📅 {activeTab === 'Confirmed Bookings' || activeTab === 'Upcoming Bookings' ? (row.tourStartDate || row.travelDate) : (row.travelDates || row.travelDate)}</span>
                                             </div>
                                         </div>

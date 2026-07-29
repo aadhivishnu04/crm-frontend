@@ -398,7 +398,6 @@ const SalesDashboard = () => {
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [expandedStage, setExpandedStage] = useState(null);
-    const [openJourneySections, setOpenJourneySections] = useState({ sales: true, operations: false, accounts: false, fulfillment: false });
 
     // --- HANDOVER TO OPERATION MODAL STATES ---
     const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
@@ -406,6 +405,7 @@ const SalesDashboard = () => {
     const [handoverLeadId, setHandoverLeadId] = useState('');
     const [handoverTarget, setHandoverTarget] = useState('');
     const [handoverNotes, setHandoverNotes] = useState('');
+    const [handoverOption, setHandoverOption] = useState('employee'); // 'pool' = common Ops jobs pool, 'employee' = direct individual assign
 
     const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
     const [reassignOption, setReassignOption] = useState('pool');
@@ -1604,6 +1604,7 @@ const SalesDashboard = () => {
         setHandoverLeadId(lead ? lead.id : '');
         setHandoverTarget('');
         setHandoverNotes('');
+        setHandoverOption('employee');
         setIsHandoverModalOpen(true);
     };
 
@@ -1614,7 +1615,7 @@ const SalesDashboard = () => {
             alert('Please select a job to handover.'); 
             return; 
         }
-        if (!handoverTarget) { 
+        if (handoverOption === 'employee' && !handoverTarget) { 
             alert('Please select an Operations Executive to assign this to.'); 
             return; 
         }
@@ -1623,15 +1624,20 @@ const SalesDashboard = () => {
         if (!leadToUpdate) return;
 
         try {
+            const isPool = handoverOption === 'pool';
             let updatedHistory = appendHistory(
                 leadToUpdate.history || [], 
                 'Moved to Operations', 
-                `Handed over to ${handoverTarget}. Notes: ${handoverNotes || 'None'}`
+                isPool
+                    ? `Shared to Operations common jobs pool. Notes: ${handoverNotes || 'None'}`
+                    : `Handed over to ${handoverTarget}. Notes: ${handoverNotes || 'None'}`
             );
             
             const payload = {
                 status: 'Move To Operation',
-                operationExecutive: handoverTarget,
+                // Pool: leave unassigned so it lands in Operations' shared "Jobs" queue for anyone to pick up.
+                // Individual: assign straight to the chosen Ops executive.
+                operationExecutive: isPool ? '' : handoverTarget,
                 operationNotes: handoverNotes,
                 history: JSON.stringify(updatedHistory)
             };
@@ -1732,8 +1738,14 @@ const SalesDashboard = () => {
         
         // Filter strictly relies on the assigned user
         else if (activeTab === 'My Jobs') {
-            const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required', 'Customisation Ready']; 
-            matchTab = validActiveStatuses.includes(itemStatus) && item.assignedTo === loggedInUserName;
+            // "My Jobs" keeps showing an assigned lead for as long as it's part of the
+            // Sales pipeline — even after it becomes "Customisation Ready" or the customer
+            // confirms the booking — so it appears in both "My Jobs" and the later tab at
+            // once. Only the unassigned "Jobs" pool and a completed handover to Operations
+            // remove it from here; "Jobs" is the only card that ever drops an item purely
+            // because it got assigned.
+            const leftSalesPipeline = itemStatus === 'Jobs' || itemStatus === 'Move To Operation';
+            matchTab = !leftSalesPipeline && item.assignedTo === loggedInUserName;
         } 
         else if (activeTab === 'Customisation Ready') { 
             matchTab = true; // customisationReadyRows is already pre-filtered to the right leads/destinations
@@ -1780,8 +1792,8 @@ const SalesDashboard = () => {
                         <CreditCard size={18} strokeWidth={2.5} />
                         <span>Add New Payment</span>
                     </button>
-                     {/* NEW COMMON HANDOVER BUTTON */}
-                    {(activeTab === 'My Jobs' || activeTab === 'My Confirmation') && (
+                     {/* HANDOVER BUTTON — only for confirmed leads, not for My Jobs / Customisation Ready */}
+                    {activeTab === 'My Confirmation' && (
                         <button type="button" onClick={() => handleOpenHandoverModal(null)}
                             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-purple-500 hover:bg-purple-400 active:bg-purple-600 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-purple-500/20 transition-all duration-200">
                             <Send size={18} strokeWidth={2.5} />
@@ -1801,10 +1813,15 @@ const SalesDashboard = () => {
                         const isRecycleBin = (d.followupCount >= 10 || d.followUpCount >= 10 || itemStatus === 'Recycle Bin');
                         if (cat.id === 'Recycle') return isRecycleBin;
                         if (isRecycleBin) return false;
-                        
-                        const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required', 'Customisation Ready'];
-                        
-                        if (cat.id === 'My Jobs') return validActiveStatuses.includes(itemStatus) && d.assignedTo === loggedInUserName;
+
+                        // "My Jobs" keeps showing an assigned lead for as long as it's part of
+                        // the Sales pipeline — even after it becomes "Customisation Ready" or the
+                        // customer confirms the booking — so it stays visible in both places at
+                        // once. Only the unassigned "Jobs" pool and a completed handover to
+                        // Operations remove it from here. "Jobs" is the only card items ever drop
+                        // out of purely because they got assigned.
+                        const leftSalesPipeline = itemStatus === 'Jobs' || itemStatus === 'Move To Operation';
+                        if (cat.id === 'My Jobs') return !leftSalesPipeline && d.assignedTo === loggedInUserName;
                         if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && d.assignedTo === loggedInUserName;
                         return itemStatus === cat.id;
                     }).length;
@@ -1836,10 +1853,10 @@ const SalesDashboard = () => {
                             const isRecycleBin = (d.followupCount >= 10 || d.followUpCount >= 10 || itemStatus === 'Recycle Bin');
                             if (cat.id === 'Recycle') return isRecycleBin;
                             if (isRecycleBin) return false;
-                            
-                            const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required', 'Customisation Ready'];
-                            
-                            if (cat.id === 'My Jobs') return validActiveStatuses.includes(itemStatus) && d.assignedTo === loggedInUserName;
+
+                            // Same "stay in both places" rule as the desktop card block above.
+                            const leftSalesPipeline = itemStatus === 'Jobs' || itemStatus === 'Move To Operation';
+                            if (cat.id === 'My Jobs') return !leftSalesPipeline && d.assignedTo === loggedInUserName;
                             if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && d.assignedTo === loggedInUserName;
                             return itemStatus === cat.id;
                         }).length;
@@ -2132,7 +2149,7 @@ const SalesDashboard = () => {
                                     <td className="flex justify-between items-center md:table-cell py-3 md:py-4 px-2 md:px-4 mt-1 md:mt-0 md:text-center whitespace-nowrap">
                                         <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Actions</span>
                                         <div className="flex items-center justify-end md:justify-center gap-1.5 sm:gap-2">
-                                            <button type="button" onClick={() => { setSelectedLead(row); setExpandedStage(null); setOpenJourneySections({ sales: true, operations: false, accounts: false, fulfillment: false }); setIsHistoryModalOpen(true); }}
+                                            <button type="button" onClick={() => { setSelectedLead(row); setExpandedStage(null); setIsHistoryModalOpen(true); }}
                                                 className="p-2 md:p-1.5 text-purple-400 md:text-slate-400 hover:text-purple-400 bg-purple-500/10 md:bg-transparent hover:bg-purple-900/30 rounded-lg transition-colors" title="View History">
                                                 <History size={18} />
                                             </button>
@@ -2148,8 +2165,8 @@ const SalesDashboard = () => {
                                                 </button>
                                             )}
 
-                                            {/* NEW INDIVIDUAL HANDOVER BUTTON */}
-                                            {(activeTab === 'My Jobs' || activeTab === 'My Confirmation') && (
+                                            {/* HANDOVER BUTTON — only for confirmed leads */}
+                                            {activeTab === 'My Confirmation' && (
                                                 <button type="button" onClick={() => handleOpenHandoverModal(row)}
                                                     className="p-2 md:p-1.5 text-purple-400 md:text-slate-400 hover:text-purple-400 bg-purple-500/10 md:bg-transparent hover:bg-purple-900/30 rounded-lg transition-colors" title="Handover to Operations">
                                                     <Send size={18} />
@@ -3144,7 +3161,7 @@ const SalesDashboard = () => {
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 border-t border-slate-700/50 pt-5">
                                                 <div>
                                                     <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Service</label>
-                                                    {renderDropdown('paymentService', editFormData.paymentService, '', ['Tour Package', 'Flight Booking', 'Hotel Booking', 'VISA Booking', 'Transport'], handleInputChange)}
+                                                    {renderDropdown('paymentService', editFormData.paymentService, '', ['Tour Package', 'Flight Booking', 'Hotel Booking', 'VISA Booking', 'Transport','Train Booking','Bus Booking','Travel Insurance'], handleInputChange)}
                                                 </div>
                                                 <div>
                                                     <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Amount Collected</label>
@@ -3280,18 +3297,46 @@ const SalesDashboard = () => {
                             )}
                             
                             <div>
-                                <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-[11px] sm:text-xs">Assigned To (Operations Team)</label>
-                                <select 
-                                    value={handoverTarget} 
-                                    onChange={(e) => setHandoverTarget(e.target.value)}
-                                    className="w-full px-3 py-3 sm:py-2.5 border border-slate-700 rounded-lg sm:rounded-md bg-slate-900 text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer"
-                                >
-                                    <option value="" disabled hidden>-- Select Ops Employee --</option>
-                                    {operationsStaff.map((emp, idx) => (
-                                        <option key={idx} value={emp}>{emp}</option>
-                                    ))}
-                                </select>
+                                <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-[11px] sm:text-xs">Share To</label>
+                                <div className="flex flex-col sm:grid sm:grid-cols-2 gap-3">
+                                    <button type="button" onClick={() => setHandoverOption('pool')}
+                                        className={`p-3 sm:p-4 rounded-lg border text-left cursor-pointer flex flex-row sm:flex-col items-center sm:items-start gap-3 sm:gap-2 transition-all ${handoverOption === 'pool' ? 'bg-[#07202a] border-cyan-500 text-white ring-1 ring-cyan-500' : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800'}`}>
+                                        <ShoppingCart size={20} className={handoverOption === 'pool' ? 'text-cyan-400 flex-shrink-0' : 'text-slate-400 flex-shrink-0'} />
+                                        <div>
+                                            <p className="font-bold text-sm">Common Ops Jobs</p>
+                                            <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">Any Ops exec can pick it up</p>
+                                        </div>
+                                    </button>
+                                    <button type="button" onClick={() => setHandoverOption('employee')}
+                                        className={`p-3 sm:p-4 rounded-lg border text-left cursor-pointer flex flex-row sm:flex-col items-center sm:items-start gap-3 sm:gap-2 transition-all ${handoverOption === 'employee' ? 'bg-[#07202a] border-orange-500 text-white ring-1 ring-orange-500' : 'bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-800'}`}>
+                                        <Users size={20} className={handoverOption === 'employee' ? 'text-orange-400 flex-shrink-0' : 'text-slate-400 flex-shrink-0'} />
+                                        <div>
+                                            <p className="font-bold text-sm">Individual Ops Exec</p>
+                                            <p className="text-[10px] sm:text-xs text-slate-500 mt-0.5">Assign directly to one person</p>
+                                        </div>
+                                    </button>
+                                </div>
                             </div>
+
+                            {handoverOption === 'employee' ? (
+                                <div>
+                                    <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-[11px] sm:text-xs">Assigned To (Operations Team)</label>
+                                    <select 
+                                        value={handoverTarget} 
+                                        onChange={(e) => setHandoverTarget(e.target.value)}
+                                        className="w-full px-3 py-3 sm:py-2.5 border border-slate-700 rounded-lg sm:rounded-md bg-slate-900 text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer"
+                                    >
+                                        <option value="" disabled hidden>-- Select Ops Employee --</option>
+                                        {operationsStaff.map((emp, idx) => (
+                                            <option key={idx} value={emp}>{emp}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            ) : (
+                                <div className="px-3 py-3 rounded-lg bg-cyan-950/20 border border-cyan-900/30 text-xs sm:text-sm text-cyan-300/90 leading-relaxed text-center sm:text-left">
+                                    This job will drop into Operations' shared <strong>"Jobs"</strong> queue, unassigned, for any Ops executive to claim.
+                                </div>
+                            )}
 
                             <div>
                                 <label className="block font-semibold text-slate-400 uppercase tracking-wider mb-1.5 text-[11px] sm:text-xs">Handover Notes</label>
@@ -3453,7 +3498,7 @@ const SalesDashboard = () => {
                                             </div>
                                         </div>
 
-                                        {/* Lead Journey — grouped by stage; Sales open by default, others as dropdowns */}
+                                        {/* Chronological Timeline — diamond markers, oldest → newest */}
                                         <div>
                                             <h4 className="text-sm font-bold text-slate-300 mb-1 flex items-center gap-2">
                                                 <History size={16} className="text-cyan-400" /> Lead Journey
@@ -3462,67 +3507,42 @@ const SalesDashboard = () => {
                                             {timeline.length === 0 ? (
                                                 <p className="text-sm text-slate-500 italic">No activity recorded yet.</p>
                                             ) : (
-                                                <div className="space-y-3">
-                                                    {STAGE_CONFIG.filter(s => s.key !== 'lead').map(stage => {
-                                                        const stageEntries = timeline.map((log, idx) => ({ ...log, idx })).filter(e => e.stage === stage.key);
-                                                        if (stageEntries.length === 0) return null;
-                                                        const isOpen = !!openJourneySections[stage.key];
-                                                        const StageIcon = stage.icon;
-                                                        return (
-                                                            <div key={stage.key} className="rounded-xl border border-slate-700 overflow-hidden">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => setOpenJourneySections(prev => ({ ...prev, [stage.key]: !prev[stage.key] }))}
-                                                                    className="w-full flex items-center justify-between px-4 py-3 text-left bg-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer"
-                                                                >
-                                                                    <span className={`flex items-center gap-2 text-sm font-bold ${stage.color.split(' ')[0]}`}>
-                                                                        <StageIcon size={15} /> {stage.label}
-                                                                    </span>
-                                                                    <span className="flex items-center gap-2 text-xs text-slate-400">
-                                                                        {stageEntries.length} update{stageEntries.length > 1 ? 's' : ''}
-                                                                        <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-                                                                    </span>
-                                                                </button>
-                                                                {isOpen && (
-                                                                    <div className="px-4 py-4 bg-[#0f172a] border-t border-slate-700/50">
-                                                                        <div className="relative border-l-2 border-slate-700 ml-2 space-y-5">
-                                                                            {stageEntries.map(log => {
-                                                                                const isCurrent = log.idx === timeline.length - 1;
-                                                                                const stageColor = stage.color.split(' ')[0];
-                                                                                const body = (
-                                                                                    <>
-                                                                                        <p className="text-xs text-slate-500 mb-0.5">{log.date}</p>
-                                                                                        <p className={`text-sm font-bold ${stageColor}`}>{log.title}</p>
-                                                                                        {log.parts && log.parts.length > 0 && (
-                                                                                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                                                                                                {log.parts.map((p, pi) => (
-                                                                                                    <span key={pi}>
-                                                                                                        {pi > 0 && ' | '}
-                                                                                                        {p.label && <span className="text-slate-400">{p.label}{p.value ? ': ' : ''}</span>}
-                                                                                                        {p.value && <span className="text-rose-400 font-semibold">{p.value}</span>}
-                                                                                                    </span>
-                                                                                                ))}
-                                                                                            </p>
-                                                                                        )}
-                                                                                    </>
-                                                                                );
-                                                                                return (
-                                                                                    <div key={log.idx} className="pl-6 relative">
-                                                                                        <span className={`absolute -left-[7px] top-1 w-3 h-3 rotate-45 ring-4 ring-[#0f172a] ${isCurrent ? 'bg-blue-500' : (log._explicit ? 'bg-purple-500' : 'bg-slate-500')}`} />
-                                                                                        {isCurrent ? (
-                                                                                            <div className="border border-blue-500/60 bg-blue-500/5 rounded-lg px-3 py-2 -mt-1">
-                                                                                                {body}
-                                                                                            </div>
-                                                                                        ) : body}
-                                                                                    </div>
-                                                                                );
-                                                                            })}
-                                                                        </div>
-                                                                    </div>
+                                                <div className="relative border-l-2 border-slate-700 ml-2 space-y-5">
+                                                    {timeline.map((log, idx) => {
+                                                        const isCurrent = idx === timeline.length - 1;
+                                                        const stageColor = STAGE_CONFIG.find(s => s.key === log.stage)?.color?.split(' ')[0] || 'text-slate-300';
+                                                        const body = (
+                                                            <>
+                                                                <p className="text-xs text-slate-500 mb-0.5">{log.date}</p>
+                                                                <p className={`text-sm font-bold ${stageColor}`}>{log.title}</p>
+                                                                {log.parts && log.parts.length > 0 && (
+                                                                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                                                                        {log.parts.map((p, pi) => (
+                                                                            <span key={pi}>
+                                                                                {pi > 0 && ' | '}
+                                                                                {p.label && <span className="text-slate-400">{p.label}{p.value ? ': ' : ''}</span>}
+                                                                                {p.value && <span className="text-rose-400 font-semibold">{p.value}</span>}
+                                                                            </span>
+                                                                        ))}
+                                                                    </p>
                                                                 )}
+                                                            </>
+                                                        );
+                                                        return (
+                                                            <div key={idx} className="pl-6 relative">
+                                                                <span className={`absolute -left-[7px] top-1 w-3 h-3 rotate-45 ring-4 ring-[#0f172a] ${isCurrent ? 'bg-blue-500' : (log._explicit ? 'bg-purple-500' : 'bg-slate-500')}`} />
+                                                                {isCurrent ? (
+                                                                    <div className="border border-blue-500/60 bg-blue-500/5 rounded-lg px-3 py-2 -mt-1">
+                                                                        {body}
+                                                                    </div>
+                                                                ) : body}
                                                             </div>
                                                         );
                                                     })}
+                                                    {/* terminal dot, matches mockup's closing marker */}
+                                                    <div className="pl-6 relative -mt-3">
+                                                        <span className="absolute -left-[4px] top-0 w-1.5 h-1.5 rounded-full bg-slate-500" />
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>
