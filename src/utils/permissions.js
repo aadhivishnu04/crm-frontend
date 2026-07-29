@@ -10,7 +10,8 @@ import {
     PhoneCall,
     ArrowRightLeft,
     Megaphone,
-    Wallet // 👈 Added Wallet icon for Accounts
+    Wallet,
+    Receipt // 👈 Added Receipt icon for Finance
 } from 'lucide-react';
 
 export const ROLES = {
@@ -42,8 +43,6 @@ export const MENU_ITEMS = [
         icon: BriefcaseBusiness, 
         roles: [ROLES.ADMIN, ROLES.EMPLOYEE] 
     },
-
-    
     
     // Marketing, Sales teams, Admin, and Employee
     { 
@@ -52,8 +51,6 @@ export const MENU_ITEMS = [
         icon: ContactRound, 
         roles: [ROLES.ADMIN, ROLES.SALES, ROLES.MARKETING, ROLES.EMPLOYEE] 
     },
-
-    
     
     // Sales team, Admin, and Employee
     { 
@@ -81,7 +78,14 @@ export const MENU_ITEMS = [
         path: '/accounts', 
         label: 'Accounts', 
         icon: Wallet, 
-        roles: [ROLES.ADMIN] // 👈 Added the Accounts menu item
+        roles: [ROLES.ADMIN] 
+    },
+    // Finance (Admin Restricted)
+    { 
+        path: '/finance', 
+        label: 'Finance', 
+        icon: Receipt, // 👈 Added the Finance menu item
+        roles: [ROLES.ADMIN] 
     },
     
     // Sales team, Admin, and Employee

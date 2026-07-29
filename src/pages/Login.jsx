@@ -5,7 +5,7 @@ import { ROLES } from '../utils/permissions';
 
 // 1. ADDED: Import the image from your assets folder. 
 // Adjust the relative path ('../assets/office-bg.jpg') based on your folder structure and exact file name.
-import bgImage from '../assets/loginpage2.jpg'; 
+import bgImage from '../assets/loginpage3.jpg'; 
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
 // Unified API base URL to prevent IP/Port mismatches across devices
