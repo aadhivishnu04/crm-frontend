@@ -398,6 +398,7 @@ const SalesDashboard = () => {
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [expandedStage, setExpandedStage] = useState(null);
+    const [openJourneySections, setOpenJourneySections] = useState({ sales: true, operations: false, accounts: false, fulfillment: false });
 
     // --- HANDOVER TO OPERATION MODAL STATES ---
     const [isHandoverModalOpen, setIsHandoverModalOpen] = useState(false);
@@ -2131,7 +2132,7 @@ const SalesDashboard = () => {
                                     <td className="flex justify-between items-center md:table-cell py-3 md:py-4 px-2 md:px-4 mt-1 md:mt-0 md:text-center whitespace-nowrap">
                                         <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Actions</span>
                                         <div className="flex items-center justify-end md:justify-center gap-1.5 sm:gap-2">
-                                            <button type="button" onClick={() => { setSelectedLead(row); setExpandedStage(null); setIsHistoryModalOpen(true); }}
+                                            <button type="button" onClick={() => { setSelectedLead(row); setExpandedStage(null); setOpenJourneySections({ sales: true, operations: false, accounts: false, fulfillment: false }); setIsHistoryModalOpen(true); }}
                                                 className="p-2 md:p-1.5 text-purple-400 md:text-slate-400 hover:text-purple-400 bg-purple-500/10 md:bg-transparent hover:bg-purple-900/30 rounded-lg transition-colors" title="View History">
                                                 <History size={18} />
                                             </button>
@@ -3452,7 +3453,7 @@ const SalesDashboard = () => {
                                             </div>
                                         </div>
 
-                                        {/* Chronological Timeline — diamond markers, oldest → newest */}
+                                        {/* Lead Journey — grouped by stage; Sales open by default, others as dropdowns */}
                                         <div>
                                             <h4 className="text-sm font-bold text-slate-300 mb-1 flex items-center gap-2">
                                                 <History size={16} className="text-cyan-400" /> Lead Journey
@@ -3461,42 +3462,67 @@ const SalesDashboard = () => {
                                             {timeline.length === 0 ? (
                                                 <p className="text-sm text-slate-500 italic">No activity recorded yet.</p>
                                             ) : (
-                                                <div className="relative border-l-2 border-slate-700 ml-2 space-y-5">
-                                                    {timeline.map((log, idx) => {
-                                                        const isCurrent = idx === timeline.length - 1;
-                                                        const stageColor = STAGE_CONFIG.find(s => s.key === log.stage)?.color?.split(' ')[0] || 'text-slate-300';
-                                                        const body = (
-                                                            <>
-                                                                <p className="text-xs text-slate-500 mb-0.5">{log.date}</p>
-                                                                <p className={`text-sm font-bold ${stageColor}`}>{log.title}</p>
-                                                                {log.parts && log.parts.length > 0 && (
-                                                                    <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                                                                        {log.parts.map((p, pi) => (
-                                                                            <span key={pi}>
-                                                                                {pi > 0 && ' | '}
-                                                                                {p.label && <span className="text-slate-400">{p.label}{p.value ? ': ' : ''}</span>}
-                                                                                {p.value && <span className="text-rose-400 font-semibold">{p.value}</span>}
-                                                                            </span>
-                                                                        ))}
-                                                                    </p>
-                                                                )}
-                                                            </>
-                                                        );
+                                                <div className="space-y-3">
+                                                    {STAGE_CONFIG.filter(s => s.key !== 'lead').map(stage => {
+                                                        const stageEntries = timeline.map((log, idx) => ({ ...log, idx })).filter(e => e.stage === stage.key);
+                                                        if (stageEntries.length === 0) return null;
+                                                        const isOpen = !!openJourneySections[stage.key];
+                                                        const StageIcon = stage.icon;
                                                         return (
-                                                            <div key={idx} className="pl-6 relative">
-                                                                <span className={`absolute -left-[7px] top-1 w-3 h-3 rotate-45 ring-4 ring-[#0f172a] ${isCurrent ? 'bg-blue-500' : (log._explicit ? 'bg-purple-500' : 'bg-slate-500')}`} />
-                                                                {isCurrent ? (
-                                                                    <div className="border border-blue-500/60 bg-blue-500/5 rounded-lg px-3 py-2 -mt-1">
-                                                                        {body}
+                                                            <div key={stage.key} className="rounded-xl border border-slate-700 overflow-hidden">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setOpenJourneySections(prev => ({ ...prev, [stage.key]: !prev[stage.key] }))}
+                                                                    className="w-full flex items-center justify-between px-4 py-3 text-left bg-slate-800/50 hover:bg-slate-800 transition-colors cursor-pointer"
+                                                                >
+                                                                    <span className={`flex items-center gap-2 text-sm font-bold ${stage.color.split(' ')[0]}`}>
+                                                                        <StageIcon size={15} /> {stage.label}
+                                                                    </span>
+                                                                    <span className="flex items-center gap-2 text-xs text-slate-400">
+                                                                        {stageEntries.length} update{stageEntries.length > 1 ? 's' : ''}
+                                                                        <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                                                                    </span>
+                                                                </button>
+                                                                {isOpen && (
+                                                                    <div className="px-4 py-4 bg-[#0f172a] border-t border-slate-700/50">
+                                                                        <div className="relative border-l-2 border-slate-700 ml-2 space-y-5">
+                                                                            {stageEntries.map(log => {
+                                                                                const isCurrent = log.idx === timeline.length - 1;
+                                                                                const stageColor = stage.color.split(' ')[0];
+                                                                                const body = (
+                                                                                    <>
+                                                                                        <p className="text-xs text-slate-500 mb-0.5">{log.date}</p>
+                                                                                        <p className={`text-sm font-bold ${stageColor}`}>{log.title}</p>
+                                                                                        {log.parts && log.parts.length > 0 && (
+                                                                                            <p className="text-xs text-slate-400 mt-1 leading-relaxed">
+                                                                                                {log.parts.map((p, pi) => (
+                                                                                                    <span key={pi}>
+                                                                                                        {pi > 0 && ' | '}
+                                                                                                        {p.label && <span className="text-slate-400">{p.label}{p.value ? ': ' : ''}</span>}
+                                                                                                        {p.value && <span className="text-rose-400 font-semibold">{p.value}</span>}
+                                                                                                    </span>
+                                                                                                ))}
+                                                                                            </p>
+                                                                                        )}
+                                                                                    </>
+                                                                                );
+                                                                                return (
+                                                                                    <div key={log.idx} className="pl-6 relative">
+                                                                                        <span className={`absolute -left-[7px] top-1 w-3 h-3 rotate-45 ring-4 ring-[#0f172a] ${isCurrent ? 'bg-blue-500' : (log._explicit ? 'bg-purple-500' : 'bg-slate-500')}`} />
+                                                                                        {isCurrent ? (
+                                                                                            <div className="border border-blue-500/60 bg-blue-500/5 rounded-lg px-3 py-2 -mt-1">
+                                                                                                {body}
+                                                                                            </div>
+                                                                                        ) : body}
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
                                                                     </div>
-                                                                ) : body}
+                                                                )}
                                                             </div>
                                                         );
                                                     })}
-                                                    {/* terminal dot, matches mockup's closing marker */}
-                                                    <div className="pl-6 relative -mt-3">
-                                                        <span className="absolute -left-[4px] top-0 w-1.5 h-1.5 rounded-full bg-slate-500" />
-                                                    </div>
                                                 </div>
                                             )}
                                         </div>

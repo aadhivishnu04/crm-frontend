@@ -1318,9 +1318,9 @@ const confirmedBookings = leads.filter(l =>
                         <div className="flex flex-col sm:flex-row justify-between p-4 sm:p-5 border-b border-slate-700/20 gap-3">
                             <div className="flex flex-col">
                                 <h2 className="text-base sm:text-lg font-bold text-white">{activeTab} <span className="text-slate-400 font-normal text-sm ml-2">({filtered.length} records)</span></h2>
-                                {activeTab === 'Customer Payment' && <span className="text-xs text-slate-500 mt-1 italic">Customer transactions logged against confirmed bookings — verify from the same form used in Confirmed Bookings</span>}
-                                {activeTab === 'Confirmed Bookings' && <span className="text-xs text-slate-500 mt-1 italic">Once sales has given "Booking Confirmed"</span>}
-                                {activeTab === 'Client Due' && <span className="text-xs text-slate-500 mt-1 italic">Client balance is not 0 or status is not Fully Paid</span>}
+                                {/* {activeTab === 'Customer Payment' && <span className="text-xs text-slate-500 mt-1 italic">Customer transactions logged against confirmed bookings — verify from the same form used in Confirmed Bookings</span>} */}
+                                {/* {activeTab === 'Confirmed Bookings' && <span className="text-xs text-slate-500 mt-1 italic">Once sales has given "Booking Confirmed"</span>} */}
+                                {/* {activeTab === 'Client Due' && <span className="text-xs text-slate-500 mt-1 italic">Client balance is not 0 or status is not Fully Paid</span>} */}
                             </div>
                             <div className="flex items-center gap-3 w-full sm:w-auto">
                                 
