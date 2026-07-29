@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../utils/auth';
 import { ROLES } from '../utils/permissions';
 
+// 1. ADDED: Import the image from your assets folder. 
+// Adjust the relative path ('../assets/office-bg.jpg') based on your folder structure and exact file name.
+import bgImage from '../assets/loginpage2.jpg'; 
+
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
 // Unified API base URL to prevent IP/Port mismatches across devices
 const API_BASE_URL = "https://crm-backend-l87w.onrender.com/api";
@@ -31,7 +35,6 @@ const Login = () => {
         const id = employeeId.trim();
         try {
             // 1. Authenticate with the unified backend endpoint
-            // FIX: Removed the extra /api here to prevent 404 Not Found
             const response = await fetch(`${API_BASE_URL}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -53,7 +56,6 @@ const Login = () => {
 
             // 3. ULTRA SPEED TRACKER: Register heartbeat instantly for immediate panel visibility
             if (id.toLowerCase() !== 'admin') {
-                // FIX: Removed the extra /api here as well
                 await fetch(`${API_BASE_URL}/members/ping`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -86,24 +88,25 @@ const Login = () => {
 
     return (
         <div
-            className="min-h-screen flex items-center justify-center bg-cover bg-center relative poppins-regular"
-            style={{ backgroundImage: `url('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?q=80&w=2070&auto=format&fit=crop')` }}
+            className="min-h-screen flex items-center justify-end bg-cover bg-center relative poppins-regular pr-6 md:pr-24 lg:pr-32"
+            // 2. CHANGED: Swapped the external URL for the imported 'bgImage' variable
+            style={{ backgroundImage: `url(${bgImage})` }}
         >
-            <div className="absolute inset-0 bg-black/40"></div>
+            <div className="absolute inset-0 bg-black/60"></div>
 
-            <div className="relative z-10 w-full max-w-md p-10 mx-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl">
+            <div className="relative z-10 w-full max-w-lg p-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl">
 
-                <h2 className="text-3xl font-semibold text-center mb-8 text-white tracking-wide">
-                    iTour CRM
+                <h2 className="text-4xl font-semibold text-center mb-10 text-white tracking-wide">
+                   CRM
                 </h2>
 
                 {error && (
-                    <div className="bg-red-500/80 backdrop-blur-sm text-white p-3 rounded-md text-base mb-6 border border-red-400 text-center font-medium">
+                    <div className="bg-red-500/80 backdrop-blur-sm text-white p-3 rounded-md text-base mb-8 border border-red-400 text-center font-medium">
                         {error}
                     </div>
                 )}
 
-                <form onSubmit={handleLogin} className="space-y-6">
+                <form onSubmit={handleLogin} className="space-y-8">
 
                     <div className="relative">
                         <input
@@ -111,7 +114,7 @@ const Login = () => {
                             value={employeeId}
                             onChange={(e) => setEmployeeId(e.target.value)}
                             placeholder="Enter your Employee ID"
-                            className="w-full bg-transparent border-0 border-b-2 border-white/50 py-2 text-white placeholder-gray-300 focus:outline-none focus:border-white focus:ring-0 transition-colors text-lg"
+                            className="w-full bg-transparent border-0 border-b-2 border-white/50 py-3 text-white placeholder-gray-300 focus:outline-none focus:border-white focus:ring-0 transition-colors text-xl"
                             required
                             disabled={isLoading}
                         />
@@ -123,17 +126,17 @@ const Login = () => {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="Enter your password"
-                            className="w-full bg-transparent border-0 border-b-2 border-white/50 py-2 text-white placeholder-gray-300 focus:outline-none focus:border-white focus:ring-0 transition-colors text-lg"
+                            className="w-full bg-transparent border-0 border-b-2 border-white/50 py-3 text-white placeholder-gray-300 focus:outline-none focus:border-white focus:ring-0 transition-colors text-xl"
                             required
                             disabled={isLoading}
                         />
                     </div>
 
-                    <div className="pt-4">
+                    <div className="pt-6">
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-white text-gray-900 font-bold py-3 px-4 rounded-xl hover:bg-gray-100 transition-colors shadow-lg disabled:opacity-70 disabled:cursor-not-allowed text-base uppercase tracking-wider"
+                            className="w-full bg-white text-gray-900 font-bold py-4 px-4 rounded-xl hover:bg-gray-100 transition-colors shadow-lg disabled:opacity-70 disabled:cursor-not-allowed text-lg uppercase tracking-wider"
                         >
                             {isLoading ? 'Verifying session token...' : 'Log In'}
                         </button>
