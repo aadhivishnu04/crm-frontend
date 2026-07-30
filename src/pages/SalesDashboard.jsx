@@ -1318,7 +1318,7 @@ const SalesDashboard = () => {
         }
 
         let derivedActionTaken = lead.actionTaken || '';
-        if (lead.status === 'Customisation Ready') {
+        if (lead.status === 'Customisation Ready' || lead.status === 'Customization Required') {
             derivedActionTaken = 'Customisation Required';
         }
 
@@ -1412,8 +1412,14 @@ const SalesDashboard = () => {
             if (logsCount >= 10) finalStatus = 'Recycle Bin';
 
             if (editFormData.actionTaken === 'Customisation Required' && finalStatus !== 'Recycle Bin' && finalStatus !== 'Move To Operation') {
-                finalStatus = 'Customisation Ready';
-            } else if (finalStatus === 'Customisation Ready' && editFormData.actionTaken !== 'Customisation Required') {
+                // NOTE: intentionally 'Customization Required' (not 'Customisation Ready') — this is
+                // the status Operations' getTabStatus() maps to "New Requests" (Jobs). Setting it to
+                // 'Customisation Ready' here was pulling the lead straight into Operations' Follow-Up
+                // (My Jobs) and into Sales' own "Customisation Ready" tab before Operations had even
+                // touched it. 'Customisation Ready' is reserved for Operations to set once it has
+                // actually finished the request and shared it back to Sales.
+                finalStatus = 'Customization Required';
+            } else if ((finalStatus === 'Customization Required' || finalStatus === 'Customisation Ready') && editFormData.actionTaken !== 'Customisation Required') {
                 finalStatus = 'Sales Assigned'; // Revert back to My Jobs if they change their mind
             }
 

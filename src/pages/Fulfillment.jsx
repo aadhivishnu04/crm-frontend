@@ -3,7 +3,8 @@ import {
     Eye, Pencil, Clock, Search, MapPin, Calendar,
     BookmarkCheck, PlaneTakeoff, X, AlertCircle, CheckCircle2, 
     CheckSquare, ArrowUp, ChevronDown, ChevronUp, ChevronRight,
-    History, Target, Briefcase, ClipboardList, Wallet, PackageCheck
+    History, Target, Briefcase, ClipboardList, Wallet, PackageCheck,
+    Plus, Trash2
 } from 'lucide-react';
 
 // ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
@@ -719,6 +720,14 @@ export default function Fulfillment() {
         setSelectedLeadForEdit(prev => ({ ...prev, [field]: value }));
     };
 
+    const toArr = (val) => {
+        if (Array.isArray(val)) return val;
+        if (typeof val === 'string' && val.trim()) {
+            try { const parsed = JSON.parse(val); return Array.isArray(parsed) ? parsed : []; } catch (e) { return []; }
+        }
+        return [];
+    };
+
     const inputCls = "w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm focus:border-cyan-500 outline-none";
     const selectCls = "w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm focus:border-cyan-500 outline-none cursor-pointer";
     const readonlyCls = "w-full px-3 py-2 bg-slate-900/50 border border-slate-800 rounded text-slate-400 text-sm cursor-not-allowed font-medium opacity-80 focus:outline-none";
@@ -1067,8 +1076,11 @@ export default function Fulfillment() {
                                                 <input type="text" readOnly value={selectedLeadForEdit.destination || ''} className={readonlyCls} />
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-medium text-slate-500 mb-1">No. of Pax</label>
-                                                <input type="text" readOnly value={selectedLeadForEdit.noOfPax || ''} className={readonlyCls} />
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">No. of Pax (Adults | Children)</label>
+                                                <div className="flex gap-2">
+                                                    <input type="text" readOnly value={selectedLeadForEdit.noOfAdults || selectedLeadForEdit.noOfPax || ''} className={readonlyCls} placeholder="Adults" />
+                                                    <input type="text" readOnly value={selectedLeadForEdit.confirmedNoOfChildren || selectedLeadForEdit.noOfChildren || ''} className={readonlyCls} placeholder="Children" />
+                                                </div>
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-slate-500 mb-1">Departure Date</label>
@@ -1080,7 +1092,7 @@ export default function Fulfillment() {
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-slate-500 mb-1">Services</label>
-                                                <input type="text" readOnly value={selectedLeadForEdit.confirmedServices || selectedLeadForEdit.services || ''} className={readonlyCls} />
+                                                <div className={`${readonlyCls} whitespace-normal break-words min-h-[38px]`}>{selectedLeadForEdit.confirmedServices || selectedLeadForEdit.services || ''}</div>
                                             </div>
                                         </div>
                                     </FormSection>
@@ -1088,7 +1100,7 @@ export default function Fulfillment() {
                                     {/* FLIGHT DETAILS */}
                                     <FormSection 
                                         title="Flight Details" 
-                                        action={<button type="button" onClick={() => setViewModal({ show: true, title: 'FLIGHT DETAILS', content: selectedLeadForEdit.flights && selectedLeadForEdit.flights.length > 0 ? selectedLeadForEdit.flights : 'No flight history available.' })} className="text-xs font-bold text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0 uppercase">View Details</button>}
+                                        action={<button type="button" onClick={() => setViewModal({ show: true, title: 'FLIGHT DETAILS', content: selectedLeadForEdit.flights && selectedLeadForEdit.flights.length > 0 ? selectedLeadForEdit.flights : 'No flight history available.' })} className="text-cyan-500 cursor-pointer hover:text-cyan-400 bg-transparent border-none p-0" title="View Details"><Eye size={16} /></button>}
                                     >
                                         <div className="space-y-4">
                                             <div className="grid grid-cols-12 items-center gap-4 border-b border-slate-700/30 pb-3">
@@ -1162,7 +1174,7 @@ export default function Fulfillment() {
                                     {selectedLeadForEdit.visas && selectedLeadForEdit.visas.length > 0 && selectedLeadForEdit.visas[0].visaType && selectedLeadForEdit.visas[0].visaType !== 'VISA-Free' && (
                                         <FormSection 
                                             title="VISA Details"
-                                            action={<button type="button" onClick={() => setViewModal({ show: true, title: 'VISA DETAILS', content: selectedLeadForEdit.visas && selectedLeadForEdit.visas.length > 0 ? selectedLeadForEdit.visas : 'No VISA history available.' })} className="text-xs font-bold text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0 uppercase">View Details</button>}
+                                            action={<button type="button" onClick={() => setViewModal({ show: true, title: 'VISA DETAILS', content: selectedLeadForEdit.visas && selectedLeadForEdit.visas.length > 0 ? selectedLeadForEdit.visas : 'No VISA history available.' })} className="text-cyan-500 cursor-pointer hover:text-cyan-400 bg-transparent border-none p-0" title="View Details"><Eye size={16} /></button>}
                                         >
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
                                                 <div className="space-y-4">
@@ -1190,7 +1202,7 @@ export default function Fulfillment() {
                                     {/* DMC FULFILMENT */}
                                     <FormSection 
                                         title="DMC Fulfilment"
-                                        action={<button type="button" onClick={() => setViewModal({ show: true, title: 'DMC FULFILMENT', content: selectedLeadForEdit.vendorRequests && selectedLeadForEdit.vendorRequests.length > 0 ? selectedLeadForEdit.vendorRequests : 'No DMC/Vendor history available.' })} className="text-xs font-bold text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0 uppercase">View Details</button>}
+                                        action={<button type="button" onClick={() => setViewModal({ show: true, title: 'DMC FULFILMENT', content: selectedLeadForEdit.vendorRequests && selectedLeadForEdit.vendorRequests.length > 0 ? selectedLeadForEdit.vendorRequests : 'No DMC/Vendor history available.' })} className="text-cyan-500 cursor-pointer hover:text-cyan-400 bg-transparent border-none p-0" title="View Details"><Eye size={16} /></button>}
                                     >
                                         <div className="space-y-4">
                                             <div className="grid grid-cols-12 items-center gap-4 border-b border-slate-700/30 pb-3">
@@ -1237,7 +1249,7 @@ export default function Fulfillment() {
                                                     "Birthday": selectedLeadForEdit.reqBirthday,
                                                     "Anniversary": selectedLeadForEdit.reqAnniversary,
                                                     "Other": selectedLeadForEdit.reqManualAdd
-                                                } })} className="text-xs text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0">View Details</button>
+                                                } })} className="text-cyan-500 cursor-pointer hover:text-cyan-400 bg-transparent border-none p-0" title="View Details"><Eye size={16} /></button>
                                                 <CustomSelect value={selectedLeadForEdit.specialReqStatusVal} onChange={v => handleFieldChange('specialReqStatusVal', v)} options={['Pending', 'Completed', 'Not Applicable']} className="w-48 px-2 py-1.5 bg-slate-900 text-white text-sm rounded border border-slate-700 outline-none focus:border-cyan-500" />
                                             </div>
                                         </div>
@@ -1264,8 +1276,25 @@ export default function Fulfillment() {
                                                 <div className="col-span-4 sm:col-span-3">
                                                     <span className="text-sm font-bold text-white block">Finalised Itinerary</span>
                                                 </div>
-                                                <div className="col-span-8 sm:col-span-9">
-                                                    <button type="button" onClick={() => setViewModal({ show: true, title: 'FINALISED ITINERARY', content: selectedLeadForEdit.customisationRequests && selectedLeadForEdit.customisationRequests.length > 0 ? selectedLeadForEdit.customisationRequests : { Readymade_Package_Details: selectedLeadForEdit.readymadePackageDetails || 'No itinerary history available.' } })} className="text-xs font-bold text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0 uppercase">View Details</button>
+                                                <div className="col-span-8 sm:col-span-9 flex items-center gap-4 flex-wrap">
+                                                    <button type="button" onClick={() => setViewModal({ show: true, title: 'FINALISED ITINERARY', content: selectedLeadForEdit.customisationRequests && selectedLeadForEdit.customisationRequests.length > 0 ? selectedLeadForEdit.customisationRequests : { Readymade_Package_Details: selectedLeadForEdit.readymadePackageDetails || 'No itinerary history available.' } })} className="text-cyan-500 cursor-pointer hover:text-cyan-400 bg-transparent border-none p-0" title="View Details"><Eye size={16} /></button>
+                                                    <div className="relative inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded cursor-pointer">
+                                                        <Plus size={12} /> Attach Itinerary
+                                                        <input type="file" onChange={e => {
+                                                            const file = e.target.files[0];
+                                                            if (!file) return;
+                                                            const r = new FileReader();
+                                                            r.readAsDataURL(file);
+                                                            r.onloadend = () => handleFieldChange('finalisedItineraryFile', r.result);
+                                                        }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                                    </div>
+                                                    {selectedLeadForEdit.finalisedItineraryFile && (
+                                                        <div className="flex items-center gap-2 px-2 py-1 bg-slate-800/40 rounded border border-slate-700/50">
+                                                            <span className="text-[10px] text-slate-300">Itinerary Attached</span>
+                                                            <button type="button" onClick={() => window.open(selectedLeadForEdit.finalisedItineraryFile, '_blank')} className="p-1 rounded bg-slate-800 border-none cursor-pointer text-blue-400"><Eye size={12} /></button>
+                                                            <button type="button" onClick={() => handleFieldChange('finalisedItineraryFile', '')} className="p-1 rounded bg-slate-800 border-none cursor-pointer text-red-400"><Trash2 size={12} /></button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-12 items-center gap-4">
@@ -1287,7 +1316,7 @@ export default function Fulfillment() {
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs font-bold text-white mb-2">Briefed Method</label>
-                                                    <CustomSelect value={selectedLeadForEdit.briefedMethodVal} onChange={v => handleFieldChange('briefedMethodVal', v)} options={['Call', 'WhatsApp', 'Email', 'In-Person']} className="w-full bg-slate-900 text-white text-sm rounded border border-slate-700 px-3 py-2 outline-none focus:border-cyan-500" />
+                                                    <CustomSelect value={selectedLeadForEdit.briefedMethodVal} onChange={v => handleFieldChange('briefedMethodVal', v)} options={['Call', 'WhatsApp', 'Video Call', 'In-Person']} className="w-full bg-slate-900 text-white text-sm rounded border border-slate-700 px-3 py-2 outline-none focus:border-cyan-500" />
                                                 </div>
                                             </div>
                                         </div>
@@ -1392,8 +1421,11 @@ export default function Fulfillment() {
                                                 <input type="text" readOnly value={selectedLeadForEdit.destination || ''} className={readonlyCls} />
                                             </div>
                                             <div>
-                                                <label className="block text-xs font-medium text-slate-500 mb-1">No. of Pax</label>
-                                                <input type="text" readOnly value={selectedLeadForEdit.noOfPax || ''} className={readonlyCls} />
+                                                <label className="block text-xs font-medium text-slate-500 mb-1">No. of Pax (Adults | Children)</label>
+                                                <div className="flex gap-2">
+                                                    <input type="text" readOnly value={selectedLeadForEdit.noOfAdults || selectedLeadForEdit.noOfPax || ''} className={readonlyCls} placeholder="Adults" />
+                                                    <input type="text" readOnly value={selectedLeadForEdit.confirmedNoOfChildren || selectedLeadForEdit.noOfChildren || ''} className={readonlyCls} placeholder="Children" />
+                                                </div>
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-slate-500 mb-1">Departure Date</label>
@@ -1405,7 +1437,7 @@ export default function Fulfillment() {
                                             </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-slate-500 mb-1">Services</label>
-                                                <input type="text" readOnly value={selectedLeadForEdit.confirmedServices || selectedLeadForEdit.services || ''} className={readonlyCls} />
+                                                <div className={`${readonlyCls} whitespace-normal break-words min-h-[38px]`}>{selectedLeadForEdit.confirmedServices || selectedLeadForEdit.services || ''}</div>
                                             </div>
                                         </div>
                                     </FormSection>
@@ -1413,7 +1445,7 @@ export default function Fulfillment() {
                                     {/* TRANSPORT DETAILS */}
                                     <FormSection 
                                         title="Transport Details"
-                                        action={<button type="button" onClick={() => setViewModal({ show: true, title: 'TRANSPORT DETAILS', content: selectedLeadForEdit.domTransports && selectedLeadForEdit.domTransports.length > 0 ? selectedLeadForEdit.domTransports : 'No transport history available.' })} className="text-xs font-bold text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0 uppercase">View Details</button>}
+                                        action={<button type="button" onClick={() => setViewModal({ show: true, title: 'TRANSPORT DETAILS', content: selectedLeadForEdit.domTransports && selectedLeadForEdit.domTransports.length > 0 ? selectedLeadForEdit.domTransports : 'No transport history available.' })} className="text-cyan-500 cursor-pointer hover:text-cyan-400 bg-transparent border-none p-0" title="View Details"><Eye size={16} /></button>}
                                     >
                                         <div className="grid grid-cols-12 items-center gap-4 border-b border-slate-700/30 pb-4 mb-4">
                                             <div className="col-span-4 sm:col-span-3">
@@ -1500,20 +1532,30 @@ export default function Fulfillment() {
                                     {/* VENDOR FULFILMENT */}
                                     <FormSection 
                                         title="Vendor Fulfilment"
-                                        action={<button type="button" onClick={() => setViewModal({ show: true, title: 'VENDOR FULFILMENT', content: selectedLeadForEdit.vendorRequests && selectedLeadForEdit.vendorRequests.length > 0 ? selectedLeadForEdit.vendorRequests : 'No Vendor history available.' })} className="text-xs font-bold text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0 uppercase">View Details</button>}
+                                        action={<button type="button" onClick={() => setViewModal({ show: true, title: 'VENDOR FULFILMENT', content: selectedLeadForEdit.vendorRequests && selectedLeadForEdit.vendorRequests.length > 0 ? selectedLeadForEdit.vendorRequests : 'No Vendor history available.' })} className="text-cyan-500 cursor-pointer hover:text-cyan-400 bg-transparent border-none p-0" title="View Details"><Eye size={16} /></button>}
                                     >
-                                        <div className="flex items-center gap-3 mb-6 border-b border-slate-700/50 pb-4">
-                                            <span className="text-xs font-bold text-slate-400">Package Scope:</span>
-                                            <CustomSelect 
-                                                value={selectedLeadForEdit.domVendorType} 
-                                                onChange={v => handleFieldChange('domVendorType', v)} 
-                                                options={['Complete Package', 'Hotel', 'Vehicle']} 
-                                                className="w-48 px-3 py-2 bg-slate-900 border border-slate-700 rounded text-white text-sm outline-none focus:border-cyan-500"
-                                            />
-                                        </div>
+                                        {(() => {
+                                            // Package Scope is no longer manually chosen here — it's fetched straight
+                                            // from what Operations actually selected in Confirmed Bookings' Vendor
+                                            // Details ('Complete Package' / 'Hotel Only' / 'Vehicle Only'), so only the
+                                            // scopes Ops confirmed are shown.
+                                            const rawScopes = toArr(selectedLeadForEdit.vendorRequests).map(v => v.vendorService).filter(Boolean);
+                                            const normalize = s => s === 'Hotel Only' ? 'Hotel' : s === 'Vehicle Only' ? 'Vehicle' : s;
+                                            const confirmedScopes = [...new Set(rawScopes.map(normalize))];
+                                            return (
+                                                <div className="flex items-center gap-3 mb-6 border-b border-slate-700/50 pb-4 flex-wrap">
+                                                    <span className="text-xs font-bold text-slate-400">Package Scope:</span>
+                                                    {confirmedScopes.length > 0 ? confirmedScopes.map(scope => (
+                                                        <span key={scope} className="px-2.5 py-1 text-xs font-semibold text-cyan-400 bg-cyan-950/30 border border-cyan-800 rounded">{scope}</span>
+                                                    )) : (
+                                                        <span className="text-xs text-slate-500">Not yet confirmed by Operations</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
                                         
                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 min-h-[120px]">
-                                            {selectedLeadForEdit.domVendorType === 'Complete Package' && (
+                                            {toArr(selectedLeadForEdit.vendorRequests).some(v => v.vendorService === 'Complete Package') && (
                                                 <div className="space-y-4">
                                                     <h4 className="text-sm font-bold text-white border-b border-slate-700/50 pb-2">Complete Package Details</h4>
                                                     <div className="space-y-3">
@@ -1533,7 +1575,7 @@ export default function Fulfillment() {
                                                 </div>
                                             )}
 
-                                            {selectedLeadForEdit.domVendorType === 'Hotel' && (
+                                            {toArr(selectedLeadForEdit.vendorRequests).some(v => v.vendorService === 'Hotel Only') && (
                                                 <div className="space-y-4">
                                                     <h4 className="text-sm font-bold text-white border-b border-slate-700/50 pb-2">Hotel Details</h4>
                                                     <div className="space-y-3">
@@ -1549,7 +1591,7 @@ export default function Fulfillment() {
                                                 </div>
                                             )}
 
-                                            {selectedLeadForEdit.domVendorType === 'Vehicle' && (
+                                            {toArr(selectedLeadForEdit.vendorRequests).some(v => v.vendorService === 'Vehicle Only') && (
                                                 <div className="space-y-4">
                                                     <h4 className="text-sm font-bold text-white border-b border-slate-700/50 pb-2">Vehicle Details</h4>
                                                     <div className="space-y-3">
@@ -1579,7 +1621,7 @@ export default function Fulfillment() {
                                                 "Birthday": selectedLeadForEdit.reqBirthday,
                                                 "Anniversary": selectedLeadForEdit.reqAnniversary,
                                                 "Other": selectedLeadForEdit.reqManualAdd
-                                            } })} className="text-xs font-bold text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0 uppercase">View Details</button>
+                                            } })} className="text-cyan-500 cursor-pointer hover:text-cyan-400 bg-transparent border-none p-0" title="View Details"><Eye size={16} /></button>
                                             <CustomSelect value={selectedLeadForEdit.specialReqStatusVal} onChange={v => handleFieldChange('specialReqStatusVal', v)} options={['Pending', 'Completed', 'Not Applicable']} className="w-48 px-3 py-1.5 bg-slate-900 border border-slate-700 rounded text-white text-sm outline-none focus:border-cyan-500" />
                                         </div>
                                     </FormSection>
@@ -1616,8 +1658,25 @@ export default function Fulfillment() {
                                                 <div className="col-span-4 sm:col-span-3">
                                                     <span className="text-sm font-bold text-white block">Finalised Itinerary</span>
                                                 </div>
-                                                <div className="col-span-8 sm:col-span-9">
-                                                    <button type="button" onClick={() => setViewModal({ show: true, title: 'FINALISED ITINERARY', content: selectedLeadForEdit.customisationRequests && selectedLeadForEdit.customisationRequests.length > 0 ? selectedLeadForEdit.customisationRequests : { Readymade_Package_Details: selectedLeadForEdit.readymadePackageDetails || 'No itinerary history available.' } })} className="text-xs font-bold text-cyan-500 cursor-pointer hover:underline bg-transparent border-none p-0 uppercase">View Details</button>
+                                                <div className="col-span-8 sm:col-span-9 flex items-center gap-4 flex-wrap">
+                                                    <button type="button" onClick={() => setViewModal({ show: true, title: 'FINALISED ITINERARY', content: selectedLeadForEdit.customisationRequests && selectedLeadForEdit.customisationRequests.length > 0 ? selectedLeadForEdit.customisationRequests : { Readymade_Package_Details: selectedLeadForEdit.readymadePackageDetails || 'No itinerary history available.' } })} className="text-cyan-500 cursor-pointer hover:text-cyan-400 bg-transparent border-none p-0" title="View Details"><Eye size={16} /></button>
+                                                    <div className="relative inline-flex items-center gap-1 px-2 py-1 text-[11px] font-semibold text-cyan-400 bg-cyan-950/30 hover:bg-cyan-900/50 border border-cyan-800 rounded cursor-pointer">
+                                                        <Plus size={12} /> Attach Itinerary
+                                                        <input type="file" onChange={e => {
+                                                            const file = e.target.files[0];
+                                                            if (!file) return;
+                                                            const r = new FileReader();
+                                                            r.readAsDataURL(file);
+                                                            r.onloadend = () => handleFieldChange('finalisedItineraryFile', r.result);
+                                                        }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                                    </div>
+                                                    {selectedLeadForEdit.finalisedItineraryFile && (
+                                                        <div className="flex items-center gap-2 px-2 py-1 bg-slate-800/40 rounded border border-slate-700/50">
+                                                            <span className="text-[10px] text-slate-300">Itinerary Attached</span>
+                                                            <button type="button" onClick={() => window.open(selectedLeadForEdit.finalisedItineraryFile, '_blank')} className="p-1 rounded bg-slate-800 border-none cursor-pointer text-blue-400"><Eye size={12} /></button>
+                                                            <button type="button" onClick={() => handleFieldChange('finalisedItineraryFile', '')} className="p-1 rounded bg-slate-800 border-none cursor-pointer text-red-400"><Trash2 size={12} /></button>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="grid grid-cols-12 items-center gap-4">

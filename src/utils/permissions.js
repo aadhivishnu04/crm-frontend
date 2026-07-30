@@ -74,19 +74,19 @@ export const MENU_ITEMS = [
         roles: [ROLES.ADMIN,ROLES.SALES,ROLES.OPERATION,ROLES.EMPLOYEE] 
     },
     // Accounts (Admin Restricted)
-    { 
-        path: '/accounts', 
-        label: 'Accounts', 
-        icon: Wallet, 
-        roles: [ROLES.ADMIN] 
-    },
-    // Finance (Admin Restricted)
-    { 
-        path: '/finance', 
-        label: 'Finance', 
-        icon: Receipt, // 👈 Added the Finance menu item
-        roles: [ROLES.ADMIN] 
-    },
+    // { 
+    //     path: '/accounts', 
+    //     label: 'Accounts', 
+    //     icon: Wallet, 
+    //     roles: [ROLES.ADMIN] 
+    // },
+    // // Finance (Admin Restricted)
+    // { 
+    //     path: '/finance', 
+    //     label: 'Billing & Finance', 
+    //     icon: Receipt, // 👈 Added the Finance menu item
+    //     roles: [ROLES.ADMIN] 
+    // },
     
     // Sales team, Admin, and Employee
     { 

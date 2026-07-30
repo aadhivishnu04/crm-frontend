@@ -2293,7 +2293,7 @@ export default function OperationsDashboard() {
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booking Handled By</label>
-                                                                    <CustomSelect value={flight.flightResponsibility} onChange={(v) => handleArrayChange('flights', index, 'flightResponsibility', v)} className={selectCls} options={['In-House', 'Client', 'Vendor ']} hideDefaultManual />
+                                                                    <CustomSelect value={flight.flightResponsibility} onChange={(v) => handleArrayChange('flights', index, 'flightResponsibility', v)} className={selectCls} options={['In-House', 'Client', 'Vendor']} hideDefaultManual />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booking Status</label>
@@ -2302,7 +2302,7 @@ export default function OperationsDashboard() {
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Booking Date</label><DatePickerField type="date" value={flight.bookingDate} onChange={(e) => handleArrayChange('flights', index, 'bookingDate', e.target.value)} className={inputCls} /></div>
 
                                                                 {/* Conditional Rendering based on "red instructions" */}
-                                                                {['Vendor','In-House'].includes(flight.flightResponsibility) && (
+                                                                {['In-House','Vendor'].includes(flight.flightResponsibility) && (
                                                                     <>
                                                                         <div className="sm:col-span-3 border-t border-slate-700/30 my-1 pt-3"></div>
                                                                         <div>
@@ -2357,17 +2357,17 @@ export default function OperationsDashboard() {
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Destination</label><input type="text" value={visa.destination || selectedLeadForEdit.confirmedDestination || selectedLeadForEdit.destination || ''} onChange={(e) => handleArrayChange('visas', index, 'destination', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">VISA Type</label>
-                                                                    <CustomSelect value={visa.visaType} onChange={v => handleArrayChange('visas', index, 'visaType', v)} className={selectCls} options={['VISA-Free', 'VISA-On-Arrival', 'Traditional', 'e-VISA']} />
+                                                                    <CustomSelect hideDefaultManual={true} value={visa.visaType} onChange={v => handleArrayChange('visas', index, 'visaType', v)} className={selectCls} options={['VISA-Free', 'VISA-On-Arrival', 'Traditional', 'e-VISA']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Applied By</label>
-                                                                    <CustomSelect value={visa.appliedBy} onChange={v => handleArrayChange('visas', index, 'appliedBy', v)} className={selectCls} options={['In-House', 'Client', 'VISA Partner']} />
+                                                                    <CustomSelect hideDefaultManual={true} value={visa.appliedBy} onChange={v => handleArrayChange('visas', index, 'appliedBy', v)} className={selectCls} options={['In-House', 'Client', 'VISA Partner']} />
                                                                 </div>
 
                                                                 {visa.visaType !== 'VISA-Free' && (
                                                                     <div>
                                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Application Status</label>
-                                                                        <CustomSelect value={visa.applicationStatus} onChange={v => handleArrayChange('visas', index, 'applicationStatus', v)} className={selectCls} options={['Not Started', 'Documents Pending', 'Applied', 'Under Process','Approved','Rejected','Cancelled']} />
+                                                                        <CustomSelect hideDefaultManual={true} value={visa.applicationStatus} onChange={v => handleArrayChange('visas', index, 'applicationStatus', v)} className={selectCls} options={['Not Started', 'Documents Pending', 'Applied', 'Under Process','Approved','Rejected','Cancelled']} />
                                                                     </div>
                                                                 )}
                                                                 {visa.visaType !== 'VISA-Free' && (
@@ -2393,17 +2393,17 @@ export default function OperationsDashboard() {
                                                                 <div className="sm:col-span-3 border-t border-slate-700/50 mt-2 pt-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                                     <div>
                                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Arrival Card Required</label>
-                                                                        <CustomSelect value={visa.arrivalCardApplicable} onChange={v => handleArrayChange('visas', index, 'arrivalCardApplicable', v)} className={selectCls} options={['Yes', 'No']} />
+                                                                        <CustomSelect hideDefaultManual={true} value={visa.arrivalCardApplicable} onChange={v => handleArrayChange('visas', index, 'arrivalCardApplicable', v)} className={selectCls} options={['Yes', 'No']} />
                                                                     </div>
                                                                     {visa.arrivalCardApplicable === 'Yes' && (
                                                                         <>
                                                                             <div>
                                                                                 <label className="block text-xs font-medium text-slate-400 mb-1">Arrival Card Status</label>
-                                                                                <CustomSelect value={visa.arrivalCardStatus} onChange={v => handleArrayChange('visas', index, 'arrivalCardStatus', v)} className={selectCls} options={['Pending', 'Completed']} />
+                                                                                <CustomSelect hideDefaultManual={true} value={visa.arrivalCardStatus} onChange={v => handleArrayChange('visas', index, 'arrivalCardStatus', v)} className={selectCls} options={['Pending', 'Completed']} />
                                                                             </div>
                                                                             <div>
                                                                                 <label className="block text-xs font-medium text-slate-400 mb-1">Completed By</label>
-                                                                                <CustomSelect value={visa.arrivalCardCompletedBy} onChange={v => handleArrayChange('visas', index, 'arrivalCardCompletedBy', v)} className={selectCls} options={['Client', 'Vendor', 'Team']} />
+                                                                                <CustomSelect hideDefaultManual={true} value={visa.arrivalCardCompletedBy} onChange={v => handleArrayChange('visas', index, 'arrivalCardCompletedBy', v)} className={selectCls} options={['Client', 'Vendor', 'Team']} />
                                                                             </div>
                                                                         </>
                                                                     )}
@@ -2413,14 +2413,14 @@ export default function OperationsDashboard() {
                                                                 <div className="sm:col-span-3 border-t border-slate-700/50 mt-2 pt-3 grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                                     <div>
                                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Transit VISA Required</label>
-                                                                        <CustomSelect value={visa.transitVisaReq} onChange={v => handleArrayChange('visas', index, 'transitVisaReq', v)} className={selectCls} options={['Yes', 'No']} />
+                                                                        <CustomSelect hideDefaultManual={true} value={visa.transitVisaReq} onChange={v => handleArrayChange('visas', index, 'transitVisaReq', v)} className={selectCls} options={['Yes', 'No']} />
                                                                     </div>
                                                                     {visa.transitVisaReq === 'Yes' && (
                                                                         <>
                                                                             <div><label className="block text-xs font-medium text-slate-400 mb-1">Transit Country</label><input type="text" value={visa.transitCountry} onChange={(e) => handleArrayChange('visas', index, 'transitCountry', e.target.value)} className={inputCls} /></div>
                                                                             <div>
                                                                                 <label className="block text-xs font-medium text-slate-400 mb-1">Transit VISA Status</label>
-                                                                                <CustomSelect value={visa.transitVisaStatus} onChange={v => handleArrayChange('visas', index, 'transitVisaStatus', v)} className={selectCls} options={['Pending', 'Approved']} />
+                                                                                <CustomSelect hideDefaultManual={true} value={visa.transitVisaStatus} onChange={v => handleArrayChange('visas', index, 'transitVisaStatus', v)} className={selectCls} options={['Pending', 'Approved']} />
                                                                             </div>
                                                                         </>
                                                                     )}
@@ -2438,17 +2438,17 @@ export default function OperationsDashboard() {
                                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                     <div>
                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Insurance Taken</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insRequired} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insRequired: v })} className={selectCls} options={['Yes', 'No']} />
+                                                        <CustomSelect hideDefaultManual={true} value={selectedLeadForEdit.insRequired} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insRequired: v })} className={selectCls} options={['Yes', 'No']} />
                                                     </div>
                                                     {selectedLeadForEdit.insRequired === 'Yes' && (
                                                         <>
                                                             <div>
                                                                 <label className="block text-xs font-medium text-slate-400 mb-1">Insurance Status</label>
-                                                                <CustomSelect value={selectedLeadForEdit.insStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insStatus: v })} className={selectCls} options={['Pending', 'Issued']} />
+                                                                <CustomSelect hideDefaultManual={true} value={selectedLeadForEdit.insStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insStatus: v })} className={selectCls} options={['Pending', 'Issued']} />
                                                             </div>
                                                             <div>
                                                                 <label className="block text-xs font-medium text-slate-400 mb-1">Taken By</label>
-                                                                <CustomSelect value={selectedLeadForEdit.insTakenBy || ''} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insTakenBy: v })} className={selectCls} options={['Client', 'Agency']} />
+                                                                <CustomSelect hideDefaultManual={true} value={selectedLeadForEdit.insTakenBy || ''} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insTakenBy: v })} className={selectCls} options={['Client', 'Agency']} />
                                                             </div>
                                                             <div className="sm:col-span-3">
                                                                 <label className="block text-[11px] font-semibold text-slate-500 mb-1 uppercase tracking-wider">Upload Policy Document</label>
@@ -2988,17 +2988,17 @@ export default function OperationsDashboard() {
                                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                     <div>
                                                         <label className="block text-xs font-medium text-slate-400 mb-1">Insurance Taken</label>
-                                                        <CustomSelect value={selectedLeadForEdit.insRequired} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insRequired: v })} className={selectCls} options={['Yes', 'No','Semi Sleeper']} />
+                                                        <CustomSelect hideDefaultManual={true} value={selectedLeadForEdit.insRequired} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insRequired: v })} className={selectCls} options={['Yes', 'No' ]} />
                                                     </div>
                                                     {selectedLeadForEdit.insRequired === 'Yes' && (
                                                         <>
                                                             <div>
                                                                 <label className="block text-xs font-medium text-slate-400 mb-1">Insurance Status</label>
-                                                                <CustomSelect value={selectedLeadForEdit.insStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insStatus: v })} className={selectCls} options={['Pending', 'Completed']} />
+                                                                <CustomSelect hideDefaultManual={true} value={selectedLeadForEdit.insStatus} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insStatus: v })} className={selectCls} options={['Pending', 'Completed']} />
                                                             </div>
                                                             <div>
                                                                 <label className="block text-xs font-medium text-slate-400 mb-1">Taken By</label>
-                                                                <CustomSelect value={selectedLeadForEdit.insTakenBy || ''} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insTakenBy: v })} className={selectCls} options={['Client', 'In House (Vendor Support)']} />
+                                                                <CustomSelect hideDefaultManual={true} value={selectedLeadForEdit.insTakenBy || ''} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insTakenBy: v })} className={selectCls} options={['Client', 'In House (Vendor Support)']} />
                                                             </div>
                                                             <div className="sm:col-span-3">
                                                                 <label className="block text-[11px] font-semibold text-slate-500 mb-1 uppercase tracking-wider">Upload Policy Document</label>
@@ -3040,17 +3040,17 @@ export default function OperationsDashboard() {
                                                             
                                                             <div className="mb-4 mt-6">
                                                                 <label className="block text-xs font-medium text-slate-400 mb-1">Service Type</label>
-                                                                <CustomSelect value={dmc.vendorService || ''} onChange={v => handleArrayChange('vendorRequests', index, 'vendorService', v)} className={`${selectCls} w-full sm:w-1/3`} options={['Complete Package', 'Hotel Only', 'Vehicle Only']} />
+                                                                <CustomSelect hideDefaultManual={true} value={dmc.vendorService || ''} onChange={v => handleArrayChange('vendorRequests', index, 'vendorService', v)} className={`${selectCls} w-full sm:w-1/3`} options={['Complete Package', 'Hotel Only', 'Vehicle Only']} />
                                                             </div>
 
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                                                 {dmc.vendorService === 'Complete Package' && (
                                                                     <>
-                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">DMC Name</label><CustomSelect value={dmc.vendorDmcName} onChange={v => handleArrayChange('vendorRequests', index, 'vendorDmcName', v)} className={selectCls} options={finalDmcOptions} /></div>
-                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Contact Person</label><CustomSelect value={dmc.vendorContactPerson} onChange={v => handleArrayChange('vendorRequests', index, 'vendorContactPerson', v)} className={selectCls} options={getContactsForDMC(dmc.vendorDmcName)} /></div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">DMC Name</label><CustomSelect hideDefaultManual={true} value={dmc.vendorDmcName} onChange={v => handleArrayChange('vendorRequests', index, 'vendorDmcName', v)} className={selectCls} options={finalDmcOptions} /></div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Contact Person</label><CustomSelect hideDefaultManual={true} value={dmc.vendorContactPerson} onChange={v => handleArrayChange('vendorRequests', index, 'vendorContactPerson', v)} className={selectCls} options={getContactsForDMC(dmc.vendorDmcName)} /></div>
                                                                         <div><label className="block text-xs font-medium text-slate-400 mb-1">Mobile Number</label><input type="text" value={dmc.vendorContactMobile || ''} onChange={e => handleArrayChange('vendorRequests', index, 'vendorContactMobile', e.target.value)} className={inputCls} /></div>
                                                                         <div><label className="block text-xs font-medium text-slate-400 mb-1">Service Cost</label><input type="text" value={dmc.serviceCost || ''} onChange={e => handleArrayChange('vendorRequests', index, 'serviceCost', e.target.value)} className={inputCls} /></div>
-                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Booking Status</label><CustomSelect value={dmc.bookingStatus || ''} onChange={v => handleArrayChange('vendorRequests', index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Booking Requested', 'Confirmed','Partially Confirmed','Cancelled']} /></div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Booking Status</label><CustomSelect hideDefaultManual={true} value={dmc.bookingStatus || ''} onChange={v => handleArrayChange('vendorRequests', index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Booking Requested', 'Confirmed','Partially Confirmed','Cancelled']} /></div>
                                                                         <div><label className="block text-xs font-medium text-slate-400 mb-1">Confirmation Date</label><DatePickerField type="date" value={dmc.confirmationDate || ''} onChange={e => handleArrayChange('vendorRequests', index, 'confirmationDate', e.target.value)} className={inputCls} /></div>
 
                                                                         <div className="sm:col-span-3 mt-2 border-t border-slate-700/30 pt-3">
@@ -3098,10 +3098,10 @@ export default function OperationsDashboard() {
                                                                         <div><label className="block text-xs font-medium text-slate-400 mb-1">Location</label><input type="text" value={dmc.hotelLocation || ''} onChange={e => handleArrayChange('vendorRequests', index, 'hotelLocation', e.target.value)} className={inputCls} /></div>
                                                                         <div><label className="block text-xs font-medium text-slate-400 mb-1">Hotel Category</label><input type="text" value={dmc.hotelCategory || ''} onChange={e => handleArrayChange('vendorRequests', index, 'hotelCategory', e.target.value)} className={inputCls} /></div>
                                                                         <div><label className="block text-xs font-medium text-slate-400 mb-1">Contact Number</label><input type="text" value={dmc.vendorContactMobile || ''} onChange={e => handleArrayChange('vendorRequests', index, 'vendorContactMobile', e.target.value)} className={inputCls} /></div>
-                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Booking Status</label><CustomSelect value={dmc.bookingStatus || ''} onChange={v => handleArrayChange('vendorRequests', index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Booking Requested','Confirmed','Partially Confirmed', 'Cancelled']} /></div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Booking Status</label><CustomSelect hideDefaultManual={true} value={dmc.bookingStatus || ''} onChange={v => handleArrayChange('vendorRequests', index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Booking Requested','Confirmed','Partially Confirmed', 'Cancelled']} /></div>
                                                                         <div><label className="block text-xs font-medium text-slate-400 mb-1">Confirmed / Booked Date</label><DatePickerField type="date" value={dmc.confirmationDate || ''} onChange={e => handleArrayChange('vendorRequests', index, 'confirmationDate', e.target.value)} className={inputCls} /></div>
-                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Additional Requirements</label><CustomSelect value={dmc.additionalRequirements || ''} onChange={v => handleArrayChange('vendorRequests', index, 'additionalRequirements', v)} className={selectCls} options={['Early Check-In Required', 'Late Check-out Required', 'Additional Mattress','Add Others']} /></div>
-                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Meal Plan</label><CustomSelect value={dmc.mealPlan || ''} onChange={v => handleArrayChange('vendorRequests', index, 'mealPlan', v)} className={selectCls} options={['Breakfast Only (CP)', 'Full Board (AP)', 'Breakfast & Dinner (MAP)', 'Room Only (EP)']} /></div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Additional Requirements</label><CustomSelect hideDefaultManual={true} value={dmc.additionalRequirements || ''} onChange={v => handleArrayChange('vendorRequests', index, 'additionalRequirements', v)} className={selectCls} options={['Early Check-In Required', 'Late Check-out Required', 'Additional Mattress','Add Others']} /></div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Meal Plan</label><CustomSelect hideDefaultManual={true} value={dmc.mealPlan || ''} onChange={v => handleArrayChange('vendorRequests', index, 'mealPlan', v)} className={selectCls} options={['Breakfast Only (CP)', 'Full Board (AP)', 'Breakfast & Dinner (MAP)', 'Room Only (EP)']} /></div>
                                                                         <div><label className="block text-xs font-medium text-slate-400 mb-1">Service Cost</label><input type="text" value={dmc.serviceCost || ''} onChange={e => handleArrayChange('vendorRequests', index, 'serviceCost', e.target.value)} className={inputCls} /></div>
                                                                     </>
                                                                 )}
@@ -3109,9 +3109,9 @@ export default function OperationsDashboard() {
                                                                 {dmc.vendorService === 'Vehicle Only' && (
                                                                     <>
                                                                         <div><label className="block text-xs font-medium text-slate-400 mb-1">Provider Name</label><input type="text" value={dmc.vendorDmcName || ''} onChange={e => handleArrayChange('vendorRequests', index, 'vendorDmcName', e.target.value)} className={inputCls} /></div>
-                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Vehicle Type</label><CustomSelect value={dmc.vendorVehicleType || ''} onChange={v => handleArrayChange('vendorRequests', index, 'vendorVehicleType', v)} className={selectCls} options={['Sedan', 'SUV', 'MUV', 'Tempo Traveller','Mini Bus','Coach Bus','Any']} /></div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Vehicle Type</label><CustomSelect hideDefaultManual={true} value={dmc.vendorVehicleType || ''} onChange={v => handleArrayChange('vendorRequests', index, 'vendorVehicleType', v)} className={selectCls} options={['Sedan', 'SUV', 'MUV', 'Tempo Traveller','Mini Bus','Coach Bus','Any']} /></div>
                                                                         <div><label className="block text-xs font-medium text-slate-400 mb-1">Contact Person</label><input type="text" value={dmc.vendorContactPerson || ''} onChange={e => handleArrayChange('vendorRequests', index, 'vendorContactPerson', e.target.value)} className={inputCls} /></div>
-                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Booking Status</label><CustomSelect value={dmc.bookingStatus || ''} onChange={v => handleArrayChange('vendorRequests', index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Booking Requested', 'Confirmed','Partially Confirmed','Cancelled']} /></div>
+                                                                        <div><label className="block text-xs font-medium text-slate-400 mb-1">Booking Status</label><CustomSelect hideDefaultManual={true} value={dmc.bookingStatus || ''} onChange={v => handleArrayChange('vendorRequests', index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Booking Requested', 'Confirmed','Partially Confirmed','Cancelled']} /></div>
                                                                         <div><label className="block text-xs font-medium text-slate-400 mb-1">Confirmed / Booked Date</label><DatePickerField type="date" value={dmc.confirmationDate || ''} onChange={e => handleArrayChange('vendorRequests', index, 'confirmationDate', e.target.value)} className={inputCls} /></div>
                                                                         <div><label className="block text-xs font-medium text-slate-400 mb-1">Service Cost</label><input type="text" value={dmc.serviceCost || ''} onChange={e => handleArrayChange('vendorRequests', index, 'serviceCost', e.target.value)} className={inputCls} /></div>
                                                                         <div className="sm:col-span-3 mt-2 border-t border-slate-700/30 pt-3">
@@ -3164,7 +3164,7 @@ export default function OperationsDashboard() {
                                                             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-2">
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Service Type</label>
-                                                                    <CustomSelect value={req.serviceType || ''} onChange={(v) => handleArrayChange('paymentRequests', index, 'serviceType', v)} className={selectCls} options={['Complete Package', 'Hotel Only', 'Vehicle Only']} />
+                                                                    <CustomSelect hideDefaultManual={true} value={req.serviceType || ''} onChange={(v) => handleArrayChange('paymentRequests', index, 'serviceType', v)} className={selectCls} options={['Complete Package', 'Hotel Only', 'Vehicle Only']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Vendor / DMC / Hotel Name</label>
@@ -3181,7 +3181,7 @@ export default function OperationsDashboard() {
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Payment Type</label>
-                                                                    <CustomSelect value={req.paymentType} onChange={(v) => handleArrayChange('paymentRequests', index, 'paymentType', v)} className={selectCls} options={['Advance', 'Partial Payment', 'Final Payment','Balance Payment']} />
+                                                                    <CustomSelect hideDefaultManual={true} value={req.paymentType} onChange={(v) => handleArrayChange('paymentRequests', index, 'paymentType', v)} className={selectCls} options={['Advance', 'Partial Payment', 'Final Payment','Balance Payment']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Amount To Pay</label><input type="text" value={req.amountToPay} onChange={(e) => handleArrayChange('paymentRequests', index, 'amountToPay', e.target.value)} className={inputCls} /></div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Payment Due Date</label><DatePickerField type="date" value={req.paymentDueDate} onChange={(e) => handleArrayChange('paymentRequests', index, 'paymentDueDate', e.target.value)} className={inputCls} /></div>
@@ -3277,7 +3277,7 @@ export default function OperationsDashboard() {
                                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 pt-3 animate-in slide-in-from-top-2 fade-in">
                                                     <div>
                                                         <label className="block text-xs font-bold text-slate-300 mb-1.5">Destinations</label>
-                                                        <CustomSelect 
+                                                        <CustomSelect hideDefaultManual={true} 
                                                             value={selectedLeadForEdit.destination} 
                                                             onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, destination: v })} 
                                                             className={selectCls} 
@@ -3295,7 +3295,7 @@ export default function OperationsDashboard() {
                                                     {selectedLeadForEdit.workType === 'Rate Modification' && (
                                                         <div>
                                                             <label className="block text-xs font-bold text-slate-300 mb-1.5">Rate Source</label>
-                                                            <CustomSelect 
+                                                            <CustomSelect hideDefaultManual={true} 
                                                                 value={selectedLeadForEdit.rateSource || ''} 
                                                                 onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, rateSource: v })} 
                                                                 className={selectCls} 
@@ -3340,7 +3340,7 @@ export default function OperationsDashboard() {
                                                                     </div>
                                                                     <div>
                                                                         <label className="block text-xs font-bold text-slate-300 mb-1.5">Services</label>
-                                                                        <CustomSelect 
+                                                                        <CustomSelect hideDefaultManual={true} 
                                                                             value={req.vendorService} 
                                                                             onChange={v => {
                                                                                 const newReqs = [...selectedLeadForEdit.vendorRequests];
@@ -3356,7 +3356,7 @@ export default function OperationsDashboard() {
                                                                     </div>
                                                                     <div>
                                                                         <label className="block text-xs font-bold text-slate-300 mb-1.5">DMC Name</label>
-                                                                        <CustomSelect 
+                                                                        <CustomSelect hideDefaultManual={true} 
                                                                             value={req.vendorDmcName} 
                                                                             onChange={v => handleArrayChange('vendorRequests', index, 'vendorDmcName', v)} 
                                                                             className={selectCls} 
@@ -3366,7 +3366,7 @@ export default function OperationsDashboard() {
 
                                                                     <div>
                                                                         <label className="block text-xs font-bold text-slate-300 mb-1.5">Contact Person</label>
-                                                                        <CustomSelect 
+                                                                        <CustomSelect hideDefaultManual={true} 
                                                                             value={req.vendorContactPerson} 
                                                                             onChange={v => {
                                                                                 const newReqs = [...selectedLeadForEdit.vendorRequests];
@@ -3380,7 +3380,7 @@ export default function OperationsDashboard() {
                                                                     </div>
                                                                     <div>
                                                                         <label className="block text-xs font-bold text-slate-300 mb-1.5">Contact Method</label>
-                                                                        <CustomSelect 
+                                                                        <CustomSelect hideDefaultManual={true} 
                                                                             value={req.contactMethod} 
                                                                             onChange={v => handleArrayChange('vendorRequests', index, 'contactMethod', v)} 
                                                                             className={selectCls} 
@@ -3391,7 +3391,7 @@ export default function OperationsDashboard() {
                                                                     {req.vendorService === 'VISA' && (
                                                                         <div>
                                                                             <label className="block text-xs font-bold text-slate-300 mb-1.5">VISA Type</label>
-                                                                            <CustomSelect 
+                                                                            <CustomSelect hideDefaultManual={true} 
                                                                                 value={req.vendorVisaType || ''} 
                                                                                 onChange={v => {
                                                                                     const newReqs = [...selectedLeadForEdit.vendorRequests];
@@ -3427,7 +3427,7 @@ export default function OperationsDashboard() {
                                                                             </div>
                                                                             <div>
                                                                                 <label className="block text-xs font-bold text-slate-300 mb-1.5">Rooms Required</label>
-                                                                                <CustomSelect 
+                                                                                <CustomSelect hideDefaultManual={true} 
                                                                                     value={req.vendorRoomsRequired || ''} 
                                                                                     onChange={v => {
                                                                                         const newReqs = [...selectedLeadForEdit.vendorRequests];
@@ -3446,7 +3446,7 @@ export default function OperationsDashboard() {
                                                                         <>
                                                                             <div>
                                                                                 <label className="block text-xs font-bold text-slate-300 mb-1.5">Vehicle Type</label>
-                                                                                <CustomSelect value={req.vendorVehicleType || ''} onChange={v => {
+                                                                                <CustomSelect hideDefaultManual={true} value={req.vendorVehicleType || ''} onChange={v => {
                                                                                     const newReqs = [...selectedLeadForEdit.vendorRequests];
                                                                                     newReqs[index].vendorVehicleType = v;
                                                                                     newReqs[index].vendorMessage = generateVendorMessage(newReqs[index], selectedLeadForEdit);
@@ -3519,7 +3519,7 @@ export default function OperationsDashboard() {
                                                     {/* Customisation Status */}
                                                     <div>
                                                         <label className="block text-xs font-bold text-slate-300 mb-1.5">Customisation Status</label>
-                                                        <CustomSelect 
+                                                        <CustomSelect hideDefaultManual={true} 
                                                             value={selectedLeadForEdit.opsCustomisationStatus} 
                                                             onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, opsCustomisationStatus: v })} 
                                                             className={selectCls} 
