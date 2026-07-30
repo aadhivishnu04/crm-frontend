@@ -3161,7 +3161,7 @@ const SalesDashboard = () => {
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 border-t border-slate-700/50 pt-5">
                                                 <div>
                                                     <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Service</label>
-                                                    {renderDropdown('paymentService', editFormData.paymentService, '', ['Tour Package', 'Flight Booking', 'Hotel Booking', 'VISA Booking', 'Transport','Train Booking','Bus Booking','Travel Insurance'], handleInputChange)}
+                                                    {renderDropdown('paymentService', editFormData.paymentService, '', ['Tour Package', 'Flight Booking', 'Hotel Booking', 'VISA Apply', 'Transport','Train Booking','Bus Booking','Travel Insurance'], handleInputChange)}
                                                 </div>
                                                 <div>
                                                     <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Amount Collected</label>

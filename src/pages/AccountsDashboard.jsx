@@ -1121,8 +1121,8 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
                     {/* ════════════════════════════════════
                         SECTION 2B — VENDOR DETAILS
                     ════════════════════════════════════ */}
-                    <CollapsibleSection title="Vendor Details" icon={Briefcase} titleColorCls="text-cyan-400" defaultOpen={true}>
-                        {/* <p className="text-[11px] text-orange-400 italic mb-2 mt-3">Fetched from Vendor Payment — once amount paid, it will be reflected</p> */}
+                    {/* <CollapsibleSection title="Vendor Details" icon={Briefcase} titleColorCls="text-cyan-400" defaultOpen={true}>
+                        
                         <div className="bg-[#0f172a] border border-slate-700/50 rounded-lg overflow-hidden">
                             <table className="w-full text-left text-sm text-slate-300">
                                 <thead className="bg-slate-800/60 text-[11px] uppercase text-slate-300 font-bold">
@@ -1159,7 +1159,7 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
                                 )}
                             </table>
                         </div>
-                    </CollapsibleSection>
+                    </CollapsibleSection> */}
 
                     {/* ════════════════════════════════════
                         SECTION 3 — TRANSACTION DETAILS
