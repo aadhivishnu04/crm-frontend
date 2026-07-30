@@ -2293,7 +2293,7 @@ export default function OperationsDashboard() {
                                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booking Handled By</label>
-                                                                    <CustomSelect value={flight.flightResponsibility} onChange={(v) => handleArrayChange('flights', index, 'flightResponsibility', v)} className={selectCls} options={['In-House', 'Client', 'Vendor/Team']} hideDefaultManual />
+                                                                    <CustomSelect value={flight.flightResponsibility} onChange={(v) => handleArrayChange('flights', index, 'flightResponsibility', v)} className={selectCls} options={['In-House', 'Client', 'Vendor ']} hideDefaultManual />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booking Status</label>
@@ -2302,7 +2302,7 @@ export default function OperationsDashboard() {
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Booking Date</label><DatePickerField type="date" value={flight.bookingDate} onChange={(e) => handleArrayChange('flights', index, 'bookingDate', e.target.value)} className={inputCls} /></div>
 
                                                                 {/* Conditional Rendering based on "red instructions" */}
-                                                                {['Vendor/Team'].includes(flight.flightResponsibility) && (
+                                                                {['Vendor','In-House'].includes(flight.flightResponsibility) && (
                                                                     <>
                                                                         <div className="sm:col-span-3 border-t border-slate-700/30 my-1 pt-3"></div>
                                                                         <div>

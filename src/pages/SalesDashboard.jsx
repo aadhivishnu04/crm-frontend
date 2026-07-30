@@ -2683,7 +2683,7 @@ const SalesDashboard = () => {
                                                     </div>
                                                     <div className="md:col-span-2">
                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Service </label>
-                                                        {renderMultiSelect('services', editFormData.services, ['Tour Package', 'Flight Booking', 'VISA Booking', 'Hotel Booking Only', 'Local Transport', 'Travel Insurance', 'Other'])}
+                                                        {renderMultiSelect('services', editFormData.services, ['Tour Package', 'Flight Booking', 'VISA Booking', 'Hotel Booking Only', 'Local Transport', 'Travel Insurance' ])}
                                                     </div>
                                                     <div>
                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Hotel Category</label>

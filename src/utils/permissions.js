@@ -39,7 +39,7 @@ export const MENU_ITEMS = [
     // Admin and Employee
     { 
         path: '/employees', 
-        label: 'Employee Mgmt', 
+        label: 'Employee ', 
         icon: BriefcaseBusiness, 
         roles: [ROLES.ADMIN, ROLES.EMPLOYEE] 
     },
