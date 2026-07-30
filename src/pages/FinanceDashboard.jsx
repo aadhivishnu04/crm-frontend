@@ -133,10 +133,19 @@ export default function FinanceDashboard() {
     const totalPages = Math.max(1, Math.ceil(filtered.length / entriesPerPage));
     const paginated = filtered.slice((currentPage - 1) * entriesPerPage, currentPage * entriesPerPage);
 
+    const getTabDesc = (tabId) => {
+        switch (tabId) {
+            case 'Pending Billings': return ' ';
+            case 'Invoice Generated': return ' ';
+            case 'Case Closed': return ' ';
+            default: return ' ';
+        }
+    };
+
     const categories = [
-        { id: 'Pending Billings', label: 'Pending Billings', desc: ' ', icon: FileText, count: leads.filter(l => getTabStatusList('Pending Billings').includes(l.status)).length },
-        { id: 'Invoice Generated', label: 'Invoice Generated', desc: ' ', icon: Receipt, count: leads.filter(l => getTabStatusList('Invoice Generated').includes(l.status)).length },
-        { id: 'Case Closed', label: 'Case Closed', desc: ' ', icon: CheckCircle2, count: leads.filter(l => getTabStatusList('Case Closed').includes(l.status)).length },
+        { id: 'Pending Billings', label: 'Pending Billings', desc: getTabDesc('Pending Billings'), icon: FileText, count: leads.filter(l => getTabStatusList('Pending Billings').includes(l.status)).length },
+        { id: 'Invoice Generated', label: 'Invoice Generated', desc: getTabDesc('Invoice Generated'), icon: Receipt, count: leads.filter(l => getTabStatusList('Invoice Generated').includes(l.status)).length },
+        { id: 'Case Closed', label: 'Case Closed', desc: getTabDesc('Case Closed'), icon: CheckCircle2, count: leads.filter(l => getTabStatusList('Case Closed').includes(l.status)).length },
     ];
 
     // ─── EDIT MODAL INITIALIZATION ────────────────────────────────────────────
@@ -154,9 +163,12 @@ export default function FinanceDashboard() {
         } else {
             const servicesStr = lead.confirmedServices || lead.services || 'Tour Package';
             const servicesArr = servicesStr.split(', ').filter(Boolean);
-            
+
+            let parsedServiceCosts = {};
+            try { parsedServiceCosts = lead.serviceCosts ? (typeof lead.serviceCosts === 'string' ? JSON.parse(lead.serviceCosts) : lead.serviceCosts) : {}; } catch(e) { parsedServiceCosts = {}; }
+
             const initialData = servicesArr.map((srv, idx) => {
-                const srvCostRaw = lead[`service${idx + 1}Cost`] || 0;
+                const srvCostRaw = (parsedServiceCosts && parsedServiceCosts[srv]) || lead[`service${idx + 1}Cost`] || 0;
                 const sellingRaw = Number(String(srvCostRaw).replace(/[^0-9.-]+/g, '')) || 0;
 
                 return {
@@ -285,7 +297,7 @@ export default function FinanceDashboard() {
                             </h2>
                             <div className="flex items-center gap-3 w-full sm:w-auto">
                                 {activeTab === 'Case Closed' && (
-                                    <div className="relative flex items-center bg-[#0b1329] border border-slate-700 hover:border-slate-600 rounded-lg px-3 py-2 w-full sm:w-[260px] cursor-pointer focus-within:border-cyan-500 transition-colors group">
+                                    <div className="relative flex items-center bg-[#0b1329] border border-slate-700 hover:border-slate-600 rounded-lg px-3 py-2 w-full sm:w-[315px] cursor-pointer focus-within:border-cyan-500 transition-colors group">
                                         <span className="text-sm text-slate-400 font-medium mr-2 whitespace-nowrap">
                                             Search by Month:
                                         </span>
@@ -436,23 +448,29 @@ export default function FinanceDashboard() {
                                     <div><label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Operations Executive</label><input type="text" readOnly value={selectedLeadForEdit.operationsExecutive || selectedLeadForEdit.operationExecutive || '—'} className={readonlyCls} /></div>
                                     <div><label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Services</label><input type="text" readOnly value={selectedLeadForEdit.confirmedServices || selectedLeadForEdit.services || '—'} className={readonlyCls} /></div>
 
-                                    {/* Map existing Service Costs */}
-                                    {['1', '2', '3'].map((num, idx) => {
-                                        const cost = selectedLeadForEdit[`service${num}Cost`];
-                                        return (
-                                            <div key={idx}>
-                                                <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Service Cost {num}</label>
-                                                <input type="text" readOnly value={cost || '—'} className={readonlyCls} />
-                                            </div>
-                                        );
-                                    })}
+                                    {/* Map existing Service Costs (mirrors Sales exactly, one field per selected service) */}
+                                    {(() => {
+                                        const servicesStr = selectedLeadForEdit.confirmedServices || selectedLeadForEdit.services || '';
+                                        const servicesArr = servicesStr.split(', ').filter(Boolean);
+                                        let parsedServiceCosts = {};
+                                        try { parsedServiceCosts = selectedLeadForEdit.serviceCosts ? (typeof selectedLeadForEdit.serviceCosts === 'string' ? JSON.parse(selectedLeadForEdit.serviceCosts) : selectedLeadForEdit.serviceCosts) : {}; } catch(e) { parsedServiceCosts = {}; }
+                                        return servicesArr.map((srv, idx) => {
+                                            const cost = (parsedServiceCosts && parsedServiceCosts[srv]) || selectedLeadForEdit[`service${idx + 1}Cost`];
+                                            return (
+                                                <div key={idx}>
+                                                    <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">{srv} Cost</label>
+                                                    <input type="text" readOnly value={cost || '—'} className={readonlyCls} />
+                                                </div>
+                                            );
+                                        });
+                                    })()}
 
                                     <div><label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">GST</label><input type="text" readOnly value={selectedLeadForEdit.gst || selectedLeadForEdit.gstStatus || '—'} className={readonlyCls} /></div>
                                     <div>
                                         <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">TCS</label>
                                         <input type="text" readOnly value={selectedLeadForEdit.tcs || selectedLeadForEdit.tcsStatus || '—'} className={readonlyCls} />
                                         {(selectedLeadForEdit.confirmedTripType || selectedLeadForEdit.destinationType) === 'International' && (
-                                            <p className="text-[10px] text-red-400 mt-1 italic">if destination type = International, it will appear</p>
+                                            <p className="text-[10px] text-red-400 mt-1 italic"> </p>
                                         )}
                                     </div>
                                     <div><label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Booking Confirmed Date</label><input type="date" readOnly value={selectedLeadForEdit.confirmedDate || selectedLeadForEdit.bookingDate || ''} className={readonlyCls} style={{colorScheme: 'dark'}} /></div>
@@ -469,8 +487,8 @@ export default function FinanceDashboard() {
                                         <thead>
                                             <tr>
                                                 <th className={tableHeaderCls}>Services</th>
-                                                <th className={tableHeaderCls}>Selling <span className="text-[10px] font-normal lowercase text-red-400 ml-1">(service cost)</span></th>
-                                                <th className={tableHeaderCls}>Purchase <span className="text-[10px] font-normal lowercase text-red-400 ml-1">(total paid to vendors)</span></th>
+                                                <th className={tableHeaderCls}>Selling  </th>
+                                                <th className={tableHeaderCls}>Purchase </th>
                                                 <th className={tableHeaderCls}>Gross Margin</th>
                                             </tr>
                                         </thead>
@@ -481,7 +499,7 @@ export default function FinanceDashboard() {
                                                     <tr key={idx} className="hover:bg-slate-800/20">
                                                         <td className={tableCellCls}>
                                                             <div className="flex items-center gap-2">
-                                                                <span className="text-xs font-medium text-slate-500 w-6 text-right mr-2">eg.</span>
+                                                                {/* <span className="text-xs font-medium text-slate-500 w-6 text-right mr-2">eg.</span> */}
                                                                 <span className="font-bold text-white">{row.service}</span>
                                                             </div>
                                                         </td>
@@ -503,7 +521,7 @@ export default function FinanceDashboard() {
                                                                     ₹{formatMoney(row.grossMargin)}
                                                                 </span>
                                                                 <span className="text-[10px] text-orange-400 font-semibold italic">
-                                                                    {isTourPkg ? 'Selling - TCS Amount - Purchase' : 'Selling - Purchase'}
+                                                                    {isTourPkg ? '' : ''}
                                                                 </span>
                                                             </div>
                                                         </td>
@@ -514,21 +532,19 @@ export default function FinanceDashboard() {
                                     </table>
                                 </div>
 
-                                <div className="p-5 border-t border-slate-700/50 bg-[#0b1329]/50 flex gap-10 items-center">
+                                {/* <div className="p-5 border-t border-slate-700/50 bg-[#0b1329]/50 flex gap-10 items-center">
                                     <span className="text-sm font-bold text-white">TCS Amount</span>
                                     <div className="flex flex-col items-center">
                                         <div className="bg-slate-900 border-2 border-red-900/50 text-red-400 font-mono font-bold px-6 py-3 rounded-lg text-center shadow-inner">
-                                            {/* Sum up TCS from all Tour Package rows */}
+                                            
                                             ₹{formatMoney(financeData.reduce((sum, row) => sum + row.tcs, 0))}
                                             <div className="border-t border-red-900/50 my-1 border-dashed"></div>
                                             <span className="text-[10px]">Tour Package Client Paid x 2</span><br/>
                                             <span className="text-[10px]">100 + 2</span>
                                         </div>
                                     </div>
-                                    <div className="flex flex-col">
-                                        <span className="text-xs text-red-400 max-w-[200px] leading-tight">if destination type = International, it will appear & Calculate</span>
-                                    </div>
-                                </div>
+                                            
+                                </div> */}
                             </div>
 
                             {/* 3. GST CALCULATION */}
@@ -540,7 +556,7 @@ export default function FinanceDashboard() {
                                     <table className="w-full text-left text-sm text-slate-200">
                                         <thead>
                                             <tr>
-                                                <th className={`${tableHeaderCls} w-1/3`}>Services <br/><span className="text-[10px] normal-case text-red-400">All services will be Listed one by One</span></th>
+                                                <th className={`${tableHeaderCls} w-1/3`}>Services <br/> </th>
                                                 <th className={`${tableHeaderCls} w-1/3`}>GST %</th>
                                                 <th className={`${tableHeaderCls} w-1/3`}>GST Amount</th>
                                             </tr>
@@ -559,7 +575,7 @@ export default function FinanceDashboard() {
                                                     <td className={tableCellCls}>
                                                         <div className="bg-slate-900 border-2 border-red-900/50 text-red-400 font-mono font-bold px-4 py-2 rounded-lg w-fit shadow-inner flex flex-col gap-1">
                                                             <span>₹{formatMoney(row.gstAmount)}</span>
-                                                            <span className="text-[9px] border-t border-red-900/50 pt-1">Formula = Gross Margin x GST% / (100 + GST%)</span>
+                                                            {/* <span className="text-[9px] border-t border-red-900/50 pt-1">Formula = Gross Margin x GST% / (100 + GST%)</span> */}
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -611,7 +627,7 @@ export default function FinanceDashboard() {
                                                                 <option value="Generate">Generate</option>
                                                                 <option value="Generated">Generated</option>
                                                             </select>
-                                                            {row.approvalStatus !== 'Approved' && <span className="text-[9px] text-red-400 italic">once status is "Approved", Generate will enable</span>}
+                                                            {row.approvalStatus !== 'Approved' && <span className="text-[9px] text-red-400 italic"> </span>}
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -643,13 +659,13 @@ export default function FinanceDashboard() {
                                                     <td className={tableCellCls}>
                                                         <div className="flex flex-col gap-1">
                                                             <span className="font-mono font-bold text-red-400">₹{formatMoney(row.gstAmount)}</span>
-                                                            <span className="text-[9px] text-red-400 italic">gst amount calculated for respective service</span>
+                                                            <span className="text-[9px] text-red-400 italic"> </span>
                                                         </div>
                                                     </td>
                                                     <td className={tableCellCls}>
                                                         <div className="flex flex-col gap-1">
                                                             <span className="font-mono font-bold text-red-400">₹{formatMoney(row.tcs)}</span>
-                                                            <span className="text-[9px] text-red-400 italic">appear for Tour Package</span>
+                                                            <span className="text-[9px] text-red-400 italic"> </span>
                                                         </div>
                                                     </td>
                                                     <td className={tableCellCls}>
@@ -683,7 +699,7 @@ export default function FinanceDashboard() {
                                         <tbody className="divide-y divide-emerald-900/20">
                                             {financeData.map((row, idx) => (
                                                 <tr key={idx} className="hover:bg-slate-800/30">
-                                                    <td className="px-4 py-3 font-bold text-white flex items-center gap-2"><span className="text-xs text-slate-500">eg</span> {row.service}</td>
+                                                    <td className="px-4 py-3 font-bold text-white flex items-center gap-2">  {row.service}</td>
                                                     <td className="px-4 py-3 font-mono">{formatMoney(row.selling)}</td>
                                                     <td className="px-4 py-3 font-mono">{formatMoney(row.tcs)}</td>
                                                     <td className="px-4 py-3 font-mono">{formatMoney(row.purchase)}</td>
@@ -691,7 +707,7 @@ export default function FinanceDashboard() {
                                                     <td className="px-4 py-3 font-mono text-red-400 font-bold">{formatMoney(row.gstAmount)}</td>
                                                     <td className="px-4 py-3 font-mono text-emerald-400 font-bold flex flex-col gap-1">
                                                         <span>{formatMoney(row.netProfit)}</span>
-                                                        <span className="text-[9px] text-emerald-500/70 font-sans italic">Gross Margin - GST Amount</span>
+                                                        <span className="text-[9px] text-emerald-500/70 font-sans italic"> </span>
                                                     </td>
                                                 </tr>
                                             ))}

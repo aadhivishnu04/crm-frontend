@@ -1488,6 +1488,11 @@ export default function OperationsDashboard() {
         const domLocalTransports = safeParseArray(lead.domLocalTransports, { serviceProvider: '', vehicleType: '', contactPerson: '', driverName: '', vehicleNumber: '', status: '', pickupPoint: '', pickupDate: '', duration: '', dropPoint: '', dropDate: '', tollParking: '', cost: '', markup: '', paymentDueDate: '', notes: '' });
         const paymentRequests = safeParseArray(lead.paymentRequests, { serviceType: 'Complete Package', providerName: '', paymentDueDate: '', paymentType: '', amountToPay: '' });
 
+        let parsedServiceCosts = {};
+        if (lead.serviceCosts) {
+            try { parsedServiceCosts = typeof lead.serviceCosts === 'string' ? JSON.parse(lead.serviceCosts) : lead.serviceCosts; } catch (e) { parsedServiceCosts = {}; }
+        }
+
         const editReqIndex = typeof lead.reqIndex === 'number' ? lead.reqIndex : 0;
         const currentReq = parsedCustomisationRequests[editReqIndex] || {};
 
@@ -1533,7 +1538,7 @@ export default function OperationsDashboard() {
             qcStatus: lead.qcStatus || '', qcRemarks: lead.qcRemarks || '', reviewedBy: lead.reviewedBy || '', qcDate: lead.qcDate || '', salesAcknowledged: lead.salesAcknowledged || '', finalStatus: lead.finalStatus || '',
             salesFunnelLeadStatus: lead.salesFunnelLeadStatus || 'Pipeline Active', salesFunnelNotes: lead.salesFunnelNotes || '', localVoiceRecordings: lead.localVoiceRecordings || [], bookingDate: lead.bookingDate || '',
             packageCost: lead.packageCost || lead.amount || '', confirmationDate: lead.confirmationDate || '', 
-            passengers, flights, visas, domTransports, domHotels, domLocalTransports, paymentRequests,
+            passengers, flights, visas, domTransports, domHotels, domLocalTransports, paymentRequests, serviceCosts: parsedServiceCosts,
             docAadhar: lead.docAadhar || '', docPan: lead.docPan || '', docPhoto: lead.docPhoto || '', docPassport: lead.docPassport || '', docDriveLink: lead.docDriveLink || '', documentStatus: lead.documentStatus || '', docRemarks: lead.docRemarks || '',
             domTransportType: lead.domTransportType || lead.transportMode || '', specialOffers: lead.specialOffers || lead.offers || '', arrivalDate: lead.arrivalDate || '', departureDate: lead.departureDate || '', returnDate: lead.returnDate || '',
             insRequired: lead.insRequired || '', insProvider: lead.insProvider || '', insPolicyNo: lead.insPolicyNo || '', insCost: lead.insCost || '', insMarkup: lead.insMarkup || '', insStatus: lead.insStatus || '', insPolicyShared: lead.insPolicyShared || '',
@@ -2186,13 +2191,13 @@ export default function OperationsDashboard() {
                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Tour End Date</label><DatePickerField type="date" readOnly value={selectedLeadForEdit.tourEndDate} className={readonlyCls} /></div>
                                                     <div><label className="block text-xs font-medium text-slate-400 mb-1">Services</label><input type="text" readOnly value={selectedLeadForEdit.confirmedServices || ''} className={readonlyCls} /></div>
 
-                                                    {/* Service Costs (Up to 3 dynamically mapped) */}
+                                                    {/* Service Costs (Dynamic - mirrors Sales exactly, one field per selected service) */}
                                                     {(() => {
                                                         const servicesArr = selectedLeadForEdit.confirmedServices ? selectedLeadForEdit.confirmedServices.split(', ').filter(Boolean) : [];
-                                                        return Array.from({ length: 3 }).map((_, idx) => (
+                                                        return servicesArr.map((srv, idx) => (
                                                             <div key={idx}>
-                                                                <label className="block text-xs font-medium text-slate-400 mb-1">{servicesArr[idx] || `Service ${idx + 1}`} Cost</label>
-                                                                <input type="text" readOnly value={selectedLeadForEdit[`service${idx+1}Cost`] || ''} className={readonlyCls} />
+                                                                <label className="block text-xs font-medium text-slate-400 mb-1">{srv} Cost</label>
+                                                                <input type="text" readOnly value={(selectedLeadForEdit.serviceCosts && selectedLeadForEdit.serviceCosts[srv]) || selectedLeadForEdit[`service${idx+1}Cost`] || ''} className={readonlyCls} />
                                                             </div>
                                                         ));
                                                     })()}
@@ -2685,18 +2690,15 @@ export default function OperationsDashboard() {
                                                        <input type="text" readOnly value={selectedLeadForEdit.confirmedServices || selectedLeadForEdit.services || ''} className={readonlyCls} />
                                                    </div>
                                        
-                                                   <div>
-                                                       <label className="block text-xs font-medium text-slate-400 mb-1">&#123;Service 1&#125; Cost</label>
-                                                       <input type="text" readOnly value={selectedLeadForEdit.service1Cost || ''} className={readonlyCls} />
-                                                   </div>
-                                                   <div>
-                                                       <label className="block text-xs font-medium text-slate-400 mb-1">&#123;Service 2&#125; Cost</label>
-                                                       <input type="text" readOnly value={selectedLeadForEdit.service2Cost || ''} className={readonlyCls} />
-                                                   </div>
-                                                   <div>
-                                                       <label className="block text-xs font-medium text-slate-400 mb-1">&#123;Service 3&#125; Cost</label>
-                                                       <input type="text" readOnly value={selectedLeadForEdit.service3Cost || ''} className={readonlyCls} />
-                                                   </div>
+                                                   {(() => {
+                                                       const servicesArr = (selectedLeadForEdit.confirmedServices || selectedLeadForEdit.services) ? (selectedLeadForEdit.confirmedServices || selectedLeadForEdit.services).split(', ').filter(Boolean) : [];
+                                                       return servicesArr.map((srv, idx) => (
+                                                           <div key={idx}>
+                                                               <label className="block text-xs font-medium text-slate-400 mb-1">{srv} Cost</label>
+                                                               <input type="text" readOnly value={(selectedLeadForEdit.serviceCosts && selectedLeadForEdit.serviceCosts[srv]) || selectedLeadForEdit[`service${idx+1}Cost`] || ''} className={readonlyCls} />
+                                                           </div>
+                                                       ));
+                                                   })()}
                                        
                                                    <div>
                                                        <label className="block text-xs font-medium text-slate-400 mb-1">GST</label>

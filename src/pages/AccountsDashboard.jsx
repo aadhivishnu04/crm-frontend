@@ -906,6 +906,70 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
         onClose();
     };
 
+    // ── CUSTOMER SERVICE DETAILS — service-wise cost/paid/pending, fetched from Customer Payment ──
+    const serviceRows = (() => {
+        const srvsFromConfirmed = lead.confirmedServices ? lead.confirmedServices.split(', ').filter(Boolean) : [];
+        const srvsFromTxns = transactions.map(t => t.service).filter(Boolean);
+        const allServices = [...new Set([...srvsFromConfirmed, ...srvsFromTxns])];
+
+        return allServices.map(s => {
+            let costNum = 0;
+            const sLower = s.toLowerCase();
+
+            if (sLower === 'tour package' || sLower === 'package' || sLower === 'total') {
+                costNum = Number(String(lead.totalPackageCost || lead.packageCost || lead.budget || lead.amount || '0').replace(/[^0-9.-]+/g, ""));
+            } else {
+                const originalIndex = srvsFromConfirmed.indexOf(s);
+                const costsObj = typeof lead.serviceCosts === 'string' ? JSON.parse(lead.serviceCosts || '{}') : (lead.serviceCosts || {});
+                let costStr = '0';
+
+                if (costsObj[s]) {
+                    costStr = costsObj[s];
+                } else if (originalIndex !== -1) {
+                    costStr = lead[`service${originalIndex + 1}Cost`] || '0';
+                }
+
+                costNum = Number(String(costStr).replace(/[^0-9.-]+/g, "")) || 0;
+            }
+
+            const paid = transactions
+                .filter(t => (t.service || '').toLowerCase() === sLower && t.verified)
+                .reduce((sum, t) => sum + (Number(String(t.amount).replace(/[^0-9.-]+/g, "")) || 0), 0);
+
+            return { name: s, cost: costNum, paid, pending: costNum - paid };
+        });
+    })();
+
+    const totalCustomerPaid = serviceRows.reduce((sum, r) => sum + r.paid, 0);
+    const totalCustomerPending = serviceRows.reduce((sum, r) => sum + r.pending, 0);
+
+    // ── VENDOR DETAILS — vendor-wise purchase/paid/pending, fetched from Vendor Payment ──
+    const vendorRows = (lead.paymentRequests || []).map(req => {
+        const purchase = Number(String(req.amountToPay || 0).replace(/[^0-9.-]+/g, "")) || 0;
+        const paid = Number(String(req.outAmountPaid || 0).replace(/[^0-9.-]+/g, "")) || 0;
+        return {
+            name: req.providerName || req.vendorName || req.service || 'Vendor',
+            purchase,
+            paid,
+            pending: purchase - paid,
+        };
+    });
+
+    const totalVendorPaid = vendorRows.reduce((sum, r) => sum + r.paid, 0);
+    const totalVendorPending = vendorRows.reduce((sum, r) => sum + r.pending, 0);
+
+    // "Move to Billing" only appears once both customer and vendor sides are fully settled
+    const canMoveToBilling = totalCustomerPending <= 0 && totalVendorPending <= 0;
+
+    const handleMoveToBilling = () => {
+        updateLead(lead.id, {
+            ...lead,
+            paymentHistoryDetails: transactions,
+            status: 'Move To Billing',
+        });
+        onClose();
+    };
+
     return (
         <div className="flex flex-col w-full min-h-full bg-[#0f172a] text-slate-100 animate-in fade-in duration-200">
             {/* ── HEADER ── */}
@@ -930,9 +994,9 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
                 <div className="px-4 sm:px-6 lg:px-8 py-6 space-y-5 w-full">
                     
                     {/* ════════════════════════════════════
-                        SECTION 1 — CUSTOMER DETAILS
+                        SECTION 1 — BOOKING DETAILS
                     ════════════════════════════════════ */}
-                    <CollapsibleSection title="Customer Details" icon={FileText} titleColorCls="text-emerald-400" defaultOpen={true}>
+                    <CollapsibleSection title="Booking Details" icon={FileText} titleColorCls="text-emerald-400" defaultOpen={true}>
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-3">
                             <div>
                                 <label className="block text-[11px] uppercase text-slate-500 font-bold mb-1.5">Lead Id</label>
@@ -1000,10 +1064,11 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
                     </CollapsibleSection>
 
                     {/* ════════════════════════════════════
-                        SECTION 2 — SERVICE DETAILS
+                        SECTION 2 — CUSTOMER SERVICE DETAILS
                     ════════════════════════════════════ */}
-                    <CollapsibleSection title="Service Details" icon={DollarSign} titleColorCls="text-cyan-400" defaultOpen={true}>
-                        <div className="bg-[#0f172a] border border-slate-700/50 rounded-lg overflow-hidden mt-3">
+                    <CollapsibleSection title="Customer Service Details" icon={DollarSign} titleColorCls="text-cyan-400" defaultOpen={true}>
+                        {/* <p className="text-[11px] text-orange-400 italic mb-2 mt-3">Fetched from Customer Payment — once amount verified, it will be reflected</p> */}
+                        <div className="bg-[#0f172a] border border-slate-700/50 rounded-lg overflow-hidden">
                             <table className="w-full text-left text-sm text-slate-300">
                                 <thead className="bg-slate-800/60 text-[11px] uppercase text-slate-300 font-bold">
                                     <tr>
@@ -1015,66 +1080,83 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-800/50">
-                                    {(() => {
-                                        const srvsFromConfirmed = lead.confirmedServices ? lead.confirmedServices.split(', ').filter(Boolean) : [];
-                                        const srvsFromTxns = transactions.map(t => t.service).filter(Boolean);
-                                        const allServices = [...new Set([...srvsFromConfirmed, ...srvsFromTxns])];
-
-                                        if (allServices.length === 0) {
-                                            return (
-                                                <tr className="hover:bg-slate-800/20">
-                                                    <td colSpan="5" className="px-5 py-6 text-center text-slate-500 italic">No services listed</td>
-                                                </tr>
-                                            );
-                                        }
-                                        
-                                        return allServices.map((s, idx) => {
-                                            let costNum = 0;
-                                            const sLower = s.toLowerCase();
-                                            
-                                            if (sLower === 'tour package' || sLower === 'package' || sLower === 'total') {
-                                                costNum = Number(String(lead.totalPackageCost || lead.packageCost || lead.budget || lead.amount || '0').replace(/[^0-9.-]+/g,""));
-                                            } else {
-                                                const originalIndex = srvsFromConfirmed.indexOf(s);
-                                                const costsObj = typeof lead.serviceCosts === 'string' ? JSON.parse(lead.serviceCosts || '{}') : (lead.serviceCosts || {});
-                                                let costStr = '0';
-                                                
-                                                if (costsObj[s]) {
-                                                    costStr = costsObj[s];
-                                                } else if (originalIndex !== -1) {
-                                                    costStr = lead[`service${originalIndex + 1}Cost`] || '0';
-                                                }
-                                                
-                                                costNum = Number(String(costStr).replace(/[^0-9.-]+/g,"")) || 0;
-                                            }
-                                            
-                                            const paid = transactions
-                                                .filter(t => (t.service || '').toLowerCase() === sLower && t.verified)
-                                                .reduce((sum, t) => sum + (Number(String(t.amount).replace(/[^0-9.-]+/g,"")) || 0), 0);
-                                                
-                                            const pending = costNum - paid;
-                                            
-                                            return (
-                                                <tr key={idx} className="hover:bg-slate-800/30">
-                                                    <td className="px-5 py-4 font-bold text-white">{s}</td>
-                                                    <td className="px-5 py-4 font-mono text-slate-300">₹{costNum}</td>
-                                                    <td className="px-5 py-4 font-mono text-emerald-400">₹{paid}</td>
-                                                    <td className="px-5 py-4 font-mono text-orange-400">₹{pending}</td>
-                                                    <td className="px-5 py-4 text-center">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => printServiceInvoice(lead, s, costNum)}
-                                                            title="Print / Download Pro-forma Invoice"
-                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-cyan-500/10 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300 text-xs font-bold cursor-pointer transition-colors"
-                                                        >
-                                                            <Printer size={13} /> Print
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            );
-                                        });
-                                    })()}
+                                    {serviceRows.length === 0 ? (
+                                        <tr className="hover:bg-slate-800/20">
+                                            <td colSpan="5" className="px-5 py-6 text-center text-slate-500 italic">No services listed <span className="text-slate-600">(eg. Tour Package, Flights, Travel Insurance)</span></td>
+                                        </tr>
+                                    ) : serviceRows.map((r, idx) => (
+                                        <tr key={idx} className="hover:bg-slate-800/30">
+                                            <td className="px-5 py-4 font-bold text-white">{r.name}</td>
+                                            <td className="px-5 py-4 font-mono text-slate-300">₹{r.cost}</td>
+                                            <td className="px-5 py-4 font-mono text-emerald-400">₹{r.paid}</td>
+                                            <td className="px-5 py-4 font-mono text-orange-400">₹{r.pending}</td>
+                                            <td className="px-5 py-4 text-center">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => printServiceInvoice(lead, r.name, r.cost)}
+                                                    title="Print / Download Pro-forma Invoice"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-cyan-500/10 border border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/20 hover:text-cyan-300 text-xs font-bold cursor-pointer transition-colors"
+                                                >
+                                                    <Printer size={13} /> Print
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
                                 </tbody>
+                                {serviceRows.length > 0 && (
+                                    <tfoot>
+                                        <tr className="bg-slate-800/40 border-t border-slate-700">
+                                            <td className="px-5 py-3 font-bold text-slate-400 text-xs uppercase">Total</td>
+                                            <td className="px-5 py-3"></td>
+                                            <td className="px-5 py-3 font-mono font-bold text-emerald-400">Total Amount Paid: ₹{totalCustomerPaid}</td>
+                                            <td className="px-5 py-3 font-mono font-bold text-orange-400">Total Pending: ₹{totalCustomerPending}</td>
+                                            <td className="px-5 py-3"></td>
+                                        </tr>
+                                    </tfoot>
+                                )}
+                            </table>
+                        </div>
+                    </CollapsibleSection>
+
+                    {/* ════════════════════════════════════
+                        SECTION 2B — VENDOR DETAILS
+                    ════════════════════════════════════ */}
+                    <CollapsibleSection title="Vendor Details" icon={Briefcase} titleColorCls="text-cyan-400" defaultOpen={true}>
+                        {/* <p className="text-[11px] text-orange-400 italic mb-2 mt-3">Fetched from Vendor Payment — once amount paid, it will be reflected</p> */}
+                        <div className="bg-[#0f172a] border border-slate-700/50 rounded-lg overflow-hidden">
+                            <table className="w-full text-left text-sm text-slate-300">
+                                <thead className="bg-slate-800/60 text-[11px] uppercase text-slate-300 font-bold">
+                                    <tr>
+                                        <th className="px-5 py-3 w-[25%]">Vendor Name</th>
+                                        <th className="px-5 py-3">Purchase Cost</th>
+                                        <th className="px-5 py-3">Amount Paid</th>
+                                        <th className="px-5 py-3">Amount Pending</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-800/50">
+                                    {vendorRows.length === 0 ? (
+                                        <tr className="hover:bg-slate-800/20">
+                                            <td colSpan="4" className="px-5 py-6 text-center text-slate-500 italic">No vendor payments recorded yet</td>
+                                        </tr>
+                                    ) : vendorRows.map((r, idx) => (
+                                        <tr key={idx} className="hover:bg-slate-800/30">
+                                            <td className="px-5 py-4 font-bold text-white">{r.name}</td>
+                                            <td className="px-5 py-4 font-mono text-slate-300">₹{r.purchase}</td>
+                                            <td className="px-5 py-4 font-mono text-emerald-400">₹{r.paid}</td>
+                                            <td className="px-5 py-4 font-mono text-orange-400">₹{r.pending}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                {vendorRows.length > 0 && (
+                                    <tfoot>
+                                        <tr className="bg-slate-800/40 border-t border-slate-700">
+                                            <td className="px-5 py-3 font-bold text-slate-400 text-xs uppercase">Total</td>
+                                            <td className="px-5 py-3"></td>
+                                            <td className="px-5 py-3 font-mono font-bold text-emerald-400">Total Amount Paid: ₹{totalVendorPaid}</td>
+                                            <td className="px-5 py-3 font-mono font-bold text-orange-400">Total Pending: ₹{totalVendorPending}</td>
+                                        </tr>
+                                    </tfoot>
+                                )}
                             </table>
                         </div>
                     </CollapsibleSection>
@@ -1157,18 +1239,29 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
             </div>
 
             {/* ── FOOTER ── */}
-            <div className="sticky bottom-0 px-4 sm:px-6 py-4 border-t border-slate-800 bg-[#0f172a] z-10 flex justify-end items-center gap-3 flex-shrink-0">
-                <button type="button" onClick={onClose} className="w-full sm:w-auto px-10 py-3 sm:py-2.5 bg-transparent border border-cyan-500 hover:bg-slate-800 cursor-pointer text-cyan-400 text-sm font-semibold rounded-lg sm:rounded transition-colors uppercase tracking-wider order-2 sm:order-1 border-none">
+            <div className="sticky bottom-0 px-4 sm:px-6 py-4 border-t border-slate-800 bg-[#0f172a] z-10 flex flex-col sm:flex-row justify-end items-center gap-3 flex-shrink-0">
+                <button type="button" onClick={onClose} className="w-full sm:w-auto px-10 py-3 sm:py-2.5 bg-transparent border border-cyan-500 hover:bg-slate-800 cursor-pointer text-cyan-400 text-sm font-semibold rounded-lg sm:rounded transition-colors uppercase tracking-wider order-3 sm:order-1 border-none">
                     Close
                 </button>
                 <button
                     type="button"
                     onClick={handleSaveVerifications}
-                    className="w-full sm:w-auto px-10 py-3 sm:py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-600 border-none cursor-pointer text-white text-sm font-bold rounded-lg sm:rounded shadow transition-colors uppercase tracking-wider flex items-center justify-center gap-2 order-1 sm:order-2"
+                    className="w-full sm:w-auto px-10 py-3 sm:py-2.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-600 border-none cursor-pointer text-white text-sm font-bold rounded-lg sm:rounded shadow transition-colors uppercase tracking-wider flex items-center justify-center gap-2 order-2"
                 >
                     <CheckSquare size={16} />
                     Save Verifications
                 </button>
+                {canMoveToBilling && (
+                    <button
+                        type="button"
+                        onClick={handleMoveToBilling}
+                        title="Customer and vendor totals are fully settled — send this booking to Finance"
+                        className="w-full sm:w-auto px-10 py-3 sm:py-2.5 bg-cyan-600 hover:bg-cyan-500 active:bg-cyan-600 border-none cursor-pointer text-white text-sm font-bold rounded-lg sm:rounded shadow transition-colors uppercase tracking-wider flex items-center justify-center gap-2 order-1 sm:order-3"
+                    >
+                        <FileText size={16} />
+                        Move to Billing
+                    </button>
+                )}
             </div>
 
             {/* ── EDITABLE RECEIPT PREVIEW (only reachable for verified transactions) ── */}
