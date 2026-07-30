@@ -568,7 +568,7 @@ export default function FinanceDashboard() {
                                                     <td className={tableCellCls}>
                                                         <select value={row.gstRate} onChange={(e) => handleFinanceChange(idx, 'gstRate', e.target.value)} className={`${selectCls} border-2 border-slate-600 font-bold max-w-[150px]`}>
                                                             <option value="5">5%</option>
-                                                            <option value="12">12%</option>
+                                                            <option value="9">9%</option>
                                                             <option value="18">18%</option>
                                                         </select>
                                                     </td>
