@@ -955,7 +955,6 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
         };
     });
 
-    const totalVendorPaid = vendorRows.reduce((sum, r) => sum + r.paid, 0);
     const totalVendorPending = vendorRows.reduce((sum, r) => sum + r.pending, 0);
 
     // "Move to Billing" only appears once both customer and vendor sides are fully settled
@@ -1117,49 +1116,6 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
                             </table>
                         </div>
                     </CollapsibleSection>
-
-                    {/* ════════════════════════════════════
-                        SECTION 2B — VENDOR DETAILS
-                    ════════════════════════════════════ */}
-                    {/* <CollapsibleSection title="Vendor Details" icon={Briefcase} titleColorCls="text-cyan-400" defaultOpen={true}>
-                        
-                        <div className="bg-[#0f172a] border border-slate-700/50 rounded-lg overflow-hidden">
-                            <table className="w-full text-left text-sm text-slate-300">
-                                <thead className="bg-slate-800/60 text-[11px] uppercase text-slate-300 font-bold">
-                                    <tr>
-                                        <th className="px-5 py-3 w-[25%]">Vendor Name</th>
-                                        <th className="px-5 py-3">Purchase Cost</th>
-                                        <th className="px-5 py-3">Amount Paid</th>
-                                        <th className="px-5 py-3">Amount Pending</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-800/50">
-                                    {vendorRows.length === 0 ? (
-                                        <tr className="hover:bg-slate-800/20">
-                                            <td colSpan="4" className="px-5 py-6 text-center text-slate-500 italic">No vendor payments recorded yet</td>
-                                        </tr>
-                                    ) : vendorRows.map((r, idx) => (
-                                        <tr key={idx} className="hover:bg-slate-800/30">
-                                            <td className="px-5 py-4 font-bold text-white">{r.name}</td>
-                                            <td className="px-5 py-4 font-mono text-slate-300">₹{r.purchase}</td>
-                                            <td className="px-5 py-4 font-mono text-emerald-400">₹{r.paid}</td>
-                                            <td className="px-5 py-4 font-mono text-orange-400">₹{r.pending}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                                {vendorRows.length > 0 && (
-                                    <tfoot>
-                                        <tr className="bg-slate-800/40 border-t border-slate-700">
-                                            <td className="px-5 py-3 font-bold text-slate-400 text-xs uppercase">Total</td>
-                                            <td className="px-5 py-3"></td>
-                                            <td className="px-5 py-3 font-mono font-bold text-emerald-400">Total Amount Paid: ₹{totalVendorPaid}</td>
-                                            <td className="px-5 py-3 font-mono font-bold text-orange-400">Total Pending: ₹{totalVendorPending}</td>
-                                        </tr>
-                                    </tfoot>
-                                )}
-                            </table>
-                        </div>
-                    </CollapsibleSection> */}
 
                     {/* ════════════════════════════════════
                         SECTION 3 — TRANSACTION DETAILS
@@ -1342,13 +1298,62 @@ function BookingInspectorModal({ lead, onClose, updateLead }) {
 function CustomerPaymentDetailsModal({ lead, onClose }) {
     if (!lead) return null;
     const readonlyCls = "w-full px-3 py-2 bg-slate-900/50 border border-slate-800 rounded text-slate-300 text-sm cursor-not-allowed font-medium opacity-90 focus:outline-none";
-    const txns = Array.isArray(lead.paymentHistoryDetails) ? lead.paymentHistoryDetails : [];
+    const transactions = Array.isArray(lead.paymentHistoryDetails) ? lead.paymentHistoryDetails : [];
+
+    const INDIA_KEYWORDS = ['india','chennai','mumbai','delhi','bangalore','bengaluru','hyderabad','kolkata','pune','goa','kochi','cochin','kerala','jaipur','udaipur','jodhpur','agra','varanasi','rishikesh','manali','shimla','ooty','kodaikanal','munnar','mysore','pondicherry','puducherry','andaman','lakshadweep','kashmir','ladakh','leh','darjeeling','gangtok','sikkim','meghalaya','assam','tamil nadu','karnataka','maharashtra','rajasthan','gujarat','uttarakhand','kanyakumari'];
+    const dest = (lead.destination || lead.confirmedDestination || '').toLowerCase();
+    const isDomestic = INDIA_KEYWORDS.some(kw => dest.includes(kw));
+    const tourTypeLabel = isDomestic ? 'Domestic' : 'International';
+    const isInternational = tourTypeLabel === 'International' || String(lead.destinationType).toLowerCase() === 'international';
+
+    const calcDuration = () => {
+        const start = lead.tourStartDate || lead.travelDate || lead.travelDates;
+        const end = lead.returnDate || lead.tourEndDate;
+        if (!start || !end) return lead.duration || lead.confirmedDuration || '—';
+        const diff = Math.ceil((new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24));
+        if (diff > 0) return `${diff} Night${diff > 1 ? 's' : ''} / ${diff + 1} Days`;
+        return lead.duration || lead.confirmedDuration || '—';
+    };
+
+    // Service Details — mirrors the Booking Inspector's mapping exactly (serviceCosts JSON, fallback to legacy service{N}Cost)
+    const serviceRows = (() => {
+        const srvsFromConfirmed = lead.confirmedServices ? lead.confirmedServices.split(', ').filter(Boolean) : [];
+        const srvsFromTxns = transactions.map(t => t.service).filter(Boolean);
+        const allServices = [...new Set([...srvsFromConfirmed, ...srvsFromTxns])];
+
+        return allServices.map(s => {
+            let costNum = 0;
+            const sLower = s.toLowerCase();
+
+            if (sLower === 'tour package' || sLower === 'package' || sLower === 'total') {
+                costNum = Number(String(lead.totalPackageCost || lead.packageCost || lead.budget || lead.amount || '0').replace(/[^0-9.-]+/g, ""));
+            } else {
+                const originalIndex = srvsFromConfirmed.indexOf(s);
+                const costsObj = typeof lead.serviceCosts === 'string' ? JSON.parse(lead.serviceCosts || '{}') : (lead.serviceCosts || {});
+                let costStr = '0';
+
+                if (costsObj[s]) {
+                    costStr = costsObj[s];
+                } else if (originalIndex !== -1) {
+                    costStr = lead[`service${originalIndex + 1}Cost`] || '0';
+                }
+
+                costNum = Number(String(costStr).replace(/[^0-9.-]+/g, "")) || 0;
+            }
+
+            const paid = transactions
+                .filter(t => (t.service || '').toLowerCase() === sLower && t.verified)
+                .reduce((sum, t) => sum + (Number(String(t.amount).replace(/[^0-9.-]+/g, "")) || 0), 0);
+
+            return { name: s, cost: costNum, paid, pending: costNum - paid };
+        });
+    })();
 
     return (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={onClose}>
-            <div onClick={e => e.stopPropagation()} className="w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-[#0f172a] border border-slate-700 rounded-xl shadow-2xl custom-scrollbar">
+            <div onClick={e => e.stopPropagation()} className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-[#0f172a] border border-slate-700 rounded-xl shadow-2xl custom-scrollbar">
                 {/* HEADER */}
-                <div className="sticky top-0 px-5 sm:px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] rounded-t-xl">
+                <div className="sticky top-0 px-5 sm:px-6 py-4 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] rounded-t-xl z-10">
                     <h2 className="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2 m-0">
                         <DollarSign size={18} className="text-cyan-400 flex-shrink-0" />
                         Customer Payment
@@ -1363,56 +1368,102 @@ function CustomerPaymentDetailsModal({ lead, onClose }) {
 
                 {/* CONTENT */}
                 <div className="p-5 sm:p-6 space-y-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div>
-                            <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Customer Name</label>
-                            <input type="text" readOnly value={lead.customerName || lead.profileName || 'N/A'} className={readonlyCls} />
-                        </div>
-                        <div>
-                            <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Client Paid</label>
-                            <input type="text" readOnly value={lead.amountReceived || '0'} className={`${readonlyCls} text-emerald-400`} />
-                        </div>
-                        <div>
-                            <label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Client Balance</label>
-                            <input type="text" readOnly value={lead.balancePending || '0'} className={`${readonlyCls} text-red-400`} />
+
+                    {/* BOOKING DETAILS */}
+                    <div>
+                        <h3 className="text-sm font-bold text-emerald-400 tracking-wider uppercase m-0 pb-2 mb-3 border-b border-slate-700/50">Booking Details</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Lead Id</label><input type="text" readOnly value={`LMN${lead.id}`} className={readonlyCls} /></div>
+                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Customer Name</label><input type="text" readOnly value={lead.customerName || lead.profileName || '—'} className={`${readonlyCls} text-white font-bold`} /></div>
+                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Booking Confirmed Date</label><input type="text" readOnly value={lead.confirmedDate || lead.bookingDate || '—'} className={readonlyCls} /></div>
+
+                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Destination Type</label><input type="text" readOnly value={lead.destinationType || tourTypeLabel || '—'} className={readonlyCls} /></div>
+                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Destination</label><input type="text" readOnly value={lead.destination || lead.confirmedDestination || '—'} className={readonlyCls} /></div>
+                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Duration</label><input type="text" readOnly value={calcDuration()} className={readonlyCls} /></div>
+
+                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">No. of Pax <span className="lowercase text-slate-600 font-normal">(Adults | Children)</span></label><input type="text" readOnly value={`${lead.noOfPax || '0'} | ${lead.noOfChildren || lead.confirmedNoOfChildren || '0'}`} className={readonlyCls} /></div>
+                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Tour Start Date</label><input type="text" readOnly value={lead.tourStartDate || lead.travelDate || lead.travelDates || '—'} className={`${readonlyCls} text-red-400`} /></div>
+                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Tour End Date</label><input type="text" readOnly value={lead.tourEndDate || lead.returnDate || '—'} className={`${readonlyCls} text-red-400`} /></div>
+
+                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Sales Executive</label><input type="text" readOnly value={lead.salesExecutive || lead.assignedTo || '—'} className={readonlyCls} /></div>
+                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Operations Executive</label><input type="text" readOnly value={lead.operationsExecutive || lead.operationExecutive || '—'} className={readonlyCls} /></div>
+                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">Services</label><input type="text" readOnly value={lead.confirmedServices || lead.services || '—'} className={readonlyCls} /></div>
+
+                            <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">GST</label><input type="text" readOnly value={lead.gstInclusion || lead.gstStatus || '—'} className={readonlyCls} /></div>
+                            {isInternational && (
+                                <div><label className="block text-[10px] uppercase text-slate-500 font-bold mb-1">TCS</label><input type="text" readOnly value={lead.tcsInclusion || lead.tcsStatus || '—'} className={readonlyCls} /></div>
+                            )}
                         </div>
                     </div>
 
+                    {/* SERVICE DETAILS */}
                     <div>
-                        <div className="flex items-center justify-between border-b border-slate-700/50 pb-2 mb-3">
-                            <h3 className="text-sm font-bold text-cyan-400 tracking-wider uppercase m-0">Transaction Details</h3>
-                       
-                        </div>
+                        <h3 className="text-sm font-bold text-cyan-400 tracking-wider uppercase m-0 pb-2 mb-3 border-b border-slate-700/50">Service Details</h3>
                         <div className="bg-slate-900/50 border border-slate-700/50 rounded overflow-hidden overflow-x-auto">
                             <table className="w-full text-left text-sm text-slate-300">
-                                <thead className="bg-slate-800 text-xs uppercase text-slate-400">
+                                <thead className="bg-slate-800 text-[11px] uppercase text-slate-400">
                                     <tr>
-                                        <th className="px-4 py-2">Date</th>
-                                        <th className="px-4 py-2">Service</th>
-                                        <th className="px-4 py-2">Amount</th>
-                                        <th className="px-4 py-2">Mode</th>
-                                        <th className="px-4 py-2">Transaction ID</th>
+                                        <th className="px-4 py-2">Service Name</th>
+                                        <th className="px-4 py-2">Service Cost</th>
+                                        <th className="px-4 py-2">Amount Paid</th>
+                                        <th className="px-4 py-2">Amount Pending</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-700/50">
-                                    {txns.length > 0 ? (
-                                        txns.map((hist, i) => (
+                                    {serviceRows.length === 0 ? (
+                                        <tr><td colSpan="4" className="px-4 py-4 text-center text-slate-500 italic">No services listed <span className="text-slate-600">(eg. Tour Package, Flights, Travel Insurance)</span></td></tr>
+                                    ) : serviceRows.map((r, idx) => (
+                                        <tr key={idx} className="hover:bg-slate-800/30">
+                                            <td className="px-4 py-3 font-bold text-white">{r.name}</td>
+                                            <td className="px-4 py-3 font-mono">₹{r.cost}</td>
+                                            <td className="px-4 py-3 font-mono text-emerald-400">₹{r.paid}</td>
+                                            <td className="px-4 py-3 font-mono text-orange-400">₹{r.pending}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* TRANSACTION DETAILS */}
+                    <div>
+                        <div className="flex items-center justify-between border-b border-slate-700/50 pb-2 mb-3">
+                            <h3 className="text-sm font-bold text-cyan-400 tracking-wider uppercase m-0">Transaction Details</h3>
+                        </div>
+                        <div className="bg-slate-900/50 border border-slate-700/50 rounded overflow-hidden overflow-x-auto">
+                            <table className="w-full text-left text-sm text-slate-300 min-w-[760px]">
+                                <thead className="bg-slate-800 text-[11px] uppercase text-slate-400 whitespace-nowrap">
+                                    <tr>
+                                        <th className="px-4 py-2">No.</th>
+                                        <th className="px-4 py-2">Service</th>
+                                        <th className="px-4 py-2">Amount Received</th>
+                                        <th className="px-4 py-2">Payment Mode</th>
+                                        <th className="px-4 py-2">Transaction Reference</th>
+                                        <th className="px-4 py-2">Payment Date</th>
+                                        <th className="px-4 py-2">Attachment</th>
+                                        <th className="px-4 py-2 text-center">Verification Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-700/50 text-xs">
+                                    {transactions.length > 0 ? (
+                                        transactions.map((txn, i) => (
                                             <tr key={i} className="hover:bg-slate-800/30">
-                                                <td className="px-4 py-3">{hist.date || 'TBD'}</td>
-                                                <td className="px-4 py-3">{hist.service || 'N/A'}</td>
-                                                <td className="px-4 py-3 font-mono">{hist.amount || '0'}</td>
-                                                <td className="px-4 py-3">{hist.mode || 'N/A'}</td>
-                                                <td className="px-4 py-3 font-mono">{hist.transactionId || 'N/A'}</td>
+                                                <td className="px-4 py-3 font-bold">{i + 1}</td>
+                                                <td className="px-4 py-3">{txn.service || '—'}</td>
+                                                <td className="px-4 py-3 font-mono font-bold text-emerald-400">{txn.amount || '—'}</td>
+                                                <td className="px-4 py-3">{txn.mode || '—'}</td>
+                                                <td className="px-4 py-3 font-mono text-slate-400">{txn.transactionId || '—'}</td>
+                                                <td className="px-4 py-3">{txn.date || '—'}</td>
+                                                <td className="px-4 py-3 text-cyan-400 underline cursor-pointer">{txn.attachment ? 'View' : '—'}</td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <span className={`px-2 py-1 rounded text-[11px] font-bold border ${txn.verified ? 'bg-emerald-950/40 text-emerald-400 border-emerald-900/40' : 'bg-orange-950/40 text-orange-400 border-orange-900/40'}`}>
+                                                        {txn.verified ? 'Verified' : 'Pending'}
+                                                    </span>
+                                                </td>
                                             </tr>
                                         ))
                                     ) : (
-                                        <tr>
-                                            <td className="px-4 py-3">{lead.nextPaymentDate || 'N/A'}</td>
-                                            <td className="px-4 py-3">Package</td>
-                                            <td className="px-4 py-3 font-mono text-emerald-400">{lead.amountReceived || '0'}</td>
-                                            <td className="px-4 py-3">{lead.paymentMode || 'N/A'}</td>
-                                            <td className="px-4 py-3 font-mono">{lead.transactionId || 'N/A'}</td>
-                                        </tr>
+                                        <tr><td colSpan="8" className="px-4 py-4 text-center text-slate-500 italic">No transactions recorded</td></tr>
                                     )}
                                 </tbody>
                             </table>
