@@ -34,7 +34,8 @@ import {
     BookmarkCheck,
     PlaneTakeoff,
     PackageCheck,
-    AlarmClock
+    AlarmClock,
+    Megaphone
 } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
 import { ROLES } from '../utils/permissions';
@@ -385,6 +386,7 @@ const Dashboard = () => {
     };
 
     const [campaignOptions, setCampaignOptions] = useState([]);
+    const [allCampaigns, setAllCampaigns] = useState([]);
     const PACKAGE_TYPES = ['Custom / Flexible', 'Honeymoon', 'Family Tour', 'Group Tour', 'Corporate Trip', 'Solo Backpacking'];
     const PLATFORM_OPTIONS = ['Facebook', 'Instagram', 'Google Ads', 'Website', 'Referral', 'Walk-in', 'Other'];
     const BUDGET_OPTIONS = ['Under ₹25,000', '₹25,000 - ₹50,000', '₹50,000 - ₹1,00,000', '₹1,00,000 - ₹3,00,000', '₹3,00,000 - ₹5,00,000', '₹5,00,000+'];
@@ -800,6 +802,14 @@ const Dashboard = () => {
 
                 if (topDestRes.ok) setTopDestinations(await topDestRes.json());
 
+                if (campaignsRes.ok) {
+                    const campaignsData = await campaignsRes.json();
+                    if (Array.isArray(campaignsData)) {
+                        setAllCampaigns(campaignsData);
+                        setCampaignOptions(campaignsData.map(c => (typeof c === 'string' ? c : (c.name || c.campaignName || ''))).filter(Boolean));
+                    }
+                }
+
                 if (leadsRes.ok) {
                     const leadsData = await leadsRes.json();
                     if (Array.isArray(leadsData)) {
@@ -1189,6 +1199,83 @@ const Dashboard = () => {
         customerOutstanding: payments.pending || 0,
         vendorOutstanding: acctsVendorPaymentDue.reduce((sum, v) => sum + (v.amount || 0), 0),
     }), [payments, acctsVendorPaymentDue]);
+
+    // ─── MARKETING-SPECIFIC DERIVED DATA (Today's Leads / Assigned / Unassigned / Active Campaigns) ───
+    const isMarketing = user?.role === ROLES.MARKETING;
+
+    const mktgTodaysLeads = useMemo(() => (
+        allLeads.filter(l => l.createdAt && new Date(l.createdAt).toDateString() === todayStr)
+    ), [allLeads, todayStr]);
+
+    const mktgAssignedLeads = useMemo(() => (
+        allLeads.filter(l => l.assignedTo || l.assignedToOps)
+    ), [allLeads]);
+
+    const mktgUnassignedLeads = useMemo(() => (
+        allLeads.filter(l => !l.assignedTo && !l.assignedToOps)
+    ), [allLeads]);
+
+    // ASSUMPTION: a campaign counts as "active" if its status field says so, or has
+    // no status field at all (older campaign records may not have one yet).
+    const mktgActiveCampaigns = useMemo(() => (
+        allCampaigns.filter(c => !c.status || !['ended', 'paused', 'completed', 'inactive'].includes(String(c.status).toLowerCase()))
+    ), [allCampaigns]);
+
+    // Lead Report — count of leads grouped by source/platform.
+    const mktgLeadSourceBreakdown = useMemo(() => {
+        const counts = {};
+        allLeads.forEach(l => {
+            const source = l.platform || 'Direct';
+            counts[source] = (counts[source] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .map(([source, count]) => ({ source, count }))
+            .sort((a, b) => b.count - a.count);
+    }, [allLeads]);
+
+    // Lead Assignment — count of leads currently assigned to each employee, plus an Unassigned row.
+    const mktgLeadAssignmentBreakdown = useMemo(() => {
+        const counts = {};
+        allLeads.forEach(l => {
+            const assignee = l.assignedTo || l.assignedToOps;
+            if (assignee) counts[assignee] = (counts[assignee] || 0) + 1;
+        });
+        const rows = Object.entries(counts)
+            .map(([employee, count]) => ({ employee, count }))
+            .sort((a, b) => b.count - a.count);
+        if (mktgUnassignedLeads.length > 0) {
+            rows.push({ employee: 'Unassigned', count: mktgUnassignedLeads.length });
+        }
+        return rows;
+    }, [allLeads, mktgUnassignedLeads]);
+
+    const [mktgCampaignFilter, setMktgCampaignFilter] = useState('today'); // 'today' | 'week' | 'month'
+
+    // Campaign Performance — count of leads generated per campaign within the selected window.
+    const mktgCampaignPerformance = useMemo(() => {
+        const now = new Date();
+        const windowStart = new Date(now);
+        if (mktgCampaignFilter === 'today') {
+            windowStart.setHours(0, 0, 0, 0);
+        } else if (mktgCampaignFilter === 'week') {
+            windowStart.setDate(now.getDate() - 7);
+        } else {
+            windowStart.setDate(now.getDate() - 30);
+        }
+
+        const counts = {};
+        allLeads.forEach(l => {
+            if (!l.campaign) return;
+            if (!l.createdAt) return;
+            const created = new Date(l.createdAt);
+            if (created >= windowStart && created <= now) {
+                counts[l.campaign] = (counts[l.campaign] || 0) + 1;
+            }
+        });
+        return Object.entries(counts)
+            .map(([campaign, count]) => ({ campaign, count }))
+            .sort((a, b) => b.count - a.count);
+    }, [allLeads, mktgCampaignFilter]);
 
     return (
         <div className={`min-h-screen w-full p-3 sm:p-5 lg:p-7 pt-20 sm:pt-24 lg:pt-6 pb-24 space-y-4 sm:space-y-5 poppins-regular text-base relative custom-scrollbar overflow-x-hidden transition-colors duration-300 ${darkMode ? 'bg-[#0b0f1a] text-slate-100 dark' : 'bg-slate-100 text-slate-800'}`}>
@@ -1593,6 +1680,11 @@ const Dashboard = () => {
                     { id: 'Vendor Payment Due', label: 'Vendor Payment Due', value: acctsVendorPaymentDue.length, icon: <ArrowUpRight className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-amber-500/20 to-amber-600/5', iconBg: 'bg-amber-500/15 text-amber-500 dark:text-amber-400', border: 'border-amber-500/10 dark:border-amber-500/10', glow: 'hover:border-amber-500/30 dark:hover:border-amber-500/20' },
                     { id: 'Customer Payment Overdue', label: 'Customer Payment Overdue', value: acctsCustomerPaymentOverdue.length, icon: <ArrowDownRight className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-rose-500/20 to-rose-600/5', iconBg: 'bg-rose-500/15 text-rose-500 dark:text-rose-400', border: 'border-rose-500/10 dark:border-rose-500/10', glow: 'hover:border-rose-500/30 dark:hover:border-rose-500/20' },
                     { id: 'Ready for Financial Closure', label: 'Ready for Financial Closure', value: acctsReadyForClosure.length, icon: <BookmarkCheck className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-emerald-500/20 to-emerald-600/5', iconBg: 'bg-emerald-500/15 text-emerald-500 dark:text-emerald-400', border: 'border-emerald-500/10 dark:border-emerald-500/10', glow: 'hover:border-emerald-500/30 dark:hover:border-emerald-500/20' },
+                ] : user?.role === ROLES.MARKETING ? [
+                    { id: 'Marketing Today Leads', label: "Today's Leads", value: mktgTodaysLeads.length, icon: <Users className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-blue-500/20 to-blue-600/5', iconBg: 'bg-blue-500/15 text-blue-500 dark:text-blue-400', border: 'border-blue-500/10 dark:border-blue-500/10', glow: 'hover:border-blue-500/30 dark:hover:border-blue-500/20' },
+                    { id: 'Marketing Assigned', label: 'Assigned', value: mktgAssignedLeads.length, icon: <Check className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-emerald-500/20 to-emerald-600/5', iconBg: 'bg-emerald-500/15 text-emerald-500 dark:text-emerald-400', border: 'border-emerald-500/10 dark:border-emerald-500/10', glow: 'hover:border-emerald-500/30 dark:hover:border-emerald-500/20' },
+                    { id: 'Marketing Unassigned', label: 'Unassigned', value: mktgUnassignedLeads.length, icon: <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-amber-500/20 to-amber-600/5', iconBg: 'bg-amber-500/15 text-amber-500 dark:text-amber-400', border: 'border-amber-500/10 dark:border-amber-500/10', glow: 'hover:border-amber-500/30 dark:hover:border-amber-500/20' },
+                    { id: 'Marketing Active Campaigns', label: 'Active Campaigns', value: mktgActiveCampaigns.length, icon: <Target className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-violet-500/20 to-violet-600/5', iconBg: 'bg-violet-500/15 text-violet-500 dark:text-violet-400', border: 'border-violet-500/10 dark:border-violet-500/10', glow: 'hover:border-violet-500/30 dark:hover:border-violet-500/20' },
                 ] : [
                     { id: 'Today Leads', label: 'Today Leads', value: computedStats.todayLeads, icon: <Users className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-blue-500/20 to-blue-600/5', iconBg: 'bg-blue-500/15 text-blue-500 dark:text-blue-400', border: 'border-blue-500/10 dark:border-blue-500/10', glow: 'hover:border-blue-500/30 dark:hover:border-blue-500/20' },
                     { id: 'Pending Quotation', label: 'Pending Quotation', value: computedStats.pendingQuotation, icon: <FileText className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-amber-500/20 to-amber-600/5', iconBg: 'bg-amber-500/15 text-amber-500 dark:text-amber-400', border: 'border-amber-500/10 dark:border-amber-500/10', glow: 'hover:border-amber-500/30 dark:hover:border-amber-500/20' },
@@ -1605,6 +1697,8 @@ const Dashboard = () => {
                                 setRegionModal({ open: true, regionName: s.label, tripsList: s.id === 'Today Leads' ? opsTodaysJobs : s.id === 'Pending Quotation' ? opsPendingItineraries : s.id === 'Booking Confirmation' ? fulfillmentAlerts : opsVendorPending });
                             } else if (user?.role === ROLES.ACCOUNTS) {
                                 setRegionModal({ open: true, regionName: s.label, tripsList: s.id === 'New Customer Payment' ? acctsNewCustomerPayments.map(e => e.rawLead) : s.id === 'Vendor Payment Due' ? acctsVendorPaymentDue.map(v => v.rawLead) : s.id === 'Customer Payment Overdue' ? acctsCustomerPaymentOverdue.map(c => c.rawLead) : acctsReadyForClosure });
+                            } else if (user?.role === ROLES.MARKETING) {
+                                setRegionModal({ open: true, regionName: s.label, tripsList: s.id === 'Marketing Today Leads' ? mktgTodaysLeads : s.id === 'Marketing Assigned' ? mktgAssignedLeads : s.id === 'Marketing Unassigned' ? mktgUnassignedLeads : mktgActiveCampaigns });
                             } else {
                                 handleStatCardClick(s.id);
                             }
@@ -1622,6 +1716,120 @@ const Dashboard = () => {
                     </div>
                 ))}
             </div>
+
+            {/* ─── MARKETING SPECIFIC WIDGETS (Lead Report / Lead Assignment / Campaign Performance) ─── */}
+            {isMarketing && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+
+                    {/* Lead Report — leads grouped by source/platform */}
+                    <div className="bg-white dark:bg-[#111827] rounded-2xl border-t-2 border-t-amber-500 border border-slate-200/80 dark:border-slate-700/30 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
+                        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/40 flex items-center gap-2.5">
+                            <div className="p-1.5 rounded-lg bg-amber-500/15 text-amber-500 dark:text-amber-400"><ClipboardList size={15}/></div>
+                            <h3 className="font-bold text-sm text-slate-800 dark:text-white">Lead Report</h3>
+                        </div>
+                        <div className="flex-1 overflow-x-auto custom-scrollbar">
+                            <table className="w-full text-left text-xs sm:text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Lead Source</th>
+                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
+                                    {mktgLeadSourceBreakdown.length === 0 ? (
+                                        <tr><td colSpan={2} className="px-4 sm:px-5 py-8 text-center text-slate-400 text-xs">No leads yet.</td></tr>
+                                    ) : (
+                                        mktgLeadSourceBreakdown.map(row => (
+                                            <tr key={row.source} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => setRegionModal({ open: true, regionName: `Leads from ${row.source}`, tripsList: allLeads.filter(l => (l.platform || 'Direct') === row.source) })}>
+                                                <td className="px-4 sm:px-5 py-3 font-semibold text-slate-700 dark:text-slate-200">{row.source}</td>
+                                                <td className="px-4 sm:px-5 py-3 text-right font-bold text-slate-800 dark:text-white">{row.count}</td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Lead Assignment — leads grouped by assigned employee */}
+                    <div className="bg-white dark:bg-[#111827] rounded-2xl border-t-2 border-t-blue-500 border border-slate-200/80 dark:border-slate-700/30 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
+                        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/40 flex items-center gap-2.5">
+                            <div className="p-1.5 rounded-lg bg-blue-500/15 text-blue-500 dark:text-blue-400"><Users size={15}/></div>
+                            <h3 className="font-bold text-sm text-slate-800 dark:text-white">Lead Assignment</h3>
+                        </div>
+                        <div className="flex-1 overflow-x-auto custom-scrollbar">
+                            <table className="w-full text-left text-xs sm:text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Employee</th>
+                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
+                                    {mktgLeadAssignmentBreakdown.length === 0 ? (
+                                        <tr><td colSpan={2} className="px-4 sm:px-5 py-8 text-center text-slate-400 text-xs">No leads yet.</td></tr>
+                                    ) : (
+                                        mktgLeadAssignmentBreakdown.map(row => (
+                                            <tr key={row.employee} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => setRegionModal({ open: true, regionName: row.employee === 'Unassigned' ? 'Unassigned Leads' : `Leads assigned to ${row.employee}`, tripsList: row.employee === 'Unassigned' ? mktgUnassignedLeads : allLeads.filter(l => (l.assignedTo || l.assignedToOps) === row.employee) })}>
+                                                <td className="px-4 sm:px-5 py-3 font-semibold text-slate-700 dark:text-slate-200">{row.employee}</td>
+                                                <td className="px-4 sm:px-5 py-3 text-right font-bold text-slate-800 dark:text-white">{row.count}</td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Campaign Performance — leads generated per campaign, filterable by window */}
+                    <div className="bg-white dark:bg-[#111827] rounded-2xl border-t-2 border-t-violet-500 border border-slate-200/80 dark:border-slate-700/30 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
+                        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/40 flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="p-1.5 rounded-lg bg-violet-500/15 text-violet-500 dark:text-violet-400 flex-shrink-0"><Megaphone size={15}/></div>
+                                <h3 className="font-bold text-sm text-slate-800 dark:text-white truncate">Campaign Performance</h3>
+                            </div>
+                            <div className="flex items-center bg-slate-100 dark:bg-slate-800/60 rounded-lg p-0.5 flex-shrink-0">
+                                {[
+                                    { key: 'today', label: 'Today' },
+                                    { key: 'week', label: 'Week' },
+                                    { key: 'month', label: 'Month' },
+                                ].map(tab => (
+                                    <button
+                                        key={tab.key}
+                                        onClick={() => setMktgCampaignFilter(tab.key)}
+                                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide transition-all ${mktgCampaignFilter === tab.key ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-300 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                                    >
+                                        {tab.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="flex-1 overflow-x-auto custom-scrollbar">
+                            <table className="w-full text-left text-xs sm:text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Campaign</th>
+                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Leads</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
+                                    {mktgCampaignPerformance.length === 0 ? (
+                                        <tr><td colSpan={2} className="px-4 sm:px-5 py-8 text-center text-slate-400 text-xs">No campaign leads in this window.</td></tr>
+                                    ) : (
+                                        mktgCampaignPerformance.map(row => (
+                                            <tr key={row.campaign} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => setRegionModal({ open: true, regionName: `Leads for ${row.campaign}`, tripsList: allLeads.filter(l => l.campaign === row.campaign) })}>
+                                                <td className="px-4 sm:px-5 py-3 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[160px]">{row.campaign}</td>
+                                                <td className="px-4 sm:px-5 py-3 text-right font-bold text-slate-800 dark:text-white">{row.count}</td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            )}
 
             {/* ─── OPERATIONS SPECIFIC WIDGETS (My Jobs / Pending Itineraries / Returned by Sales / Vendor Payment Due) ─── */}
             {user?.role === ROLES.OPERATION && (
