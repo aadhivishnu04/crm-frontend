@@ -1087,32 +1087,89 @@ const Dashboard = () => {
     };
 
     // ─── OPERATIONS-SPECIFIC DERIVED DATA (My Jobs / Pending Itineraries / Returned by Sales / Vendor Payment Due) ───
-    // NOTE: "Returned by Sales" has no dedicated status value in the pipeline yet — this checks for the
-    // most likely status strings so the widget lights up automatically once that status is wired in on the
-    // Sales side. Until then it will correctly render its empty state.
+    // Kept in sync with OperationsDashboard.jsx: a lead's actual operations work lives inside its
+    // `customisationRequests` array (one entry per destination/request), each with its own status
+    // and `assignedTo`. Reading only flat lead-level fields (as before) meant "My Jobs" here almost
+    // never matched what a person actually saw on the Operations page. `expandedOpsLeads` re-parses
+    // every lead's requests the same way OperationsDashboard.jsx does, so the two stay identical.
+    const getOpsTabStatus = (rawStatus) => {
+        if (['New Requests', 'Move To Operation', 'Customization Required', 'Pending'].includes(rawStatus)) return 'New Requests';
+        if (['Ops Assigned', 'Follow-Up', 'Customisation Ready'].includes(rawStatus)) return 'Follow-Up';
+        if (['Upcoming Departure', 'Upcoming Bookings'].includes(rawStatus)) return 'Upcoming Bookings';
+        if (['Confirmed Bookings'].includes(rawStatus)) return 'Confirmed Bookings';
+        return rawStatus || 'New Requests';
+    };
+
+    const expandedOpsLeads = useMemo(() => (
+        allLeads.flatMap(item => {
+            let parsedRequests = [];
+            if (item.customisationRequests) {
+                try {
+                    const raw = typeof item.customisationRequests === 'string'
+                        ? JSON.parse(item.customisationRequests)
+                        : item.customisationRequests;
+                    if (Array.isArray(raw)) parsedRequests = raw;
+                    else if (raw && typeof raw === 'object') parsedRequests = [raw];
+                } catch { parsedRequests = []; }
+            }
+
+            const bookingConfirmedTag = item.customerResponse === 'Booking Confirmed';
+
+            if (parsedRequests.length > 0) {
+                return parsedRequests.map((req, index) => {
+                    let rawRowStatus = (req.status && req.status !== 'Pending') ? req.status : 'Pending';
+                    const isAssigned = !!(req.assignedTo || item.operationExecutive);
+                    return {
+                        ...item,
+                        uniqueKey: `${item.id}-${index}`,
+                        reqIndex: index,
+                        rawRowStatus: (bookingConfirmedTag && isAssigned) ? 'Confirmed Bookings' : (rawRowStatus || 'New Requests'),
+                        destination: req.destination || item.destination,
+                        assignedOps: req.assignedTo || item.operationExecutive || '',
+                    };
+                });
+            }
+
+            return [{
+                ...item,
+                uniqueKey: `${item.id}-0`,
+                reqIndex: 0,
+                rawRowStatus: (bookingConfirmedTag && item.operationExecutive) ? 'Confirmed Bookings' : (item.status || 'New Requests'),
+                assignedOps: item.operationExecutive || ''
+            }];
+        })
+    ), [allLeads]);
+
+    const isAuthorizedForOps = (l) => isAdmin || l.assignedOps === user?.name;
+
+    // Today's Jobs — new/unassigned requests that came in today, ready for anyone in Ops to pick up.
     const opsTodaysJobs = useMemo(() => (
-        allLeads.filter(l => l.createdAt && new Date(l.createdAt).toDateString() === todayStr &&
-            (l.status === 'Move To Operation' || l.status === 'Shared to Sales' || l.status === 'Jobs' || !l.status)
+        expandedOpsLeads.filter(l => l.createdAt && new Date(l.createdAt).toDateString() === todayStr &&
+            getOpsTabStatus(l.rawRowStatus) === 'New Requests'
         )
-    ), [allLeads, todayStr]);
+    ), [expandedOpsLeads, todayStr]);
 
+    // Pending Itineraries — unassigned requests sitting in the "New Requests" pool for anyone in Ops.
     const opsPendingItineraries = useMemo(() => (
-        combinedData.filter(item => item.status === 'Move To Operation' || item.status === 'Shared to Sales')
-    ), [combinedData]);
+        expandedOpsLeads.filter(l => getOpsTabStatus(l.rawRowStatus) === 'New Requests')
+    ), [expandedOpsLeads]);
 
+    // Vendor Pending — this person's (or, if admin, everyone's) confirmed bookings still needing vendor fulfilment.
     const opsVendorPending = useMemo(() => (
-        combinedData.filter(item => item.status === 'Confirmed Bookings')
-    ), [combinedData]);
+        expandedOpsLeads.filter(l => getOpsTabStatus(l.rawRowStatus) === 'Confirmed Bookings' && isAuthorizedForOps(l))
+    ), [expandedOpsLeads, user, isAdmin]);
 
+    // My Jobs — everything assigned to this person in Operations (Follow-Up, Confirmed, Upcoming Bookings),
+    // mirroring the "Follow-Up" tab count on the Operations page.
     const opsMyJobs = useMemo(() => (
-        allLeads
-            .filter(l => (l.assignedToOps === user?.name || l.assignedTo === user?.name) && l.status !== 'Trip Closed')
+        expandedOpsLeads
+            .filter(l => getOpsTabStatus(l.rawRowStatus) !== 'New Requests' && isAuthorizedForOps(l) && l.status !== 'Trip Closed')
             .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-    ), [allLeads, user]);
+    ), [expandedOpsLeads, user, isAdmin]);
 
     const opsReturnedBySales = useMemo(() => (
-        allLeads.filter(l => l.status === 'Returned by Sales' || l.status === 'Returned to Operations' || l.status === 'Returned')
-    ), [allLeads]);
+        expandedOpsLeads.filter(l => (l.status === 'Returned by Sales' || l.status === 'Returned to Operations' || l.status === 'Returned') && isAuthorizedForOps(l))
+    ), [expandedOpsLeads, user, isAdmin]);
 
     const opsVendorPaymentDue = useMemo(() => {
         const dueList = [];
@@ -1141,7 +1198,7 @@ const Dashboard = () => {
     // shown generically — swap in a specific field (e.g. lead.hotelConfirmationStatus) once available.
     const opsFulfillmentDue = useMemo(() => (
         opsVendorPending.map(lead => ({
-            id: `fulfil-${lead.id}`,
+            id: `fulfil-${lead.uniqueKey || lead.id}`,
             leadName: lead.customerName || lead.profileName || 'N/A',
             pendingItem: lead.pendingFulfilmentItem || 'Hotel / Transport / Visa / DMC Confirmation',
             dueDate: lead.travelDate || lead.travelDates || 'TBD',
@@ -1908,7 +1965,7 @@ const Dashboard = () => {
                                     <div className="text-center py-10 text-slate-400 text-xs">No jobs assigned to you yet.</div>
                                 ) : (
                                     opsMyJobs.slice(0, 6).map(job => (
-                                        <div key={job.id} onClick={() => setSelectedLeadDetails(job)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all cursor-pointer border border-transparent hover:border-slate-100 dark:hover:border-slate-700/30">
+                                        <div key={job.uniqueKey || job.id} onClick={() => setSelectedLeadDetails(job)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all cursor-pointer border border-transparent hover:border-slate-100 dark:hover:border-slate-700/30">
                                             <div className="min-w-0 flex-1">
                                                 <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{job.customerName || job.profileName || 'N/A'}</p>
                                                 <p className="text-[10px] text-slate-400 truncate mt-0.5">{job.destination || 'N/A'}</p>
@@ -1934,7 +1991,7 @@ const Dashboard = () => {
                                     <div className="text-center py-10 text-slate-400 text-xs">Nothing pending right now.</div>
                                 ) : (
                                     opsPendingItineraries.slice(0, 6).map(item => (
-                                        <div key={item.id} onClick={() => setSelectedLeadDetails(item)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/5 transition-all cursor-pointer border border-transparent hover:border-amber-100 dark:hover:border-amber-500/10">
+                                        <div key={item.uniqueKey || item.id} onClick={() => setSelectedLeadDetails(item)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/5 transition-all cursor-pointer border border-transparent hover:border-amber-100 dark:hover:border-amber-500/10">
                                             <div className="min-w-0 flex-1">
                                                 <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{item.customerName || item.profileName || 'N/A'}</p>
                                                 <p className="text-[10px] text-slate-400 truncate mt-0.5">{item.destination || 'N/A'}</p>
@@ -1960,7 +2017,7 @@ const Dashboard = () => {
                                     <div className="text-center py-10 text-slate-400 text-xs">Nothing returned right now.</div>
                                 ) : (
                                     opsReturnedBySales.slice(0, 6).map(item => (
-                                        <div key={item.id} onClick={() => setSelectedLeadDetails(item)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-500/5 transition-all cursor-pointer border border-transparent hover:border-rose-100 dark:hover:border-rose-500/10">
+                                        <div key={item.uniqueKey || item.id} onClick={() => setSelectedLeadDetails(item)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-500/5 transition-all cursor-pointer border border-transparent hover:border-rose-100 dark:hover:border-rose-500/10">
                                             <div className="min-w-0 flex-1">
                                                 <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{item.customerName || item.profileName || 'N/A'}</p>
                                                 <p className="text-[10px] text-slate-400 truncate mt-0.5">{item.destination || 'N/A'}</p>
