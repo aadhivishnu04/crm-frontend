@@ -268,6 +268,7 @@ const Dashboard = () => {
     const [paymentLedgerTab, setPaymentLedgerTab] = useState('in'); // 'in' | 'out'
     const [paymentModalOpen, setPaymentModalOpen] = useState(false); 
     const [fulfillmentAlerts, setFulfillmentAlerts] = useState([]);
+    const [clientPaymentFilter, setClientPaymentFilter] = useState('all'); // 'all' | 'overdue' | 'upcoming' — Sales "Client Payment Due" widget
 
     // Modal view states
     const [selectedLeadDetails, setSelectedLeadDetails] = useState(null); 
@@ -1200,6 +1201,64 @@ const Dashboard = () => {
         vendorOutstanding: acctsVendorPaymentDue.reduce((sum, v) => sum + (v.amount || 0), 0),
     }), [payments, acctsVendorPaymentDue]);
 
+    // ─── SALES-SPECIFIC DERIVED DATA (My Jobs / Followup Alerts / Client Payment Due / Fulfilment Due) ───
+    // ASSUMPTION: leads don't yet carry dedicated "No Response" / "Follow-up" status flags, so these are
+    // derived from existing fields (status + followupDate/nextFollowUp) until dedicated fields are wired in.
+    const salesOwnLeads = useMemo(() => (
+        allLeads.filter(l => (l.assignedTo === user?.name || l.assignedToOps === user?.name))
+    ), [allLeads, user]);
+
+    const salesMyJobsBreakdown = useMemo(() => {
+        const todayAssigned = salesOwnLeads.filter(l => l.createdAt && new Date(l.createdAt).toDateString() === todayStr);
+        const noResponse = salesOwnLeads.filter(l => (!l.status || l.status === 'Jobs') && !(l.followupDate || l.nextFollowUp));
+        const followUp = salesOwnLeads.filter(l => l.followupDate || l.nextFollowUp);
+        const pendingQuotations = salesOwnLeads.filter(l => l.status === 'Move To Operation' || l.status === 'Shared to Sales');
+        const bookingConfirmed = salesOwnLeads.filter(l => l.status === 'Confirmed Bookings' || l.status === 'Booking Confirmation' || l.status === 'Upcoming Departure');
+        return [
+            { id: 'today', label: 'Today Assigned Lead', count: todayAssigned.length, list: todayAssigned },
+            { id: 'noresponse', label: 'No Response', count: noResponse.length, list: noResponse },
+            { id: 'followup', label: 'Follow-up', count: followUp.length, list: followUp },
+            { id: 'pendingq', label: 'Pending Quotations', count: pendingQuotations.length, list: pendingQuotations },
+            { id: 'confirmed', label: 'Booking Confirmed', count: bookingConfirmed.length, list: bookingConfirmed },
+        ];
+    }, [salesOwnLeads, todayStr]);
+
+    // Followup Alerts — this exec's own leads that have a scheduled follow-up date.
+    const salesFollowupAlerts = useMemo(() => (
+        salesOwnLeads
+            .filter(l => l.followupDate || l.nextFollowUp)
+            .map(l => ({
+                id: l.id,
+                leadName: l.customerName || l.profileName || 'N/A',
+                destination: l.destination || 'N/A',
+                customerResponse: l.leadMessage || l.messageFromLead || l.notes || 'No response logged',
+                followupDate: l.followupDate || l.nextFollowUp,
+                rawLead: l
+            }))
+            .sort((a, b) => new Date(a.followupDate || '2100-01-01') - new Date(b.followupDate || '2100-01-01'))
+    ), [salesOwnLeads]);
+
+    // Client Payment Due — mirrors Accounts' "Customer Payment Overdue" logic, scoped to this sales exec's own leads.
+    const salesClientPaymentDue = useMemo(() => (
+        acctsCustomerPaymentOverdue.filter(item => {
+            const lead = item.rawLead;
+            return lead && (lead.assignedTo === user?.name || lead.assignedToOps === user?.name);
+        })
+    ), [acctsCustomerPaymentOverdue, user]);
+
+    const salesClientPaymentDueFiltered = useMemo(() => (
+        clientPaymentFilter === 'overdue' ? salesClientPaymentDue.filter(i => i.daysLeft < 0) :
+        clientPaymentFilter === 'upcoming' ? salesClientPaymentDue.filter(i => i.daysLeft >= 0) :
+        salesClientPaymentDue
+    ), [salesClientPaymentDue, clientPaymentFilter]);
+
+    // Fulfilment Due — Confirmed Bookings among this exec's own leads still awaiting hotel/transport/visa/DMC confirmation.
+    const salesFulfilmentDue = useMemo(() => (
+        opsFulfillmentDue
+            .filter(item => item.rawLead && (item.rawLead.assignedTo === user?.name || item.rawLead.assignedToOps === user?.name))
+            .map(item => ({ ...item, dueType: item.pendingItem }))
+    ), [opsFulfillmentDue, user]);
+
     // ─── MARKETING-SPECIFIC DERIVED DATA (Today's Leads / Assigned / Unassigned / Active Campaigns) ───
     const isMarketing = user?.role === ROLES.MARKETING;
 
@@ -1686,8 +1745,8 @@ const Dashboard = () => {
                     { id: 'Marketing Unassigned', label: 'Unassigned', value: mktgUnassignedLeads.length, icon: <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-amber-500/20 to-amber-600/5', iconBg: 'bg-amber-500/15 text-amber-500 dark:text-amber-400', border: 'border-amber-500/10 dark:border-amber-500/10', glow: 'hover:border-amber-500/30 dark:hover:border-amber-500/20' },
                     { id: 'Marketing Active Campaigns', label: 'Active Campaigns', value: mktgActiveCampaigns.length, icon: <Target className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-violet-500/20 to-violet-600/5', iconBg: 'bg-violet-500/15 text-violet-500 dark:text-violet-400', border: 'border-violet-500/10 dark:border-violet-500/10', glow: 'hover:border-violet-500/30 dark:hover:border-violet-500/20' },
                 ] : [
-                    { id: 'Today Leads', label: 'Today Leads', value: computedStats.todayLeads, icon: <Users className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-blue-500/20 to-blue-600/5', iconBg: 'bg-blue-500/15 text-blue-500 dark:text-blue-400', border: 'border-blue-500/10 dark:border-blue-500/10', glow: 'hover:border-blue-500/30 dark:hover:border-blue-500/20' },
-                    { id: 'Pending Quotation', label: 'Pending Quotation', value: computedStats.pendingQuotation, icon: <FileText className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-amber-500/20 to-amber-600/5', iconBg: 'bg-amber-500/15 text-amber-500 dark:text-amber-400', border: 'border-amber-500/10 dark:border-amber-500/10', glow: 'hover:border-amber-500/30 dark:hover:border-amber-500/20' },
+                    { id: 'Today Leads', label: "Today's Leads", value: computedStats.todayLeads, icon: <Users className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-blue-500/20 to-blue-600/5', iconBg: 'bg-blue-500/15 text-blue-500 dark:text-blue-400', border: 'border-blue-500/10 dark:border-blue-500/10', glow: 'hover:border-blue-500/30 dark:hover:border-blue-500/20' },
+                    { id: 'Pending Quotation', label: 'Pending Quotations', value: computedStats.pendingQuotation, icon: <FileText className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-amber-500/20 to-amber-600/5', iconBg: 'bg-amber-500/15 text-amber-500 dark:text-amber-400', border: 'border-amber-500/10 dark:border-amber-500/10', glow: 'hover:border-amber-500/30 dark:hover:border-amber-500/20' },
                     { id: 'Booking Confirmation', label: 'Booking Confirmation', value: computedStats.bookingConfirmation, icon: <BookmarkCheck className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-emerald-500/20 to-emerald-600/5', iconBg: 'bg-emerald-500/15 text-emerald-500 dark:text-emerald-400', border: 'border-emerald-500/10 dark:border-emerald-500/10', glow: 'hover:border-emerald-500/30 dark:hover:border-emerald-500/20' },
                     { id: 'On-Trip', label: 'On-Trip', value: computedStats.onTrip, icon: <PlaneTakeoff className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-violet-500/20 to-violet-600/5', iconBg: 'bg-violet-500/15 text-violet-500 dark:text-violet-400', border: 'border-violet-500/10 dark:border-violet-500/10', glow: 'hover:border-violet-500/30 dark:hover:border-violet-500/20' },
                 ]).map((s, i) => (
@@ -2302,75 +2361,81 @@ const Dashboard = () => {
             {/* ─── SALES SPECIFIC DASHBOARD LAYOUT ─── */}
             {user?.role === ROLES.SALES ? (
                 <div className="space-y-4 sm:space-y-5">
-                    
-                    {/* ── 3RD ROW: Employee List, Sales Targets, Top Destinations ── */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                        
-                        {/* 1. Sales Report */}
-                        <div className="bg-white dark:bg-[#0b101e] border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm flex flex-col h-full lg:col-span-1 overflow-hidden">
-                            <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-[#111827]">
+
+                    {/* ── ROW: My Jobs, Followup Alerts ── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-5">
+
+                        {/* 1. My Jobs */}
+                        <div className="bg-white dark:bg-[#111827] border-t-2 border-t-blue-500 border border-slate-200/80 dark:border-slate-700/30 rounded-2xl shadow-sm flex flex-col lg:col-span-2 overflow-hidden">
+                            <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/40 flex justify-between items-center">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Sales Report</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Today's Lead Counts & Status</p>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">My Jobs</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Today's record</p>
                                 </div>
+                                <button onClick={() => setRegionModal({ open: true, regionName: 'My Jobs — Full List', tripsList: salesOwnLeads })} className="px-3 py-1.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors bg-blue-50/50 dark:bg-transparent whitespace-nowrap">View All Jobs</button>
                             </div>
-                            
-                            <div className="flex-1 overflow-y-auto custom-scrollbar min-h-[200px] max-h-[320px]">
-                                <table className="w-full text-left border-collapse">
-                                    <thead className="bg-slate-50 dark:bg-[#0f1523] sticky top-0 z-10 border-b border-slate-100 dark:border-slate-800/80">
-                                        <tr>
-                                            <th className="px-4 py-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest whitespace-nowrap">Employee Name</th>
-                                            <th className="px-4 py-3 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest text-right whitespace-nowrap">Counts</th>
+                            <div className="flex-1 overflow-x-auto custom-scrollbar">
+                                <table className="w-full text-left text-xs sm:text-sm">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                            <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Status</th>
+                                            <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Count</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80">
-                                        {/* Unassigned Today Leads Row */}
-                                        <tr className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
-                                            <td className="px-4 py-3.5 text-xs font-semibold text-slate-700 dark:text-slate-200">Unassigned / New</td>
-                                            <td className="px-4 py-3.5 text-right text-xs font-semibold text-slate-800 dark:text-white">
-                                                {allLeads.filter(l => !l.assignedTo && !l.assignedToOps && l.createdAt && new Date(l.createdAt).toDateString() === todayStr).length}
-                                            </td>
-                                        </tr>
-                                        
-                                        {/* Dynamic Active Members Mapping (Today Leads Only & Logged In Today) */}
-                                        {members
-                                            .filter(member => member.lastActive && new Date(member.lastActive).toDateString() === todayStr)
-                                            .map((member, idx) => {
-                                                const todayCount = allLeads.filter(l => 
-                                                    (l.assignedTo === member.name || l.assignedToOps === member.name) && 
-                                                    l.createdAt && new Date(l.createdAt).toDateString() === todayStr
-                                                ).length;
-                                                
-                                                return (
-                                                    <tr key={member.id || idx} className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group cursor-pointer" onClick={() => setSelectedMember(member)}>
-                                                        <td className="px-4 py-3.5 text-xs font-semibold text-slate-700 dark:text-slate-200">
-                                                            <span className="truncate">{member.name}</span>
-                                                        </td>
-                                                        <td className="px-4 py-3.5 text-right text-xs font-bold text-slate-800 dark:text-white">
-                                                            {todayCount}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                        })}
-                                        
-                                        {/* Self Assigned Today Leads Row */}
-                                        <tr className="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors group">
-                                            <td className="px-4 py-3.5 text-xs font-semibold text-slate-700 dark:text-slate-200">Self Assigned</td>
-                                            <td className="px-4 py-3.5 text-right text-xs font-semibold text-slate-800 dark:text-white">
-                                                {allLeads.filter(l => (l.assignedTo === user?.name || l.assignedToOps === user?.name) && l.createdAt && new Date(l.createdAt).toDateString() === todayStr).length}
-                                            </td>
-                                        </tr>
+                                    <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
+                                        {salesMyJobsBreakdown.map(row => (
+                                            <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => setRegionModal({ open: true, regionName: row.label, tripsList: row.list })}>
+                                                <td className="px-4 sm:px-5 py-3 font-semibold text-slate-700 dark:text-slate-200">{row.label}</td>
+                                                <td className="px-4 sm:px-5 py-3 text-right font-bold text-slate-800 dark:text-white">{row.count}</td>
+                                            </tr>
+                                        ))}
                                     </tbody>
                                 </table>
                             </div>
                         </div>
 
-                        {/* 2. Sales Targets */}
+                        {/* 2. Followup Alerts */}
+                        <div className="bg-white dark:bg-[#111827] border-t-2 border-t-amber-500 border border-slate-200/80 dark:border-slate-700/30 rounded-2xl shadow-sm flex flex-col lg:col-span-3 overflow-hidden">
+                            <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/40">
+                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Followup Alerts</h2>
+                                <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Leads with a scheduled follow-up</p>
+                            </div>
+                            <div className="flex-1 overflow-x-auto custom-scrollbar max-h-[280px]">
+                                <table className="w-full text-left text-xs sm:text-sm">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                            <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Lead Name</th>
+                                            <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Destination</th>
+                                            <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Customer Response</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
+                                        {salesFollowupAlerts.length === 0 ? (
+                                            <tr><td colSpan={3} className="px-4 sm:px-5 py-8 text-center text-slate-400 text-xs">No follow-ups scheduled.</td></tr>
+                                        ) : (
+                                            salesFollowupAlerts.map(row => (
+                                                <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => setSelectedLeadDetails(row.rawLead)}>
+                                                    <td className="px-4 sm:px-5 py-3 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]">{row.leadName}</td>
+                                                    <td className="px-4 sm:px-5 py-3 text-slate-600 dark:text-slate-300 truncate max-w-[120px]">{row.destination}</td>
+                                                    <td className="px-4 sm:px-5 py-3 text-slate-500 dark:text-slate-400 truncate max-w-[220px]">{row.customerResponse}</td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ── ROW: Sales Target, Top Destinations, Client Payment Due ── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+
+                        {/* 1. Sales Target */}
                         <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
                             <div className="flex justify-between items-center mb-4">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Sales Targets</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Click ± to adjust</p>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Sales Target</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Set by Director / Admin</p>
                                 </div>
                                 <button onClick={() => { setEditingTarget(null); setTargetForm({ label: '', value: 0, max: 100, unit: '', isPercent: false, color: '#7c3aed' }); setTargetModal(true); }} className="flex items-center gap-1.5 text-xs font-bold text-violet-500 dark:text-violet-400 hover:text-violet-600 bg-violet-500/10 hover:bg-violet-500/20 px-3 py-1.5 rounded-xl transition-colors border border-violet-500/15">
                                     <Plus size={13}/> Add
@@ -2399,7 +2464,7 @@ const Dashboard = () => {
                             </div>
                         </div>
 
-                        {/* 3. Top Destinations */}
+                        {/* 2. Top Destinations */}
                         <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
@@ -2412,7 +2477,6 @@ const Dashboard = () => {
                                     { id: 'today', label: 'Today' },
                                     { id: 'week', label: 'Week' },
                                     { id: 'month', label: 'Month' },
-                                    { id: 'all', label: 'All Time' },
                                 ].map(f => (
                                     <button
                                         key={f.id}
@@ -2428,90 +2492,141 @@ const Dashboard = () => {
                                     </button>
                                 ))}
                             </div>
-                            <div className="space-y-1 flex-1 mt-1 overflow-y-auto max-h-[320px] custom-scrollbar">
-                                {filteredTopDestinations.length === 0 ? (
-                                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No destination data {topDestFilter === 'today' ? 'for today yet' : topDestFilter === 'week' ? 'for this week yet' : topDestFilter === 'month' ? 'for this month yet' : 'yet'}.</div>
-                                ) : (
-                                    filteredTopDestinations.slice(0, 5).map((dest, idx) => (
-                                        <div key={idx} onClick={() => handleDestinationClick(dest.name)} className="flex items-center justify-between group cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/30 px-2 py-2.5 -mx-1 rounded-xl transition-all">
-                                            <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
-                                                <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xs font-bold border border-amber-500/15 flex-shrink-0">{idx + 1}</div>
-                                                <div className="min-w-0">
-                                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-amber-500 transition-colors truncate">{dest.name}</p>
-                                                    <p className="text-[9px] text-slate-400 mt-0.5 uppercase tracking-wide">Destination</p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right flex-shrink-0">
-                                                <p className="text-sm font-bold text-slate-800 dark:text-white">{dest.count}</p>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
+                            <div className="flex-1 overflow-y-auto max-h-[280px] custom-scrollbar">
+                                <table className="w-full text-left text-xs">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Destination</th>
+                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Leads</th>
+                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Bookings</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
+                                        {filteredTopDestinations.length === 0 ? (
+                                            <tr><td colSpan={3} className="py-8 text-center text-slate-400 text-xs">No destination data {topDestFilter === 'today' ? 'for today yet' : topDestFilter === 'week' ? 'for this week yet' : 'for this month yet'}.</td></tr>
+                                        ) : (
+                                            filteredTopDestinations.slice(0, 6).map((dest, idx) => (
+                                                <tr key={idx} onClick={() => handleDestinationClick(dest.name)} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer">
+                                                    <td className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[100px]">{dest.name}</td>
+                                                    <td className="py-2.5 text-right font-bold text-slate-800 dark:text-white">{dest.count}</td>
+                                                    <td className="py-2.5 text-right text-slate-400">{dest.bookings ?? '—'}</td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* 3. Client Payment Due */}
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                            <div className="flex justify-between items-center mb-3">
+                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Client Payment Due</h2>
+                                <select value={clientPaymentFilter} onChange={e => setClientPaymentFilter(e.target.value)} className="text-[10px] font-bold uppercase tracking-wide bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/40 rounded-lg px-2 py-1.5 text-slate-500 dark:text-slate-300 outline-none cursor-pointer">
+                                    <option value="all">All</option>
+                                    <option value="overdue">Overdue</option>
+                                    <option value="upcoming">Upcoming</option>
+                                </select>
+                            </div>
+                            <div className="flex-1 overflow-y-auto max-h-[280px] custom-scrollbar">
+                                <table className="w-full text-left text-xs">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Name</th>
+                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Amount</th>
+                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Due</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
+                                        {salesClientPaymentDueFiltered.length === 0 ? (
+                                            <tr><td colSpan={3} className="py-8 text-center text-slate-400 text-xs">No payments due.</td></tr>
+                                        ) : (
+                                            salesClientPaymentDueFiltered.map(item => (
+                                                <tr key={item.id} onClick={() => setSelectedLeadDetails(item.rawLead)} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer">
+                                                    <td className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[90px]">{item.customerName}</td>
+                                                    <td className="py-2.5 text-right font-bold text-slate-800 dark:text-white whitespace-nowrap">₹{item.amountDue.toLocaleString('en-IN')}</td>
+                                                    <td className="py-2.5 text-right">
+                                                        <span className={`text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide ${item.daysLeft < 0 ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'}`}>
+                                                            {item.daysLeft < 0 ? 'Overdue' : `${item.daysLeft}d`}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
 
-                    {/* ── 4TH ROW: Tasks, Alerts, Calendars ── */}
+                    {/* ── ROW: Fulfilment Due, Tasks, Calendar ── */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                        
-                        {/* 1. Tasks */}
+
+                        {/* 1. Fulfilment Due */}
                         <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
-                            <div className="flex justify-between items-center mb-4">
-                                <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{taskCounts.pending} pending</p>
-                                </div>
-                                <button onClick={openAddTask} className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-violet-500/20">
-                                    <Plus size={13} /> Add Task
-                                </button>
-                            </div>  
-                            <div className="space-y-1 flex-1 overflow-y-auto max-h-[320px] custom-scrollbar pr-1">
-                                {filteredTasks.length === 0 && <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No tasks here. Add one!</div>}
-                                {filteredTasks.map(task => (
-                                    <div key={task.id} className="flex items-center justify-between py-3 px-3 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-slate-700/40 hover:bg-slate-50 dark:hover:bg-slate-800/30 group transition-all gap-3">
-                                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                                            <button onClick={() => toggleTask(task.id, task.completed)} className={`w-5 h-5 rounded-lg flex items-center justify-center border-2 transition-all cursor-pointer flex-shrink-0 ${task.completed ? 'bg-violet-500 border-violet-500' : 'bg-transparent border-slate-300 dark:border-slate-600 hover:border-violet-400'}`}>
-                                                {task.completed && <Check size={11} className="text-white" strokeWidth={3} />}
-                                            </button>
-                                            <div className="min-w-0">
-                                                <p className={`text-xs font-semibold truncate ${task.completed ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>{task.title}</p>
-                                            </div>
-                                        </div>
-                                        <PriorityBadge priority={task.priority} />
-                                    </div>
-                                ))}
+                            <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight mb-3">Fulfilment Due</h2>
+                            <div className="flex-1 overflow-y-auto max-h-[280px] custom-scrollbar">
+                                <table className="w-full text-left text-xs">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Lead Name</th>
+                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Due Type</th>
+                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Due Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
+                                        {salesFulfilmentDue.length === 0 ? (
+                                            <tr><td colSpan={3} className="py-8 text-center text-slate-400 text-xs">Nothing pending.</td></tr>
+                                        ) : (
+                                            salesFulfilmentDue.map(item => (
+                                                <tr key={item.id} onClick={() => setSelectedLeadDetails(item.rawLead)} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer">
+                                                    <td className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[90px]">{item.leadName}</td>
+                                                    <td className="py-2.5 text-slate-500 dark:text-slate-400 truncate max-w-[110px]">{item.dueType}</td>
+                                                    <td className="py-2.5 text-right font-semibold text-amber-500 whitespace-nowrap">{item.dueDate}</td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 
-                        {/* 2. Alerts (Using Reminders/Events list as Alerts) */}
-                        <div className="bg-white dark:bg-[#111827] border border-blue-200/60 dark:border-blue-900/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
-                            <div className="flex justify-between items-center mb-4">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500 flex-shrink-0">
-                                        <BellRing size={16} />
-                                    </div>
-                                    <div>
-                                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">System Alerts</h2>
-                                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Active Notifications</p>
-                                    </div>
-                                </div>
+                        {/* 2. Tasks */}
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                            <div className="flex justify-between items-center mb-3">
+                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
+                                <button onClick={openAddTask} className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-lg shadow-violet-500/20">
+                                    <Plus size={12} /> Add
+                                </button>
                             </div>
-                            <div className="space-y-2.5 overflow-y-auto max-h-[320px] custom-scrollbar">
-                                {events.length === 0 ? (
-                                    <div className="text-center py-8 text-slate-400 text-xs">No active alerts to display.</div>
-                                ) : (
-                                    events.map((ev) => (
-                                        <div key={ev.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-3.5 rounded-xl border border-blue-100 dark:border-blue-700/40 bg-blue-50/50 dark:bg-blue-800/10 hover:bg-blue-100/50 dark:hover:bg-blue-800/20 transition-colors">
-                                            <div className="min-w-0">
-                                                <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">{ev.title}</h4>
-                                                <p className="text-xs text-slate-500 mt-1.5 flex flex-wrap items-center gap-2">
-                                                    <span className="bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-lg text-[10px] text-slate-600 dark:text-slate-400 font-mono whitespace-nowrap">{ev.date}</span>
-                                                    <span className="flex items-center gap-1 whitespace-nowrap"><Clock size={11} /> {ev.time}</span>
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
+                            <div className="flex-1 overflow-y-auto max-h-[280px] custom-scrollbar">
+                                <table className="w-full text-left text-xs">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Task</th>
+                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Due Time</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
+                                        {filteredTasks.length === 0 ? (
+                                            <tr><td colSpan={2} className="py-8 text-center text-slate-400 text-xs">No tasks here. Add one!</td></tr>
+                                        ) : (
+                                            filteredTasks.map(task => (
+                                                <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                                                    <td className="py-2.5 pr-2">
+                                                        <div className="flex items-center gap-2 min-w-0">
+                                                            <button onClick={() => toggleTask(task.id, task.completed)} className={`w-4 h-4 rounded-md flex items-center justify-center border-2 transition-all cursor-pointer flex-shrink-0 ${task.completed ? 'bg-violet-500 border-violet-500' : 'bg-transparent border-slate-300 dark:border-slate-600 hover:border-violet-400'}`}>
+                                                                {task.completed && <Check size={9} className="text-white" strokeWidth={3} />}
+                                                            </button>
+                                                            <span className={`font-semibold truncate ${task.completed ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>{task.title}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-2.5 text-right text-slate-500 dark:text-slate-400 whitespace-nowrap">{task.time || '—'}</td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
 
@@ -2547,119 +2662,49 @@ const Dashboard = () => {
                                 </button>
                                 <button onClick={() => openAddEvent(currentDate)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[11px] font-bold transition-colors shadow-lg shadow-blue-500/20">
                                     <Plus size={12}/> <span>Create</span>
-                                </button>   
+                                </button>
                             </div>
                         </div>
                     </div>
 
-                    {/* ── 5TH ROW: Leave Form, Fulfillment Reports ── */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
-                        
-                        {/* 1. Leave Form (My Leaves) */}
+                    {/* ── ROW: Leave Request ── */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-4">
-                                <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">My Leaves</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Track your applications</p>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <button type="button" onClick={() => setAllLeavesModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors bg-blue-50/50 dark:bg-transparent">View All</button>
-                                    <button onClick={() => setLeaveModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20">
-                                        <Plus size={13} /> Apply Leave
-                                    </button>
-                                </div>
+                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Leave Request</h2>
+                                <button onClick={() => setLeaveModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20">
+                                    <Plus size={13} /> Apply Leave
+                                </button>
                             </div>
-                            <div className="space-y-2 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
-                                {leaves.length === 0 ? (
-                                    <div className="text-center py-8 text-slate-400 text-xs">No leave history found.</div>
-                                ) : (
-                                    leaves.slice(0, 5).map(leave => (
-                                        <div key={leave.id} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-800/30 flex justify-between items-center">
-                                            <div>
-                                                <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{leave.startDate} to {leave.endDate || 'N/A'}</p>
-                                                <p className="text-[10px] text-slate-500 mt-1 truncate max-w-[150px]">
-                                                    <span className="font-semibold text-slate-600 dark:text-slate-300">{leave.leaveType || 'Leave'}</span> • {leave.reason}
-                                                </p>
-                                            </div>
-                                            <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
-                                                leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 
-                                                leave.status === 'Rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 
-                                                'bg-amber-500/10 text-amber-500 border-amber-500/20'
-                                            }`}>
-                                                {leave.status}
-                                            </span>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-
-                        {/* 2. Fulfillment Reports (Fulfillment Alerts) */}
-                        <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-rose-900/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
-                            <div className="flex justify-between items-center mb-4">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500 flex-shrink-0">
-                                        <AlertTriangle size={16} />
-                                    </div>
-                                    <div>
-                                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Fulfillment Reports</h2>
-                                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Trips within 7 days</p>
-                                    </div>
-                                </div>
-                                <span className="bg-rose-500/10 text-rose-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-rose-500/20 uppercase tracking-wide">{fulfillmentAlerts.length} Action{fulfillmentAlerts.length !== 1 ? 's' : ''}</span>
-                            </div>
-                            <div className="space-y-2.5 overflow-y-auto max-h-[250px] custom-scrollbar">
-                                {fulfillmentAlerts.length === 0 ? (
-                                    <div className="text-center py-8 text-slate-400 text-xs">No upcoming trips in the next 7 days.</div>
-                                ) : (
-                                    fulfillmentAlerts.map(alert => (
-                                        <div key={alert.id} className="flex items-center justify-between bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/10 p-3 rounded-xl hover:bg-rose-100/80 dark:hover:bg-rose-500/10 transition-colors">
-                                            <div className="flex items-center gap-3 min-w-0 pr-2">
-                                                <div className="p-2 bg-rose-500/15 text-rose-500 rounded-xl flex-shrink-0"><PackageCheck size={15}/></div>
-                                                <div className="min-w-0">
-                                                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{alert.customerName} — {alert.destination}</p>
-                                                    <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide">Trip starts <span className="font-bold text-slate-700 dark:text-slate-300">{alert.date}</span></p>
-                                                </div>
-                                            </div>
-                                            <button className="px-3 py-1.5 text-[10px] font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-xl transition-colors shadow-sm shadow-rose-500/20 uppercase tracking-wide flex-shrink-0">Review</button>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* ── 6TH ROW: Due & Follow-Up Alerts (next 5 days) ── */}
-                    <div className="grid grid-cols-1 gap-4 sm:gap-5">
-                        <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-amber-900/30 rounded-2xl p-4 sm:p-5 shadow-sm">
-                            <div className="flex justify-between items-center mb-4">
-                                <div className="flex items-center gap-2.5">
-                                    <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 flex-shrink-0">
-                                        <AlarmClock size={16} />
-                                    </div>
-                                    <div>
-                                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Due & Follow-Up Alerts</h2>
-                                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Sales, Ops, Fulfillment &amp; Accounts · next 5 days</p>
-                                    </div>
-                                </div>
-                                <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{dueSoonAlerts.length} Alert{dueSoonAlerts.length !== 1 ? 's' : ''}</span>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[280px] overflow-y-auto custom-scrollbar">
-                                {dueSoonAlerts.length === 0 ? (
-                                    <div className="col-span-full text-center py-8 text-slate-400 text-xs">Nothing due or following up in the next 5 days.</div>
-                                ) : (
-                                    dueSoonAlerts.map(alert => (
-                                        <div key={alert.id} className="flex items-start justify-between gap-2 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/10 p-3 rounded-xl hover:bg-amber-100/80 dark:hover:bg-amber-500/10 transition-colors">
-                                            <div className="min-w-0">
-                                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{alert.title}</p>
-                                                <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide">{alert.category} · <span className="font-bold text-slate-700 dark:text-slate-300">{alert.date}</span></p>
-                                            </div>
-                                            <span className={`text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide flex-shrink-0 ${alert.daysLeft < 0 ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : alert.daysLeft <= 1 ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'}`}>
-                                                {alert.daysLeft < 0 ? `${Math.abs(alert.daysLeft)}d overdue` : alert.daysLeft === 0 ? 'Today' : `${alert.daysLeft}d left`}
-                                            </span>
-                                        </div>
-                                    ))
-                                )}
+                            <div className="flex-1 overflow-y-auto max-h-[250px] custom-scrollbar">
+                                <table className="w-full text-left text-xs">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Date</th>
+                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
+                                        {leaves.length === 0 ? (
+                                            <tr><td colSpan={2} className="py-8 text-center text-slate-400 text-xs">No leave history found.</td></tr>
+                                        ) : (
+                                            leaves.slice(0, 5).map(leave => (
+                                                <tr key={leave.id} onClick={() => setAllLeavesModalOpen(true)} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer">
+                                                    <td className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">{leave.startDate} {leave.endDate ? `– ${leave.endDate}` : ''}</td>
+                                                    <td className="py-2.5 text-right">
+                                                        <span className={`text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide ${
+                                                            leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                                            leave.status === 'Rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                                                            'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                                        }`}>
+                                                            {leave.status}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -2668,7 +2713,7 @@ const Dashboard = () => {
                 /* ─── NON-SALES DEFAULT DASHBOARD LAYOUT ─── */
                 <>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                        {!isOpsOrAccounts && (
+                        {!isOpsOrAccounts && !isMarketing && (
                         <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-[480px] lg:col-span-2">
                             <div className="flex justify-between items-center mb-3 flex-shrink-0">
                                 <div>
@@ -2747,7 +2792,7 @@ const Dashboard = () => {
                         </div>
                         )}
 
-                        {!isOpsOrAccounts && (
+                        {!isOpsOrAccounts && !isMarketing && (
                         <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/30 flex flex-col gap-3 shadow-sm lg:col-span-1">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
@@ -2819,7 +2864,7 @@ const Dashboard = () => {
 
                     </div>
 
-                    {!isOpsOrAccounts && (
+                    {!isOpsOrAccounts && !isMarketing && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-4">
@@ -2869,7 +2914,7 @@ const Dashboard = () => {
                             </div>
                         </div>
 
-                        {!isOpsOrAccounts && (
+                        {!isOpsOrAccounts && !isMarketing && (
                         <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
                             <div className="flex justify-between items-center mb-4">
                                 <div>
@@ -2935,7 +2980,7 @@ const Dashboard = () => {
                         </div>
                         )}
 
-                        {!isOpsOrAccounts && (
+                        {!isOpsOrAccounts && !isMarketing && (
                         <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
@@ -2995,7 +3040,7 @@ const Dashboard = () => {
                     </div>
                     )}
 
-                    {!isOpsOrAccounts && (
+                    {!isOpsOrAccounts && !isMarketing && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-rose-900/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-2">
                             <div className="flex justify-between items-center mb-4">
@@ -3030,7 +3075,7 @@ const Dashboard = () => {
                             </div>
                         </div>
 
-                        {!isOpsOrAccounts && (
+                        {!isOpsOrAccounts && !isMarketing && (
                         <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-full lg:col-span-1">
                             <div className="flex justify-between items-start mb-4 gap-2">
                                 <div>
@@ -3073,7 +3118,7 @@ const Dashboard = () => {
                     )}
 
                     {/* ── Due & Follow-Up Alerts (next 5 days) ── */}
-                    {!isOpsOrAccounts && (
+                    {!isOpsOrAccounts && !isMarketing && (
                     <div className="grid grid-cols-1 gap-4 sm:gap-5">
                         <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-amber-900/30 rounded-2xl p-4 sm:p-5 shadow-sm">
                             <div className="flex justify-between items-center mb-4">
