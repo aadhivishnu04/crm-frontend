@@ -6,8 +6,7 @@ import {
     History, Target, Briefcase, ClipboardList, Wallet, PackageCheck,
     Plus, Trash2
 } from 'lucide-react';
-const { user } = useAuth(); // or wherever role comes from
-const isReadOnly = user.role === ROLES.SALES;
+
 // ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
 const API_BASE_URL = "https://crm-backend-l87w.onrender.com/api";
 
