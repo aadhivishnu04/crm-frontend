@@ -39,15 +39,19 @@ function App() {
         <Route path="/unauthorized" element={<Unauthorized />} />
 
         <Route element={<Layout />}>
-          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SALES, ROLES.OPERATION, ROLES.MARKETING, ROLES.EMPLOYEE]} />}>
+          {/* Home — every role */}
+          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SALES, ROLES.OPERATION, ROLES.ACCOUNTS, ROLES.MARKETING]} />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Route>
 
-          {/* ADMIN ONLY Routes */}
-          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN]} />}>
+          {/* ADMIN + DIRECTOR Routes (Employee, Accounts, Finance) */}
+          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR]} />}>
             <Route path="/employees" element={<EmployeeManagement />} />
-            
+          </Route>
+
+          {/* ADMIN + DIRECTOR + ACCOUNTS Routes */}
+          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR, ROLES.ACCOUNTS]} />}>
             <Route 
               path="/accounts" 
               element={
@@ -56,33 +60,39 @@ function App() {
                 </ErrorBoundary>
               } 
             />
-
-            {/* 👇 Add the Finance Route here */}
             <Route path="/finance" element={<FinanceDashboard />} />
           </Route>
 
-          {/* ADMIN + MARKETING Routes */}
-          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.MARKETING]} />}>
+          {/* ADMIN + DIRECTOR + MARKETING Routes */}
+          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR, ROLES.MARKETING]} />}>
              <Route path="/campaigns" element={<Campaigns />} />
           </Route>
 
-          {/* ADMIN + SALES + MARKETING Routes */}
-          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SALES, ROLES.MARKETING]} />}>
+          {/* ADMIN + DIRECTOR + SALES + MARKETING Routes */}
+          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SALES, ROLES.MARKETING]} />}>
             <Route path="/leads" element={<LeadsManager />} />
           </Route>
 
-          {/* ADMIN + SALES Routes */}
-          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.SALES]} />}>
+          {/* ADMIN + DIRECTOR + SALES Routes */}
+          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SALES]} />}>
             <Route path="/sales" element={<SalesDashboard />} />
             <Route path="/jobs" element={<SalesDashboard />} />
-            <Route path="/reports" element={<Reports />} />
             <Route path="/follow-up" element={<PlaceholderPage title="Follow-up" />} />
             <Route path="/move-to-operation" element={<PlaceholderPage title="Move to Operation" />} />
           </Route>
 
-          {/* ADMIN + OPERATION Routes */}
-          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.OPERATION]} />}>
+          {/* ADMIN + DIRECTOR + SALES + OPERATION + ACCOUNTS Routes (Reports) */}
+          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SALES, ROLES.OPERATION, ROLES.ACCOUNTS]} />}>
+            <Route path="/reports" element={<Reports />} />
+          </Route>
+
+          {/* ADMIN + DIRECTOR + OPERATION Routes */}
+          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR, ROLES.OPERATION]} />}>
             <Route path="/operations" element={<OperationsDashboard />} />
+          </Route>
+
+          {/* ADMIN + DIRECTOR + SALES + OPERATION + ACCOUNTS Routes (Fulfillment) */}
+          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SALES, ROLES.OPERATION, ROLES.ACCOUNTS]} />}>
             <Route path="/fulfillment" element={<Fulfillment />} />
           </Route>
           

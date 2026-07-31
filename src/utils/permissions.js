@@ -11,15 +11,16 @@ import {
     ArrowRightLeft,
     Megaphone,
     Wallet,
-    Receipt // 👈 Added Receipt icon for Finance
+    Receipt
 } from 'lucide-react';
 
 export const ROLES = {
     ADMIN: 'Admin',
+    DIRECTOR: 'Director',
     SALES: 'Sales',
-    OPERATION: 'Operation',
-    MARKETING: 'Marketing', 
-    EMPLOYEE: 'Employee'
+    OPERATION: 'Operations',
+    ACCOUNTS: 'Accounts',
+    MARKETING: 'Marketing'
 };
 
 // Define all possible sidebar menus and who can see them
@@ -27,73 +28,77 @@ export const MENU_ITEMS = [
     // --------------------------------------------------------
     // PRIMARY MENU ITEMS
     // --------------------------------------------------------
-    
-    // Common for ALL users
-    { 
-        path: '/home', 
-        label: 'Home', 
-        icon: LayoutDashboard, 
-        roles: [ROLES.ADMIN, ROLES.SALES, ROLES.OPERATION, ROLES.MARKETING, ROLES.EMPLOYEE] 
+
+    // Common for ALL roles
+    {
+        path: '/home',
+        label: 'Home',
+        icon: LayoutDashboard,
+        roles: [ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SALES, ROLES.OPERATION, ROLES.ACCOUNTS, ROLES.MARKETING]
     },
-    
-    // Admin and Employee
-    { 
-        path: '/employees', 
-        label: 'Employee ', 
-        icon: BriefcaseBusiness, 
-        roles: [ROLES.ADMIN, ROLES.EMPLOYEE] 
+
+    // Admin and Director only
+    {
+        path: '/employees',
+        label: 'Employee',
+        icon: BriefcaseBusiness,
+        roles: [ROLES.ADMIN, ROLES.DIRECTOR]
     },
-    
-    // Marketing, Sales teams, Admin, and Employee
-    { 
-        path: '/leads', 
-        label: 'Leads Manager', 
-        icon: ContactRound, 
-        roles: [ROLES.ADMIN, ROLES.SALES, ROLES.MARKETING, ROLES.EMPLOYEE] 
+
+    // Marketing, Sales, Admin, Director
+    {
+        path: '/leads',
+        label: 'Leads Manager',
+        icon: ContactRound,
+        roles: [ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SALES, ROLES.MARKETING]
     },
-    
-    // Sales team, Admin, and Employee
-    { 
-        path: '/sales', 
-        label: 'Sales', 
-        icon: TrendingUp, 
-        roles: [ROLES.ADMIN, ROLES.SALES, ROLES.EMPLOYEE] 
+
+    // Sales, Admin, Director
+    {
+        path: '/sales',
+        label: 'Sales',
+        icon: TrendingUp,
+        roles: [ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SALES]
     },
-    
-    // Operations team, Admin, and Employee
-    { 
-        path: '/operations', 
-        label: 'Operations', 
-        icon: Workflow, 
-        roles: [ROLES.ADMIN, ROLES.OPERATION, ROLES.EMPLOYEE] 
+
+    // Operations, Admin, Director
+    {
+        path: '/operations',
+        label: 'Operations',
+        icon: Workflow,
+        roles: [ROLES.ADMIN, ROLES.DIRECTOR, ROLES.OPERATION]
     },
-    { 
-        path: '/fulfillment', 
-        label: 'Fulfillment', 
-        icon: PackageCheck, 
-        roles: [ROLES.ADMIN,ROLES.SALES,ROLES.OPERATION,ROLES.EMPLOYEE] 
+
+    // Sales, Operations, Accounts, Admin, Director
+    {
+        path: '/fulfillment',
+        label: 'Fulfillment',
+        icon: PackageCheck,
+        roles: [ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SALES, ROLES.OPERATION, ROLES.ACCOUNTS]
     },
-    // Accounts (Admin Restricted)
-    { 
-        path: '/accounts', 
-        label: 'Accounts', 
-        icon: Wallet, 
-        roles: [ROLES.ADMIN] 
+
+    // Accounts, Admin, Director
+    {
+        path: '/accounts',
+        label: 'Accounts',
+        icon: Wallet,
+        roles: [ROLES.ADMIN, ROLES.DIRECTOR, ROLES.ACCOUNTS]
     },
-    // // Finance (Admin Restricted)
-    { 
-        path: '/finance', 
-        label: 'Billing & Finance', 
-        icon: Receipt, // 👈 Added the Finance menu item
-        roles: [ROLES.ADMIN] 
+
+    // Accounts, Admin, Director
+    {
+        path: '/finance',
+        label: 'Billing & Finance',
+        icon: Receipt,
+        roles: [ROLES.ADMIN, ROLES.DIRECTOR, ROLES.ACCOUNTS]
     },
-    
-    // Sales team, Admin, and Employee
-    { 
-        path: '/reports', 
-        label: 'Reports', 
-        icon: ChartColumnBig, 
-        roles: [ROLES.ADMIN, ROLES.SALES, ROLES.EMPLOYEE] 
+
+    // Sales, Operations, Accounts, Admin, Director
+    {
+        path: '/reports',
+        label: 'Reports',
+        icon: ChartColumnBig,
+        roles: [ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SALES, ROLES.OPERATION, ROLES.ACCOUNTS]
     },
 
     // --------------------------------------------------------

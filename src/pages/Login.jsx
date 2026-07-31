@@ -11,13 +11,23 @@ import bgImage from '../assets/loginpage3.jpg';
 // Unified API base URL to prevent IP/Port mismatches across devices
 const API_BASE_URL = "https://crm-backend-l87w.onrender.com/api";
 
-// Helper function to map database designations to frontend app roles
+// Helper function to map database designations to frontend app roles.
+// Covers all six roles defined in ../utils/permissions (ADMIN, DIRECTOR,
+// SALES, OPERATION, ACCOUNTS, MARKETING). Previously this only recognized
+// Admin/Sales/Operation and silently fell back to a now-removed
+// ROLES.EMPLOYEE for everyone else (Marketing, Accounts, Director),
+// which would break menu rendering for those users.
 const getRoleFromDesignation = (designation) => {
     const desc = (designation || '').toLowerCase();
     if (desc.includes('admin')) return ROLES.ADMIN;
+    if (desc.includes('director')) return ROLES.DIRECTOR;
     if (desc.includes('sales')) return ROLES.SALES;
     if (desc.includes('operation') || desc.includes('ops')) return ROLES.OPERATION;
-    return ROLES.EMPLOYEE; 
+    if (desc.includes('account')) return ROLES.ACCOUNTS;
+    if (desc.includes('marketing')) return ROLES.MARKETING;
+    // Fallback: with no matching designation, default to the most
+    // restrictive role rather than the most permissive one.
+    return ROLES.MARKETING;
 };
 
 const Login = () => {

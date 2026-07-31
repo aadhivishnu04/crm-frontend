@@ -292,7 +292,9 @@ const Dashboard = () => {
     const [leaves, setLeaves] = useState([]);
     const [allEmployees, setAllEmployees] = useState([]); 
 
+    const [opsAlertsOpen, setOpsAlertsOpen] = useState(false);
     const isSalesOrOps = user?.role === ROLES.SALES || user?.role === ROLES.OPERATION;
+    const isOpsOrAccounts = user?.role === ROLES.OPERATION || user?.role === ROLES.ACCOUNTS;
     const isAdmin = user?.role === ROLES.ADMIN;
     
     const calculateDays = (start, end) => {
@@ -982,7 +984,7 @@ const Dashboard = () => {
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatInput, setChatInput] = useState('');
     const [isChatLoading, setIsChatLoading] = useState(false);
-    const [chatMessages, setChatMessages] = useState([{ role: 'ai', text: 'Hi! I am your ITOUR AI. Need help drafting an email or planning an itinerary?' }]);
+    const [chatMessages, setChatMessages] = useState([{ role: 'ai', text: 'Hi! I am your Travel AI. Need help drafting an email or planning an itinerary?' }]);
     const messagesEndRef = useRef(null);
     useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [chatMessages, isChatOpen]);
 
@@ -1072,6 +1074,121 @@ const Dashboard = () => {
         bookingConfirmation: combinedData.filter(item => item.status === 'Confirmed Bookings' || item.status === 'Booking Confirmation' || item.status === 'Upcoming Departure').length,
         onTrip: combinedData.filter(item => item.status === 'On-Trip' || item.status === 'On Trip' || item.status === 'Active Trip').length
     };
+
+    // ─── OPERATIONS-SPECIFIC DERIVED DATA (My Jobs / Pending Itineraries / Returned by Sales / Vendor Payment Due) ───
+    // NOTE: "Returned by Sales" has no dedicated status value in the pipeline yet — this checks for the
+    // most likely status strings so the widget lights up automatically once that status is wired in on the
+    // Sales side. Until then it will correctly render its empty state.
+    const opsTodaysJobs = useMemo(() => (
+        allLeads.filter(l => l.createdAt && new Date(l.createdAt).toDateString() === todayStr &&
+            (l.status === 'Move To Operation' || l.status === 'Shared to Sales' || l.status === 'Jobs' || !l.status)
+        )
+    ), [allLeads, todayStr]);
+
+    const opsPendingItineraries = useMemo(() => (
+        combinedData.filter(item => item.status === 'Move To Operation' || item.status === 'Shared to Sales')
+    ), [combinedData]);
+
+    const opsVendorPending = useMemo(() => (
+        combinedData.filter(item => item.status === 'Confirmed Bookings')
+    ), [combinedData]);
+
+    const opsMyJobs = useMemo(() => (
+        allLeads
+            .filter(l => (l.assignedToOps === user?.name || l.assignedTo === user?.name) && l.status !== 'Trip Closed')
+            .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    ), [allLeads, user]);
+
+    const opsReturnedBySales = useMemo(() => (
+        allLeads.filter(l => l.status === 'Returned by Sales' || l.status === 'Returned to Operations' || l.status === 'Returned')
+    ), [allLeads]);
+
+    const opsVendorPaymentDue = useMemo(() => {
+        const dueList = [];
+        allLeads.forEach(lead => {
+            safeParseList(lead.paymentRequests).forEach((req, idx) => {
+                const isPaid = req.paymentStatus === 'Paid' || req.status === 'Paid';
+                if (!isPaid && (req.providerName || req.service) && req.amountToPay) {
+                    dueList.push({
+                        id: `${lead.id}-duevendor-${idx}`,
+                        vendorName: req.providerName || 'Vendor',
+                        amount: parseFloat(String(req.amountToPay).replace(/[₹,\s]/g, '')) || 0,
+                        dueDate: req.paymentDueDate || '',
+                        customerName: lead.customerName || lead.profileName || 'N/A',
+                        leadId: lead.id,
+                        rawLead: lead
+                    });
+                }
+            });
+        });
+        return dueList.sort((a, b) => new Date(a.dueDate || '2100-01-01') - new Date(b.dueDate || '2100-01-01'));
+    }, [allLeads]);
+
+    // Fulfilment Due — Confirmed Bookings still awaiting hotel / transport / visa / DMC
+    // confirmation (mirrors the "Vendor Pending" stat card). ASSUMPTION: since individual
+    // vendor confirmation-status fields aren't in the lead schema yet, "Pending Item" is
+    // shown generically — swap in a specific field (e.g. lead.hotelConfirmationStatus) once available.
+    const opsFulfillmentDue = useMemo(() => (
+        opsVendorPending.map(lead => ({
+            id: `fulfil-${lead.id}`,
+            leadName: lead.customerName || lead.profileName || 'N/A',
+            pendingItem: lead.pendingFulfilmentItem || 'Hotel / Transport / Visa / DMC Confirmation',
+            dueDate: lead.travelDate || lead.travelDates || 'TBD',
+            rawLead: lead
+        }))
+    ), [opsVendorPending]);
+
+    // ─── ACCOUNTS-SPECIFIC DERIVED DATA (New Customer Payment / Customer Payment Overdue / Ready for Financial Closure / Financial Summary) ───
+    // ASSUMPTION: there's no explicit "verified" flag on a payment-history transaction yet,
+    // so "New Customer Payment" surfaces every logged Money-In transaction as awaiting
+    // verification — swap in a real check (e.g. txn.verified === true) once that field exists.
+    const acctsNewCustomerPayments = useMemo(() => (
+        moneyInEntries.filter(e => e.verified !== true && e.status !== 'Verified')
+    ), [moneyInEntries]);
+
+    // Vendor Payment Due — payment requests Operations has raised that are still unpaid.
+    const acctsVendorPaymentDue = opsVendorPaymentDue;
+
+    // Customer Payment Overdue — travel date within 10 days AND a balance is still outstanding.
+    const acctsCustomerPaymentOverdue = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return allLeads
+            .map(lead => {
+                const tDateRaw = lead.travelDate || lead.travelDates || lead.tourStartDate;
+                if (!tDateRaw) return null;
+                const tDate = new Date(tDateRaw);
+                if (isNaN(tDate.getTime())) return null;
+                const daysLeft = Math.ceil((tDate.getTime() - today.getTime()) / 86400000);
+                const amountDue = lead.computedBalancePending ?? Math.max(0, (lead.computedPackageCost || 0) - (lead.computedTotalReceived || 0));
+                if (daysLeft < 0 || daysLeft > 10 || amountDue <= 0) return null;
+                return {
+                    id: lead.id,
+                    customerName: lead.customerName || lead.profileName || 'N/A',
+                    destination: lead.destination || 'N/A',
+                    amountDue,
+                    daysLeft,
+                    rawLead: lead
+                };
+            })
+            .filter(Boolean)
+            .sort((a, b) => a.daysLeft - b.daysLeft);
+    }, [allLeads]);
+
+    // Ready for Financial Closure — trips wrapped up and handed to Accounts for final sign-off.
+    // ASSUMPTION: matches on the likeliest status strings until a dedicated
+    // "Ready for Financial Closure" status value is wired in from Accounts' side.
+    const acctsReadyForClosure = useMemo(() => (
+        allLeads.filter(l => l.status === 'Ready for Financial Closure' || l.status === 'Financial Closure' || l.status === 'Trip Closed')
+    ), [allLeads]);
+
+    // Financial Summary — headline totals for the four figures in the wireframe.
+    const acctsFinancialSummary = useMemo(() => ({
+        customerCollection: payments.totalIn || 0,
+        vendorPayment: payments.totalOut || 0,
+        customerOutstanding: payments.pending || 0,
+        vendorOutstanding: acctsVendorPaymentDue.reduce((sum, v) => sum + (v.amount || 0), 0),
+    }), [payments, acctsVendorPaymentDue]);
 
     return (
         <div className={`min-h-screen w-full p-3 sm:p-5 lg:p-7 pt-20 sm:pt-24 lg:pt-6 pb-24 space-y-4 sm:space-y-5 poppins-regular text-base relative custom-scrollbar overflow-x-hidden transition-colors duration-300 ${darkMode ? 'bg-[#0b0f1a] text-slate-100 dark' : 'bg-slate-100 text-slate-800'}`}>
@@ -1423,6 +1540,42 @@ const Dashboard = () => {
                         <span className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
                         <span className="flex items-center gap-2"><Clock size={14} className="text-emerald-400" /> {formattedTime}</span>
                     </div>
+                    {isOpsOrAccounts && (
+                        <div className="relative flex-shrink-0">
+                            <button
+                                onClick={() => setOpsAlertsOpen(o => !o)}
+                                className="relative p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700/60 text-slate-500 dark:text-slate-300 transition-all"
+                                title={user?.role === ROLES.OPERATION ? 'Alerts shared by Operations' : 'Alerts shared by Accounts'}
+                            >
+                                <BellRing size={17}/>
+                                {dueSoonAlerts.length > 0 && (
+                                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center leading-none shadow-sm">
+                                        {dueSoonAlerts.length > 9 ? '9+' : dueSoonAlerts.length}
+                                    </span>
+                                )}
+                            </button>
+                            {opsAlertsOpen && (
+                                <div className="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700/50 rounded-2xl shadow-2xl z-[120] overflow-hidden">
+                                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700/40 flex items-center justify-between">
+                                        <p className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide">{user?.role === ROLES.OPERATION ? 'Alerts shared by Operations' : 'Alerts shared by Accounts'}</p>
+                                        <button onClick={() => setOpsAlertsOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={14}/></button>
+                                    </div>
+                                    <div className="max-h-72 overflow-y-auto custom-scrollbar">
+                                        {dueSoonAlerts.length === 0 ? (
+                                            <div className="text-center py-8 text-slate-400 text-xs">No alerts right now.</div>
+                                        ) : (
+                                            dueSoonAlerts.map(alert => (
+                                                <div key={alert.id} className="px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                                                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{alert.title}</p>
+                                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide">{alert.category} · {alert.date}</p>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
                     <button onClick={() => setLeadModalOpen(true)} className="flex-1 lg:flex-none flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition-all shadow-lg shadow-emerald-500/20 whitespace-nowrap">
                         <Plus size={16}/> New Lead
                     </button>
@@ -1430,14 +1583,32 @@ const Dashboard = () => {
             </div>
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-                {[
+                {(user?.role === ROLES.OPERATION ? [
+                    { id: 'Today Leads', label: "Today's Jobs", value: opsTodaysJobs.length, icon: <Users className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-blue-500/20 to-blue-600/5', iconBg: 'bg-blue-500/15 text-blue-500 dark:text-blue-400', border: 'border-blue-500/10 dark:border-blue-500/10', glow: 'hover:border-blue-500/30 dark:hover:border-blue-500/20' },
+                    { id: 'Pending Quotation', label: 'Pending Itineraries', value: opsPendingItineraries.length, icon: <FileText className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-amber-500/20 to-amber-600/5', iconBg: 'bg-amber-500/15 text-amber-500 dark:text-amber-400', border: 'border-amber-500/10 dark:border-amber-500/10', glow: 'hover:border-amber-500/30 dark:hover:border-amber-500/20' },
+                    { id: 'Booking Confirmation', label: 'Upcoming Departure', value: fulfillmentAlerts.length, icon: <PlaneTakeoff className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-emerald-500/20 to-emerald-600/5', iconBg: 'bg-emerald-500/15 text-emerald-500 dark:text-emerald-400', border: 'border-emerald-500/10 dark:border-emerald-500/10', glow: 'hover:border-emerald-500/30 dark:hover:border-emerald-500/20' },
+                    { id: 'On-Trip', label: 'Vendor Pending', value: opsVendorPending.length, icon: <PackageCheck className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-violet-500/20 to-violet-600/5', iconBg: 'bg-violet-500/15 text-violet-500 dark:text-violet-400', border: 'border-violet-500/10 dark:border-violet-500/10', glow: 'hover:border-violet-500/30 dark:hover:border-violet-500/20' },
+                ] : user?.role === ROLES.ACCOUNTS ? [
+                    { id: 'New Customer Payment', label: 'New Customer Payment', value: acctsNewCustomerPayments.length, icon: <Wallet className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-blue-500/20 to-blue-600/5', iconBg: 'bg-blue-500/15 text-blue-500 dark:text-blue-400', border: 'border-blue-500/10 dark:border-blue-500/10', glow: 'hover:border-blue-500/30 dark:hover:border-blue-500/20' },
+                    { id: 'Vendor Payment Due', label: 'Vendor Payment Due', value: acctsVendorPaymentDue.length, icon: <ArrowUpRight className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-amber-500/20 to-amber-600/5', iconBg: 'bg-amber-500/15 text-amber-500 dark:text-amber-400', border: 'border-amber-500/10 dark:border-amber-500/10', glow: 'hover:border-amber-500/30 dark:hover:border-amber-500/20' },
+                    { id: 'Customer Payment Overdue', label: 'Customer Payment Overdue', value: acctsCustomerPaymentOverdue.length, icon: <ArrowDownRight className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-rose-500/20 to-rose-600/5', iconBg: 'bg-rose-500/15 text-rose-500 dark:text-rose-400', border: 'border-rose-500/10 dark:border-rose-500/10', glow: 'hover:border-rose-500/30 dark:hover:border-rose-500/20' },
+                    { id: 'Ready for Financial Closure', label: 'Ready for Financial Closure', value: acctsReadyForClosure.length, icon: <BookmarkCheck className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-emerald-500/20 to-emerald-600/5', iconBg: 'bg-emerald-500/15 text-emerald-500 dark:text-emerald-400', border: 'border-emerald-500/10 dark:border-emerald-500/10', glow: 'hover:border-emerald-500/30 dark:hover:border-emerald-500/20' },
+                ] : [
                     { id: 'Today Leads', label: 'Today Leads', value: computedStats.todayLeads, icon: <Users className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-blue-500/20 to-blue-600/5', iconBg: 'bg-blue-500/15 text-blue-500 dark:text-blue-400', border: 'border-blue-500/10 dark:border-blue-500/10', glow: 'hover:border-blue-500/30 dark:hover:border-blue-500/20' },
                     { id: 'Pending Quotation', label: 'Pending Quotation', value: computedStats.pendingQuotation, icon: <FileText className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-amber-500/20 to-amber-600/5', iconBg: 'bg-amber-500/15 text-amber-500 dark:text-amber-400', border: 'border-amber-500/10 dark:border-amber-500/10', glow: 'hover:border-amber-500/30 dark:hover:border-amber-500/20' },
                     { id: 'Booking Confirmation', label: 'Booking Confirmation', value: computedStats.bookingConfirmation, icon: <BookmarkCheck className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-emerald-500/20 to-emerald-600/5', iconBg: 'bg-emerald-500/15 text-emerald-500 dark:text-emerald-400', border: 'border-emerald-500/10 dark:border-emerald-500/10', glow: 'hover:border-emerald-500/30 dark:hover:border-emerald-500/20' },
                     { id: 'On-Trip', label: 'On-Trip', value: computedStats.onTrip, icon: <PlaneTakeoff className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-violet-500/20 to-violet-600/5', iconBg: 'bg-violet-500/15 text-violet-500 dark:text-violet-400', border: 'border-violet-500/10 dark:border-violet-500/10', glow: 'hover:border-violet-500/30 dark:hover:border-violet-500/20' },
-                ].map((s, i) => (
+                ]).map((s, i) => (
                     <div 
-                        key={i} onClick={() => handleStatCardClick(s.id)}
+                        key={i} onClick={() => {
+                            if (user?.role === ROLES.OPERATION) {
+                                setRegionModal({ open: true, regionName: s.label, tripsList: s.id === 'Today Leads' ? opsTodaysJobs : s.id === 'Pending Quotation' ? opsPendingItineraries : s.id === 'Booking Confirmation' ? fulfillmentAlerts : opsVendorPending });
+                            } else if (user?.role === ROLES.ACCOUNTS) {
+                                setRegionModal({ open: true, regionName: s.label, tripsList: s.id === 'New Customer Payment' ? acctsNewCustomerPayments.map(e => e.rawLead) : s.id === 'Vendor Payment Due' ? acctsVendorPaymentDue.map(v => v.rawLead) : s.id === 'Customer Payment Overdue' ? acctsCustomerPaymentOverdue.map(c => c.rawLead) : acctsReadyForClosure });
+                            } else {
+                                handleStatCardClick(s.id);
+                            }
+                        }}
                         className={`cursor-pointer group relative overflow-hidden bg-white dark:bg-[#111827] p-4 sm:p-5 rounded-2xl border ${s.border} ${s.glow} flex flex-row items-center gap-3 sm:gap-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:hover:shadow-none active:scale-[0.98]`}
                     >
                         <div className={`absolute inset-0 bg-gradient-to-br ${s.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`} />
@@ -1451,6 +1622,474 @@ const Dashboard = () => {
                     </div>
                 ))}
             </div>
+
+            {/* ─── OPERATIONS SPECIFIC WIDGETS (My Jobs / Pending Itineraries / Returned by Sales / Vendor Payment Due) ─── */}
+            {user?.role === ROLES.OPERATION && (
+                <div className="space-y-4 sm:space-y-5">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+                        {/* My Jobs */}
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                            <div className="flex justify-between items-center mb-3">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">My Jobs</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Today's record</p>
+                                </div>
+                                <button onClick={() => setRegionModal({ open: true, regionName: 'My Jobs — Full List', tripsList: opsMyJobs })} className="px-3 py-1.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors bg-blue-50/50 dark:bg-transparent">View All Jobs</button>
+                            </div>
+                            <div className="space-y-1 overflow-y-auto max-h-[260px] custom-scrollbar pr-1">
+                                {opsMyJobs.length === 0 ? (
+                                    <div className="text-center py-10 text-slate-400 text-xs">No jobs assigned to you yet.</div>
+                                ) : (
+                                    opsMyJobs.slice(0, 6).map(job => (
+                                        <div key={job.id} onClick={() => setSelectedLeadDetails(job)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all cursor-pointer border border-transparent hover:border-slate-100 dark:hover:border-slate-700/30">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{job.customerName || job.profileName || 'N/A'}</p>
+                                                <p className="text-[10px] text-slate-400 truncate mt-0.5">{job.destination || 'N/A'}</p>
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 flex-shrink-0 ml-2">{job.travelDates || job.travelDate || 'TBD'}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Pending Itineraries (detail) */}
+                        <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-amber-900/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                            <div className="flex justify-between items-center mb-3">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Pending Itineraries</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Not yet shared with Sales</p>
+                                </div>
+                                <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{opsPendingItineraries.length}</span>
+                            </div>
+                            <div className="space-y-1 overflow-y-auto max-h-[260px] custom-scrollbar pr-1">
+                                {opsPendingItineraries.length === 0 ? (
+                                    <div className="text-center py-10 text-slate-400 text-xs">Nothing pending right now.</div>
+                                ) : (
+                                    opsPendingItineraries.slice(0, 6).map(item => (
+                                        <div key={item.id} onClick={() => setSelectedLeadDetails(item)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/5 transition-all cursor-pointer border border-transparent hover:border-amber-100 dark:hover:border-amber-500/10">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{item.customerName || item.profileName || 'N/A'}</p>
+                                                <p className="text-[10px] text-slate-400 truncate mt-0.5">{item.destination || 'N/A'}</p>
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-amber-500 flex-shrink-0 ml-2">{item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Returned by Sales */}
+                        <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-rose-900/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                            <div className="flex justify-between items-center mb-3">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Returned by Sales</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Needs rework</p>
+                                </div>
+                                <span className="bg-rose-500/10 text-rose-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-rose-500/20 uppercase tracking-wide">{opsReturnedBySales.length}</span>
+                            </div>
+                            <div className="space-y-1 overflow-y-auto max-h-[260px] custom-scrollbar pr-1">
+                                {opsReturnedBySales.length === 0 ? (
+                                    <div className="text-center py-10 text-slate-400 text-xs">Nothing returned right now.</div>
+                                ) : (
+                                    opsReturnedBySales.slice(0, 6).map(item => (
+                                        <div key={item.id} onClick={() => setSelectedLeadDetails(item)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-500/5 transition-all cursor-pointer border border-transparent hover:border-rose-100 dark:hover:border-rose-500/10">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{item.customerName || item.profileName || 'N/A'}</p>
+                                                <p className="text-[10px] text-slate-400 truncate mt-0.5">{item.destination || 'N/A'}</p>
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-rose-400 flex-shrink-0 ml-2 truncate max-w-[110px]">{item.returnReason || item.notes || 'No reason given'}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Fulfilment Due + Vendor Payment Due */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
+                        {/* Fulfilment Due */}
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                            <div className="flex justify-between items-center mb-3">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Fulfilment Due</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Pending fulfilment items</p>
+                                </div>
+                                <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{opsFulfillmentDue.length} Due</span>
+                            </div>
+                            <div className="space-y-1 overflow-y-auto max-h-[240px] custom-scrollbar pr-1">
+                                {opsFulfillmentDue.length === 0 ? (
+                                    <div className="text-center py-10 text-slate-400 text-xs">Nothing pending fulfilment right now.</div>
+                                ) : (
+                                    opsFulfillmentDue.map(item => (
+                                        <div key={item.id} onClick={() => setSelectedLeadDetails(item.rawLead)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/5 transition-all cursor-pointer border border-transparent hover:border-amber-100 dark:hover:border-amber-500/10">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{item.leadName}</p>
+                                                <p className="text-[10px] text-slate-400 truncate mt-0.5">{item.pendingItem}</p>
+                                            </div>
+                                            <span className="text-[10px] font-semibold text-amber-500 flex-shrink-0 ml-2">{item.dueDate}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Vendor Payment Due */}
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                            <div className="flex justify-between items-center mb-3">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500 flex-shrink-0">
+                                        <Wallet size={16} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Vendor Payment Due</h2>
+                                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Unpaid vendor requests</p>
+                                    </div>
+                                </div>
+                                <span className="bg-rose-500/10 text-rose-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-rose-500/20 uppercase tracking-wide">{opsVendorPaymentDue.length} Due</span>
+                            </div>
+                            <div className="space-y-2.5 overflow-y-auto max-h-[240px] custom-scrollbar pr-1">
+                                {opsVendorPaymentDue.length === 0 ? (
+                                    <div className="text-center py-8 text-slate-400 text-xs">No vendor payments due right now.</div>
+                                ) : (
+                                    opsVendorPaymentDue.map(v => (
+                                        <div key={v.id} onClick={() => setSelectedLeadDetails(v.rawLead)} className="flex items-start justify-between gap-2 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30 p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer">
+                                            <div className="min-w-0">
+                                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{v.vendorName}</p>
+                                                <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide truncate">{v.customerName} · Due {v.dueDate || 'TBD'}</p>
+                                            </div>
+                                            <span className="text-[11px] font-bold text-rose-400 font-mono flex-shrink-0">₹{v.amount.toLocaleString('en-IN')}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Leave Request / Tasks / Calendar */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+                        {/* Leave Request */}
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                            <div className="flex justify-between items-center mb-3">
+                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Leave Request</h2>
+                                <button onClick={() => setLeaveModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-lg shadow-blue-500/20">
+                                    <Plus size={12} /> Apply Leave
+                                </button>
+                            </div>
+                            <div className="space-y-1.5 overflow-y-auto max-h-[220px] custom-scrollbar pr-1 flex-1">
+                                {leaves.length === 0 ? (
+                                    <div className="text-center py-10 text-slate-400 text-xs">No leave history found.</div>
+                                ) : (
+                                    leaves.slice(0, 5).map(leave => (
+                                        <div key={leave.id} className="flex justify-between items-center py-2 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30">
+                                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{leave.startDate}{leave.endDate ? ` – ${leave.endDate}` : ''}</span>
+                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wide flex-shrink-0 ml-2 ${
+                                                leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                                leave.status === 'Rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                                                'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                            }`}>{leave.status}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                            <button type="button" onClick={() => setAllLeavesModalOpen(true)} className="mt-3 w-full py-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors">View All</button>
+                        </div>
+
+                        {/* Tasks */}
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                            <div className="flex justify-between items-center mb-3">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{taskCounts.pending} pending</p>
+                                </div>
+                                <button onClick={openAddTask} className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-lg shadow-violet-500/20">
+                                    <Plus size={12} /> Add
+                                </button>
+                            </div>
+                            <div className="space-y-1 overflow-y-auto max-h-[220px] custom-scrollbar pr-1 flex-1">
+                                {filteredTasks.length === 0 && <div className="text-center py-10 text-slate-400 text-xs">No tasks here. Add one!</div>}
+                                {filteredTasks.slice(0, 6).map(task => (
+                                    <div key={task.id} className="flex items-center justify-between py-2 px-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all gap-2">
+                                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                                            <button onClick={() => toggleTask(task.id, task.completed)} className={`w-4 h-4 rounded-md flex items-center justify-center border-2 transition-all cursor-pointer flex-shrink-0 ${task.completed ? 'bg-violet-500 border-violet-500' : 'bg-transparent border-slate-300 dark:border-slate-600 hover:border-violet-400'}`}>
+                                                {task.completed && <Check size={9} className="text-white" strokeWidth={3} />}
+                                            </button>
+                                            <p className={`text-xs font-semibold truncate ${task.completed ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>{task.title}</p>
+                                        </div>
+                                        <span className="text-[9px] text-slate-400 flex-shrink-0">{formatTaskDateTime(task.time)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Calendar */}
+                        <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/30 flex flex-col gap-3 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
+                            </div>
+                            <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30 rounded-xl p-2.5">
+                                <div className="flex justify-between items-center mb-2.5 px-0.5">
+                                    <div className="flex gap-1">
+                                        <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronLeft size={14}/></button>
+                                        <button onClick={nextDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronRight size={14}/></button>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center gap-1">
+                                    {dateStrip.map((date, idx) => {
+                                        const isSelected = date.toDateString() === currentDate.toDateString();
+                                        return (
+                                            <div key={idx} onClick={() => { setCurrentDate(date); openAddEvent(date); }}
+                                                className={`flex flex-col items-center justify-center py-2 rounded-xl cursor-pointer transition-all w-full min-w-0 ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
+                                                <span className="text-[8px] uppercase font-bold tracking-wider mb-1 block">{date.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 2)}</span>
+                                                <span className={`text-sm font-bold ${isSelected ? 'text-white' : ''}`}>{date.getDate()}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-700/30 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
+                                    <Eye size={12}/> <span>View All</span>
+                                </button>
+                                <button onClick={() => openAddEvent(currentDate)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[11px] font-bold transition-colors shadow-lg shadow-blue-500/20">
+                                    <Plus size={12}/> <span>Create</span>
+                                </button>
+                            </div>
+                            <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-700/30 rounded-xl p-3 flex-1 flex flex-col">
+                                <div className="flex justify-between items-center mb-2.5">
+                                    <h3 className="text-[9px] uppercase tracking-widest font-bold text-slate-400">Reminders · {currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
+                                    <span className="text-[9px] font-bold text-slate-500 bg-slate-200 dark:bg-slate-700/60 px-1.5 py-0.5 rounded-full">{filteredEvents.length}</span>
+                                </div>
+                                <div className="space-y-2 flex-1 overflow-y-auto max-h-[140px] pr-1 custom-scrollbar">
+                                    {filteredEvents.length === 0 ? (
+                                        <p className="text-slate-400 text-center py-4 text-[10px]">No reminders today.</p>
+                                    ) : (
+                                        filteredEvents.map((event, idx) => {
+                                            const evDate = event.date ? new Date(event.date + 'T00:00:00') : new Date();
+                                            return (
+                                                <div key={event.id || idx} className="flex gap-2.5 items-start group hover:bg-slate-100 dark:hover:bg-slate-800/40 p-1.5 rounded-lg transition-colors">
+                                                    <div className="pl-2 border-l-2 border-blue-400/50 flex flex-col items-center min-w-[28px] flex-shrink-0">
+                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight">{evDate.getDate()}</span>
+                                                        <span className="text-[8px] font-bold text-slate-400 uppercase">{monthNames[evDate.getMonth()].substring(0, 3)}</span>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">{event.title}</h4>
+                                                        <p className="text-[9px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                                            {event.auto ? <span className="uppercase tracking-wide text-blue-500 font-bold">{event.category}</span> : <><Clock size={9}/> {event.time}</>}
+                                                        </p>
+                                                    </div>
+                                                    {!event.auto && <button onClick={() => deleteEvent(event.id)} className="text-slate-400 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><Trash2 size={11}/></button>}
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── ACCOUNTS SPECIFIC WIDGETS (Customer Payment Overdue / Vendor Payments / Financial Summary) ─── */}
+            {user?.role === ROLES.ACCOUNTS && (
+                <div className="space-y-4 sm:space-y-5">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+                        {/* Customer Payment Overdue */}
+                        <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-rose-900/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                            <div className="flex justify-between items-center mb-3">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Customer Payment Overdue</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Travelling within 10 days</p>
+                                </div>
+                                <span className="bg-rose-500/10 text-rose-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-rose-500/20 uppercase tracking-wide">{acctsCustomerPaymentOverdue.length}</span>
+                            </div>
+                            <div className="space-y-1 overflow-y-auto max-h-[260px] custom-scrollbar pr-1">
+                                {acctsCustomerPaymentOverdue.length === 0 ? (
+                                    <div className="text-center py-10 text-slate-400 text-xs">No overdue customer payments right now.</div>
+                                ) : (
+                                    acctsCustomerPaymentOverdue.map(item => (
+                                        <div key={item.id} onClick={() => setSelectedLeadDetails(item.rawLead)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-500/5 transition-all cursor-pointer border border-transparent hover:border-rose-100 dark:hover:border-rose-500/10">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{item.customerName}</p>
+                                                <p className="text-[10px] text-slate-400 truncate mt-0.5">{item.destination}</p>
+                                            </div>
+                                            <span className="text-[10px] font-bold text-rose-400 font-mono flex-shrink-0 ml-2">₹{item.amountDue.toLocaleString('en-IN')}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Vendor Payments */}
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                            <div className="flex justify-between items-center mb-3">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Vendor Payments</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Payment requests raised by Ops</p>
+                                </div>
+                                <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{acctsVendorPaymentDue.length}</span>
+                            </div>
+                            <div className="space-y-1 overflow-y-auto max-h-[260px] custom-scrollbar pr-1">
+                                {acctsVendorPaymentDue.length === 0 ? (
+                                    <div className="text-center py-10 text-slate-400 text-xs">No vendor payments due right now.</div>
+                                ) : (
+                                    acctsVendorPaymentDue.map(v => (
+                                        <div key={v.id} onClick={() => setSelectedLeadDetails(v.rawLead)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/5 transition-all cursor-pointer border border-transparent hover:border-amber-100 dark:hover:border-amber-500/10">
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{v.vendorName}</p>
+                                                <p className="text-[10px] text-slate-400 truncate mt-0.5">{v.customerName} · Due {v.dueDate || 'TBD'}</p>
+                                            </div>
+                                            <span className="text-[10px] font-bold text-amber-500 font-mono flex-shrink-0 ml-2">₹{v.amount.toLocaleString('en-IN')}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Financial Summary */}
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                            <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight mb-3">Financial Summary</h2>
+                            <div className="space-y-2.5 flex-1">
+                                {[
+                                    { label: 'Customer Collection', value: acctsFinancialSummary.customerCollection, color: 'text-emerald-500' },
+                                    { label: 'Vendor Payment', value: acctsFinancialSummary.vendorPayment, color: 'text-blue-500' },
+                                    { label: 'Customer Outstanding', value: acctsFinancialSummary.customerOutstanding, color: 'text-amber-500' },
+                                    { label: 'Vendor Outstanding', value: acctsFinancialSummary.vendorOutstanding, color: 'text-rose-500' },
+                                ].map(row => (
+                                    <div key={row.label} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30">
+                                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{row.label}</span>
+                                        <span className={`text-xs font-bold font-mono ${row.color}`}>₹{row.value.toLocaleString('en-IN')}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Leave Request / Tasks / Calendar */}
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+                        {/* Leave Request */}
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                            <div className="flex justify-between items-center mb-3">
+                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Leave Request</h2>
+                                <button onClick={() => setLeaveModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-lg shadow-blue-500/20">
+                                    <Plus size={12} /> Apply Leave
+                                </button>
+                            </div>
+                            <div className="space-y-1.5 overflow-y-auto max-h-[220px] custom-scrollbar pr-1 flex-1">
+                                {leaves.length === 0 ? (
+                                    <div className="text-center py-10 text-slate-400 text-xs">No leave history found.</div>
+                                ) : (
+                                    leaves.slice(0, 5).map(leave => (
+                                        <div key={leave.id} className="flex justify-between items-center py-2 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30">
+                                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{leave.startDate}{leave.endDate ? ` – ${leave.endDate}` : ''}</span>
+                                            <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wide flex-shrink-0 ml-2 ${
+                                                leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                                leave.status === 'Rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                                                'bg-amber-500/10 text-amber-500 border-amber-500/20'
+                                            }`}>{leave.status}</span>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                            <button type="button" onClick={() => setAllLeavesModalOpen(true)} className="mt-3 w-full py-2 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-xl hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors">View All</button>
+                        </div>
+
+                        {/* Tasks */}
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                            <div className="flex justify-between items-center mb-3">
+                                <div>
+                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
+                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{taskCounts.pending} pending</p>
+                                </div>
+                                <button onClick={openAddTask} className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-lg shadow-violet-500/20">
+                                    <Plus size={12} /> Add
+                                </button>
+                            </div>
+                            <div className="space-y-1 overflow-y-auto max-h-[220px] custom-scrollbar pr-1 flex-1">
+                                {filteredTasks.length === 0 && <div className="text-center py-10 text-slate-400 text-xs">No tasks here. Add one!</div>}
+                                {filteredTasks.slice(0, 6).map(task => (
+                                    <div key={task.id} className="flex items-center justify-between py-2 px-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all gap-2">
+                                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                                            <button onClick={() => toggleTask(task.id, task.completed)} className={`w-4 h-4 rounded-md flex items-center justify-center border-2 transition-all cursor-pointer flex-shrink-0 ${task.completed ? 'bg-violet-500 border-violet-500' : 'bg-transparent border-slate-300 dark:border-slate-600 hover:border-violet-400'}`}>
+                                                {task.completed && <Check size={9} className="text-white" strokeWidth={3} />}
+                                            </button>
+                                            <p className={`text-xs font-semibold truncate ${task.completed ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>{task.title}</p>
+                                        </div>
+                                        <span className="text-[9px] text-slate-400 flex-shrink-0">{formatTaskDateTime(task.time)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Calendar */}
+                        <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/30 flex flex-col gap-3 shadow-sm">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
+                            </div>
+                            <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30 rounded-xl p-2.5">
+                                <div className="flex justify-between items-center mb-2.5 px-0.5">
+                                    <div className="flex gap-1">
+                                        <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronLeft size={14}/></button>
+                                        <button onClick={nextDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronRight size={14}/></button>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center gap-1">
+                                    {dateStrip.map((date, idx) => {
+                                        const isSelected = date.toDateString() === currentDate.toDateString();
+                                        return (
+                                            <div key={idx} onClick={() => { setCurrentDate(date); openAddEvent(date); }}
+                                                className={`flex flex-col items-center justify-center py-2 rounded-xl cursor-pointer transition-all w-full min-w-0 ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
+                                                <span className="text-[8px] uppercase font-bold tracking-wider mb-1 block">{date.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 2)}</span>
+                                                <span className={`text-sm font-bold ${isSelected ? 'text-white' : ''}`}>{date.getDate()}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-700/30 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
+                                    <Eye size={12}/> <span>View All</span>
+                                </button>
+                                <button onClick={() => openAddEvent(currentDate)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[11px] font-bold transition-colors shadow-lg shadow-blue-500/20">
+                                    <Plus size={12}/> <span>Create</span>
+                                </button>
+                            </div>
+                            <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-700/30 rounded-xl p-3 flex-1 flex flex-col">
+                                <div className="flex justify-between items-center mb-2.5">
+                                    <h3 className="text-[9px] uppercase tracking-widest font-bold text-slate-400">Reminders · {currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
+                                    <span className="text-[9px] font-bold text-slate-500 bg-slate-200 dark:bg-slate-700/60 px-1.5 py-0.5 rounded-full">{filteredEvents.length}</span>
+                                </div>
+                                <div className="space-y-2 flex-1 overflow-y-auto max-h-[140px] pr-1 custom-scrollbar">
+                                    {filteredEvents.length === 0 ? (
+                                        <p className="text-slate-400 text-center py-4 text-[10px]">No reminders today.</p>
+                                    ) : (
+                                        filteredEvents.map((event, idx) => {
+                                            const evDate = event.date ? new Date(event.date + 'T00:00:00') : new Date();
+                                            return (
+                                                <div key={event.id || idx} className="flex gap-2.5 items-start group hover:bg-slate-100 dark:hover:bg-slate-800/40 p-1.5 rounded-lg transition-colors">
+                                                    <div className="pl-2 border-l-2 border-blue-400/50 flex flex-col items-center min-w-[28px] flex-shrink-0">
+                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight">{evDate.getDate()}</span>
+                                                        <span className="text-[8px] font-bold text-slate-400 uppercase">{monthNames[evDate.getMonth()].substring(0, 3)}</span>
+                                                    </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">{event.title}</h4>
+                                                        <p className="text-[9px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                                            {event.auto ? <span className="uppercase tracking-wide text-blue-500 font-bold">{event.category}</span> : <><Clock size={9}/> {event.time}</>}
+                                                        </p>
+                                                    </div>
+                                                    {!event.auto && <button onClick={() => deleteEvent(event.id)} className="text-slate-400 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><Trash2 size={11}/></button>}
+                                                </div>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ─── SALES SPECIFIC DASHBOARD LAYOUT ─── */}
             {user?.role === ROLES.SALES ? (
@@ -1821,6 +2460,7 @@ const Dashboard = () => {
                 /* ─── NON-SALES DEFAULT DASHBOARD LAYOUT ─── */
                 <>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+                        {!isOpsOrAccounts && (
                         <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-[480px] lg:col-span-2">
                             <div className="flex justify-between items-center mb-3 flex-shrink-0">
                                 <div>
@@ -1897,7 +2537,9 @@ const Dashboard = () => {
                                 )}
                             </div>
                         </div>
+                        )}
 
+                        {!isOpsOrAccounts && (
                         <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/30 flex flex-col gap-3 shadow-sm lg:col-span-1">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
@@ -1965,9 +2607,11 @@ const Dashboard = () => {
                                 </div>
                             </div>
                         </div>
+                        )}
 
                     </div>
 
+                    {!isOpsOrAccounts && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-4">
@@ -2017,6 +2661,7 @@ const Dashboard = () => {
                             </div>
                         </div>
 
+                        {!isOpsOrAccounts && (
                         <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
                             <div className="flex justify-between items-center mb-4">
                                 <div>
@@ -2080,7 +2725,9 @@ const Dashboard = () => {
                                 {targets.length === 0 && <div className="text-center py-10 text-slate-400 dark:text-slate-500 text-xs">No targets set. Add one!</div>}
                             </div>
                         </div>
+                        )}
 
+                        {!isOpsOrAccounts && (
                         <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
@@ -2135,9 +2782,12 @@ const Dashboard = () => {
                                 )}
                             </div>
                         </div>
+                        )}
 
                     </div>
+                    )}
 
+                    {!isOpsOrAccounts && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-rose-900/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-2">
                             <div className="flex justify-between items-center mb-4">
@@ -2172,6 +2822,7 @@ const Dashboard = () => {
                             </div>
                         </div>
 
+                        {!isOpsOrAccounts && (
                         <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-full lg:col-span-1">
                             <div className="flex justify-between items-start mb-4 gap-2">
                                 <div>
@@ -2209,9 +2860,12 @@ const Dashboard = () => {
                                 )}
                             </div>
                         </div>
+                        )}
                     </div>
+                    )}
 
                     {/* ── Due & Follow-Up Alerts (next 5 days) ── */}
+                    {!isOpsOrAccounts && (
                     <div className="grid grid-cols-1 gap-4 sm:gap-5">
                         <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-amber-900/30 rounded-2xl p-4 sm:p-5 shadow-sm">
                             <div className="flex justify-between items-center mb-4">
@@ -2245,11 +2899,12 @@ const Dashboard = () => {
                             </div>
                         </div>
                     </div>
+                    )}
 
                     {/* ── ROW 6: LEAVE MANAGEMENT ── */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         {/* ── LEAVE DASHBOARD (EMPLOYEES ONLY) ── */}
-                        {isSalesOrOps && (
+                        {isSalesOrOps && !isOpsOrAccounts && (
                             <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                                 <div className="flex justify-between items-center mb-4">
                                     <div>
@@ -2718,7 +3373,7 @@ const Dashboard = () => {
                                 <Bot size={16}/>
                             </div>
                             <div>
-                                <h3 className="font-bold text-sm tracking-tight">iTour </h3>
+                                <h3 className="font-bold text-sm tracking-tight">Travel </h3>
                                 <p className="text-[9px] text-teal-100/80 uppercase tracking-widest font-semibold">Intelligence Engine</p>
                             </div>
                         </div>

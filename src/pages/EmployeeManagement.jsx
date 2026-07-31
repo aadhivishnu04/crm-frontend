@@ -1,8 +1,15 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FileSpreadsheet, Eye, Pencil, Trash2, ArrowUpDown, Plus, X, ChevronDown, Settings } from 'lucide-react';
+import { ROLES } from '../utils/permissions';
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
 const API_BASE_URL = "https://crm-backend-l87w.onrender.com/api";
+
+// ─── DESIGNATION OPTIONS ──────────────────────────────────────────────────────
+// Derived directly from the shared ROLES object in ../utils/permissions, so
+// the Add/Edit modals can never drift out of sync with the sidebar
+// menu-permission system or the Login designation-mapping logic again.
+const DESIGNATION_OPTIONS = Object.values(ROLES);
 
 // ─── STYLING CONFIGURATIONS ───────────────────────────────────────────────────
 const STATUS_STYLES = {
@@ -544,7 +551,6 @@ const EmployeeManagement = () => {
                         <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {tableHeaders.some(h => h.id === 'status') && (
                                 <div className="bg-[#132033] p-3.5 rounded-xl border border-[#1e3a52] flex items-center justify-between sm:col-span-2">
-                                    {/* <label className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Telemetry System Status</label> */}
                                     <div className="flex items-center gap-2.5 bg-[#0f172a] px-3 py-1.5 rounded-lg border border-[#1e3a52]">
                                         <StatusDot status={viewingEmployee.status} />
                                         <span className={`text-sm font-bold ${viewingEmployee.status === 'online' ? 'text-emerald-400' : 'text-slate-400'}`}>
@@ -625,7 +631,7 @@ const EmployeeManagement = () => {
                                     <div className="relative">
                                         <select required value={newEmployee.designation || ""} onChange={(e) => setNewEmployee({ ...newEmployee, designation: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm appearance-none cursor-pointer">
                                             <option value="" disabled>Select Designation</option>
-                                            {['Admin', 'Sales', 'Operation', 'Marketing', 'Employee'].map((role) => <option key={role} value={role}>{role}</option>)}
+                                            {DESIGNATION_OPTIONS.map((role) => <option key={role} value={role}>{role}</option>)}
                                         </select>
                                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400"><ChevronDown size={16} /></div>
                                     </div>
@@ -748,7 +754,7 @@ const EmployeeManagement = () => {
                                     <div className="relative">
                                         <select required value={editingEmployee.designation || ""} onChange={(e) => setEditingEmployee({ ...editingEmployee, designation: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm appearance-none cursor-pointer">
                                             <option value="" disabled>Select Designation</option>
-                                            {['Admin', 'Sales', 'Operation', 'Marketing', 'Employee'].map((role) => <option key={role} value={role}>{role}</option>)}
+                                            {DESIGNATION_OPTIONS.map((role) => <option key={role} value={role}>{role}</option>)}
                                         </select>
                                         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400"><ChevronDown size={16} /></div>
                                     </div>
