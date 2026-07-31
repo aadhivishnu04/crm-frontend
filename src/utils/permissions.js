@@ -48,7 +48,7 @@ export const MENU_ITEMS = [
     // Marketing, Sales, Admin, Director
     {
         path: '/leads',
-        label: 'Leads Manager',
+        label: 'Lead Manager',
         icon: ContactRound,
         roles: [ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SALES, ROLES.MARKETING]
     },

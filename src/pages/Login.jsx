@@ -5,7 +5,7 @@ import { ROLES } from '../utils/permissions';
 
 // 1. ADDED: Import the image from your assets folder. 
 // Adjust the relative path ('../assets/office-bg.jpg') based on your folder structure and exact file name.
-import bgImage from '../assets/loginpage3.jpg'; 
+import bgImage from '../assets/crm_Banner-01.jpg.jpeg'; 
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
 // Unified API base URL to prevent IP/Port mismatches across devices
@@ -102,12 +102,12 @@ const Login = () => {
             // 2. CHANGED: Swapped the external URL for the imported 'bgImage' variable
             style={{ backgroundImage: `url(${bgImage})` }}
         >
-            <div className="absolute inset-0 bg-black/60"></div>
+            <div className="absolute inset-0 bg-black/40"></div>
 
-            <div className="relative z-10 w-full max-w-lg p-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl">
+            <div className="relative z-10 w-full max-w-lg p-12 rounded-2xl bg-white/1 backdrop-blur-md border border-white/50 shadow-2xl">
 
                 <h2 className="text-4xl font-semibold text-center mb-10 text-white tracking-wide">
-                   CRM
+                   WorkFlow
                 </h2>
 
                 {error && (

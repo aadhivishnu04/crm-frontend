@@ -1668,8 +1668,8 @@ const Dashboard = () => {
                 </div>
             </Modal>
 
-            <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-200/80 dark:border-slate-700/30 shadow-sm dark:shadow-none flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-5 relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-blue-500/3 dark:to-blue-500/5 pointer-events-none rounded-2xl" />
+            <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-200/80 dark:border-slate-700/30 shadow-sm dark:shadow-none flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-5 relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-blue-500/3 dark:to-blue-500/5 pointer-events-none rounded-2xl overflow-hidden" />
                 <div className="min-w-0 relative flex items-center gap-3 sm:gap-4">
                     <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 dark:text-white mb-1 tracking-tight truncate">{greetingLabel}, {displayHeaderName}</h1>
                 </div>
@@ -1686,12 +1686,12 @@ const Dashboard = () => {
                         <span className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
                         <span className="flex items-center gap-2"><Clock size={14} className="text-emerald-400" /> {formattedTime}</span>
                     </div>
-                    {isOpsOrAccounts && (
+                    {(
                         <div className="relative flex-shrink-0">
                             <button
                                 onClick={() => setOpsAlertsOpen(o => !o)}
                                 className="relative p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700/60 text-slate-500 dark:text-slate-300 transition-all"
-                                title={user?.role === ROLES.OPERATION ? 'Alerts shared by Operations' : 'Alerts shared by Accounts'}
+                                title={user?.role === ROLES.OPERATION ? 'Alerts shared by Operations' : user?.role === ROLES.ACCOUNTS ? 'Alerts shared by Accounts' : 'Due & Follow-Up Alerts'}
                             >
                                 <BellRing size={17}/>
                                 {dueSoonAlerts.length > 0 && (
@@ -1703,7 +1703,7 @@ const Dashboard = () => {
                             {opsAlertsOpen && (
                                 <div className="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700/50 rounded-2xl shadow-2xl z-[120] overflow-hidden">
                                     <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700/40 flex items-center justify-between">
-                                        <p className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide">{user?.role === ROLES.OPERATION ? 'Alerts shared by Operations' : 'Alerts shared by Accounts'}</p>
+                                        <p className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide">{user?.role === ROLES.OPERATION ? 'Alerts shared by Operations' : user?.role === ROLES.ACCOUNTS ? 'Alerts shared by Accounts' : 'Due & Follow-Up Alerts'}</p>
                                         <button onClick={() => setOpsAlertsOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={14}/></button>
                                     </div>
                                     <div className="max-h-72 overflow-y-auto custom-scrollbar">
@@ -1899,7 +1899,7 @@ const Dashboard = () => {
                             <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">My Jobs</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Today's record</p>
+                                    {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Today's record</p> */}
                                 </div>
                                 <button onClick={() => setRegionModal({ open: true, regionName: 'My Jobs — Full List', tripsList: opsMyJobs })} className="px-3 py-1.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors bg-blue-50/50 dark:bg-transparent">View All Jobs</button>
                             </div>
@@ -1925,7 +1925,7 @@ const Dashboard = () => {
                             <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Pending Itineraries</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Not yet shared with Sales</p>
+                                    {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Not yet shared with Sales</p> */}
                                 </div>
                                 <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{opsPendingItineraries.length}</span>
                             </div>
@@ -1951,7 +1951,7 @@ const Dashboard = () => {
                             <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Returned by Sales</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Needs rework</p>
+                                    {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Needs rework</p> */}
                                 </div>
                                 <span className="bg-rose-500/10 text-rose-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-rose-500/20 uppercase tracking-wide">{opsReturnedBySales.length}</span>
                             </div>
@@ -1980,7 +1980,7 @@ const Dashboard = () => {
                             <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Fulfilment Due</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Pending fulfilment items</p>
+                                    {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold"></p fulfilment itemsp>   */}
                                 </div>
                                 <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{opsFulfillmentDue.length} Due</span>
                             </div>
@@ -2010,7 +2010,7 @@ const Dashboard = () => {
                                     </div>
                                     <div>
                                         <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Vendor Payment Due</h2>
-                                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Unpaid vendor requests</p>
+                                        {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Unpaid vendor requests</p> */}
                                     </div>
                                 </div>
                                 <span className="bg-rose-500/10 text-rose-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-rose-500/20 uppercase tracking-wide">{opsVendorPaymentDue.length} Due</span>
@@ -2167,7 +2167,7 @@ const Dashboard = () => {
                             <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Customer Payment Overdue</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Travelling within 10 days</p>
+                                    {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Travelling within 10 days</p> */}
                                 </div>
                                 <span className="bg-rose-500/10 text-rose-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-rose-500/20 uppercase tracking-wide">{acctsCustomerPaymentOverdue.length}</span>
                             </div>
@@ -2193,7 +2193,7 @@ const Dashboard = () => {
                             <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Vendor Payments</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Payment requests raised by Ops</p>
+                                    {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Payment requests raised by Ops</p> */}
                                 </div>
                                 <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{acctsVendorPaymentDue.length}</span>
                             </div>
@@ -2370,7 +2370,7 @@ const Dashboard = () => {
                             <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/40 flex justify-between items-center">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">My Jobs</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Today's record</p>
+                                    {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Today's record</p> */}
                                 </div>
                                 <button onClick={() => setRegionModal({ open: true, regionName: 'My Jobs — Full List', tripsList: salesOwnLeads })} className="px-3 py-1.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors bg-blue-50/50 dark:bg-transparent whitespace-nowrap">View All Jobs</button>
                             </div>
@@ -2398,7 +2398,7 @@ const Dashboard = () => {
                         <div className="bg-white dark:bg-[#111827] border-t-2 border-t-amber-500 border border-slate-200/80 dark:border-slate-700/30 rounded-2xl shadow-sm flex flex-col lg:col-span-3 overflow-hidden">
                             <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/40">
                                 <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Followup Alerts</h2>
-                                <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Leads with a scheduled follow-up</p>
+                                {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Leads with a scheduled follow-up</p> */}
                             </div>
                             <div className="flex-1 overflow-x-auto custom-scrollbar max-h-[280px]">
                                 <table className="w-full text-left text-xs sm:text-sm">
@@ -2435,11 +2435,11 @@ const Dashboard = () => {
                             <div className="flex justify-between items-center mb-4">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Sales Target</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Set by Director / Admin</p>
+                                    {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Set by Director / Admin</p> */}
                                 </div>
-                                <button onClick={() => { setEditingTarget(null); setTargetForm({ label: '', value: 0, max: 100, unit: '', isPercent: false, color: '#7c3aed' }); setTargetModal(true); }} className="flex items-center gap-1.5 text-xs font-bold text-violet-500 dark:text-violet-400 hover:text-violet-600 bg-violet-500/10 hover:bg-violet-500/20 px-3 py-1.5 rounded-xl transition-colors border border-violet-500/15">
-                                    <Plus size={13}/> Add
-                                </button>
+                                    {/* <button onClick={() => { setEditingTarget(null); setTargetForm({ label: '', value: 0, max: 100, unit: '', isPercent: false, color: '#7c3aed' }); setTargetModal(true); }} className="flex items-center gap-1.5 text-xs font-bold text-violet-500 dark:text-violet-400 hover:text-violet-600 bg-violet-500/10 hover:bg-violet-500/20 px-3 py-1.5 rounded-xl transition-colors border border-violet-500/15">
+                                        <Plus size={13}/> Add
+                                    </button> */}
                             </div>
                             <div className="space-y-4 max-h-[320px] overflow-y-auto custom-scrollbar pr-1">
                                 {targets.map(item => {
