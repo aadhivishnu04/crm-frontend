@@ -68,10 +68,10 @@ function App() {
              <Route path="/campaigns" element={<Campaigns />} />
           </Route>
 
-          {/* ADMIN + DIRECTOR + SALES + MARKETING Routes */}
-          <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SALES, ROLES.MARKETING]} />}>
-            <Route path="/leads" element={<LeadsManager />} />
-          </Route>
+          {/* Common for ALL roles — Leads Manager */}
+<Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SALES, ROLES.OPERATION, ROLES.ACCOUNTS, ROLES.MARKETING]} />}>
+  <Route path="/leads" element={<LeadsManager />} />
+</Route>
 
           {/* ADMIN + DIRECTOR + SALES Routes */}
           <Route element={<ProtectedRoute allowedRoles={[ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SALES]} />}>
