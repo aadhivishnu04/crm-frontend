@@ -9,7 +9,7 @@ import bgImage from '../assets/crm_Banner-01.jpg.jpeg';
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
 // Unified API base URL to prevent IP/Port mismatches across devices
-const API_BASE_URL = "https://crm-backend-l87w.onrender.com/api";
+const API_BASE_URL = "https://crm-backend3-1y9k.onrender.com/api";
 
 // Helper function to map database designations to frontend app roles.
 // Covers all six roles defined in ../utils/permissions (ADMIN, DIRECTOR,

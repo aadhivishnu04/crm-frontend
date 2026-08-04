@@ -9,7 +9,7 @@ import {
 import logoAsset from '../assets/logo (2).png';
 
 // ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend-l87w.onrender.com/api";
+const API_BASE_URL = "https://crm-backend3-1y9k.onrender.com/api";
 
 // ─── LEAD JOURNEY / FULL HISTORY ENGINE ───────────────────────────────────────
 // Kept in sync with SalesDashboard.jsx / OperationsDashboard.jsx / Fulfillment.jsx

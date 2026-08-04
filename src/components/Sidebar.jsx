@@ -36,7 +36,7 @@ const Sidebar = () => {
 
         const sendHeartbeatPing = () => {
             // Removed :8082 as Render routes HTTPS traffic automatically
-            fetch('https://crm-backend-l87w.onrender.com/api/members/ping', {
+            fetch('https://crm-backend3-1y9k.onrender.com/api/members/ping', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
