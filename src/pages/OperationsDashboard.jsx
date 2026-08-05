@@ -11,7 +11,7 @@ import {
 import { getCurrentUser } from '../utils/auth';
 
 // ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend3-1y9k.onrender.com/api";
+const API_BASE_URL = "https://crm-backend-l87w.onrender.com/api";
 
 const INDIAN_DESTINATION_KEYWORDS = [
     'india', 'chennai', 'mumbai', 'delhi', 'new delhi', 'bangalore', 'bengaluru',
@@ -913,14 +913,14 @@ export default function OperationsDashboard() {
     const scrollToTop = () => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     const scrollTabs = (dir) => tabScrollRef.current && tabScrollRef.current.scrollBy({ left: dir * 160, behavior: 'smooth' });
 
-const getTabStatus = (rawStatus) => {
-        if (['Jobs', 'Sales Assigned', 'New Requests', 'Move To Operation', 'Customization Required', 'Pending'].includes(rawStatus)) return 'New Requests';
+    const getTabStatus = (rawStatus) => {
+        if (['New Requests', 'Move To Operation', 'Customization Required', 'Pending'].includes(rawStatus)) return 'New Requests';
+        // 'Customisation Ready' = already shared back to Sales, but it should still stay
+        // visible in Operations' own "My Jobs" (Follow-Up) as a copy, not disappear.
         if (['Ops Assigned', 'Follow-Up', 'Customisation Ready'].includes(rawStatus)) return 'Follow-Up';
         if (['Upcoming Departure', 'Upcoming Bookings'].includes(rawStatus)) return 'Upcoming Bookings';
         if (['Confirmed Bookings'].includes(rawStatus)) return 'Confirmed Bookings';
-        
-        // Default any unknown statuses to 'New Requests' so they don't accidentally fall into 'Follow-Up'
-        return 'New Requests';
+        return rawStatus || 'New Requests';
     };
 
     const expandedLeads = leads.flatMap(item => {
@@ -1779,9 +1779,9 @@ const getTabStatus = (rawStatus) => {
             {!selectedLeadForEdit ? (
                 <>
                     <div className="p-4 sm:p-6">
-                        <div className="py-5  ">
-                            <h1 className="text-xl sm:text-3xl font-bold text-white tracking-tight">Operations Dashboard</h1>
-                            {/* <p className="text-slate-400 text-sm sm:text-base mt-1">Manage, allocate, and process active operational pipeline handovers.</p> */}
+                        <div className="py-12 mb-0 sm:mb-8">
+                            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Operations Dashboard</h1>
+                            <p className="text-slate-400 text-sm sm:text-base mt-1">Manage, allocate, and process active operational pipeline handovers.</p>
                         </div>
 
                         <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
