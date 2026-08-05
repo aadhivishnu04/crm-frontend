@@ -788,10 +788,10 @@ function useLeads(triggerNotification) {
     const [leads, setLeads] = useState([]);
     const [isLoading, setLoading] = useState(true);
 
-    const fetchLeads = async () => {
-        setLoading(true);
+    const fetchLeads = async (isBackground = false) => {
+        if (!isBackground && leads.length === 0) setLoading(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/leads`);
+            const res = await fetch(`${API_BASE_URL}/leads`, { cache: 'no-store' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             
@@ -820,13 +820,19 @@ function useLeads(triggerNotification) {
             setLeads(mappedData);
         } catch (err) {
             console.error("Failed to fetch leads for Accounts:", err);
-            setLeads([]);
+            if (!isBackground) setLeads([]);
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => { fetchLeads(); }, []);
+    useEffect(() => { 
+        fetchLeads(); 
+        const interval = setInterval(() => {
+            fetchLeads(true);
+        }, 30000);
+        return () => clearInterval(interval);
+    }, []);
 
     const updateLead = async (id, updatedData) => {
         setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updatedData } : l));
@@ -843,7 +849,7 @@ function useLeads(triggerNotification) {
                 body: JSON.stringify(payload),
             });
             triggerNotification('success', 'Accounts ledger updated successfully!');
-            fetchLeads();
+            fetchLeads(true);
         } catch (err) {
             triggerNotification('success', 'Accounts changes saved locally.');
         }
@@ -1829,7 +1835,7 @@ const confirmedBookings = leads.filter(l =>
 
                                 </thead>
                                 <tbody className="divide-y divide-slate-700/20">
-                                    {isLoading ? <tr><td colSpan="10" className="px-6 py-12 text-center text-slate-500">Querying accounts records...</td></tr> : paginated.length > 0 ? paginated.map((row, idx) => (
+                                    {paginated.length > 0 ? paginated.map((row, idx) => (
                                         <tr key={`${row.id}-${idx}`} className="hover:bg-slate-800/30 transition-colors">
                                             
                                             {activeTab === 'Customer Payment' && (() => {

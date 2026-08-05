@@ -68,15 +68,16 @@ const Reports = () => {
         }
     }, [notification.show]);
 
-    // --- FETCH DATA FROM BACKEND ---
-    const fetchAllReportData = async () => {
-        setIsLoading(true);
-        setError(null);
+    // --- FETCH DATA FROM BACKEND & BACKGROUND SYNC ---
+    const fetchAllReportData = async (isBackground = false) => {
+        if (!isBackground && leads.length === 0) setIsLoading(true);
+        if (!isBackground) setError(null);
+        
         try {
             const [leadsRes, jobsRes, employeesRes] = await Promise.all([
-                fetch(`${API_BASE_URL}/leads`),
-                fetch(`${API_BASE_URL}/jobs`),
-                fetch(`${API_BASE_URL}/employees`)
+                fetch(`${API_BASE_URL}/leads`, { cache: 'no-store' }),
+                fetch(`${API_BASE_URL}/jobs`, { cache: 'no-store' }),
+                fetch(`${API_BASE_URL}/employees`, { cache: 'no-store' })
             ]);
 
             if (!leadsRes.ok || !jobsRes.ok || !employeesRes.ok) {
@@ -92,8 +93,10 @@ const Reports = () => {
             setEmployees(Array.isArray(employeesData) ? employeesData : []);
         } catch (err) {
             console.error('Error loading reports database data:', err);
-            setError(err.message);
-            triggerNotification('error', 'Failed to pull live record sets from server.');
+            if (!isBackground) {
+                setError(err.message);
+                triggerNotification('error', 'Failed to pull live record sets from server.');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -101,6 +104,13 @@ const Reports = () => {
 
     useEffect(() => {
         fetchAllReportData();
+        
+        // Automatic background update every 30 seconds
+        const interval = setInterval(() => {
+            fetchAllReportData(true);
+        }, 30000);
+        
+        return () => clearInterval(interval);
     }, []);
 
     // --- RESET ON TAB CHANGE ---
@@ -332,7 +342,7 @@ const Reports = () => {
         };
         parseChecklist(safeParse(leadRecord.flightChecklist), 'Fulfillment: Flight Checklist');
         parseChecklist(safeParse(leadRecord.trainChecklist), 'Fulfillment: Train Checklist');
-        parseChecklist(safeParse(leadRecord.hotelChecklist), 'Fulfillment: Hotel Checklist');
+        parseChecklist(safeParse(leadRecord.hotelChecklist), 'Fulfillment: Transport Checklist');
         parseChecklist(safeParse(leadRecord.transportChecklist), 'Fulfillment: Transport Checklist');
         parseChecklist(safeParse(leadRecord.visaChecklist), 'Fulfillment: Visa Checklist');
 
@@ -568,7 +578,6 @@ const Reports = () => {
             {/* HEADER */}
             <div className="mb-5">
                 <h1 className="text-2xl font-bold text-white tracking-tight">Reports Panel</h1>
-                {/* <p className="text-slate-200 text-base mt-1">Review live performance analytics metrics and logs directly from database streams.</p> */}
             </div>
 
             {error && (
@@ -593,7 +602,7 @@ const Reports = () => {
                                     <Icon size={24} strokeWidth={2} />
                                 </div>
                                 <span className={`text-xl font-bold ${isActive ? 'text-white' : 'text-slate-200'}`}>
-                                    {isLoading ? '...' : tab.count}
+                                    {tab.count}
                                 </span>
                             </div>
                             <h3 className={`font-semibold text-base ${isActive ? 'text-white' : 'text-slate-200'}`}>{tab.label}</h3>
@@ -610,7 +619,6 @@ const Reports = () => {
                 <div className="flex justify-between items-center p-5 border-b border-slate-700/20">
                     <div>
                         <h2 className="text-lg font-bold text-white">View {activeTab}</h2>
-                        {/* <p className="text-sm text-slate-400 mt-0.5">Manage and output pipeline reports parameters</p> */}
                     </div>
                     <div className="flex items-center gap-2.5">
                         <button
@@ -630,13 +638,13 @@ const Reports = () => {
                             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Filter by Region:</span>
                             <div className="flex items-center gap-2">
                                 <button onClick={() => { setTripRegionFilter('all'); setCurrentPage(1); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all border ${tripRegionFilter === 'all' ? 'bg-slate-700 border-slate-500 text-white' : 'bg-transparent border-slate-700/40 text-slate-400 hover:border-slate-600 hover:text-slate-300'}`}>
-                                    All <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${tripRegionFilter === 'all' ? 'bg-slate-600 text-white' : 'bg-slate-800 text-slate-400'}`}>{isLoading ? '—' : tripRegionCounts.all}</span>
+                                    All <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${tripRegionFilter === 'all' ? 'bg-slate-600 text-white' : 'bg-slate-800 text-slate-400'}`}>{tripRegionCounts.all}</span>
                                 </button>
                                 <button onClick={() => { setTripRegionFilter('india'); setCurrentPage(1); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all border ${tripRegionFilter === 'india' ? 'bg-orange-500/20 border-orange-500/60 text-orange-400' : 'bg-transparent border-slate-700/40 text-slate-400 hover:border-orange-500/40 hover:text-orange-400/70'}`}>
-                                    <MapPin size={14} /> National (India) <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${tripRegionFilter === 'india' ? 'bg-orange-500/30 text-orange-300' : 'bg-slate-800 text-slate-400'}`}>{isLoading ? '—' : tripRegionCounts.india}</span>
+                                    <MapPin size={14} /> National (India) <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${tripRegionFilter === 'india' ? 'bg-orange-500/30 text-orange-300' : 'bg-slate-800 text-slate-400'}`}>{tripRegionCounts.india}</span>
                                 </button>
                                 <button onClick={() => { setTripRegionFilter('international'); setCurrentPage(1); }} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all border ${tripRegionFilter === 'international' ? 'bg-cyan-500/20 border-cyan-500/60 text-cyan-400' : 'bg-transparent border-slate-700/40 text-slate-400 hover:border-cyan-500/40 hover:text-cyan-400/70'}`}>
-                                    <Globe size={14} /> International <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${tripRegionFilter === 'international' ? 'bg-cyan-500/30 text-cyan-300' : 'bg-slate-800 text-slate-400'}`}>{isLoading ? '—' : tripRegionCounts.international}</span>
+                                    <Globe size={14} /> International <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${tripRegionFilter === 'international' ? 'bg-cyan-500/30 text-cyan-300' : 'bg-slate-800 text-slate-400'}`}>{tripRegionCounts.international}</span>
                                 </button>
                             </div>
                         </div>
@@ -691,96 +699,87 @@ const Reports = () => {
 
                 {/* DATA TABLE */}
                 <div className="overflow-x-auto min-h-[250px]">
-                    {isLoading ? (
-                        <div className="flex flex-col items-center justify-center py-20 gap-3">
-                            <Loader2 className="animate-spin text-cyan-500" size={32} />
-                            <p className="text-slate-400 text-sm">Parsing backend logs and database records...</p>
-                        </div>
-                    ) : (
-                        <table className="w-full text-left whitespace-nowrap">
-                            <thead className="bg-transparent text-xs uppercase font-semibold text-slate-300 border-b border-slate-700/20 tracking-wider">
-                                <tr>
-                                    {getTableHeaderArray().map((header, idx) => (
-                                        <th key={idx} className={`px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-700/50 whitespace-nowrap ${header.includes('Export') || header.includes('Action') ? 'text-right' : ''}`}>
-                                            {header}
-                                        </th>
-                                    ))}
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-700/20 text-base">
-                                {paginatedData.length === 0 ? (
-                                    <tr><td colSpan={10} className="px-5 py-8 text-center text-slate-500 text-sm font-medium">No data available in table</td></tr>
-                                ) : (
-                                    paginatedData.map((row, index) => {
-                                        if (!row) return null;
-                                        let cells = [];
+                    <table className="w-full text-left whitespace-nowrap">
+                        <thead className="bg-transparent text-xs uppercase font-semibold text-slate-300 border-b border-slate-700/20 tracking-wider">
+                            <tr>
+                                {getTableHeaderArray().map((header, idx) => (
+                                    <th key={idx} className={`px-5 py-3 text-left text-[11px] font-semibold text-slate-400 uppercase tracking-wider border-b border-slate-700/50 whitespace-nowrap ${header.includes('Export') || header.includes('Action') ? 'text-right' : ''}`}>
+                                        {header}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-700/20 text-base">
+                            {paginatedData.length === 0 ? (
+                                <tr><td colSpan={10} className="px-5 py-8 text-center text-slate-500 text-sm font-medium">No data available in table</td></tr>
+                            ) : (
+                                paginatedData.map((row, index) => {
+                                    if (!row) return null;
+                                    let cells = [];
 
-                                        // Render Export Buttons Reusable Component
-                                        const ExportButtons = ({ record }) => (
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button onClick={() => generateLeadPDF(record)} className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 rounded-md transition-colors text-xs font-semibold border border-rose-500/20" title="Print to PDF">
-                                                    <FileOutput size={13} /> PDF
+                                    // Render Export Buttons Reusable Component
+                                    const ExportButtons = ({ record }) => (
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button onClick={() => generateLeadPDF(record)} className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 rounded-md transition-colors text-xs font-semibold border border-rose-500/20" title="Print to PDF">
+                                                <FileOutput size={13} /> PDF
+                                            </button>
+                                            <button onClick={() => downloadLeadCSV(record)} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-md transition-colors text-xs font-semibold border border-emerald-500/20" title="Download Spreadhseet (CSV)">
+                                                <FileSpreadsheet size={13} /> Sheet
+                                            </button>
+                                        </div>
+                                    );
+
+                                    if (activeTab === 'Sales Report') {
+                                        cells = [row.assignedBy || 'Unassigned', row.count ?? 0];
+                                    } else if (activeTab === 'Sales Executive Report') {
+                                        cells = [
+                                            row.id, row.campaign, row.client, row.platform, row.enterDate, row.lastUpdate, row.status, row.assignedBy, row.story,
+                                            <ExportButtons key="export" record={row.rawRecord} />
+                                        ];
+                                    } else if (activeTab === 'Trip Closure') {
+                                        cells = [
+                                            row.id, row.profileName, row.destination,
+                                            <span key="cat" className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${row.isIndia ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30'}`}>
+                                                {row.isIndia ? <MapPin size={11} /> : <Globe size={11} />}{row.category}
+                                            </span>,
+                                            row.platform, row.mobile, row.message,
+                                            <div key="actions" className="flex items-center justify-end gap-4">
+                                                <button onClick={() => setSelectedJobForClosure(row.rawRecord)} className="text-cyan-400 hover:text-cyan-300 text-xs font-bold uppercase tracking-wider transition-colors">
+                                                    Edit / Close
                                                 </button>
-                                                <button onClick={() => downloadLeadCSV(record)} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-md transition-colors text-xs font-semibold border border-emerald-500/20" title="Download Spreadhseet (CSV)">
-                                                    <FileSpreadsheet size={13} /> Sheet
-                                                </button>
+                                                <ExportButtons record={row.rawRecord} />
                                             </div>
-                                        );
+                                        ];
+                                    } else if (activeTab === 'Trip Closure Report') {
+                                        cells = [
+                                            row.itr, row.supplier, row.selling, row.purchase, row.gst, row.pending,
+                                            <ExportButtons key="export" record={row.rawRecord} />
+                                        ];
+                                    }
 
-                                        if (activeTab === 'Sales Report') {
-                                            cells = [row.assignedBy || 'Unassigned', row.count ?? 0];
-                                        } else if (activeTab === 'Sales Executive Report') {
-                                            cells = [
-                                                row.id, row.campaign, row.client, row.platform, row.enterDate, row.lastUpdate, row.status, row.assignedBy, row.story,
-                                                <ExportButtons key="export" record={row.rawRecord} />
-                                            ];
-                                        } else if (activeTab === 'Trip Closure') {
-                                            cells = [
-                                                row.id, row.profileName, row.destination,
-                                                <span key="cat" className={`inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full border ${row.isIndia ? 'bg-orange-500/15 text-orange-400 border-orange-500/30' : 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30'}`}>
-                                                    {row.isIndia ? <MapPin size={11} /> : <Globe size={11} />}{row.category}
-                                                </span>,
-                                                row.platform, row.mobile, row.message,
-                                                <div key="actions" className="flex items-center justify-end gap-4">
-                                                    <button onClick={() => setSelectedJobForClosure(row.rawRecord)} className="text-cyan-400 hover:text-cyan-300 text-xs font-bold uppercase tracking-wider transition-colors">
-                                                        Edit / Close
-                                                    </button>
-                                                    <ExportButtons record={row.rawRecord} />
-                                                </div>
-                                            ];
-                                        } else if (activeTab === 'Trip Closure Report') {
-                                            cells = [
-                                                row.itr, row.supplier, row.selling, row.purchase, row.gst, row.pending,
-                                                <ExportButtons key="export" record={row.rawRecord} />
-                                            ];
-                                        }
-
-                                        return (
-                                            <tr key={index} className="hover:bg-slate-800/30 transition-colors border-b border-slate-700/20 last:border-0">
-                                                {cells.map((cell, idx) => (
-                                                    <td key={idx} className={`px-5 py-4 text-sm text-slate-300 whitespace-nowrap max-w-xs overflow-hidden text-ellipsis ${idx === cells.length - 1 && (getTableHeaderArray().includes('Export Options') || getTableHeaderArray().includes('Actions & Exports')) ? 'text-right' : ''}`}>
-                                                        {cell}
-                                                    </td>
-                                                ))}
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    )}
+                                    return (
+                                        <tr key={index} className="hover:bg-slate-800/30 transition-colors border-b border-slate-700/20 last:border-0">
+                                            {cells.map((cell, idx) => (
+                                                <td key={idx} className={`px-5 py-4 text-sm text-slate-300 whitespace-nowrap max-w-xs overflow-hidden text-ellipsis ${idx === cells.length - 1 && (getTableHeaderArray().includes('Export Options') || getTableHeaderArray().includes('Actions & Exports')) ? 'text-right' : ''}`}>
+                                                    {cell}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
                 </div>
 
                 {/* PAGINATION FOOTER */}
-                {!isLoading && (
-                    <div className="p-5 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm border-t border-slate-700/20 text-slate-400">
-                        <span>Showing {filteredData.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + entriesPerPage, filteredData.length)} of {filteredData.length} entries</span>
-                        <div className="flex gap-2">
-                            <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="px-4 py-1.5 border border-slate-700/30 rounded-lg bg-transparent text-slate-300 hover:bg-slate-800/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all">Previous</button>
-                            <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages || totalPages === 0} className="px-4 py-1.5 border border-slate-700/30 rounded-lg bg-transparent text-slate-300 hover:bg-slate-800/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all">Next</button>
-                        </div>
+                <div className="p-5 flex flex-col sm:flex-row justify-between items-center gap-4 text-sm border-t border-slate-700/20 text-slate-400">
+                    <span>Showing {filteredData.length === 0 ? 0 : startIndex + 1} to {Math.min(startIndex + entriesPerPage, filteredData.length)} of {filteredData.length} entries</span>
+                    <div className="flex gap-2">
+                        <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="px-4 py-1.5 border border-slate-700/30 rounded-lg bg-transparent text-slate-300 hover:bg-slate-800/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all">Previous</button>
+                        <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages || totalPages === 0} className="px-4 py-1.5 border border-slate-700/30 rounded-lg bg-transparent text-slate-300 hover:bg-slate-800/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all">Next</button>
                     </div>
-                )}
+                </div>
             </div>
 
             {/* TRIP CLOSURE MODAL */}
@@ -788,7 +787,7 @@ const Reports = () => {
                 <TripClosureForm
                     job={selectedJobForClosure}
                     onClose={() => setSelectedJobForClosure(null)}
-                    onRefresh={fetchAllReportData}
+                    onRefresh={() => fetchAllReportData(true)}
                     apiBaseUrl={API_BASE_URL}
                 />
             )}

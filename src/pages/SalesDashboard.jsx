@@ -1586,11 +1586,14 @@ const SalesDashboard = () => {
         { id: 'Recycle', label: 'RECYCLE LEADS', icon: Trash2 },
     ];
 
-    const customisationReadyRows = jobs.flatMap(item => {
+   const customisationReadyRows = jobs.flatMap(item => {
         const itemStatus = item.status || 'Jobs';
         const isRecycleBin = (item.followupCount >= 10 || item.followUpCount >= 10 || itemStatus === 'Recycle Bin');
         if (isRecycleBin) return [];
         if (itemStatus !== 'Shared to Sales' && itemStatus !== 'Customisation Ready') return [];
+        
+        // Prevent other executives' leads from showing in your Customisation Ready tab
+        if (item.assignedTo !== loggedInUserName) return [];
 
         let parsedRequests = [];
         if (item.customisationRequests) {
@@ -1643,9 +1646,12 @@ const SalesDashboard = () => {
 
         if (activeTab === 'Recycle') matchTab = isRecycleBin;
         else if (isRecycleBin) matchTab = false; 
-        else if (activeTab === 'My Jobs') {
+      else if (activeTab === 'My Jobs') {
             const leftSalesPipeline = itemStatus === 'Jobs' || itemStatus === 'Move To Operation';
-            matchTab = !leftSalesPipeline && item.assignedTo === loggedInUserName;
+            const isCustomisationReady = itemStatus === 'Customisation Ready' || itemStatus === 'Shared to Sales';
+            const isConfirmed = item.customerResponse === 'Booking Confirmed';
+            
+            matchTab = !leftSalesPipeline && !isCustomisationReady && !isConfirmed && item.assignedTo === loggedInUserName;
         } 
         else if (activeTab === 'Customisation Ready') { 
             matchTab = true; 
@@ -1707,7 +1713,11 @@ const SalesDashboard = () => {
                         if (isRecycleBin) return false;
 
                         const leftSalesPipeline = itemStatus === 'Jobs' || itemStatus === 'Move To Operation';
-                        if (cat.id === 'My Jobs') return !leftSalesPipeline && d.assignedTo === loggedInUserName;
+                     if (cat.id === 'My Jobs') {
+                                const isCustomisationReady = itemStatus === 'Customisation Ready' || itemStatus === 'Shared to Sales';
+                                const isConfirmed = d.customerResponse === 'Booking Confirmed';
+                                return !leftSalesPipeline && !isCustomisationReady && !isConfirmed && d.assignedTo === loggedInUserName;
+                            }
                         if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && d.assignedTo === loggedInUserName;
                         return itemStatus === cat.id;
                     }).length;
@@ -1739,9 +1749,13 @@ const SalesDashboard = () => {
                             if (cat.id === 'Recycle') return isRecycleBin;
                             if (isRecycleBin) return false;
 
-                            const leftSalesPipeline = itemStatus === 'Jobs' || itemStatus === 'Move To Operation';
-                            if (cat.id === 'My Jobs') return !leftSalesPipeline && d.assignedTo === loggedInUserName;
-                            if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && d.assignedTo === loggedInUserName;
+                         const leftSalesPipeline = itemStatus === 'Jobs' || itemStatus === 'Move To Operation';
+                        if (cat.id === 'My Jobs') {
+                            const isCustomisationReady = itemStatus === 'Customisation Ready' || itemStatus === 'Shared to Sales';
+                            const isConfirmed = d.customerResponse === 'Booking Confirmed';
+                            return !leftSalesPipeline && !isCustomisationReady && !isConfirmed && d.assignedTo === loggedInUserName;
+                        }
+                        if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && d.assignedTo === loggedInUserName;
                             return itemStatus === cat.id;
                         }).length;
 

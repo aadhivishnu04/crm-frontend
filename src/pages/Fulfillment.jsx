@@ -28,10 +28,6 @@ const getOperationTourType = (lead) => {
 };
 
 // ─── LEAD JOURNEY / FULL HISTORY ENGINE ───────────────────────────────────────
-// Kept in sync with SalesDashboard.jsx / OperationsDashboard.jsx so the "Lead
-// History" popup renders an identical, unbroken Sales → Operations →
-// Accounts → Fulfillment story no matter which dashboard it's opened from.
-
 const safeParseHistory = (raw) => {
     if (!raw) return [];
     if (Array.isArray(raw)) return raw;
@@ -121,7 +117,6 @@ const classifySalesEntry = (h, lead) => {
     return { title: action, parts: [splitLabelValue(note)].filter(Boolean) };
 };
 
-// Builds the full, oldest → newest chronological journey for one lead/job.
 const buildLeadTimeline = (lead) => {
     if (!lead) return [];
 
@@ -201,8 +196,6 @@ const buildLeadTimeline = (lead) => {
         ]);
     }
 
-    // ── Fulfilment Record — Booking Confirmed / Flight-Visa-Insurance-DMC /
-    // Briefing Details / Trip Completed, matching the Lead History mockup ──
     if (lead.status === 'Upcoming Departure' || lead.bookingDate || lead.confirmedDate) {
         push('fulfillment', 'Booking Confirmed', lead.bookingDate || lead.confirmedDate, [
             { label: 'Destination', value: lead.confirmedDestination || lead.destination || 'N/A' }
@@ -348,62 +341,103 @@ function Pagination({ currentPage, totalPages, onPageChange, totalEntries, entri
 }
 
 // ─────────────────────────────────────────────
-// HOOK – useLeads ENGINE
+// GLOBAL STATE MANAGER (Persists across tab switches)
+// ─────────────────────────────────────────────
+let globalLeadsData = [];
+let isGlobalDataLoaded = false;
+let globalSubscribers = new Set();
+let pollTimer = null;
+let isFetching = false;
+
+const fetchGlobalLeads = async (isBackground = false) => {
+    if (isFetching) return;
+    isFetching = true;
+    try {
+        const res = await fetch(`${API_BASE_URL}/leads`, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        
+        const parseJSON = (val) => {
+            if (!val) return [];
+            try { return typeof val === 'string' ? JSON.parse(val) : val; } 
+            catch (e) { return []; }
+        };
+
+        const mappedData = data.map(lead => {
+            let parsedFulfillment = {};
+            if (lead.fulfillmentData) {
+                try { parsedFulfillment = typeof lead.fulfillmentData === 'string' ? JSON.parse(lead.fulfillmentData) : lead.fulfillmentData; }
+                catch(e) { parsedFulfillment = {}; }
+            }
+
+            return {
+                ...lead,
+                ...parsedFulfillment, 
+                passengers: parseJSON(lead.passengers),
+                flights: parseJSON(lead.flights),
+                intTransports: parseJSON(lead.intTransports),
+                visas: parseJSON(lead.visas),
+                domTransports: parseJSON(lead.domTransports),
+                domHotels: parseJSON(lead.domHotels),
+                intHotels: parseJSON(lead.intHotels),
+                domLocalTransports: parseJSON(lead.domLocalTransports),
+                paymentRequests: parseJSON(lead.paymentRequests),
+                vendorRequests: parseJSON(lead.vendorRequests),
+                customisationRequests: parseJSON(lead.customisationRequests)
+            };
+        });
+        
+        globalLeadsData = mappedData;
+        isGlobalDataLoaded = true;
+        globalSubscribers.forEach(notify => notify());
+    } catch (err) {
+        if (!isBackground) {
+            globalLeadsData = MOCK_LEADS;
+            isGlobalDataLoaded = true;
+            globalSubscribers.forEach(notify => notify());
+        }
+    } finally {
+        isFetching = false;
+    }
+};
+
+// Start background polling immediately for the file module (runs forever)
+if (typeof window !== 'undefined' && !pollTimer) {
+    pollTimer = setInterval(() => {
+        fetchGlobalLeads(true);
+    }, 30000); // Changed to 30 seconds to match
+}
+
+// ─────────────────────────────────────────────
+// HOOK – useLeads ENGINE (Using Global Store)
 // ─────────────────────────────────────────────
 function useLeads(triggerNotification) {
-    const [leads, setLeads] = useState([]);
-    const [isLoading, setLoading] = useState(true);
+    const [leads, setLeads] = useState(globalLeadsData);
+    const [isLoading, setLoading] = useState(!isGlobalDataLoaded);
 
     useEffect(() => {
-        const fetchLeads = async () => {
-            setLoading(true);
-            try {
-                const res = await fetch(`${API_BASE_URL}/leads`);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                
-                const parseJSON = (val) => {
-                    if (!val) return [];
-                    try { return typeof val === 'string' ? JSON.parse(val) : val; } 
-                    catch (e) { return []; }
-                };
-
-                const mappedData = data.map(lead => {
-                    let parsedFulfillment = {};
-                    if (lead.fulfillmentData) {
-                        try { parsedFulfillment = typeof lead.fulfillmentData === 'string' ? JSON.parse(lead.fulfillmentData) : lead.fulfillmentData; }
-                        catch(e) { parsedFulfillment = {}; }
-                    }
-
-                    return {
-                        ...lead,
-                        ...parsedFulfillment, 
-                        passengers: parseJSON(lead.passengers),
-                        flights: parseJSON(lead.flights),
-                        intTransports: parseJSON(lead.intTransports),
-                        visas: parseJSON(lead.visas),
-                        domTransports: parseJSON(lead.domTransports),
-                        domHotels: parseJSON(lead.domHotels),
-                        intHotels: parseJSON(lead.intHotels),
-                        domLocalTransports: parseJSON(lead.domLocalTransports),
-                        paymentRequests: parseJSON(lead.paymentRequests),
-                        vendorRequests: parseJSON(lead.vendorRequests),
-                        customisationRequests: parseJSON(lead.customisationRequests)
-                    };
-                });
-                
-                setLeads(mappedData);
-            } catch (err) {
-                setLeads(MOCK_LEADS);
-            } finally {
-                setLoading(false);
-            }
+        const handleUpdate = () => {
+            setLeads([...globalLeadsData]);
+            setLoading(false);
         };
-        fetchLeads();
+
+        globalSubscribers.add(handleUpdate);
+        
+        // Only fetch if it hasn't been fetched yet. Otherwise load instantly.
+        if (!isGlobalDataLoaded) {
+            fetchGlobalLeads(false);
+        } else {
+            setLoading(false); 
+        }
+
+        return () => globalSubscribers.delete(handleUpdate);
     }, []);
 
     const updateLead = async (id, updatedData) => {
-        setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updatedData } : l));
+        // Optimistic global update to survive unmounts immediately
+        globalLeadsData = globalLeadsData.map(l => l.id === id ? { ...l, ...updatedData } : l);
+        globalSubscribers.forEach(notify => notify()); 
+
         try {
             await fetch(`${API_BASE_URL}/leads/${id}`, {
                 method: 'PUT',
@@ -411,12 +445,37 @@ function useLeads(triggerNotification) {
                 body: JSON.stringify(updatedData),
             });
             triggerNotification('success', 'Fulfillment data updated successfully!');
+            fetchGlobalLeads(true); // Silently sync the latest data from server
         } catch (err) {
             triggerNotification('success', 'Fulfillment changes saved locally.');
         }
     };
 
     return { leads, isLoading, updateLead };
+}
+
+// ─────────────────────────────────────────────
+// UI STATE PERSISTENCE 
+// ─────────────────────────────────────────────
+// This ensures that when you switch tabs and React destroys the component, 
+// your form data, selected tab, and modals are restored perfectly when you return.
+const preservedUI = {
+    activeTab: 'Confirmed Bookings',
+    searchQuery: '',
+    currentPage: 1,
+    selectedLeadForEdit: null,
+    selectedLeadForView: null,
+    viewModal: { show: false, title: '', content: '' },
+    historyLead: null,
+    isHistoryModalOpen: false,
+    expandedStage: null,
+    openJourneySections: { sales: false, operations: false, accounts: false, fulfillment: true }
+};
+
+function usePersistedState(key, initialValue) {
+    const [state, setState] = useState(preservedUI[key] !== undefined ? preservedUI[key] : initialValue);
+    useEffect(() => { preservedUI[key] = state; }, [state]);
+    return [state, setState];
 }
 
 // ─────────────────────────────────────────────
@@ -435,18 +494,19 @@ export default function Fulfillment() {
 
     const { leads, isLoading, updateLead } = useLeads(triggerNotification);
 
-    const [activeTab, setActiveTab] = useState('Confirmed Bookings');
-    const [searchQuery, setSearchQuery] = useState('');
+    // Using persisted state to save edits and layout settings if component unmounts
+    const [activeTab, setActiveTab] = usePersistedState('activeTab', 'Confirmed Bookings');
+    const [searchQuery, setSearchQuery] = usePersistedState('searchQuery', '');
+    const [currentPage, setCurrentPage] = usePersistedState('currentPage', 1);
     const [entriesPerPage] = useState(10);
-    const [currentPage, setCurrentPage] = useState(1);
     
-    const [selectedLeadForEdit, setSelectedLeadForEdit] = useState(null);
-    const [selectedLeadForView, setSelectedLeadForView] = useState(null);
-    const [viewModal, setViewModal] = useState({ show: false, title: '', content: '' });
-    const [historyLead, setHistoryLead] = useState(null); // Lead History modal (Confirmed Bookings)
-    const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-    const [expandedStage, setExpandedStage] = useState(null);
-    const [openJourneySections, setOpenJourneySections] = useState({ sales: false, operations: false, accounts: false, fulfillment: true });
+    const [selectedLeadForEdit, setSelectedLeadForEdit] = usePersistedState('selectedLeadForEdit', null);
+    const [selectedLeadForView, setSelectedLeadForView] = usePersistedState('selectedLeadForView', null);
+    const [viewModal, setViewModal] = usePersistedState('viewModal', { show: false, title: '', content: '' });
+    const [historyLead, setHistoryLead] = usePersistedState('historyLead', null); 
+    const [isHistoryModalOpen, setIsHistoryModalOpen] = usePersistedState('isHistoryModalOpen', false);
+    const [expandedStage, setExpandedStage] = usePersistedState('expandedStage', null);
+    const [openJourneySections, setOpenJourneySections] = usePersistedState('openJourneySections', { sales: false, operations: false, accounts: false, fulfillment: true });
 
     const [showScrollTop, setShowScrollTop] = useState(false);
     const mainRef = useRef(null);
@@ -454,14 +514,14 @@ export default function Fulfillment() {
     
     const [operationsStaff, setOperationsStaff] = useState([]);
 
-    // CORRECTION: Dynamically get today's date and strip time for accurate day comparisons
+    // Dynamically get today's date and strip time for accurate day comparisons
     const SYSTEM_TODAY = new Date();
     SYSTEM_TODAY.setHours(0, 0, 0, 0);
 
     useEffect(() => {
         const fetchStaffDirectory = async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}/employees`);
+                const response = await fetch(`${API_BASE_URL}/employees`, { cache: 'no-store' });
                 if (response.ok) {
                     const data = await response.json();
                     const ops = data.filter(emp => {
@@ -551,9 +611,6 @@ export default function Fulfillment() {
         const travelDate = lead.travelDate ? new Date(lead.travelDate) : null;
         const returnDate = lead.returnDate ? new Date(lead.returnDate) : null;
 
-        // Push to Fulfillment's Confirmed Bookings queue if Ops explicitly sent it via "Upcoming
-        // Departure" status, OR the lead already carries the "Booking Confirmed" tag from Sales —
-        // that should surface here automatically instead of waiting on a manual Ops handover.
         if (lead.status === 'Upcoming Departure' || lead.customerResponse === 'Booking Confirmed') acc['Confirmed Bookings'].push(lead);
         if (travelDate && travelDate.getMonth() === SYSTEM_TODAY.getMonth() && travelDate.getFullYear() === SYSTEM_TODAY.getFullYear()) acc['Trips For This Month'].push(lead);
         if (travelDate) {
@@ -694,8 +751,6 @@ export default function Fulfillment() {
             }
         });
 
-        // FIX: Ensure all dynamic arrays parsed on load are properly stringified back into JSON 
-        // to prevent 400 Bad Request errors or wiping out Ops data structures.
         const payloadToSave = {
             ...selectedLeadForEdit,
             fulfillmentData: JSON.stringify(fulfillmentData),
@@ -748,7 +803,6 @@ export default function Fulfillment() {
                     <div className="p-4 sm:p-6">
                         <div className="py-5 mb-0  ">
                             <h1 className="text-xl sm:text-3xl font-bold text-white tracking-tight">Fulfillment Dashboard</h1>
-                            {/* <p className="text-slate-400 text-sm sm:text-base mt-1">Manage fulfillment processing and department clearances.</p> */}
                         </div>
 
                         <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
@@ -791,7 +845,7 @@ export default function Fulfillment() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-700/20">
-                                        {isLoading ? <tr><td colSpan="12" className="px-6 py-12 text-center text-slate-500">Querying records...</td></tr> : paginated.length > 0 ? paginated.map(row => (
+                                        {paginated.length > 0 ? paginated.map(row => (
                                             <tr key={row.id} className="hover:bg-slate-800/30 transition-colors">
                                                 {activeTab === 'Trip Completed' && <td className="px-6 py-4 text-xs font-bold text-red-500">{row.reviewStatus || 'Pending'}</td>}
                                                 <td className="px-6 py-4 font-mono font-bold">LMN{row.id}</td>

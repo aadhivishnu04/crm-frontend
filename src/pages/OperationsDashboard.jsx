@@ -913,14 +913,14 @@ export default function OperationsDashboard() {
     const scrollToTop = () => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
     const scrollTabs = (dir) => tabScrollRef.current && tabScrollRef.current.scrollBy({ left: dir * 160, behavior: 'smooth' });
 
-    const getTabStatus = (rawStatus) => {
-        if (['New Requests', 'Move To Operation', 'Customization Required', 'Pending'].includes(rawStatus)) return 'New Requests';
-        // 'Customisation Ready' = already shared back to Sales, but it should still stay
-        // visible in Operations' own "My Jobs" (Follow-Up) as a copy, not disappear.
+const getTabStatus = (rawStatus) => {
+        if (['Jobs', 'Sales Assigned', 'New Requests', 'Move To Operation', 'Customization Required', 'Pending'].includes(rawStatus)) return 'New Requests';
         if (['Ops Assigned', 'Follow-Up', 'Customisation Ready'].includes(rawStatus)) return 'Follow-Up';
         if (['Upcoming Departure', 'Upcoming Bookings'].includes(rawStatus)) return 'Upcoming Bookings';
         if (['Confirmed Bookings'].includes(rawStatus)) return 'Confirmed Bookings';
-        return rawStatus || 'New Requests';
+        
+        // Default any unknown statuses to 'New Requests' so they don't accidentally fall into 'Follow-Up'
+        return 'New Requests';
     };
 
     const expandedLeads = leads.flatMap(item => {

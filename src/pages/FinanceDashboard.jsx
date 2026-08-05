@@ -51,23 +51,32 @@ export default function FinanceDashboard() {
     const mainRef = useRef(null);
     const [showScrollTop, setShowScrollTop] = useState(false);
 
-    // ─── DATA FETCHING ────────────────────────────────────────────────────────
-    const fetchLeads = async () => {
-        setLoading(true);
+    // ─── DATA FETCHING & BACKGROUND SYNC ──────────────────────────────────────
+    const fetchLeads = async (isBackground = false) => {
+        if (!isBackground && leads.length === 0) setLoading(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/leads`);
+            const res = await fetch(`${API_BASE_URL}/leads`, { cache: 'no-store' });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
             setLeads(data);
         } catch (err) {
             console.error("Failed to fetch leads for Finance:", err);
-            setLeads([]);
+            if (!isBackground) setLeads([]);
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => { fetchLeads(); }, []);
+    useEffect(() => { 
+        fetchLeads(); 
+        
+        // Automatic background update every 30 seconds
+        const interval = setInterval(() => {
+            fetchLeads(true);
+        }, 30000);
+        
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         const el = mainRef.current;
@@ -80,6 +89,7 @@ export default function FinanceDashboard() {
     const scrollToTop = () => mainRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
 
     const updateLead = async (id, updatedData) => {
+        // Optimistic UI update
         setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updatedData } : l));
         try {
             await fetch(`${API_BASE_URL}/leads/${id}`, {
@@ -88,7 +98,8 @@ export default function FinanceDashboard() {
                 body: JSON.stringify(updatedData),
             });
             triggerNotification('success', 'Finance record updated successfully!');
-            fetchLeads();
+            // Silently sync the latest data
+            fetchLeads(true);
         } catch (err) {
             triggerNotification('success', 'Finance changes saved locally (simulation).');
         }
@@ -342,9 +353,7 @@ export default function FinanceDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-700/20">
-                                    {isLoading ? (
-                                        <tr><td colSpan="7" className="px-6 py-12 text-center text-slate-500">Querying finance records...</td></tr>
-                                    ) : paginated.length > 0 ? paginated.map((row) => (
+                                    {paginated.length > 0 ? paginated.map((row) => (
                                         <tr key={row.id} className="hover:bg-slate-800/30 transition-colors">
                                             <td className="px-6 py-4 font-mono font-bold text-slate-300">LMN{row.id}</td>
                                             <td className="px-6 py-4 font-bold text-white">{row.customerName || row.profileName || '—'}</td>
