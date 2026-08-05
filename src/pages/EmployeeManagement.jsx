@@ -23,11 +23,22 @@ const StatusDot = ({ status }) => {
 };
 
 const EmployeeManagement = () => {
-    const [employees, setEmployees] = useState([]);
+    // 1. Initialize State with Session Caching to prevent unmount flickering
+    const [employees, setEmployees] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('employeeManagementData');
+            return cached ? JSON.parse(cached) : [];
+        } catch (e) {
+            return [];
+        }
+    });
+    
+    // Only show loading initially if we don't have cached data
+    const [isLoading, setIsLoading] = useState(() => !sessionStorage.getItem('employeeManagementData'));
+    
     const [liveMembers, setLiveMembers] = useState([]); 
     const [searchQuery, setSearchQuery] = useState('');
     const [entriesPerPage, setEntriesPerPage] = useState(10);
-    const [isLoading, setIsLoading] = useState(true);
 
     // --- Configuration Panel Toggle State ---
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -85,24 +96,39 @@ const EmployeeManagement = () => {
 
     // ─── 1. FETCH DATA & LIVE TELEMETRY ───────────────────────────────────────
     useEffect(() => {
-        fetchEmployees();
+        // Initial fetch: If we already loaded cached data, make it silent so the UI doesn't blink
+        const hasCachedData = !!sessionStorage.getItem('employeeManagementData');
+        fetchEmployees(hasCachedData);
         fetchLiveStatus();
 
+        // Set up periodic background polling to refresh data silently (every 30 seconds)
+        const backgroundPoll = setInterval(() => {
+            fetchEmployees(true); // true = silent
+        }, 30000);
+
+        // Keep the existing fast-polling for live active status
         const intervalId = setInterval(fetchLiveStatus, 2000);
-        return () => clearInterval(intervalId);
+        
+        return () => {
+            clearInterval(backgroundPoll);
+            clearInterval(intervalId);
+        };
     }, []);
 
-    const fetchEmployees = async () => {
+    const fetchEmployees = async (isSilent = false) => {
         try {
+            if (!isSilent) setIsLoading(true);
             const response = await fetch(`${API_BASE_URL}/employees`);
             if (response.ok) {
                 const data = await response.json();
                 setEmployees(data);
+                // 2. Save fetched data to sessionStorage so it's instantly available next time
+                sessionStorage.setItem('employeeManagementData', JSON.stringify(data));
             }
         } catch (error) {
             console.error("Failed to fetch employees:", error);
         } finally {
-            setIsLoading(false);
+            if (!isSilent) setIsLoading(false);
         }
     };
 
@@ -239,7 +265,12 @@ const EmployeeManagement = () => {
                     method: 'DELETE'
                 });
                 if (response.ok) {
-                    setEmployees(prevEmployees => prevEmployees.filter(emp => emp.id !== id));
+                    // Update both local state and session storage immediately upon deletion
+                    setEmployees(prevEmployees => {
+                        const updated = prevEmployees.filter(emp => emp.id !== id);
+                        sessionStorage.setItem('employeeManagementData', JSON.stringify(updated));
+                        return updated;
+                    });
                 } else {
                     alert("Failed to delete.");
                 }
@@ -409,7 +440,6 @@ const EmployeeManagement = () => {
             <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-start mb-6">
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Employee List</h1>
-                    {/* <p className="text-slate-300 text-sm sm:text-base mt-1">Manage corporate directory listings and metadata</p> */}
                 </div>
 
                 <div className="flex flex-wrap gap-2 sm:gap-3 w-full md:w-auto">
@@ -708,6 +738,10 @@ const EmployeeManagement = () => {
                                 <input type="text" value={newEmployee.emergencyContact} onChange={(e) => setNewEmployee({ ...newEmployee, emergencyContact: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
                             </div>
                             <div>
+                                <label className="block text-xs font-medium text-slate-300 mb-1.5">Aadhaar Verification Code</label>
+                                <input type="text" value={newEmployee.aadhaarNumber} onChange={(e) => setNewEmployee({ ...newEmployee, aadhaarNumber: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
+                            </div>
+                            <div>
                                 <label className="block text-xs font-medium text-slate-300 mb-1.5">PAN Account Reference</label>
                                 <input type="text" value={newEmployee.panNumber} onChange={(e) => setNewEmployee({ ...newEmployee, panNumber: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
                             </div>
@@ -829,6 +863,10 @@ const EmployeeManagement = () => {
                             <div>
                                 <label className="block text-xs font-medium text-slate-300 mb-1.5">Emergency Contact Number</label>
                                 <input type="text" value={editingEmployee.emergencyContact || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, emergencyContact: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-slate-300 mb-1.5">Aadhaar Verification Code</label>
+                                <input type="text" value={editingEmployee.aadhaarNumber || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, aadhaarNumber: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
                             </div>
                             <div>
                                 <label className="block text-xs font-medium text-slate-300 mb-1.5">PAN Account Reference</label>

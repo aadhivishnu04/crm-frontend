@@ -761,22 +761,25 @@ const Dashboard = () => {
         return eventDate.toDateString() === currentDate.toDateString();
     });
 
+    const allLeadsRef = useRef(allLeads);
+    useEffect(() => { allLeadsRef.current = allLeads; }, [allLeads]);
+
     useEffect(() => {
         const timer = setInterval(() => setTime(new Date()), 1000);
 
         const fetchDashboardData = async () => {
             try {
                 const [statsRes, tasksRes, membersRes, targetsRes, eventsRes, topDestRes, jobsRes, leadsRes, campaignsRes, employeesRes] = await Promise.all([
-                    fetch(`${API_BASE_URL}/stats`),
-                    fetch(`${API_BASE_URL}/tasks?employeeId=${currentUserIdentifier}`),
-                    fetch(`${API_BASE_URL}/members`),
-                    fetch(`${API_BASE_URL}/targets`),
-                    fetch(`${API_BASE_URL}/events?employeeId=${currentUserIdentifier}`), 
-                    fetch(`${API_BASE_URL}/top-destinations`),
-                    fetch(`${API_BASE_URL}/jobs`),  
-                    fetch(`${API_BASE_URL}/leads`), 
-                    fetch(`${API_BASE_URL}/campaigns`),
-                    fetch(`${API_BASE_URL}/employees`)
+                    fetch(`${API_BASE_URL}/stats`, { cache: 'no-store' }),
+                    fetch(`${API_BASE_URL}/tasks?employeeId=${currentUserIdentifier}`, { cache: 'no-store' }),
+                    fetch(`${API_BASE_URL}/members`, { cache: 'no-store' }),
+                    fetch(`${API_BASE_URL}/targets`, { cache: 'no-store' }),
+                    fetch(`${API_BASE_URL}/events?employeeId=${currentUserIdentifier}`, { cache: 'no-store' }),
+                    fetch(`${API_BASE_URL}/top-destinations`, { cache: 'no-store' }),
+                    fetch(`${API_BASE_URL}/jobs`, { cache: 'no-store' }),
+                    fetch(`${API_BASE_URL}/leads`, { cache: 'no-store' }),
+                    fetch(`${API_BASE_URL}/campaigns`, { cache: 'no-store' }),
+                    fetch(`${API_BASE_URL}/employees`, { cache: 'no-store' })
                 ]);
 
                 if (statsRes.ok) setStats(await statsRes.json());
@@ -967,7 +970,7 @@ const Dashboard = () => {
                 if (jobsRes.ok) {
                     const jobsData = await jobsRes.json();
                     if (Array.isArray(jobsData)) {
-                        const closedLeads = allLeads
+                        const closedLeads = allLeadsRef.current
                             .filter(l => l?.status === 'Trip Closed')
                             .map(lead => ({ ...lead, jobId: `LMN${lead.id}`, customerName: lead.customerName || 'N/A' })); 
                         
@@ -990,7 +993,7 @@ const Dashboard = () => {
         fetchDashboardData();
         const intervalId = setInterval(fetchDashboardData, 2000); 
         return () => { clearInterval(intervalId); clearInterval(timer); };
-    }, [allLeads.length]);
+    }, []); // run once on mount — fetchDashboardData's own setInterval already keeps data fresh every 2s
 
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatInput, setChatInput] = useState('');
