@@ -31,7 +31,7 @@ export const MENU_ITEMS = [
 
     // Common for ALL roles
     {
-        path: '/home',
+         path: '/dashboard',
         label: 'Home',
         icon: LayoutDashboard,
         roles: [ROLES.ADMIN, ROLES.DIRECTOR, ROLES.SALES, ROLES.OPERATION, ROLES.ACCOUNTS, ROLES.MARKETING]
