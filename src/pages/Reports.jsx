@@ -566,9 +566,9 @@ const Reports = () => {
             )}
 
             {/* HEADER */}
-            <div className="mb-8">
+            <div className="mb-5">
                 <h1 className="text-2xl font-bold text-white tracking-tight">Reports Panel</h1>
-                <p className="text-slate-200 text-base mt-1">Review live performance analytics metrics and logs directly from database streams.</p>
+                {/* <p className="text-slate-200 text-base mt-1">Review live performance analytics metrics and logs directly from database streams.</p> */}
             </div>
 
             {error && (
@@ -610,7 +610,7 @@ const Reports = () => {
                 <div className="flex justify-between items-center p-5 border-b border-slate-700/20">
                     <div>
                         <h2 className="text-lg font-bold text-white">View {activeTab}</h2>
-                        <p className="text-sm text-slate-400 mt-0.5">Manage and output pipeline reports parameters</p>
+                        {/* <p className="text-sm text-slate-400 mt-0.5">Manage and output pipeline reports parameters</p> */}
                     </div>
                     <div className="flex items-center gap-2.5">
                         <button

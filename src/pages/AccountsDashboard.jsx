@@ -1709,11 +1709,11 @@ const confirmedBookings = leads.filter(l =>
             {!selectedLeadForInspect && !selectedLeadForView && !selectedPaymentReq ? (
                 <div className="p-4 sm:p-6">
 
-                    <div className="py-12 mb-0 sm:mb-8">
+                    <div className="py-5 mb-0  ">
                         <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
                             <Wallet className="text-cyan-500" size={28} /> Accounts Dashboard
                         </h1>
-                        <p className="text-slate-400 text-sm sm:text-base mt-1">Manage vendor payment requests, client dues, and finalized trip financials.</p>
+                        {/* <p className="text-slate-400 text-sm sm:text-base mt-1">Manage vendor payment requests, client dues, and finalized trip financials.</p> */}
                     </div>
 
                     <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">

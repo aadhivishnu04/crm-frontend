@@ -266,8 +266,9 @@ import React, { useState, useEffect ,useRef} from 'react';
             return null;
         }
 
-        // Fallback — show whatever was actually logged rather than dropping it
-        return { title: action, parts: [splitLabelValue(note)].filter(Boolean) };
+        // Anything else (housekeeping edits, status touch-ups, etc.) isn't part
+        // of the curated Full Journey — skip it instead of cluttering the view.
+        return null;
     };
 
     // Builds the full, oldest → newest chronological journey for one lead.
@@ -285,12 +286,22 @@ import React, { useState, useEffect ,useRef} from 'react';
     const buildLeadTimeline = (lead) => {
         if (!lead) return [];
 
+        // Parses any raw date value into a sortable timestamp, or null if it
+        // can't be trusted — used to merge explicit + synthesized entries into
+        // one real chronological sequence instead of two stacked blocks.
+        const toTs = (val) => {
+            if (!val) return null;
+            const t = new Date(val).getTime();
+            return isNaN(t) ? null : t;
+        };
+
         // 1) Sales-side explicit log — oldest first, classified into mockup titles
         const explicit = safeParseHistory(lead.history).slice().reverse().map(h => {
             const classified = classifySalesEntry(h, lead);
             if (!classified) return null;
             return {
-                date: h.date,
+                date: fmtDate(h.date) || h.date || 'Recorded',
+                _ts: toTs(h.date),
                 stage: 'sales',
                 title: classified.title,
                 parts: (classified.parts || []).filter(p => p && (p.value || p.label)),
@@ -301,6 +312,7 @@ import React, { useState, useEffect ,useRef} from 'react';
         const synthesized = [];
         const push = (stage, title, dateVal, parts) => synthesized.push({
             date: fmtDate(dateVal) || 'Recorded',
+            _ts: toTs(dateVal),
             stage, title,
             parts: (parts || []).filter(p => p && (p.value || p.label)),
             _explicit: false,
@@ -388,7 +400,14 @@ import React, { useState, useEffect ,useRef} from 'react';
             ]);
         }
 
-        return [...explicit, ...synthesized];
+        // Merge into one true chronological story. Entries with a real
+        // timestamp are ordered by when they actually happened; entries
+        // without one (rare) keep their natural pipeline position via a
+        // stable sort, so nothing jumps around unpredictably.
+        return [...explicit, ...synthesized].sort((a, b) => {
+            if (a._ts != null && b._ts != null) return a._ts - b._ts;
+            return 0; // unknown timestamps: preserve original (pipeline) order
+        });
     };
 
     // Curated per-stage field maps so the "Complete Record" section can show
@@ -625,7 +644,7 @@ import React, { useState, useEffect ,useRef} from 'react';
                         <h1 className="text-2xl sm:text-3xl font-bold text-white flex items-center gap-2 tracking-tight">
                             <Users className="text-emerald-400" /> Leads Manager
                         </h1>
-                        <p className="text-sm sm:text-base text-slate-400 mt-1 sm:mt-1.5">View, search, edit, and manage all your customer travel inquiries.</p>
+                        {/* <p className="text-sm sm:text-base text-slate-400 mt-1 sm:mt-1.5">View, search, edit, and manage all your customer travel inquiries.</p> */}
                     </div>
                     <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 w-full md:w-auto mt-2 md:mt-0">
                         <div className="w-full md:w-72 lg:w-80 relative">
@@ -732,12 +751,6 @@ import React, { useState, useEffect ,useRef} from 'react';
                                                             — {lead.leadMessage}
                                                         </p>
                                                     ) : <p>— No message</p>}
-
-                                                    {lead.notes ? (
-                                                        <p className="text-[11px] sm:text-xs text-emerald-500/80 truncate" title={lead.notes}>
-                                                            — {lead.notes}
-                                                        </p>
-                                                    ) : <p className="text-[11px] sm:text-xs">— No notes</p>}
                                                 </div>
                                             </td>
                                             

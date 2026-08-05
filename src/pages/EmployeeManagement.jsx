@@ -409,7 +409,7 @@ const EmployeeManagement = () => {
             <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-start mb-6">
                 <div>
                     <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Employee List</h1>
-                    <p className="text-slate-300 text-sm sm:text-base mt-1">Manage corporate directory listings and metadata</p>
+                    {/* <p className="text-slate-300 text-sm sm:text-base mt-1">Manage corporate directory listings and metadata</p> */}
                 </div>
 
                 <div className="flex flex-wrap gap-2 sm:gap-3 w-full md:w-auto">

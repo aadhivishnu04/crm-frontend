@@ -1779,9 +1779,9 @@ export default function OperationsDashboard() {
             {!selectedLeadForEdit ? (
                 <>
                     <div className="p-4 sm:p-6">
-                        <div className="py-12 mb-0 sm:mb-8">
-                            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Operations Dashboard</h1>
-                            <p className="text-slate-400 text-sm sm:text-base mt-1">Manage, allocate, and process active operational pipeline handovers.</p>
+                        <div className="py-5  ">
+                            <h1 className="text-xl sm:text-3xl font-bold text-white tracking-tight">Operations Dashboard</h1>
+                            {/* <p className="text-slate-400 text-sm sm:text-base mt-1">Manage, allocate, and process active operational pipeline handovers.</p> */}
                         </div>
 
                         <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
