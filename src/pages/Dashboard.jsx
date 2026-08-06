@@ -318,7 +318,9 @@ const Dashboard = () => {
 
     useEffect(() => {
         fetchLeaves();
-        const leaveTimer = setInterval(fetchLeaves, 5000);
+        // 20s instead of 5s: this was firing independently of the main
+        // dashboard poller below and adding extra concurrent DB load.
+        const leaveTimer = setInterval(fetchLeaves, 20000);
         return () => clearInterval(leaveTimer);
     }, [currentUserIdentifier, isAdmin]);
 
@@ -764,10 +766,17 @@ const Dashboard = () => {
     const allLeadsRef = useRef(allLeads);
     useEffect(() => { allLeadsRef.current = allLeads; }, [allLeads]);
 
+    const isFetchingDashboardRef = useRef(false);
     useEffect(() => {
         const timer = setInterval(() => setTime(new Date()), 1000);
 
         const fetchDashboardData = async () => {
+            // Guard against overlapping runs: if a previous cycle's queries
+            // (leads/campaigns/employees/stats) are still in flight when the
+            // next tick fires, skip this tick instead of piling more
+            // concurrent requests onto an already-saturated DB pool.
+            if (isFetchingDashboardRef.current) return;
+            isFetchingDashboardRef.current = true;
             try {
                 const [statsRes, tasksRes, membersRes, targetsRes, eventsRes, topDestRes, jobsRes, leadsRes, campaignsRes, employeesRes] = await Promise.all([
                     fetch(`${API_BASE_URL}/stats`, { cache: 'no-store' }),
@@ -987,13 +996,23 @@ const Dashboard = () => {
                     }
                 }
 
-            } catch (err) { console.error("Telemetry context syncing failure:", err); }
+            } catch (err) {
+                console.error("Telemetry context syncing failure:", err);
+            } finally {
+                isFetchingDashboardRef.current = false;
+            }
         };
 
         fetchDashboardData();
-        const intervalId = setInterval(fetchDashboardData, 2000); 
+        // 15s instead of 2s: this fires 10 concurrent requests per tick
+        // (stats/tasks/members/targets/events/top-destinations/jobs/leads/
+        // campaigns/employees) against a 9-connection DB pool. At 2s,
+        // successive ticks routinely overlapped with still-running queries
+        // from the previous tick and starved the pool. Combined with the
+        // in-flight guard above, this keeps requests from piling up.
+        const intervalId = setInterval(fetchDashboardData, 15000);
         return () => { clearInterval(intervalId); clearInterval(timer); };
-    }, []); // run once on mount — fetchDashboardData's own setInterval already keeps data fresh every 2s
+    }, []); // run once on mount — fetchDashboardData's own setInterval already keeps data fresh every 15s
 
     const [isChatOpen, setIsChatOpen] = useState(false);
     const [chatInput, setChatInput] = useState('');

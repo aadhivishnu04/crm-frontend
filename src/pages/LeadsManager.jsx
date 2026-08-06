@@ -271,6 +271,61 @@ import React, { useState, useEffect ,useRef} from 'react';
         return null;
     };
 
+    // Reads the *real* accounts data that AccountsDashboard actually saves onto
+    // the lead record. AccountsDashboard never writes flat fields like
+    // amountReceived / paymentMode / transactionId onto the lead — it stores a
+    // paymentHistoryDetails[] transaction log (customer side) and a
+    // paymentRequests[] log (vendor side), and computes totals like
+    // "totalReceived" on the fly from those arrays. Without this, any code that
+    // reads lead.amountReceived etc. directly (as this file used to) always
+    // reads undefined, even though AccountsDashboard clearly shows payments.
+    // This derives the same flat summary fields from those arrays, plus a
+    // couple of naming fallbacks AccountsDashboard itself uses
+    // (gstInclusion/tcsInclusion, operationExecutive) but this file didn't.
+    const deriveAccountsData = (lead) => {
+        if (!lead) return {};
+
+        const txns = safeParseArr(lead.paymentHistoryDetails);
+        const verifiedTxns = txns.filter(t => t.verified);
+        const countedTxns = verifiedTxns.length ? verifiedTxns : txns;
+
+        const amountReceived = countedTxns.reduce(
+            (sum, t) => sum + (Number(String(t.amount).replace(/[^0-9.-]+/g, '')) || 0), 0
+        );
+        const lastTxn = countedTxns[countedTxns.length - 1];
+
+        const totalPackageCost = lead.totalPackageCost || lead.packageCost || lead.budget || lead.amount;
+        const packageCostNum = Number(String(totalPackageCost || '0').replace(/[^0-9.-]+/g, '')) || 0;
+        const balancePending = (lead.balancePending !== undefined && lead.balancePending !== null && lead.balancePending !== '')
+            ? lead.balancePending
+            : (packageCostNum ? Math.max(packageCostNum - amountReceived, 0) : undefined);
+
+        const vendorReqs = lead.paymentRequests || [];
+        const vendorPaid = vendorReqs.filter(r => r.status === 'Paid' || r.paymentStatus === 'Paid' || r.outAmountPaid);
+        const vendorPaymentSummary = vendorReqs.length
+            ? `${vendorPaid.length}/${vendorReqs.length} vendor payments completed`
+            : undefined;
+
+        const derivedAmountReceived = lead.amountReceived || (amountReceived || undefined);
+
+        return {
+            amountReceived: derivedAmountReceived,
+            paymentMode: lead.paymentMode || lastTxn?.mode,
+            transactionId: lead.transactionId || lastTxn?.transactionId,
+            nextPaymentDate: lead.nextPaymentDate,
+            balancePending,
+            totalPackageCost,
+            operationsExecutive: lead.operationsExecutive || lead.operationExecutive || lead.assignedTo,
+            gstStatus: lead.gstStatus || lead.gstInclusion,
+            tcsStatus: lead.tcsStatus || lead.tcsInclusion,
+            confirmedDate: lead.confirmedDate || lead.bookingDate,
+            confirmedDestination: lead.confirmedDestination || lead.destination,
+            confirmedNoOfPax: lead.confirmedNoOfPax || lead.noOfPax || lead.pax,
+            vendorPaymentSummary,
+            paymentStatus: lead.paymentStatus || (packageCostNum && derivedAmountReceived >= packageCostNum && packageCostNum ? 'Fully Paid' : (derivedAmountReceived ? 'Partially Paid' : undefined)),
+        };
+    };
+
     // Builds the full, oldest → newest chronological journey for one lead.
     //
     // Sales-side granularity (assign / follow-up / outcome / readymade / etc.)
@@ -368,17 +423,40 @@ import React, { useState, useEffect ,useRef} from 'react';
             push('accounts', 'Moved to All Confirmation Boards', lead.confirmedDate, []);
         }
 
-        // 6) Accounts — payment stages
-        if (lead.amountReceived || lead.paymentStatus) {
-            push('accounts', 'Customer Payment', lead.nextPaymentDate || lead.confirmedDate, [
-                { label: 'Payment Stage', value: lead.paymentMode ? `${lead.paymentMode} • ₹${lead.amountReceived || 0} received` : `₹${lead.amountReceived || 0} received` }
+        // 6) Accounts — payment stages. AccountsDashboard saves real payment
+        // data into paymentHistoryDetails[] (customer) / paymentRequests[]
+        // (vendor) rather than flat fields, so read those directly here instead
+        // of the (usually empty) lead.amountReceived / lead.paymentMode etc.
+        const acct = deriveAccountsData(lead);
+        const custTxns = safeParseArr(lead.paymentHistoryDetails);
+        if (custTxns.length) {
+            custTxns.forEach(t => {
+                push('accounts', 'Customer Payment', t.date, [
+                    { label: 'Service', value: t.service },
+                    { label: 'Payment', value: t.mode ? `${t.mode} • ₹${t.amount || 0}${t.transactionId ? ` (${t.transactionId})` : ''}` : `₹${t.amount || 0} received` },
+                    { label: 'Status', value: t.verified ? 'Verified' : 'Pending Verification' },
+                ]);
+            });
+        } else if (acct.amountReceived || acct.paymentStatus) {
+            push('accounts', 'Customer Payment', acct.nextPaymentDate || acct.confirmedDate, [
+                { label: 'Payment Stage', value: acct.paymentMode ? `${acct.paymentMode} • ₹${acct.amountReceived || 0} received` : `₹${acct.amountReceived || 0} received` }
             ]);
         }
-        if (lead.paymentStatus === 'Fully Paid' || (lead.balancePending !== undefined && Number(lead.balancePending) === 0 && lead.amountReceived)) {
-            push('accounts', 'Customer Payment', lead.fullyPaidDate || lead.nextPaymentDate, [
+        if (acct.paymentStatus === 'Fully Paid' || (acct.balancePending !== undefined && Number(acct.balancePending) === 0 && acct.amountReceived)) {
+            push('accounts', 'Customer Payment', lead.fullyPaidDate || acct.nextPaymentDate, [
                 { label: 'Payment Stage', value: 'Fully Paid' }
             ]);
         }
+        // Vendor-side payments (Accounts' "Vendor Payment" tab) — one row per
+        // vendor request that's actually been paid out.
+        (lead.paymentRequests || []).forEach(req => {
+            if (req.status === 'Paid' || req.paymentStatus === 'Paid' || req.outAmountPaid) {
+                push('accounts', 'Vendor Payment', req.paymentDueDate, [
+                    { label: 'Vendor', value: req.outProviderName || req.providerName || req.service },
+                    { label: 'Paid', value: req.outAmountPaid ? `₹${req.outAmountPaid}${req.outTransactionId ? ` (${req.outTransactionId})` : ''}` : 'Paid' },
+                ]);
+            }
+        });
 
         // 7) Fulfillment — briefing, vendor payment, travel ready, trip completed
         if (lead.briefingDateVal || lead.briefedByVal) {
@@ -430,6 +508,7 @@ import React, { useState, useEffect ,useRef} from 'react';
             ['balancePending', 'Balance Pending'], ['nextPaymentDate', 'Next Payment Date'], ['paymentMode', 'Payment Mode'],
             ['transactionId', 'Transaction ID'], ['gstStatus', 'GST Status'], ['tcsStatus', 'TCS Status'], ['confirmedDate', 'Confirmed Date'],
             ['confirmedDestination', 'Confirmed Destination'], ['confirmedNoOfPax', 'Confirmed Pax'],
+            ['vendorPaymentSummary', 'Vendor Payments'],
         ],
         fulfillment: [
             ['briefedByVal', 'Briefed By'], ['briefingDateVal', 'Briefing Date'], ['briefedMethodVal', 'Briefing Method'],
@@ -1026,6 +1105,11 @@ import React, { useState, useEffect ,useRef} from 'react';
                         const createdEntry = rawHistory.find(h => /^Lead Created$/i.test(h.action || ''));
                         const leadCreated = fmtDate(historyLead.createdAt) || createdEntry?.date || null;
                         const leadUpdated = fmtDate(historyLead.updatedAt) || rawHistory[0]?.date || null;
+                        // Merge in the derived accounts summary (real payment data lives
+                        // in paymentHistoryDetails[]/paymentRequests[], not flat fields —
+                        // see deriveAccountsData) so "Complete Record by Stage → Accounts"
+                        // shows actual figures instead of reading everything as empty.
+                        const enrichedHistoryLead = { ...historyLead, ...deriveAccountsData(historyLead) };
                         return (
                             <div className="space-y-6">
                                 {/* Current stage banner */}
@@ -1104,7 +1188,7 @@ import React, { useState, useEffect ,useRef} from 'react';
                                         {STAGE_CONFIG.filter(s => s.key !== 'lead').map(stage => {
                                             const fields = STAGE_FIELD_MAPS[stage.key] || [];
                                             const populated = fields.filter(([f]) => {
-                                                const v = historyLead[f];
+                                                const v = enrichedHistoryLead[f];
                                                 return v !== undefined && v !== null && v !== '' && v !== false;
                                             });
                                             const hasData = populated.length > 0;
@@ -1134,7 +1218,7 @@ import React, { useState, useEffect ,useRef} from 'react';
                                                             {populated.map(([field, label]) => (
                                                                 <div key={field}>
                                                                     <p className="text-[10px] text-slate-500 uppercase font-semibold tracking-wider">{label}</p>
-                                                                    <p className="text-sm text-slate-200 break-words">{String(historyLead[field])}</p>
+                                                                    <p className="text-sm text-slate-200 break-words">{String(enrichedHistoryLead[field])}</p>
                                                                 </div>
                                                             ))}
                                                         </div>
