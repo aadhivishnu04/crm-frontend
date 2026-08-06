@@ -823,6 +823,7 @@ export default function OperationsDashboard() {
 
     const [leadToComplete, setLeadToComplete] = useState(null);
     const [completeForm, setCompleteForm] = useState({ packagePreparedFor: '', packageCost: '', operationNotes: '' });
+    const [manageMenuRow, setManageMenuRow] = useState(null); // row whose Re-assign/Back to Jobs choice modal is open
 
 
     // Recording global state for Main Note Logger
@@ -1984,8 +1985,7 @@ export default function OperationsDashboard() {
                                                                 <button type="button" onClick={() => { setHistoryLead(row); setExpandedStage(null); setOpenJourneySections({ sales: false, operations: true, accounts: false, fulfillment: false }); setIsHistoryModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-purple-400 hover:bg-purple-900/30 rounded-md transition-colors flex flex-col items-center" title="View History"><History size={16} /><span className="text-[10px]">History</span></button>
                                                                 <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 hover:bg-blue-900/30 rounded-md transition-colors flex flex-col items-center" title="View"><Eye size={16} /><span className="text-[10px]">View</span></button>
                                                                 <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 hover:bg-yellow-900/20 rounded-md transition-colors flex flex-col items-center" title="Edit"><Pencil size={16} /><span className="text-[10px]">Edit</span></button>
-                                                                <button type="button" onClick={() => handleOpenAssignModal(row)} className="p-1.5 text-slate-400 hover:text-purple-400 hover:bg-purple-900/20 rounded-md transition-colors flex flex-col items-center" title="Re-assign"><Repeat size={16} /><span className="text-[10px]">Re-assign</span></button>
-                                                                <button type="button" onClick={() => handleSendBackToJobs(row)} className="p-1.5 text-slate-400 hover:text-orange-400 hover:bg-orange-900/20 rounded-md transition-colors flex flex-col items-center" title="Send back to New Requests (Jobs)"><Undo2 size={16} /><span className="text-[10px]">Back to Jobs</span></button>
+                                                                <button type="button" onClick={() => setManageMenuRow(row)} className="p-1.5 text-slate-400 hover:text-purple-400 hover:bg-purple-900/20 rounded-md transition-colors flex flex-col items-center" title="Re-assign / Back to Jobs"><Repeat size={16} /><span className="text-[10px]">Manage</span></button>
                                                                 <button type="button" onClick={() => handleOpenCompleteModal(row)} className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-900/20 rounded-md transition-colors flex flex-col items-center" title="Complete & Send to Sales"><Send size={16} /><span className="text-[10px]">To Sales</span></button>
                                                             </div>
                                                         </td>
@@ -2112,8 +2112,7 @@ export default function OperationsDashboard() {
                                                         <button type="button" onClick={() => { setHistoryLead(row); setExpandedStage(null); setOpenJourneySections({ sales: false, operations: true, accounts: false, fulfillment: false }); setIsHistoryModalOpen(true); }} className="p-1.5 text-slate-400 hover:text-purple-400 bg-slate-800 rounded-md border border-slate-700" title="View History"><History size={15} /></button>
                                                         <button type="button" onClick={() => setSelectedLeadForView(row)} className="p-1.5 text-slate-400 hover:text-blue-300 bg-slate-800 rounded-md border border-slate-700" title="View"><Eye size={15} /></button>
                                                         <button type="button" onClick={() => handleEditClick(row)} className="p-1.5 text-slate-400 hover:text-yellow-400 bg-slate-800 rounded-md border border-slate-700" title="Edit"><Pencil size={15} /></button>
-                                                        <button type="button" onClick={() => handleOpenAssignModal(row)} className="p-1.5 text-slate-400 hover:text-purple-400 bg-slate-800 rounded-md border border-slate-700" title="Re-assign"><Repeat size={15} /></button>
-                                                        <button type="button" onClick={() => handleSendBackToJobs(row)} className="p-1.5 text-slate-400 hover:text-orange-400 bg-slate-800 rounded-md border border-slate-700" title="Send back to New Requests (Jobs)"><Undo2 size={15} /></button>
+                                                        <button type="button" onClick={() => setManageMenuRow(row)} className="p-1.5 text-slate-400 hover:text-purple-400 bg-slate-800 rounded-md border border-slate-700" title="Re-assign / Back to Jobs"><Repeat size={15} /></button>
                                                         <button type="button" onClick={() => handleOpenCompleteModal(row)} className="p-1.5 text-slate-400 hover:text-emerald-400 bg-slate-800 rounded-md border border-slate-700" title="Complete & Send to Sales"><Send size={15} /></button>
                                                     </>
                                                 ) : (
@@ -3647,6 +3646,28 @@ export default function OperationsDashboard() {
             )}
 
             {/* ─── ASSIGN MODAL ────────────────────────────────────────────────────── */}
+            {manageMenuRow && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[150] p-4" onClick={() => setManageMenuRow(null)}>
+                    <div onClick={(e) => e.stopPropagation()} className="bg-[#1e293b] border border-slate-700/60 rounded-xl shadow-2xl w-full max-w-sm relative">
+                        <div className="px-6 pt-5 pb-2">
+                            <button type="button" onClick={() => setManageMenuRow(null)} className="absolute top-4 right-4 text-slate-400 border-none bg-transparent cursor-pointer hover:text-white transition-colors p-1.5 hover:bg-slate-800 rounded-lg">
+                                <X size={20} />
+                            </button>
+                            <h2 className="text-lg font-bold text-white mb-1 tracking-tight pr-6">Manage Job</h2>
+                            <p className="text-xs text-slate-400 mb-4">LMN{manageMenuRow.id} — {manageMenuRow.destination || manageMenuRow.customerName || ''}</p>
+                        </div>
+                        <div className="px-6 pb-6 space-y-2.5">
+                            <button type="button" onClick={() => { const row = manageMenuRow; setManageMenuRow(null); handleOpenAssignModal(row); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 font-semibold transition-colors">
+                                <Repeat size={18} className="text-purple-400" /> Re-assign
+                            </button>
+                            <button type="button" onClick={() => { const row = manageMenuRow; setManageMenuRow(null); handleSendBackToJobs(row); }} className="w-full flex items-center gap-3 px-4 py-3 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-slate-200 font-semibold transition-colors">
+                                <Undo2 size={18} className="text-orange-400" /> Back to Jobs
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {isAssignModalOpen && selectedLeadForAssign && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[150] p-4">
                     <div className="bg-[#1e293b] border border-slate-700/60 rounded-xl shadow-2xl w-full max-w-md relative flex flex-col max-h-[90vh]">
