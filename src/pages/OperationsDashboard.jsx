@@ -11,7 +11,7 @@ import {
 import { getCurrentUser } from '../utils/auth';
 
 // ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend-l87w.onrender.com/api";
+const API_BASE_URL = "https://crm-backend3-1y9k.onrender.com/api";
 
 const INDIAN_DESTINATION_KEYWORDS = [
     'india', 'chennai', 'mumbai', 'delhi', 'new delhi', 'bangalore', 'bengaluru',
@@ -914,7 +914,11 @@ export default function OperationsDashboard() {
     const scrollTabs = (dir) => tabScrollRef.current && tabScrollRef.current.scrollBy({ left: dir * 160, behavior: 'smooth' });
 
     const getTabStatus = (rawStatus) => {
-        if (['New Requests', 'Move To Operation', 'Customization Required', 'Pending'].includes(rawStatus)) return 'New Requests';
+        // 'Jobs' / 'Sales Assigned' are Sales-side statuses for leads that haven't been handed
+        // over to Operations yet. They must never fall through to the default branch below (which
+        // would otherwise land them in "My Jobs" / Follow-Up for admins) — treat them the same as
+        // New Requests so they only ever show in the Jobs tab until Sales actually hands them over.
+        if (['New Requests', 'Move To Operation', 'Customization Required', 'Pending', 'Jobs', 'Sales Assigned'].includes(rawStatus)) return 'New Requests';
         // 'Customisation Ready' = already shared back to Sales, but it should still stay
         // visible in Operations' own "My Jobs" (Follow-Up) as a copy, not disappear.
         if (['Ops Assigned', 'Follow-Up', 'Customisation Ready'].includes(rawStatus)) return 'Follow-Up';
@@ -923,7 +927,13 @@ export default function OperationsDashboard() {
         return rawStatus || 'New Requests';
     };
 
-    const expandedLeads = leads.flatMap(item => {
+    const expandedLeads = leads
+        // A lead only belongs in Operations once Sales has actually handed it over. Raw 'Jobs'
+        // (brand new, nobody assigned) and 'Sales Assigned' (assigned to a sales rep, but still
+        // sitting with Sales) leads haven't reached Operations yet — they must not appear in ANY
+        // Operations tab (not even "Jobs"/New Requests), so they're excluded before anything else.
+        .filter(item => item.status !== 'Jobs' && item.status !== 'Sales Assigned')
+        .flatMap(item => {
         let parsedRequests = [];
         if (item.customisationRequests) {
             try { 
@@ -944,7 +954,13 @@ export default function OperationsDashboard() {
         if (parsedRequests && parsedRequests.length > 0) {
             return parsedRequests.map((req, index) => {
                 let rawRowStatus = (req.status && req.status !== 'Pending') ? req.status : 'Pending';
-                const isAssigned = !!(req.assignedTo || item.operationExecutive);
+                // For leads with a single destination, the lead-level operationExecutive IS that
+                // destination's assignment, so it's a safe fallback. But for leads with MULTIPLE
+                // destinations, falling back to the shared lead-level field made every other
+                // still-unassigned destination look assigned the moment ANY one of them got
+                // assigned. Each destination's own req.assignedTo is the only source of truth here.
+                const opsFallback = parsedRequests.length > 1 ? '' : item.operationExecutive;
+                const isAssigned = !!(req.assignedTo || opsFallback);
                 return {
                     ...item,
                     uniqueKey: `${item.id}-${index}`,
@@ -955,7 +971,7 @@ export default function OperationsDashboard() {
                     customisationType: req.customisationType || item.customisationType,
                     requirements: req.requirements || item.requirements,
                     turnaroundTime: req.turnaroundTime || req.requiredByDate || item.turnaroundTime,
-                    assignedOps: req.assignedTo || item.operationExecutive || '',
+                    assignedOps: req.assignedTo || opsFallback || '',
                     // Per-request Ops tracking fields. Legacy leads only ever had these saved at the
                     // lead level (one value shared for the whole lead), so we can't know what each
                     // destination's real individual value was. Rather than showing that one old value
@@ -1035,10 +1051,16 @@ export default function OperationsDashboard() {
 
         const allProcessed = parsedRequests.every(r => r.status === 'Follow-Up' || r.status === 'Customisation Ready' || r.status === 'Confirmed Bookings');
 
+        // Only stamp the lead-level operationExecutive/opsPreparedBy once EVERY destination has
+        // been assigned. Setting it right away on a multi-destination lead was the cause of the
+        // "assigning one destination assigns both" bug — every other still-unassigned destination
+        // fell back to this shared field and displayed as assigned too. A single-destination lead
+        // (parsedRequests.length <= 1) has nothing else to wait on, so it can update immediately.
+        const shouldStampLeadLevel = parsedRequests.length <= 1 || allProcessed;
+
         const updatedData = {
             customisationRequests: JSON.stringify(parsedRequests),
-            operationExecutive: finalAssignee,
-            opsPreparedBy: finalAssignee,
+            ...(shouldStampLeadLevel ? { operationExecutive: finalAssignee, opsPreparedBy: finalAssignee } : {}),
             status: allProcessed ? targetStatus : originalLead.status
         };
 
@@ -1779,9 +1801,9 @@ export default function OperationsDashboard() {
             {!selectedLeadForEdit ? (
                 <>
                     <div className="p-4 sm:p-6">
-                        <div className="py-12 mb-0 sm:mb-8">
-                            <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">Operations Dashboard</h1>
-                            <p className="text-slate-400 text-sm sm:text-base mt-1">Manage, allocate, and process active operational pipeline handovers.</p>
+                        <div className="py-5  ">
+                            <h1 className="text-xl sm:text-3xl font-bold text-white tracking-tight">Operations Dashboard</h1>
+                            {/* <p className="text-slate-400 text-sm sm:text-base mt-1">Manage, allocate, and process active operational pipeline handovers.</p> */}
                         </div>
 
                         <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

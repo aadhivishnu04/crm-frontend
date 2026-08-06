@@ -22,7 +22,7 @@ const getDefaultTripType = (lead) => {
 };
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend-l87w.onrender.com/api";
+const API_BASE_URL = "https://crm-backend3-1y9k.onrender.com/api";
 
 // ─── NEW LEAD FORM INITIAL STATE ─────────────────────────────────────────────
 const initialNewLeadState = {
@@ -89,13 +89,6 @@ const formatDateTime = (dateStr) => {
 };
 
 // ─── LEAD JOURNEY / FULL HISTORY ENGINE ───────────────────────────────────────
-// Every lead is a single record enriched as it moves Sales → Operations →
-// Accounts → Fulfillment. This engine merges the explicit `history` log
-// (written by Sales' own actions — assign, follow-up, outcome, etc.) with a
-// set of granular, auto-detected milestones for everything that happens
-// further down the pipeline, so "Lead Journey" reads as one continuous,
-// chronological story exactly like the Lead History mockup.
-
 const safeParseHistory = (raw) => {
     if (!raw) return [];
     if (Array.isArray(raw)) return raw;
@@ -115,9 +108,6 @@ const fmtHistoryDate = (val) => {
     return d.toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
 };
 
-// Splits a "Label: Value" style string into { label, value } so the label can
-// render in plain bold text and the dynamic value can render highlighted,
-// same as the DD_Month_YYYY mockups (black label, red dynamic value).
 const splitLabelValue = (text) => {
     if (!text) return null;
     const idx = text.indexOf(':');
@@ -125,8 +115,6 @@ const splitLabelValue = (text) => {
     return { label: text.slice(0, idx).trim(), value: text.slice(idx + 1).trim() };
 };
 
-// Stage config used for the "Complete Record by Stage" accordion below the
-// timeline.
 const STAGE_CONFIG = [
     { key: 'lead', label: 'Lead Captured', color: 'text-teal-400 bg-teal-500/10 border-teal-500/20', icon: Target },
     { key: 'sales', label: 'Sales', color: 'text-white-400 bg-purple-500/10 border-purple-500/20', icon: Briefcase },
@@ -135,11 +123,6 @@ const STAGE_CONFIG = [
     { key: 'fulfillment', label: 'Fulfillment', color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20', icon: PackageCheck },
 ];
 
-// Classifies one raw `history` log entry into the exact mockup step titles:
-// Lead Assigned, Lead Response Status, Lead Response Status - Requirement
-// Collected, Readymade Shared - Followup, Sales Followup. Returns null for
-// entries that don't correspond to a Lead Journey row (e.g. "Lead Created",
-// which feeds the header's "Lead Created" date instead).
 const classifySalesEntry = (h, lead) => {
     const action = h.action || '';
     const note = h.note || '';
@@ -147,13 +130,11 @@ const classifySalesEntry = (h, lead) => {
     if (/^Lead Created$/i.test(action)) return null;
     if (/^Auto-Moved to Recycle Bin$/i.test(action) || /^Archived Cycle:/i.test(action)) return null;
 
-    // Lead Assigned
     const assignMatch = action.match(/^(?:Recovered & )?Assigned to (.+)$/i);
     if (assignMatch) {
         return { title: 'Lead Assigned', parts: [{ label: 'Assigned by', value: assignMatch[1].trim() }] };
     }
 
-    // Follow-up (before Requirement Collected) → Lead Response Status
     const fu = action.match(/^Follow-up:\s*(.*)$/i);
     if (fu) {
         return {
@@ -165,9 +146,6 @@ const classifySalesEntry = (h, lead) => {
         };
     }
 
-    // Outcome Update (after Requirement Collected) → Readymade Shared -
-    // Followup / Sales Followup, both rendered as "Sales Track -
-    // Customer Response | Next Followup: Date"
     const ou = action.match(/^Outcome Update:\s*(.*)$/i);
     if (ou) {
         const title = /readymade/i.test(note) ? 'Readymade Shared - Followup' : 'Sales Followup';
@@ -180,9 +158,6 @@ const classifySalesEntry = (h, lead) => {
         };
     }
 
-    // Lead Profile Updated → only surfaced when it captures Requirement
-    // Collected (readymade / customisation), matching the mockup's
-    // "Lead Response Status - Requirement Collected" rows
     if (/^Lead Profile Updated$/i.test(action)) {
         const stageMatch = note.match(/Stage:\s*([^|]+)/i);
         const stage = stageMatch ? stageMatch[1].trim() : '';
@@ -200,26 +175,12 @@ const classifySalesEntry = (h, lead) => {
         return null;
     }
 
-    // Fallback — show whatever was actually logged rather than dropping it
     return { title: action, parts: [splitLabelValue(note)].filter(Boolean) };
 };
 
-// Builds the full, oldest → newest chronological journey for one lead/job.
-//
-// Sales-side granularity (assign / follow-up / outcome / readymade / etc.)
-// already comes for free from the explicit `history` log written by
-// appendHistory() — it is stored newest-first, so we simply reverse it to
-// read oldest-first, exactly like the mockup, then classify each entry into
-// the exact mockup step title.
-//
-// Everything after "Sent To Operations" is synthesized from the fields each
-// downstream dashboard (Operations/Accounts/Fulfillment) already saves onto
-// the lead record, in pipeline order, so nothing needs to change in those
-// files for the journey to stay accurate as those forms are filled in.
 const buildLeadTimeline = (lead) => {
     if (!lead) return [];
 
-    // 1) Sales-side explicit log — oldest first, classified into mockup titles
     const explicit = safeParseHistory(lead.history).slice().reverse().map(h => {
         const classified = classifySalesEntry(h, lead);
         if (!classified) return null;
@@ -240,7 +201,6 @@ const buildLeadTimeline = (lead) => {
         _explicit: false,
     });
 
-    // 2) Sent to Operations
     const custReqs = safeParseArr(lead.customisationRequests);
     if (lead.status === 'Move To Operation' || lead.sentToOperationsDate || custReqs.length) {
         const destinations = custReqs.map(r => r.destination || r.destinationRequest).filter(Boolean).join(', ')
@@ -250,8 +210,6 @@ const buildLeadTimeline = (lead) => {
         ]);
     }
 
-    // 3) Ops assignment / per-destination work updates (repeats — one per
-    // customisation request / vendor destination touched by Operations)
     custReqs.forEach(req => {
         if (req.opsCustomisationStatus || req.workType || req.opsAssignedBy) {
             push('operations', req.opsAssignedBy ? `Assigned By ${req.opsAssignedBy}` : 'Operations Update', req.opsExpectedCompletionDate, [
@@ -269,14 +227,12 @@ const buildLeadTimeline = (lead) => {
         ]);
     }
 
-    // 4) Back to Sales Board
     if (lead.sharedWithSales) {
         push('operations', 'Back to Sales Board', lead.sharedWithSalesDate, [
             { label: 'Destination shared by ops', value: lead.destinationRequest || lead.destination }
         ]);
     }
 
-    // 5) Sales follow-up after itinerary return (customer response / booking confirmed)
     if (lead.customerResponse) {
         push('sales', 'Sales Followup', lead.confirmedDate || lead.lastFollowUpDate, [
             { label: 'Sales Track - Customer Response', value: lead.customerResponse },
@@ -290,7 +246,6 @@ const buildLeadTimeline = (lead) => {
         push('accounts', 'Moved to All Confirmation Boards', lead.confirmedDate, []);
     }
 
-    // 6) Accounts — payment stages
     if (lead.amountReceived || lead.paymentStatus) {
         push('accounts', 'Customer Payment', lead.nextPaymentDate || lead.confirmedDate, [
             { label: 'Payment Stage', value: lead.paymentMode ? `${lead.paymentMode} • ₹${lead.amountReceived || 0} received` : `₹${lead.amountReceived || 0} received` }
@@ -302,7 +257,6 @@ const buildLeadTimeline = (lead) => {
         ]);
     }
 
-    // 7) Fulfillment — briefing, vendor payment, travel ready, trip completed
     if (lead.briefingDateVal || lead.briefedByVal) {
         push('fulfillment', 'Briefing Completed', lead.briefingDateVal, [
             { label: 'by', value: lead.briefedByVal }
@@ -325,8 +279,6 @@ const buildLeadTimeline = (lead) => {
     return [...explicit, ...synthesized];
 };
 
-// Curated per-stage field maps so the "Complete Record" section can show
-// every populated data point captured about the lead at each stage.
 const STAGE_FIELD_MAPS = {
     sales: [
         ['assignedTo', 'Assigned Executive'], ['status', 'Pipeline Status'], ['actionTaken', 'Action Taken'],
@@ -357,11 +309,7 @@ const STAGE_FIELD_MAPS = {
 const SalesDashboard = () => {
     // --- USER IDENTIFICATION ---
     const user = getCurrentUser();
-    
-    // Look for name, then fallback to username, then email, before finally defaulting to Admin
     const loggedInUserName = user?.name || user?.username || user?.email || 'Admin';
-    
-    // Make sure Admin rights are strictly applied
     const isAdmin = user?.role?.toLowerCase() === 'admin' || loggedInUserName.toLowerCase() === 'admin';
 
     // Shared Input / UI Classes
@@ -372,8 +320,19 @@ const SalesDashboard = () => {
     const sectionCls = "py-4 sm:py-5 transition-all duration-300";
     const sectionHeadCls = "text-sm sm:text-base font-bold text-cyan-400 tracking-wider uppercase";
 
-    const [jobs, setJobs] = useState([]);
-    const [isLoading, setIsLoading] = useState(true);
+    // --- STATE WITH SESSION CACHING ---
+    const [jobs, setJobs] = useState(() => {
+        try {
+            const cached = sessionStorage.getItem('salesDashboardJobs');
+            return cached ? JSON.parse(cached) : [];
+        } catch (e) {
+            return [];
+        }
+    });
+    const [isLoading, setIsLoading] = useState(() => {
+        return !sessionStorage.getItem('salesDashboardJobs');
+    });
+    
     const [activeTab, setActiveTab] = useState('Jobs');
 
     // --- SEARCH & FILTER STATES ---
@@ -405,7 +364,7 @@ const SalesDashboard = () => {
     const [handoverLeadId, setHandoverLeadId] = useState('');
     const [handoverTarget, setHandoverTarget] = useState('');
     const [handoverNotes, setHandoverNotes] = useState('');
-    const [handoverOption, setHandoverOption] = useState('employee'); // 'pool' = common Ops jobs pool, 'employee' = direct individual assign
+    const [handoverOption, setHandoverOption] = useState('employee'); 
 
     const [isReassignModalOpen, setIsReassignModalOpen] = useState(false);
     const [reassignOption, setReassignOption] = useState('pool');
@@ -426,7 +385,7 @@ const SalesDashboard = () => {
     const [operationsStaff, setOperationsStaff] = useState([]);
     const [salesStaff, setSalesStaff] = useState([]);
 
-    // --- EDIT MODAL & ACCORDION STATES (salesActivity Default True) ---
+    // --- EDIT MODAL & ACCORDION STATES ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [expandedSections, setExpandedSections] = useState({
         leadInfo: false, salesActivity: true, travelDetails: false, customisation: false,
@@ -471,47 +430,32 @@ const SalesDashboard = () => {
     };
 
     const [editFormData, setEditFormData] = useState({
-        // Lead Info
         leadName: '', leadSource: '', leadDate: '', mobileNumber: '', emailAddress: '', assignedTo: '',
         campaign: '', packageType: '', budget: '', messageFromLead: '', tourType: '', destination: '',
         travelDate: '', duration: '', travelBudget: '', hotelCategory: '', noOfAdults: '',
         noOfChildren: '', offers: '', departureCity: '',
-        
-        // Sales Track
         firstAttempt: '', leadResponse: '', interactionType: '', actionTaken: '', 
         leadStatusField: '', salesNotes: '', outcomeNotes: '', followupDate: '',
         leadTemperature: '', objectionTracking: '', bookingProbability: '0%', customerResponse: '', noResponseLogs: [],
         closureReason: '', nextFollowUpDatePostponed: '',
-        
-        // Travel Details additions
         services: '', remarks: '', customisationRequests: [],
-        
-        // Operation Response
         opsPreparedBy: '', opsCompletedOn: '', opsRemarks: '', opsActionTaken: '',
         opsVerificationStatus: 'Pending Verified', opsSharedWithClient: 'No', 
         packagePreparedFor: '', packageCost: '', operationNotes: '', salesReviewStatus: '',
-
-        // Booking Confirmation
         billingName: '', bookingDate: '', operationExecutive: '',
         confirmedTripType: '', confirmedDestination: '', confirmedDuration: '', noOfPax: '', confirmedNoOfChildren: '',
         transportMode: '', departureDate: '', tourStartDate: '', returnDate: '', travelEndDate: '', tourEndDate: '', totalPackageCost: '', specialOffers: '',
         arrivalDate: '', flightStatus: '', visaStatus: '', insuranceStatus: '', 
         confirmedMethod: '', confirmedDate: '', confirmedServices: '', discount: '', finalPackageValue: '', serviceCost: '',
-
-        // Booking Confirmation - Dynamic Fields
         service1Cost: '', service2Cost: '', service3Cost: '', serviceCosts: {}, gst: '', tcs: '', passengers: [],
         aadharCopy: '', passportCopy: '', photograph: '', docRemarks: '',
         attachedFiles: [],
-
-        // Payments
         paymentDueDate: '', transactionId: '', amountReceived: '', paymentMode: '', customerPaymentDate: '',
         nextPaymentDate: '', paymentStatus: '', paymentHistoryDetails: '', voiceRecordings: [], salesVoiceRecordings: [], outcomeVoiceRecordings: [],
         leadStatus: 'Jobs', gstInclusion: '', tcsInclusion: '', paymentService: '', paymentHistoryList: [],
-        
         followUpCount: 0, followUpType: '', followupAction: '', history: []
     });
 
-    // --- AUTO CALCULATION FOR PAYMENT DUE DATE ---
     useEffect(() => {
         if (isEditModalOpen && editFormData.departureDate && !editFormData.paymentDueDate) {
             const depDate = new Date(editFormData.departureDate);
@@ -523,14 +467,12 @@ const SalesDashboard = () => {
         }
     }, [editFormData.departureDate, isEditModalOpen]);
 
-    // --- CLEAR TCS WHEN DESTINATION TYPE IS NOT INTERNATIONAL (field is hidden) ---
     useEffect(() => {
         if (editFormData.confirmedTripType !== 'International' && editFormData.tcs) {
             setEditFormData(prev => ({ ...prev, tcs: '' }));
         }
     }, [editFormData.confirmedTripType]);
 
-    // --- AUTO CALCULATION FOR BOOKING PROBABILITY & TEMPERATURE ---
     useEffect(() => {
         let probVal = 0; 
         const { leadResponse, actionTaken, customerResponse } = editFormData;
@@ -549,14 +491,12 @@ const SalesDashboard = () => {
         setEditFormData(prev => ({ ...prev, bookingProbability: `${probVal}%`, leadTemperature: temp }));
     }, [editFormData.leadResponse, editFormData.customerResponse, editFormData.actionTaken]);
 
-    // --- AUTO CALCULATION FOR CONFIRMED DATE ---
     useEffect(() => {
         if (isEditModalOpen && editFormData.customerResponse === 'Booking Confirmed' && !editFormData.confirmedDate) {
             setEditFormData(prev => ({ ...prev, confirmedDate: new Date().toISOString().split('T')[0] }));
         }
     }, [editFormData.customerResponse, isEditModalOpen]);
 
-    // --- DIRECT FILE UPLOADER LOGIC ---
     const handleDirectFileUpload = (e) => {
         const files = Array.from(e.target.files);
         if (!files.length) return;
@@ -584,7 +524,6 @@ const SalesDashboard = () => {
         }));
     };
 
-    // --- VOICE RECORDER STATES ---
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
     const [playingIndex, setPlayingIndex] = useState(null);
@@ -638,7 +577,6 @@ const SalesDashboard = () => {
         setEditFormData(prev => ({ ...prev, customisationRequests: prev.customisationRequests.filter((_, i) => i !== index) }));
     };
 
-    // --- UPDATED RENDER HELPERS ---
     const renderDatePicker = (name, value, label, onChangeHandler, placeholderText = '', disabled = false) => {
         return (
             <div className="w-full">
@@ -764,7 +702,6 @@ const SalesDashboard = () => {
         );
     };
 
-    // --- LOG SUBMISSION HANDLER WITH AUTO-SAVE & PERFECT SYNC ---
     const handleLogNoResponse = async (logType = 'interaction') => {
         const isOutcome = logType === 'outcome';
         const currentNotes = isOutcome ? editFormData.outcomeNotes : editFormData.salesNotes;
@@ -784,10 +721,8 @@ const SalesDashboard = () => {
 
         let newStatus = selectedLead?.status || editFormData.leadStatus;
         
-        // Trigger Recycle Bin at 10 logs
         if (updatedCount >= 10) newStatus = 'Recycle Bin';
 
-        // --- NEW RECYCLE BIN RESET CONDITION ---
         if (newStatus === 'Recycle Bin' && updatedCount > 0) {
             updatedHistory = appendHistory(updatedHistory, 'Auto-Moved to Recycle Bin', `Reached max follow-ups. Counter reset to 0. Archiving past attempts.`);
             [...updatedLogs].reverse().forEach(log => {
@@ -817,11 +752,6 @@ const SalesDashboard = () => {
         } catch (e) { console.error("Auto-save log failed", e); }
     };
 
-    // --- PAYMENT HISTORY LOG HANDLER ---
-    // Saving a payment record here immediately syncs it to the backend and
-    // forwards the booking to the Accounts Dashboard ("Confirmed Bookings")
-    // so Accounts can see and verify it right away, instead of waiting for
-    // the whole edit form to be Submitted.
     const handleAddPaymentHistory = async () => {
         const { customerPaymentDate, paymentStatus, paymentService, amountReceived, paymentMode, transactionId } = editFormData;
         if (!amountReceived || !paymentMode) {
@@ -840,13 +770,10 @@ const SalesDashboard = () => {
         };
 
         const updatedList = [...(editFormData.paymentHistoryList || []), newPaymentRecord];
-
-        // Don't downgrade a booking that's already further along the Accounts pipeline.
         const currentStatus = selectedLead?.status || editFormData.leadStatus;
-     const alreadyForwarded = ['Confirmed Bookings', 'Move To Operation', 'Upcoming Departure', 'Trip Completed', 'Trip Closed', 'Handover Completed'].includes(currentStatus);
+        const alreadyForwarded = ['Confirmed Bookings', 'Move To Operation', 'Upcoming Departure', 'Trip Completed', 'Trip Closed', 'Handover Completed'].includes(currentStatus);
         const newStatus = alreadyForwarded ? currentStatus : 'Confirmed Bookings';
 
-        // Optimistic local update so the Payment History table reflects it instantly.
         setEditFormData(prev => ({
             ...prev,
             paymentHistoryList: updatedList,
@@ -877,7 +804,6 @@ const SalesDashboard = () => {
         }
     };
 
-    // --- PREVIOUS ATTEMPTS LOG CRUD HANDLERS ---
     const handleDeleteLog = async (indexToDelete) => {
         if (!window.confirm('Are you sure you want to delete this log?')) return;
         const updatedLogs = editFormData.noResponseLogs.filter((_, idx) => idx !== indexToDelete);
@@ -917,7 +843,38 @@ const SalesDashboard = () => {
         } catch (e) { console.error("Auto-save log edit failed", e); }
     };
 
-    useEffect(() => { fetchJobs(); return () => clearInterval(timerRef.current); }, [activeTab]);
+    const fetchJobs = async (isSilent = false) => {
+        try {
+            if (!isSilent) setIsLoading(true);
+            const response = await fetch(`${API_BASE_URL}/leads`);
+            if (response.ok) {
+                const data = await response.json();
+                const sanitized = data.map(item => {
+                    let parsedHistory = [];
+                    if (typeof item.history === 'string') { try { parsedHistory = JSON.parse(item.history); } catch(e) {} } 
+                    else if (Array.isArray(item.history)) { parsedHistory = item.history; }
+                    return { ...item, status: item.status || 'Jobs', history: parsedHistory };
+                });
+                setJobs(sanitized);
+                sessionStorage.setItem('salesDashboardJobs', JSON.stringify(sanitized));
+            }
+        } catch (error) { 
+            console.error('Failed to fetch leads:', error); 
+        } finally { 
+            if (!isSilent) setIsLoading(false); 
+        }
+    };
+
+    useEffect(() => {
+        fetchJobs(jobs.length > 0);
+        const backgroundPoll = setInterval(() => {
+            fetchJobs(true);
+        }, 30000);
+        return () => {
+            clearInterval(timerRef.current);
+            clearInterval(backgroundPoll);
+        };
+    }, [activeTab]);
 
     useEffect(() => {
         const fetchStaffDirectory = async () => {
@@ -958,24 +915,6 @@ const SalesDashboard = () => {
         };
         fetchCampaigns();
     }, []);
-
-    const fetchJobs = async (isSilent = false) => {
-        try {
-            if (!isSilent) setIsLoading(true);
-            const response = await fetch(`${API_BASE_URL}/leads`);
-            if (response.ok) {
-                const data = await response.json();
-                const sanitized = data.map(item => {
-                    let parsedHistory = [];
-                    if (typeof item.history === 'string') { try { parsedHistory = JSON.parse(item.history); } catch(e) {} } 
-                    else if (Array.isArray(item.history)) { parsedHistory = item.history; }
-                    return { ...item, status: item.status || 'Jobs', history: parsedHistory };
-                });
-                setJobs(sanitized);
-            }
-        } catch (error) { console.error('Failed to fetch leads:', error); } 
-        finally { if (!isSilent) setIsLoading(false); }
-    };
 
     useEffect(() => {
         const handleScrollVisibility = () => setShowScrollButton(window.scrollY > 300);
@@ -1200,14 +1139,12 @@ const SalesDashboard = () => {
 
                 assignPayload.history = JSON.stringify(updatedHistory);
 
-                // 1. Map Assigned User securely
                 await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
                     method: 'PUT', 
                     headers: { 'Content-Type': 'application/json' }, 
                     body: JSON.stringify(assignPayload)
                 });
 
-                // 2. Clear Recycle Bin counters via main endpoint
                 await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
                     method: 'PUT', 
                     headers: { 'Content-Type': 'application/json' }, 
@@ -1240,7 +1177,6 @@ const SalesDashboard = () => {
         setPlayingIndex(null);
         setEditingLogIndex(null); 
 
-        // If we are in "My Confirmation" tab, ONLY show the Confirmation block expanded.
         setExpandedSections({
             leadInfo: false, 
             salesActivity: activeTab !== 'My Confirmation' && !targetSection, 
@@ -1251,7 +1187,6 @@ const SalesDashboard = () => {
             paymentInfo: targetSection === 'paymentInfo'
         });
 
-        // Safe JSON Parsing for Previous Attempts
         let parsedNoResponseLogs = [];
         try {
             if (lead.noResponseLogs && lead.noResponseLogs !== '[object Object]') {
@@ -1262,7 +1197,6 @@ const SalesDashboard = () => {
 
         let pHistory = [];
         try { pHistory = typeof lead.history === 'string' ? JSON.parse(lead.history) : (lead.history || []); } catch(e){}
-
 
         let parsedVoice = { customisation: [], sales: [], outcome: [] };
         if (lead.voiceBinaryFile) {
@@ -1292,7 +1226,7 @@ const SalesDashboard = () => {
             try { 
                 const raw = typeof lead.customisationRequests === 'string' ? JSON.parse(lead.customisationRequests) : lead.customisationRequests; 
                 if (Array.isArray(raw)) parsedCustomisationRequests = raw;
-                else if (raw && typeof raw === 'object') parsedCustomisationRequests = [raw]; // legacy single-object shape (e.g. migrated records) — wrap instead of dropping
+                else if (raw && typeof raw === 'object') parsedCustomisationRequests = [raw]; 
             } 
             catch { parsedCustomisationRequests = []; }
         }
@@ -1304,7 +1238,6 @@ const SalesDashboard = () => {
             }];
         }
 
-        // Recover Attached Files
         let parsedFiles = [];
         if (lead.docDriveLink) {
             try {
@@ -1318,7 +1251,7 @@ const SalesDashboard = () => {
         }
 
         let derivedActionTaken = lead.actionTaken || '';
-        if (lead.status === 'Customisation Ready') {
+        if (lead.status === 'Customisation Ready' || lead.status === 'Customization Required') {
             derivedActionTaken = 'Customisation Required';
         }
 
@@ -1389,7 +1322,6 @@ const SalesDashboard = () => {
     const handleSubmitEdit = async (e) => {
         e.preventDefault();
         try {
-            // Auto-save pending notes if user forgot to click "Save Log" before submitting
             const isOutcome = editFormData.leadResponse === 'Requirement Collected';
             const pendingNotes = isOutcome ? editFormData.outcomeNotes : editFormData.salesNotes;
             
@@ -1408,23 +1340,20 @@ const SalesDashboard = () => {
 
             let finalStatus = editFormData.leadStatus;
             
-            // Trigger Recycle Bin at 10 logs
             if (logsCount >= 10) finalStatus = 'Recycle Bin';
 
             if (editFormData.actionTaken === 'Customisation Required' && finalStatus !== 'Recycle Bin' && finalStatus !== 'Move To Operation') {
-                finalStatus = 'Customisation Ready';
-            } else if (finalStatus === 'Customisation Ready' && editFormData.actionTaken !== 'Customisation Required') {
-                finalStatus = 'Sales Assigned'; // Revert back to My Jobs if they change their mind
+                finalStatus = 'Customization Required';
+            } else if ((finalStatus === 'Customization Required' || finalStatus === 'Customisation Ready') && editFormData.actionTaken !== 'Customisation Required') {
+                finalStatus = 'Sales Assigned';
             }
 
-            // --- AUTO-ROUTE TO OPERATIONS ---
             if (activeTab === 'My Confirmation' && editFormData.operationExecutive) {
                 finalStatus = 'Move To Operation';
             }
 
             let updatedHistory = appendHistory( currentHistory, `Lead Profile Updated`, `Status: ${editFormData.leadStatusField || finalStatus} | Stage: ${editFormData.leadResponse || 'N/A'}` );
 
-            // --- NEW RECYCLE BIN RESET CONDITION ---
             if (finalStatus === 'Recycle Bin' && logsCount > 0) {
                 updatedHistory = appendHistory(updatedHistory, 'Auto-Moved to Recycle Bin', `Archived ${logsCount} attempts. Follow-up counter reset to 0.`);
                 [...updatedLogs].reverse().forEach(log => {
@@ -1444,10 +1373,8 @@ const SalesDashboard = () => {
                 outcome: editFormData.outcomeVoiceRecordings || []
             };
 
-            // Strict Payload Mapping -> Forcing frontend keys into recognized backend keys
             const payload = {
                 ...editFormData,
-                
                 customerName: editFormData.leadName,
                 profileName: editFormData.leadName,
                 phone: editFormData.mobileNumber,
@@ -1467,12 +1394,10 @@ const SalesDashboard = () => {
                 noOfPax: editFormData.noOfAdults,
                 travellerCount: editFormData.noOfAdults,
                 nextFollowUp: editFormData.followupDate, 
-                
                 packageCost: editFormData.totalPackageCost || editFormData.packageCost, 
                 offers: editFormData.specialOffers || editFormData.offers, 
                 noOfChildren: editFormData.confirmedNoOfChildren || editFormData.noOfChildren,
 
-                // --- MAPPED CRITICAL DYNAMIC FIELDS FOR BACKEND COMPATIBILITY ---
                 service1Cost: editFormData.service1Cost,
                 service2Cost: editFormData.service2Cost,
                 service3Cost: editFormData.service3Cost,
@@ -1532,13 +1457,11 @@ const SalesDashboard = () => {
         try {
             const finalAssignee = assignTo === 'Self Assigned' ? loggedInUserName : assignTo;
             let updatedHistory = selectedLead.history || [];
-            
-            // Check if the lead is coming out of the Recycle Bin
             const isRecycled = selectedLead.status === 'Recycle Bin' || selectedLead.followupCount >= 10 || selectedLead.followUpCount >= 10;
             
             let assignPayload = { 
                 assignedTo: finalAssignee, 
-                status: 'Sales Assigned' // This ensures it maps to "My Jobs"
+                status: 'Sales Assigned'
             };
 
             if (isRecycled) {
@@ -1563,14 +1486,12 @@ const SalesDashboard = () => {
 
                 assignPayload.history = JSON.stringify(updatedHistory);
 
-                // 1. Map Assigned User securely
                 await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
                     method: 'PUT', 
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(assignPayload)
                 });
                 
-                // 2. Clear Recycle Bin counters via main endpoint
                 await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
                     method: 'PUT', 
                     headers: { 'Content-Type': 'application/json' },
@@ -1598,7 +1519,6 @@ const SalesDashboard = () => {
         } catch (error) { console.error('Assign error:', error); }
     };
 
-    // --- HANDOVER TO OPERATION HANDLERS ---
     const handleOpenHandoverModal = (lead = null) => {
         setHandoverLead(lead);
         setHandoverLeadId(lead ? lead.id : '');
@@ -1635,8 +1555,6 @@ const SalesDashboard = () => {
             
             const payload = {
                 status: 'Move To Operation',
-                // Pool: leave unassigned so it lands in Operations' shared "Jobs" queue for anyone to pick up.
-                // Individual: assign straight to the chosen Ops executive.
                 operationExecutive: isPool ? '' : handoverTarget,
                 operationNotes: handoverNotes,
                 history: JSON.stringify(updatedHistory)
@@ -1668,12 +1586,6 @@ const SalesDashboard = () => {
         { id: 'Recycle', label: 'RECYCLE LEADS', icon: Trash2 },
     ];
 
-    // ─── Expand "Customisation Ready" leads into one row PER destination ───────
-    // A lead can carry several customisationRequests (destinations), and Operations
-    // now marks each one ready individually (see OperationsDashboard.jsx). Previously
-    // the whole lead showed as a single bundled row here even with 5 destinations
-    // inside it. Now each destination Operations has actually marked ready gets its
-    // own row, so e.g. Bali/Malaysia/Japan for the same lead show up separately.
     const customisationReadyRows = jobs.flatMap(item => {
         const itemStatus = item.status || 'Jobs';
         const isRecycleBin = (item.followupCount >= 10 || item.followUpCount >= 10 || itemStatus === 'Recycle Bin');
@@ -1689,13 +1601,9 @@ const SalesDashboard = () => {
             } catch { parsedRequests = []; }
         }
 
-        // Only destinations Operations actually marked ready belong in Sales's queue —
-        // a destination still sitting in Follow-Up on the Ops side isn't ready yet.
         const readyIndices = parsedRequests.reduce((acc, r, idx) => { if (r.status === 'Customisation Ready') acc.push(idx); return acc; }, []);
 
         if (readyIndices.length === 0) {
-            // Legacy lead with no per-destination status recorded — fall back to a
-            // single row using the lead's own top-level fields, same as before.
             return [{ ...item, uniqueKey: `${item.id}-0`, reqIndex: 0 }];
         }
 
@@ -1735,22 +1643,21 @@ const SalesDashboard = () => {
 
         if (activeTab === 'Recycle') matchTab = isRecycleBin;
         else if (isRecycleBin) matchTab = false; 
-        
-        // Filter strictly relies on the assigned user
         else if (activeTab === 'My Jobs') {
-            const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required', 'Customisation Ready']; 
-            // Once a payment has been recorded / the customer response is "Booking Confirmed",
-            // the lead belongs in "My Confirmation", not "My Jobs" — exclude it explicitly here
-            // so it always disappears immediately, even if the `status` field hasn't caught up yet.
-            const isBookingConfirmed = item.customerResponse === 'Booking Confirmed';
-            matchTab = validActiveStatuses.includes(itemStatus) && item.assignedTo === loggedInUserName && !isBookingConfirmed;
+            const leftSalesPipeline = itemStatus === 'Jobs' || itemStatus === 'Move To Operation';
+            const isRegularSalesJob = !leftSalesPipeline && (isAdmin || item.assignedTo === loggedInUserName);
+            // Customisation Ready and Booking Confirmed ("My Confirmation") leads belong to the
+            // sales rep too, so they should keep showing up in My Jobs alongside the regular
+            // pipeline items instead of only living in their own dedicated tabs.
+            const isMyCustomisationReady = (itemStatus === 'Shared to Sales' || itemStatus === 'Customisation Ready') && (isAdmin || item.assignedTo === loggedInUserName);
+            const isMyConfirmation = item.customerResponse === 'Booking Confirmed' && (isAdmin || item.assignedTo === loggedInUserName);
+            matchTab = isRegularSalesJob || isMyCustomisationReady || isMyConfirmation;
         } 
         else if (activeTab === 'Customisation Ready') { 
-            matchTab = true; // customisationReadyRows is already pre-filtered to the right leads/destinations
+            matchTab = true; 
         } 
-        // Filter strictly relies on the assigned user
         else if (activeTab === 'My Confirmation') { 
-            matchTab = item.customerResponse === 'Booking Confirmed' && item.assignedTo === loggedInUserName; 
+            matchTab = item.customerResponse === 'Booking Confirmed' && (isAdmin || item.assignedTo === loggedInUserName); 
         }
         else if (activeTab === 'Jobs') { matchTab = itemStatus === 'Jobs'; }
 
@@ -1770,16 +1677,11 @@ const SalesDashboard = () => {
 
     return (
         <div className="p-1 sm:p-4 lg:p-6 pt-20 sm:pt-24 lg:pt-24 w-full bg-[#0f172a] min-h-screen font-sans relative text-white">
-
-            {/* Header with New Button additions */}
             <div className="mb-6 sm:mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="text-center sm:text-left">
                     <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight uppercase">SALES DASHBOARD</h1>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full md:w-auto">
-                    
-                   
-
                     <button type="button" onClick={handleOpenNewLeadModal}
                         className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-cyan-500 hover:bg-cyan-400 active:bg-cyan-600 text-[#0f172a] font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-cyan-500/20 transition-all duration-200">
                         <Plus size={18} strokeWidth={2.5} />
@@ -1790,8 +1692,7 @@ const SalesDashboard = () => {
                         <CreditCard size={18} strokeWidth={2.5} />
                         <span>Add New Payment</span>
                     </button>
-                     {/* NEW COMMON HANDOVER BUTTON */}
-                    {(activeTab === 'My Jobs' || activeTab === 'My Confirmation') && (
+                    {activeTab === 'My Confirmation' && (
                         <button type="button" onClick={() => handleOpenHandoverModal(null)}
                             className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 sm:py-3 bg-purple-500 hover:bg-purple-400 active:bg-purple-600 text-white font-bold text-sm sm:text-base rounded-xl shadow-lg shadow-purple-500/20 transition-all duration-200">
                             <Send size={18} strokeWidth={2.5} />
@@ -1801,7 +1702,6 @@ const SalesDashboard = () => {
                 </div>
             </div>
 
-            {/* ── MOBILE-OPTIMIZED CATEGORY TABS ───────────────────────────────── */}
             <div className="hidden md:grid md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
                 {categories.map((cat) => {
                     const Icon = cat.icon;
@@ -1811,11 +1711,15 @@ const SalesDashboard = () => {
                         const isRecycleBin = (d.followupCount >= 10 || d.followUpCount >= 10 || itemStatus === 'Recycle Bin');
                         if (cat.id === 'Recycle') return isRecycleBin;
                         if (isRecycleBin) return false;
-                        
-                        const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required', 'Customisation Ready'];
-                        
-                        if (cat.id === 'My Jobs') return validActiveStatuses.includes(itemStatus) && d.assignedTo === loggedInUserName && d.customerResponse !== 'Booking Confirmed';
-                        if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && d.assignedTo === loggedInUserName;
+
+                        const leftSalesPipeline = itemStatus === 'Jobs' || itemStatus === 'Move To Operation';
+                        if (cat.id === 'My Jobs') {
+                            const isRegularSalesJob = !leftSalesPipeline && (isAdmin || d.assignedTo === loggedInUserName);
+                            const isMyCustomisationReady = (itemStatus === 'Shared to Sales' || itemStatus === 'Customisation Ready') && (isAdmin || d.assignedTo === loggedInUserName);
+                            const isMyConfirmation = d.customerResponse === 'Booking Confirmed' && (isAdmin || d.assignedTo === loggedInUserName);
+                            return isRegularSalesJob || isMyCustomisationReady || isMyConfirmation;
+                        }
+                        if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && (isAdmin || d.assignedTo === loggedInUserName);
                         return itemStatus === cat.id;
                     }).length;
                     
@@ -1834,7 +1738,6 @@ const SalesDashboard = () => {
                 })}
             </div>
 
-            {/* Mobile horizontal scroll strip */}
             <div className="flex items-center gap-1 mb-6 md:hidden">
                 <button type="button" onClick={() => scrollTabs(-1)} className="flex-shrink-0 p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 active:bg-slate-700 cursor-pointer"><ChevronLeft size={16} /></button>
                 <div ref={tabScrollRef} className="flex gap-2 overflow-x-auto flex-1 items-stretch" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
@@ -1846,11 +1749,15 @@ const SalesDashboard = () => {
                             const isRecycleBin = (d.followupCount >= 10 || d.followUpCount >= 10 || itemStatus === 'Recycle Bin');
                             if (cat.id === 'Recycle') return isRecycleBin;
                             if (isRecycleBin) return false;
-                            
-                            const validActiveStatuses = ['Sales Assigned', 'Itinerary Shared', 'Negotiation', 'Follow-Up Required', 'Customisation Ready'];
-                            
-                            if (cat.id === 'My Jobs') return validActiveStatuses.includes(itemStatus) && d.assignedTo === loggedInUserName && d.customerResponse !== 'Booking Confirmed';
-                            if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && d.assignedTo === loggedInUserName;
+
+                            const leftSalesPipeline = itemStatus === 'Jobs' || itemStatus === 'Move To Operation';
+                            if (cat.id === 'My Jobs') {
+                                const isRegularSalesJob = !leftSalesPipeline && (isAdmin || d.assignedTo === loggedInUserName);
+                                const isMyCustomisationReady = (itemStatus === 'Shared to Sales' || itemStatus === 'Customisation Ready') && (isAdmin || d.assignedTo === loggedInUserName);
+                                const isMyConfirmation = d.customerResponse === 'Booking Confirmed' && (isAdmin || d.assignedTo === loggedInUserName);
+                                return isRegularSalesJob || isMyCustomisationReady || isMyConfirmation;
+                            }
+                            if (cat.id === 'My Confirmation') return d.customerResponse === 'Booking Confirmed' && (isAdmin || d.assignedTo === loggedInUserName);
                             return itemStatus === cat.id;
                         }).length;
 
@@ -1871,7 +1778,6 @@ const SalesDashboard = () => {
                 <button type="button" onClick={() => scrollTabs(1)} className="flex-shrink-0 p-1.5 rounded-lg bg-slate-800 border border-slate-700 text-slate-300 active:bg-slate-700 cursor-pointer"><ChevronRight size={16} /></button>
             </div>
 
-            {/* SEPARATE FILTER SECTION */}
             <div className="flex flex-col gap-3 w-full mb-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
                     <div className="relative">
@@ -1897,7 +1803,6 @@ const SalesDashboard = () => {
                 </div>
             </div>
 
-            {/* Data Table Wrapper */}
             <div className="bg-transparent sm:bg-slate-900/30 border-none sm:border border-slate-700/30 rounded-xl shadow-sm overflow-hidden flex flex-col">
                 <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center p-0 sm:p-5 border-b-0 sm:border-b border-slate-700/20 gap-4 mb-4 sm:mb-0">
                     <h2 className="text-base sm:text-lg font-bold text-white flex items-center justify-between sm:justify-start">
@@ -1906,7 +1811,6 @@ const SalesDashboard = () => {
                     </h2>
                 </div>
 
-                {/* Main Data View */}
                 <div className="overflow-x-auto custom-scrollbar w-full">
                     <table className="w-full text-left text-sm sm:text-base text-slate-200 block md:table">
                         <thead className="bg-slate-900/80 border-b border-slate-700/50 text-xs uppercase tracking-wider text-slate-400 font-semibold hidden md:table-header-group">
@@ -2138,7 +2042,6 @@ const SalesDashboard = () => {
                                         </>
                                     )}
 
-                                    {/* Action Buttons */}
                                     <td className="flex justify-between items-center md:table-cell py-3 md:py-4 px-2 md:px-4 mt-1 md:mt-0 md:text-center whitespace-nowrap">
                                         <span className="md:hidden text-[11px] font-semibold text-slate-400 uppercase">Actions</span>
                                         <div className="flex items-center justify-end md:justify-center gap-1.5 sm:gap-2">
@@ -2158,8 +2061,7 @@ const SalesDashboard = () => {
                                                 </button>
                                             )}
 
-                                            {/* NEW INDIVIDUAL HANDOVER BUTTON */}
-                                            {(activeTab === 'My Jobs' || activeTab === 'My Confirmation') && (
+                                            {activeTab === 'My Confirmation' && (
                                                 <button type="button" onClick={() => handleOpenHandoverModal(row)}
                                                     className="p-2 md:p-1.5 text-purple-400 md:text-slate-400 hover:text-purple-400 bg-purple-500/10 md:bg-transparent hover:bg-purple-900/30 rounded-lg transition-colors" title="Handover to Operations">
                                                     <Send size={18} />
@@ -2196,7 +2098,6 @@ const SalesDashboard = () => {
                 </div>
             </div>
 
-            {/* PAYMENT SEARCH MODAL */}
             {isPaymentSearchModalOpen && (
                 <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
                     <div className="bg-[#0b1220] border border-slate-800 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col relative text-slate-100 overflow-hidden min-h-[400px] max-h-[80vh]">
@@ -2252,7 +2153,6 @@ const SalesDashboard = () => {
                 </div>
             )}
 
-            {/* NEW LEAD MODAL */}
             {isNewLeadModalOpen && (
                 <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-3 sm:p-4 md:p-6 backdrop-blur-sm">
                     <div className="bg-[#0b1220] border border-slate-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[calc(100vh-24px)] sm:max-h-[90vh] flex flex-col relative text-slate-100 overflow-hidden">
@@ -2264,7 +2164,6 @@ const SalesDashboard = () => {
                         </div>
 
                         <form id="new-lead-form" onSubmit={handleNewLeadSubmit} onKeyDown={handlePreventEnterSubmit} className="px-6 py-6 overflow-y-auto flex-1 space-y-7 custom-scrollbar">
-                            {/* SECTION A — CUSTOMER INFORMATION */}
                             <div>
                                 <h3 className="text-sm font-bold text-slate-100 tracking-wide flex items-center gap-2 mb-3">
                                     <Users size={16} className="text-violet-400" /> Customer Information
@@ -2287,7 +2186,6 @@ const SalesDashboard = () => {
                                 </div>
                             </div>
 
-                            {/* SECTION B — TRAVEL REQUIREMENT */}
                             <div>
                                 <h3 className="text-sm font-bold text-slate-100 tracking-wide flex items-center gap-2 mb-3">
                                     <MapPin size={16} className="text-emerald-400" /> Travel Requirement
@@ -2328,7 +2226,6 @@ const SalesDashboard = () => {
                                 </div>
                             </div>
 
-                            {/* SECTION C — LEAD SOURCE */}
                             <div>
                                 <h3 className="text-sm font-bold text-slate-100 tracking-wide flex items-center gap-2 mb-3">
                                     <Target size={16} className="text-blue-400" /> Lead Source
@@ -2366,7 +2263,6 @@ const SalesDashboard = () => {
                 </div>
             )}
 
-            {/* FULL-SCREEN EDIT MODAL */}
             {isEditModalOpen && selectedLead && (
                 <div className="absolute inset-0 bg-[#0f172a] z-50 overflow-hidden flex flex-col w-full h-full text-slate-100">
                     <div className="px-4 sm:px-6 lg:px-8 py-4 sm:py-5 border-b border-slate-800 flex justify-between items-center bg-[#0b1329] z-20 flex-shrink-0 shadow-md">
@@ -2427,7 +2323,6 @@ const SalesDashboard = () => {
 
                             {activeTab !== 'My Confirmation' && (
                                 <>
-                                    {/* SECTION 1: LEAD INFO */}
                                     <div className={sectionCls} style={{ borderColor: 'rgba(51,65,85,0.8)' }}>
                                         <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('leadInfo')}>
                                             <div className="flex flex-col gap-0.5">
@@ -2460,7 +2355,6 @@ const SalesDashboard = () => {
                                         )}
                                     </div>
 
-                                    {/* SECTION 2: SALES ACTIVITY */}
                                     <div className={sectionCls}>
                                         <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('salesActivity')}>
                                             <div className="flex items-center gap-3">
@@ -2631,7 +2525,6 @@ const SalesDashboard = () => {
                                         )}
                                     </div>
 
-                                    {/* SECTION 4: TRAVEL DETAILS */}
                                     <div className={sectionCls}>
                                         <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('travelDetails')}>
                                             <div className="flex flex-col gap-0.5">
@@ -2649,9 +2542,9 @@ const SalesDashboard = () => {
                                                     </div>
                                                     {renderDatePicker('travelDate', editFormData.travelDate, 'Travel Date', handleInputChange)}
                                                    <div>
-    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
-    {renderDropdown('duration', editFormData.duration, '', ['1 Day (Same Day Return)', '1N / 2D', '2N / 3D', '3N / 4D', '4N / 5D', '5N / 6D', '6N / 7D', '7N / 8D', '8N / 9D', '9N / 10D', '10-15 Days', '15+ Days'], handleInputChange)}
-</div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Duration</label>
+                                                        {renderDropdown('duration', editFormData.duration, '', ['1 Day (Same Day Return)', '1N / 2D', '2N / 3D', '3N / 4D', '4N / 5D', '5N / 6D', '6N / 7D', '7N / 8D', '8N / 9D', '9N / 10D', '10-15 Days', '15+ Days'], handleInputChange)}
+                                                    </div>
                                                     <div className="flex gap-2">
                                                         <div className="w-1/2">
                                                             <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. Of Pax (Adults)</label>
@@ -2667,16 +2560,16 @@ const SalesDashboard = () => {
                                                         <input type="text" name="departureCity" value={editFormData.departureCity} onChange={handleInputChange} className={inputCls} />
                                                     </div>
                                                    <div>
-    <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Budget</label>
-    {renderDropdown('travelBudget', editFormData.travelBudget, ' ', BUDGET_OPTIONS, handleInputChange)}
-</div>
+                                                        <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Budget</label>
+                                                        {renderDropdown('travelBudget', editFormData.travelBudget, ' ', BUDGET_OPTIONS, handleInputChange)}
+                                                    </div>
                                                     <div>
                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Package Type</label>
                                                         {renderDropdown('tourType', editFormData.tourType, ' ', ['Honeymoon', 'Family', 'Solo', 'Friends', 'Corporate', 'Group Tour', 'MICE'], handleInputChange)}
                                                     </div>
                                                     <div className="md:col-span-2">
                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Service </label>
-                                                        {renderMultiSelect('services', editFormData.services, ['Tour Package', 'Flight Booking', 'VISA Booking', 'Hotel Booking Only', 'Local Transport', 'Travel Insurance', 'Other'])}
+                                                        {renderMultiSelect('services', editFormData.services, ['Tour Package', 'Flight Booking', 'VISA Booking', 'Hotel Booking Only', 'Local Transport', 'Travel Insurance' ])}
                                                     </div>
                                                     <div>
                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Hotel Category</label>
@@ -2704,7 +2597,6 @@ const SalesDashboard = () => {
                                         )}
                                     </div>
 
-                                    {/* SECTION 5: CUSTOMISATION & OPERATIONS */}
                                     <div className={sectionCls}>
                                         <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('customisation')}>
                                             <h3 className={`${sectionHeadCls} m-0`}>CUSTOMISATION</h3>
@@ -2798,7 +2690,6 @@ const SalesDashboard = () => {
                                 </>
                             )}
 
-                            {/* BOOKING CONFIRMATION SECTION - ONLY IN MY CONFIRMATION TAB */}
                             {activeTab === 'My Confirmation' && (
                                 <div className={sectionCls}>
                                     <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('bookingConfirmation')}>
@@ -2813,12 +2704,10 @@ const SalesDashboard = () => {
                                     
                                     {expandedSections.bookingConfirmation && (
                                         <div className="mt-4 space-y-8">
-                                            {/* 1. MAIN BOOKING DETAILS */}
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                                                 {(() => {
                                                     return (
                                                         <>
-                                                            {/* Row 1 */}
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Confirmed Method</label>
                                                                 {renderDropdown('confirmedMethod', editFormData.confirmedMethod, '', ['Phone Call', 'WhatsApp', 'Email', 'Office Visit'], handleInputChange, selectCls, false)}
@@ -2829,7 +2718,6 @@ const SalesDashboard = () => {
                                                                 {renderDropdown('operationExecutive', editFormData.operationExecutive, 'Select Exec', operationsStaff, handleInputChange, selectCls, false)}
                                                             </div>
 
-                                                            {/* Row 2 */}
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Destination Type</label>
                                                                 {renderDropdown('confirmedTripType', editFormData.confirmedTripType, '', ['Domestic', 'International'], handleInputChange, selectCls, false)}
@@ -2843,7 +2731,6 @@ const SalesDashboard = () => {
                                                                 {renderDropdown('confirmedDuration', editFormData.confirmedDuration, '', ['1 Day (Same Day Return)', '1N / 2D', '2N / 3D', '3N / 4D', '4N / 5D', '5N / 6D', '6N / 7D', '7N / 8D', '8N / 9D', '9N / 10D', 'Others'], handleInputChange, selectCls, false)}
                                                             </div>
 
-                                                            {/* Row 3 */}
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">No. of Pax (Adults | Children)</label>
                                                                 <div className="flex gap-2">
@@ -2854,7 +2741,6 @@ const SalesDashboard = () => {
                                                             {renderDatePicker('departureDate', editFormData.departureDate, 'Departure Date', handleInputChange, '', false)}
                                                             {renderDatePicker('returnDate', editFormData.returnDate, 'Return Date', handleInputChange, '', false)}
 
-                                                            {/* Row 4 */}
                                                             {renderDatePicker('tourStartDate', editFormData.tourStartDate, 'Tour Start Date', handleInputChange, '', false)}
                                                             {renderDatePicker('tourEndDate', editFormData.tourEndDate, 'Tour End Date', handleInputChange, '', false)}
                                                             <div>
@@ -2862,7 +2748,6 @@ const SalesDashboard = () => {
                                                                 {renderMultiSelect('confirmedServices', editFormData.confirmedServices, ['Flight Booking', 'Hotel Booking', 'Train Booking', 'Bus Booking', 'VISA Apply', 'Travel Insurance','Tour Package'], false)}
                                                             </div>
 
-                                                            {/* Row 5 */}
                                                             <div>
                                                                 <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">GST</label>
                                                                 {renderDropdown('gst', editFormData.gst, '', ['Yes', 'NO'], handleInputChange, selectCls, false)}
@@ -2874,7 +2759,6 @@ const SalesDashboard = () => {
                                                                 </div>
                                                             )}
                                                             
-                                                            {/* Dynamic Service Costs */}
                                                             {(() => {
                                                                 const selectedServicesArr = editFormData.confirmedServices ? editFormData.confirmedServices.split(', ').filter(Boolean) : [];
                                                                 return selectedServicesArr.map((srv, idx) => (
@@ -2912,7 +2796,6 @@ const SalesDashboard = () => {
                                                 })()}
                                             </div>
 
-                                            {/* 2. PASSENGER DETAILS */}
                                             <div className="pt-5 border-t border-slate-700/50">
                                                 <h4 className="text-sm font-bold text-cyan-400 mb-4 tracking-wider uppercase">Passenger Details</h4>
                                                 
@@ -2982,7 +2865,6 @@ const SalesDashboard = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* PASSENGER TABLE */}
                                                 {editFormData.passengers && editFormData.passengers.length > 0 && (
                                                     <div className="overflow-x-auto custom-scrollbar border border-slate-700/50 rounded-lg">
                                                         <table className="w-full text-left text-[11px] sm:text-xs text-slate-300 whitespace-nowrap">
@@ -3035,7 +2917,6 @@ const SalesDashboard = () => {
                                                 )}
                                             </div>
 
-                                            {/* 3. DOCUMENT COLLECTION */}
                                             <div className="pt-5 border-t border-slate-700/50">
                                                 <h4 className="text-sm font-bold text-cyan-400 mb-4 tracking-wider uppercase">Document Collection</h4>
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
@@ -3070,7 +2951,6 @@ const SalesDashboard = () => {
                                                         <input type="text" name="docRemarks" value={editFormData.docRemarks} onChange={handleInputChange} className={inputCls} />
                                                     </div>
                                                     
-                                                    {/* REPLACED: DRIVE LINK NOW SUPPORTS FILE UPLOADS */}
                                                     <div className="md:col-span-3">
                                                         <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Upload Direct Files</label>
                                                         <div className="relative flex items-center justify-center bg-slate-900 border border-slate-700 border-dashed rounded-lg sm:rounded px-3 py-4 cursor-pointer hover:border-cyan-500 transition-colors">
@@ -3101,7 +2981,6 @@ const SalesDashboard = () => {
                                 </div>
                             )}
 
-                            {/* SECTION 8: PAYMENT INFORMATION - ONLY IN MY CONFIRMATION OR VIA PAYMENT MODAL */}
                             {(activeTab === 'My Confirmation' || expandedSections.paymentInfo) && (
                                 <div id="section-paymentInfo" className={sectionCls}>
                                     <div className="flex justify-between items-center cursor-pointer pb-1 sm:pb-2 border-b border-slate-800/60" onClick={() => toggleSection('paymentInfo')}>
@@ -3114,7 +2993,6 @@ const SalesDashboard = () => {
                                     
                                     {expandedSections.paymentInfo && (
                                         <div className="mt-4">
-                                            {/* Payment History View */}
                                             <div className="mb-6 p-4 bg-[#091124] border border-slate-700/60 rounded-xl">
                                                 <h4 className="text-[11px] sm:text-xs font-bold text-slate-300 uppercase tracking-wider mb-3">Payment History</h4>
                                                 
@@ -3150,11 +3028,10 @@ const SalesDashboard = () => {
                                                 </div>
                                             </div>
 
-                                            {/* Payment Entry Form matching the reference image */}
                                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 border-t border-slate-700/50 pt-5">
                                                 <div>
                                                     <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Service</label>
-                                                    {renderDropdown('paymentService', editFormData.paymentService, '', ['Tour Package', 'Flight Booking', 'Hotel Booking', 'VISA Booking', 'Transport'], handleInputChange)}
+                                                    {renderDropdown('paymentService', editFormData.paymentService, '', ['Tour Package', 'Flight Booking', 'Hotel Booking', 'VISA Apply', 'Transport','Train Booking','Bus Booking','Travel Insurance'], handleInputChange)}
                                                 </div>
                                                 <div>
                                                     <label className="block text-[11px] sm:text-xs font-medium text-slate-300 mb-1">Amount Collected</label>
@@ -3203,7 +3080,6 @@ const SalesDashboard = () => {
                         </form>
                     </div>
 
-                    {/* Edit Modal Sticky Footer */}
                     <div className="px-4 sm:px-6 py-4 border-t border-slate-800 bg-[#0b1329] z-20 flex justify-end gap-3 flex-shrink-0">
                         <button type="button" onClick={() => setIsEditModalOpen(false)}
                             className="w-full sm:w-auto px-6 py-3 sm:py-2.5 bg-transparent border border-cyan-500 hover:bg-slate-800 cursor-pointer text-cyan-400 text-sm sm:text-base font-semibold rounded-lg sm:rounded transition-colors uppercase tracking-wider order-2 sm:order-1">
@@ -3216,7 +3092,6 @@ const SalesDashboard = () => {
                 </div>
             )}
 
-            {/* ASSIGN MODAL */}
             {isAssignModalOpen && selectedLead && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="bg-[#1e293b] border border-slate-700/60 rounded-xl shadow-2xl w-full max-w-md relative flex flex-col max-h-[90vh]">
@@ -3255,7 +3130,6 @@ const SalesDashboard = () => {
                 </div>
             )}
 
-            {/* HANDOVER TO OPERATION MODAL */}
             {isHandoverModalOpen && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="bg-[#1e293b] border border-slate-700/60 rounded-xl shadow-2xl w-full max-w-md relative flex flex-col max-h-[90vh]">
@@ -3351,7 +3225,6 @@ const SalesDashboard = () => {
                 </div>
             )}
 
-            {/* REASSIGN MODAL */}
             {isReassignModalOpen && selectedLead && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
                     <div className="bg-[#1e293b] border border-slate-700/90 rounded-xl shadow-2xl w-full max-w-md relative flex flex-col max-h-[90vh]">
@@ -3413,7 +3286,6 @@ const SalesDashboard = () => {
                 </div>
             )}
 
-            {/* VIEW MODAL */}
             {isViewModalOpen && selectedLead && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="bg-[#0f172a] border border-slate-700/50 rounded-xl shadow-2xl w-full max-w-md relative flex flex-col max-h-[90vh]">
@@ -3451,7 +3323,6 @@ const SalesDashboard = () => {
                 </div>
             )}
 
-            {/* SALES HISTORY MODAL — Lead Journey, matching the mockup exactly */}
             {isHistoryModalOpen && selectedLead && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
                     <div className="bg-[#0f172a] border border-slate-700/50 rounded-xl shadow-2xl w-full max-w-2xl relative flex flex-col max-h-[90vh]">
@@ -3467,13 +3338,12 @@ const SalesDashboard = () => {
                         <div className="px-6 py-6 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
                             {(() => {
                                 const timeline = buildLeadTimeline(selectedLead);
-                                const rawHistory = safeParseHistory(selectedLead.history); // newest-first
+                                const rawHistory = safeParseHistory(selectedLead.history); 
                                 const createdEntry = rawHistory.find(h => /^Lead Created$/i.test(h.action || ''));
                                 const leadCreated = fmtHistoryDate(selectedLead.createdAt) || createdEntry?.date || null;
                                 const leadUpdated = fmtHistoryDate(selectedLead.updatedAt) || rawHistory[0]?.date || null;
                                 return (
                                     <>
-                                        {/* Current stage banner */}
                                         <div className="bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-3 space-y-1.5">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 <span className="text-xs uppercase tracking-wider text-slate-500 font-semibold">Current Stage</span>
@@ -3491,7 +3361,6 @@ const SalesDashboard = () => {
                                             </div>
                                         </div>
 
-                                        {/* Chronological Timeline — diamond markers, oldest → newest */}
                                         <div>
                                             <h4 className="text-sm font-bold text-slate-300 mb-1 flex items-center gap-2">
                                                 <History size={16} className="text-cyan-400" /> Lead Journey
@@ -3532,7 +3401,6 @@ const SalesDashboard = () => {
                                                             </div>
                                                         );
                                                     })}
-                                                    {/* terminal dot, matches mockup's closing marker */}
                                                     <div className="pl-6 relative -mt-3">
                                                         <span className="absolute -left-[4px] top-0 w-1.5 h-1.5 rounded-full bg-slate-500" />
                                                     </div>
@@ -3540,7 +3408,6 @@ const SalesDashboard = () => {
                                             )}
                                         </div>
 
-                                        {/* Complete stage-by-stage data — nothing left out */}
                                         <div>
                                             <h4 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2 border-t border-slate-700/50 pt-5">
                                                 <ClipboardList size={16} className="text-slate-400" /> Complete Record by Stage
@@ -3603,7 +3470,6 @@ const SalesDashboard = () => {
                 </div>
             )}
     
-            {/* SCROLL TO TOP BUTTON */}
             <button type="button" onClick={scrollToTop}
                 className={`fixed bottom-20 right-4 sm:bottom-24 sm:right-6 p-2.5 sm:p-3 rounded-full text-white bg-slate-700/80 border-none cursor-pointer hover:bg-slate-600 backdrop-blur-sm shadow-xl transition-all duration-300 z-40 ${showScrollButton ? 'opacity-100 translate-y-0 visible' : 'opacity-0 translate-y-8 invisible'}`}
                 aria-label="Scroll to top">
