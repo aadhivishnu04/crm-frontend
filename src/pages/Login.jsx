@@ -98,25 +98,25 @@ const Login = () => {
 
     return (
         <div
-            className="min-h-screen flex items-center justify-end bg-cover bg-center relative poppins-regular pr-6 md:pr-24 lg:pr-32"
+            className="min-h-screen min-h-[100dvh] flex items-center justify-center sm:justify-end bg-cover bg-center relative poppins-regular px-4 sm:px-6 md:px-16 lg:px-24 xl:pr-32 py-8"
             // 2. CHANGED: Swapped the external URL for the imported 'bgImage' variable
             style={{ backgroundImage: `url(${bgImage})` }}
         >
             <div className="absolute inset-0 bg-black/40"></div>
 
-            <div className="relative z-10 w-full max-w-lg p-12 rounded-2xl bg-white/1 backdrop-blur-md border border-white/50 shadow-2xl">
+            <div className="relative z-10 w-full max-w-[22rem] sm:max-w-md md:max-w-lg p-6 sm:p-8 md:p-10 lg:p-12 rounded-xl sm:rounded-2xl bg-white/1 backdrop-blur-md border border-white/50 shadow-2xl">
 
-                <h2 className="text-4xl font-semibold text-center mb-10 text-white tracking-wide">
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center mb-6 sm:mb-8 md:mb-10 text-white tracking-wide">
                    WorkFlow
                 </h2>
 
                 {error && (
-                    <div className="bg-red-500/80 backdrop-blur-sm text-white p-3 rounded-md text-base mb-8 border border-red-400 text-center font-medium">
+                    <div className="bg-red-500/80 backdrop-blur-sm text-white p-2.5 sm:p-3 rounded-md text-sm sm:text-base mb-5 sm:mb-6 md:mb-8 border border-red-400 text-center font-medium">
                         {error}
                     </div>
                 )}
 
-                <form onSubmit={handleLogin} className="space-y-8">
+                <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6 md:space-y-8">
 
                     <div className="relative">
                         <input
@@ -124,7 +124,7 @@ const Login = () => {
                             value={employeeId}
                             onChange={(e) => setEmployeeId(e.target.value)}
                             placeholder="Enter your Employee ID"
-                            className="w-full bg-transparent border-0 border-b-2 border-white/50 py-3 text-white placeholder-gray-300 focus:outline-none focus:border-white focus:ring-0 transition-colors text-xl"
+                            className="w-full bg-transparent border-0 border-b-2 border-white/50 py-2.5 sm:py-3 text-white placeholder-gray-300 focus:outline-none focus:border-white focus:ring-0 transition-colors text-base sm:text-lg md:text-xl"
                             required
                             disabled={isLoading}
                         />
@@ -136,17 +136,17 @@ const Login = () => {
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="Enter your password"
-                            className="w-full bg-transparent border-0 border-b-2 border-white/50 py-3 text-white placeholder-gray-300 focus:outline-none focus:border-white focus:ring-0 transition-colors text-xl"
+                            className="w-full bg-transparent border-0 border-b-2 border-white/50 py-2.5 sm:py-3 text-white placeholder-gray-300 focus:outline-none focus:border-white focus:ring-0 transition-colors text-base sm:text-lg md:text-xl"
                             required
                             disabled={isLoading}
                         />
                     </div>
 
-                    <div className="pt-6">
+                    <div className="pt-4 sm:pt-6">
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-white text-gray-900 font-bold py-4 px-4 rounded-xl hover:bg-gray-100 transition-colors shadow-lg disabled:opacity-70 disabled:cursor-not-allowed text-lg uppercase tracking-wider"
+                            className="w-full bg-white text-gray-900 font-bold py-3 sm:py-4 px-4 rounded-lg sm:rounded-xl hover:bg-gray-100 transition-colors shadow-lg disabled:opacity-70 disabled:cursor-not-allowed text-base sm:text-lg uppercase tracking-wider"
                         >
                             {isLoading ? 'Verifying session token...' : 'Log In'}
                         </button>
