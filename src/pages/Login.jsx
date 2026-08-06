@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { User, Lock, Loader2, ShieldCheck } from 'lucide-react';
 import { loginUser } from '../utils/auth';
 import { ROLES } from '../utils/permissions';
 
@@ -30,12 +31,26 @@ const getRoleFromDesignation = (designation) => {
     return ROLES.MARKETING;
 };
 
+// Injects the two premium display/body faces used only on this screen so the
+// rest of the app's font stack is untouched.
+const useLoginFonts = () => {
+    useEffect(() => {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap';
+        document.head.appendChild(link);
+        return () => document.head.removeChild(link);
+    }, []);
+};
+
 const Login = () => {
     const [employeeId, setEmployeeId] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
+
+    useLoginFonts();
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -98,62 +113,117 @@ const Login = () => {
 
     return (
         <div
-            className="min-h-screen min-h-[100dvh] flex items-center justify-center sm:justify-end bg-cover bg-center relative poppins-regular px-4 sm:px-6 md:px-16 lg:px-24 xl:pr-32 py-8"
-            // 2. CHANGED: Swapped the external URL for the imported 'bgImage' variable
-            style={{ backgroundImage: `url(${bgImage})` }}
+            className="min-h-screen min-h-[100dvh] flex items-center justify-center sm:justify-end bg-cover bg-center relative px-4 sm:px-6 md:px-16 lg:px-24 xl:pr-32 py-8"
+            style={{ backgroundImage: `url(${bgImage})`, fontFamily: "'Inter', sans-serif" }}
         >
-            <div className="absolute inset-0 bg-black/40"></div>
+            {/* Light overall tint so the banner stays visible behind the glass */}
+            <div className="absolute inset-0 bg-black/20" />
 
-            <div className="relative z-10 w-full max-w-[22rem] sm:max-w-md md:max-w-lg p-6 sm:p-8 md:p-10 lg:p-12 rounded-xl sm:rounded-2xl bg-white/1 backdrop-blur-md border border-white/50 shadow-2xl">
+            <div
+                className="login-card relative z-10 w-full max-w-[22rem] sm:max-w-md md:max-w-lg p-7 sm:p-9 md:p-11 lg:p-12 rounded-2xl sm:rounded-[1.75rem] bg-white/10 backdrop-blur-2xl"
+            >
+                {/* Eyebrow */}
+                {/* <p className="text-center text-[10px] sm:text-xs tracking-[0.35em] text-[#C9A227] font-medium uppercase mb-3 sm:mb-4">
+                    iTour &middot; Workforce Operations
+                </p> */}
 
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-semibold text-center mb-6 sm:mb-8 md:mb-10 text-white tracking-wide">
-                   WorkFlow
+                {/* Wordmark */}
+                <h2
+                    className="text-center text-[2.25rem] sm:text-[2.75rem] md:text-[3.25rem] leading-none mb-3 select-none"
+                    style={{ fontFamily: "'Fraunces', serif", letterSpacing: '-0.02em' }}
+                >
+                    <span className="text-black" style={{ fontWeight: 400 }}>Work</span>
+                    <span className="text-black" style={{ fontWeight: 800 }}>Flow</span>
                 </h2>
 
+                {/* Signature accent rule, draws in on load */}
+                <div className="flex justify-center mb-7 sm:mb-9 md:mb-10">
+                    <span className="gold-rule h-px w-16 bg-gradient-to-r from-transparent via-[#C9A227] to-transparent" />
+                </div>
+
                 {error && (
-                    <div className="bg-red-500/80 backdrop-blur-sm text-white p-2.5 sm:p-3 rounded-md text-sm sm:text-base mb-5 sm:mb-6 md:mb-8 border border-red-400 text-center font-medium">
+                    <div className="bg-[#3A1418]/80 backdrop-blur-sm text-[#F5D9D5] p-2.5 sm:p-3 rounded-md text-sm sm:text-base mb-5 sm:mb-6 border border-[#8C3B3B]/60 text-center font-medium">
                         {error}
                     </div>
                 )}
 
-                <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6 md:space-y-8">
+                <form onSubmit={handleLogin} className="space-y-5 sm:space-y-6 md:space-y-7">
 
-                    <div className="relative">
-                        <input
-                            type="text"
-                            value={employeeId}
-                            onChange={(e) => setEmployeeId(e.target.value)}
-                            placeholder="Enter your Employee ID"
-                            className="w-full bg-transparent border-0 border-b-2 border-white/50 py-2.5 sm:py-3 text-white placeholder-gray-300 focus:outline-none focus:border-white focus:ring-0 transition-colors text-base sm:text-lg md:text-xl"
-                            required
-                            disabled={isLoading}
-                        />
+                    <div className="field-group relative">
+                        <label className="block text-[10px] sm:text-xs tracking-[0.2em] uppercase text-[#000000] mb-2">
+                            Employee ID
+                        </label>
+                        <div className="flex items-center gap-3 border-b-2 border-[#C9A227]/30 focus-within:border-[#C9A227] transition-colors py-2 sm:py-2.5">
+                            <User className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-[#C9A227]/70 shrink-0" strokeWidth={1.75} />
+                            <input
+                                type="text"
+                                value={employeeId}
+                                onChange={(e) => setEmployeeId(e.target.value)}
+                                placeholder="e.g. 1042"
+                                className="w-full bg-transparent border-0 text-[#000000] placeholder-[#5C6478] focus:outline-none focus:ring-0 text-base sm:text-lg tracking-wide"
+                                required
+                                disabled={isLoading}
+                            />
+                        </div>
                     </div>
 
-                    <div className="relative">
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Enter your password"
-                            className="w-full bg-transparent border-0 border-b-2 border-white/50 py-2.5 sm:py-3 text-white placeholder-gray-300 focus:outline-none focus:border-white focus:ring-0 transition-colors text-base sm:text-lg md:text-xl"
-                            required
-                            disabled={isLoading}
-                        />
+                    <div className="field-group relative">
+                        <label className="block text-[10px] sm:text-xs tracking-[0.2em] uppercase text-[#000000] mb-2">
+                            Password
+                        </label>
+                        <div className="flex items-center gap-3 border-b-2 border-[#C9A227]/30 focus-within:border-[#C9A227] transition-colors py-2 sm:py-2.5">
+                            <Lock className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-[#C9A227]/70 shrink-0" strokeWidth={1.75} />
+                            <input
+                                type="password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
+                                className="w-full bg-transparent border-0 text-[#000000] placeholder-[#5C6478] focus:outline-none focus:ring-0 text-base sm:text-lg tracking-wide"
+                                required
+                                disabled={isLoading}
+                            />
+                        </div>
                     </div>
 
-                    <div className="pt-4 sm:pt-6">
+                    <div className="pt-2 sm:pt-3">
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="w-full bg-white text-gray-900 font-bold py-3 sm:py-4 px-4 rounded-lg sm:rounded-xl hover:bg-gray-100 transition-colors shadow-lg disabled:opacity-70 disabled:cursor-not-allowed text-base sm:text-lg uppercase tracking-wider"
+                            className="group relative w-full overflow-hidden bg-gradient-to-r from-[#C9A227] to-[#E4C766] text-[#0B1220] font-semibold py-3 sm:py-3.5 px-4 rounded-xl transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed text-sm sm:text-base uppercase tracking-[0.15em] flex items-center justify-center gap-2"
                         >
-                            {isLoading ? 'Verifying session token...' : 'Log In'}
+                            {isLoading ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2.5} />
+                                    Verifying
+                                </>
+                            ) : (
+                                'Log In'
+                            )}
                         </button>
                     </div>
-
                 </form>
+
+                <div className="flex items-center justify-center gap-1.5 mt-6 sm:mt-8 text-[#5C6478] text-[10px] sm:text-xs tracking-wide">
+                    <ShieldCheck className="w-3.5 h-3.5" strokeWidth={1.75} />
+                    Encrypted, role-based access
+                </div>
             </div>
+
+            <style>{`
+                @keyframes goldDraw {
+                    from { width: 0; opacity: 0; }
+                    to { width: 4rem; opacity: 1; }
+                }
+                @keyframes cardRise {
+                    from { opacity: 0; transform: translateY(14px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .login-card { animation: cardRise 0.55s ease-out both; }
+                .gold-rule { animation: goldDraw 0.7s 0.15s cubic-bezier(0.16,1,0.3,1) both; }
+                @media (prefers-reduced-motion: reduce) {
+                    .login-card, .gold-rule { animation: none; }
+                }
+            `}</style>
         </div>
     );
 };
