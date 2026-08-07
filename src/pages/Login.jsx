@@ -37,7 +37,7 @@ const useLoginFonts = () => {
     useEffect(() => {
         const link = document.createElement('link');
         link.rel = 'stylesheet';
-        link.href = 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,500&family=Inter:wght@400;500;600;700&display=swap';
+        link.href = 'https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap';
         document.head.appendChild(link);
         return () => document.head.removeChild(link);
     }, []);
@@ -114,7 +114,7 @@ const Login = () => {
     return (
         <div
             className="min-h-screen min-h-[100dvh] flex items-center justify-center sm:justify-end bg-cover bg-center relative px-4 sm:px-6 md:px-16 lg:px-24 xl:pr-32 py-8"
-            style={{ backgroundImage: `url(${bgImage})`, fontFamily: "'Inter', sans-serif" }}
+            style={{ backgroundImage: `url(${bgImage})`, backgroundPosition: '25% center', fontFamily: "'Inter', sans-serif" }}
         >
             {/* Light overall tint so the banner stays visible behind the glass */}
             <div className="absolute inset-0 " />
@@ -133,12 +133,12 @@ const Login = () => {
                     style={{ fontFamily: "'Fraunces', serif", letterSpacing: '-0.02em' }}
                 >
                     <span className="text-black" style={{ fontWeight: 800 }}>Work</span>
-                    <span className="text-black" style={{ fontWeight: 200 }}>Flow</span>
+                    <span className="text-black" style={{ fontWeight: 800 }}>Flow</span>
                 </h2>
 
                 {/* Signature accent rule, draws in on load */}
                 <div className="flex justify-center mb-7 sm:mb-9 md:mb-10">
-                    <span className="gold-rule h-px w-16 bg-gradient-to-r from-transparent via-[#000000] to-transparent" />
+                    {/* <span className="gold-rule h-px w-16 bg-gradient-to-r from-transparent via-[#000000] to-transparent" /> */}
                 </div>
 
                 {error && (
@@ -153,13 +153,13 @@ const Login = () => {
                         <label className="block text-[10px] sm:text-xs tracking-[0.2em] uppercase text-[#000000] mb-2">
                             Employee ID
                         </label>
-                        <div className="flex items-center gap-3 border-b-2 border-[#000000]/30 focus-within:border-[#C9A227] transition-colors py-2 sm:py-2.5">
-                            <User className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-[#C9A227]/70 shrink-0" strokeWidth={1.75} />
+                        <div className="flex items-center gap-3 border-b-2 border-[#000000]/30 focus-within:border-[#000000] transition-colors py-2 sm:py-2.5">
+                            <User className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-[#000000]/70 shrink-0" strokeWidth={1.75} />
                             <input
                                 type="text"
                                 value={employeeId}
                                 onChange={(e) => setEmployeeId(e.target.value)}
-                                placeholder="e.g. 1042"
+                                placeholder=" "
                                 className="w-full bg-transparent border-0 text-[#000000] placeholder-[#5C6478] focus:outline-none focus:ring-0 text-base sm:text-lg tracking-wide"
                                 required
                                 disabled={isLoading}
@@ -171,13 +171,13 @@ const Login = () => {
                         <label className="block text-[10px] sm:text-xs tracking-[0.2em] uppercase text-[#000000] mb-2">
                             Password
                         </label>
-                        <div className="flex items-center gap-3 border-b-2 border-[#000000]/30 focus-within:border-[#C9A227] transition-colors py-2 sm:py-2.5">
-                            <Lock className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-[#C9A227]/70 shrink-0" strokeWidth={1.75} />
+                        <div className="flex items-center gap-3 border-b-2 border-[#000000]/30 focus-within:border-[#000000] transition-colors py-2 sm:py-2.5">
+                            <Lock className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-[#000000]/70 shrink-0" strokeWidth={1.75} />
                             <input
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
+                                placeholder=" "
                                 className="w-full bg-transparent border-0 text-[#000000] placeholder-[#5C6478] focus:outline-none focus:ring-0 text-base sm:text-lg tracking-wide"
                                 required
                                 disabled={isLoading}
@@ -189,7 +189,7 @@ const Login = () => {
                         <button
                             type="submit"
                             disabled={isLoading}
-                            className="group relative w-full overflow-hidden bg-gradient-to-r from-[#C9A227] to-[#E4C766] text-[#0B1220] font-semibold py-3 sm:py-3.5 px-4 rounded-xl transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed text-sm sm:text-base uppercase tracking-[0.15em] flex items-center justify-center gap-2"
+                            className="group relative w-full overflow-hidden bg-gradient-to-r from-[#d02525] to-[#d02525] text-[#ffffff] font-semibold py-3 sm:py-3.5 px-4 rounded-xl transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed text-sm sm:text-base uppercase tracking-[0.15em] flex items-center justify-center gap-2"
                         >
                             {isLoading ? (
                                 <>
@@ -203,10 +203,10 @@ const Login = () => {
                     </div>
                 </form>
 
-                <div className="flex items-center justify-center gap-1.5 mt-6 sm:mt-8 text-[#5C6478] text-[10px] sm:text-xs tracking-wide">
+                {/* <div className="flex items-center justify-center gap-1.5 mt-6 sm:mt-8 text-[#5C6478] text-[10px] sm:text-xs tracking-wide">
                     <ShieldCheck className="w-3.5 h-3.5" strokeWidth={1.75} />
                     Encrypted, role-based access
-                </div>
+                </div> */}
             </div>
 
             <style>{`

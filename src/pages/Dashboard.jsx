@@ -1821,24 +1821,33 @@ const Dashboard = () => {
                                 )}
                             </button>
                             {opsAlertsOpen && (
-                                <div className="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-600/60 rounded-2xl shadow-2xl z-[120] overflow-hidden">
-                                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-600/50 flex items-center justify-between">
-                                        <p className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide">{user?.role === ROLES.ACCOUNTS ? 'Alerts shared by Accounts' : 'Due & Follow-Up Alerts'}</p>
-                                        <button onClick={() => setOpsAlertsOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={14}/></button>
+                                <>
+                                    {/* Mobile-only backdrop so tapping outside closes the panel */}
+                                    <div
+                                        className="fixed inset-0 z-[119] sm:hidden bg-black/30"
+                                        onClick={() => setOpsAlertsOpen(false)}
+                                    />
+                                    <div
+                                        className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-20 sm:top-auto sm:mt-2 w-auto sm:w-80 sm:max-w-[90vw] max-h-[70vh] sm:max-h-none bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-600/60 rounded-2xl shadow-2xl z-[120] overflow-hidden flex flex-col"
+                                    >
+                                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-600/50 flex items-center justify-between flex-shrink-0">
+                                            <p className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide">{user?.role === ROLES.ACCOUNTS ? 'Alerts shared by Accounts' : 'Due & Follow-Up Alerts'}</p>
+                                            <button onClick={() => setOpsAlertsOpen(false)} className="p-1 -m-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={14}/></button>
+                                        </div>
+                                        <div className="overflow-y-auto custom-scrollbar max-h-[calc(70vh-48px)] sm:max-h-72">
+                                            {dueSoonAlerts.length === 0 ? (
+                                                <div className="text-center py-8 text-slate-400 text-xs">No alerts right now.</div>
+                                            ) : (
+                                                dueSoonAlerts.map(alert => (
+                                                    <div key={alert.id} className="px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                                                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{alert.title}</p>
+                                                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide">{alert.category} · {alert.date}</p>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className="max-h-72 overflow-y-auto custom-scrollbar">
-                                        {dueSoonAlerts.length === 0 ? (
-                                            <div className="text-center py-8 text-slate-400 text-xs">No alerts right now.</div>
-                                        ) : (
-                                            dueSoonAlerts.map(alert => (
-                                                <div key={alert.id} className="px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                                                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{alert.title}</p>
-                                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide">{alert.category} · {alert.date}</p>
-                                                </div>
-                                            ))
-                                        )}
-                                    </div>
-                                </div>
+                                </>
                             )}
                         </div>
                     )}
