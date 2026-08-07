@@ -300,7 +300,7 @@ import React, { useState, useEffect ,useRef} from 'react';
             ? lead.balancePending
             : (packageCostNum ? Math.max(packageCostNum - amountReceived, 0) : undefined);
 
-        const vendorReqs = lead.paymentRequests || [];
+        const vendorReqs = safeParseArr(lead.paymentRequests);
         const vendorPaid = vendorReqs.filter(r => r.status === 'Paid' || r.paymentStatus === 'Paid' || r.outAmountPaid);
         const vendorPaymentSummary = vendorReqs.length
             ? `${vendorPaid.length}/${vendorReqs.length} vendor payments completed`
@@ -449,7 +449,7 @@ import React, { useState, useEffect ,useRef} from 'react';
         }
         // Vendor-side payments (Accounts' "Vendor Payment" tab) — one row per
         // vendor request that's actually been paid out.
-        (lead.paymentRequests || []).forEach(req => {
+        safeParseArr(lead.paymentRequests).forEach(req => {
             if (req.status === 'Paid' || req.paymentStatus === 'Paid' || req.outAmountPaid) {
                 push('accounts', 'Vendor Payment', req.paymentDueDate, [
                     { label: 'Vendor', value: req.outProviderName || req.providerName || req.service },
