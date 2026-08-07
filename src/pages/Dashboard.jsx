@@ -1140,7 +1140,10 @@ const Dashboard = () => {
     // never matched what a person actually saw on the Operations page. `expandedOpsLeads` re-parses
     // every lead's requests the same way OperationsDashboard.jsx does, so the two stay identical.
     const getOpsTabStatus = (rawStatus) => {
-        if (['New Requests', 'Move To Operation', 'Customization Required', 'Pending'].includes(rawStatus)) return 'New Requests';
+        // 'Jobs' / 'Sales Assigned' are Sales-side statuses for leads that haven't been handed
+        // over to Operations yet. Mapped the same way OperationsDashboard.jsx does, so the two
+        // pages agree on what counts as "New Requests" (the Jobs pool).
+        if (['New Requests', 'Move To Operation', 'Customization Required', 'Pending', 'Jobs', 'Sales Assigned'].includes(rawStatus)) return 'New Requests';
         if (['Ops Assigned', 'Follow-Up', 'Customisation Ready'].includes(rawStatus)) return 'Follow-Up';
         if (['Upcoming Departure', 'Upcoming Bookings'].includes(rawStatus)) return 'Upcoming Bookings';
         if (['Confirmed Bookings'].includes(rawStatus)) return 'Confirmed Bookings';
@@ -1148,7 +1151,13 @@ const Dashboard = () => {
     };
 
     const expandedOpsLeads = useMemo(() => (
-        allLeads.flatMap(item => {
+        allLeads
+            // Mirrors OperationsDashboard.jsx: a lead only belongs to Operations once Sales has
+            // actually handed it over. Raw 'Jobs' (brand new, nobody assigned) and 'Sales Assigned'
+            // (still sitting with Sales) leads haven't reached Operations yet, so they're excluded
+            // before anything else — otherwise the Jobs pool count here won't match Operations'.
+            .filter(item => item.status !== 'Jobs' && item.status !== 'Sales Assigned')
+            .flatMap(item => {
             let parsedRequests = [];
             if (item.customisationRequests) {
                 try {
@@ -1165,14 +1174,21 @@ const Dashboard = () => {
             if (parsedRequests.length > 0) {
                 return parsedRequests.map((req, index) => {
                     let rawRowStatus = (req.status && req.status !== 'Pending') ? req.status : 'Pending';
-                    const isAssigned = !!(req.assignedTo || item.operationExecutive);
+                    // Same guard as OperationsDashboard.jsx: for a lead with a single destination,
+                    // the lead-level operationExecutive IS that destination's assignment, so it's a
+                    // safe fallback. But for leads with MULTIPLE destinations, falling back to that
+                    // shared field would make every other still-unassigned destination look assigned
+                    // the moment ANY one of them got assigned — each destination's own req.assignedTo
+                    // is the only source of truth then.
+                    const opsFallback = parsedRequests.length > 1 ? '' : item.operationExecutive;
+                    const isAssigned = !!(req.assignedTo || opsFallback);
                     return {
                         ...item,
                         uniqueKey: `${item.id}-${index}`,
                         reqIndex: index,
                         rawRowStatus: (bookingConfirmedTag && isAssigned) ? 'Confirmed Bookings' : (rawRowStatus || 'New Requests'),
                         destination: req.destination || item.destination,
-                        assignedOps: req.assignedTo || item.operationExecutive || '',
+                        assignedOps: req.assignedTo || opsFallback || '',
                     };
                 });
             }
@@ -1189,14 +1205,9 @@ const Dashboard = () => {
 
     const isAuthorizedForOps = (l) => isAdmin || l.assignedOps === user?.name;
 
-    // Today's Jobs — new/unassigned requests that came in today, ready for anyone in Ops to pick up.
-    const opsTodaysJobs = useMemo(() => (
-        expandedOpsLeads.filter(l => l.createdAt && new Date(l.createdAt).toDateString() === todayStr &&
-            getOpsTabStatus(l.rawRowStatus) === 'New Requests'
-        )
-    ), [expandedOpsLeads, todayStr]);
-
-    // Pending Itineraries — unassigned requests sitting in the "New Requests" pool for anyone in Ops.
+    // Jobs — unassigned requests sitting in the "New Requests" pool for anyone in Ops to pick up.
+    // Mirrors OperationsDashboard.jsx's "Jobs" tab/count exactly (see getOpsTabStatus above), so
+    // this card and its popup always agree with what Operations sees on their own Jobs tab.
     const opsPendingItineraries = useMemo(() => (
         expandedOpsLeads.filter(l => getOpsTabStatus(l.rawRowStatus) === 'New Requests')
     ), [expandedOpsLeads]);
@@ -1859,7 +1870,7 @@ const Dashboard = () => {
 
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                 {(user?.role === ROLES.OPERATION ? [
-                    { id: 'Today Leads', label: "Today's Jobs", value: opsTodaysJobs.length, icon: <Users className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-blue-500/20 to-blue-600/5', iconBg: 'bg-blue-500/15 text-blue-500 dark:text-blue-400', border: 'border-blue-500/10 dark:border-blue-500/10', glow: 'hover:border-blue-500/30 dark:hover:border-blue-500/20' },
+                    { id: 'Today Leads', label: "Jobs", value: opsPendingItineraries.length, icon: <Users className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-blue-500/20 to-blue-600/5', iconBg: 'bg-blue-500/15 text-blue-500 dark:text-blue-400', border: 'border-blue-500/10 dark:border-blue-500/10', glow: 'hover:border-blue-500/30 dark:hover:border-blue-500/20' },
                     { id: 'Pending Quotation', label: 'Pending Itineraries', value: opsPendingItineraries.length, icon: <FileText className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-amber-500/20 to-amber-600/5', iconBg: 'bg-amber-500/15 text-amber-500 dark:text-amber-400', border: 'border-amber-500/10 dark:border-amber-500/10', glow: 'hover:border-amber-500/30 dark:hover:border-amber-500/20' },
                     { id: 'Booking Confirmation', label: 'Upcoming Departure', value: fulfillmentAlerts.length, icon: <PlaneTakeoff className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-emerald-500/20 to-emerald-600/5', iconBg: 'bg-emerald-500/15 text-emerald-500 dark:text-emerald-400', border: 'border-emerald-500/10 dark:border-emerald-500/10', glow: 'hover:border-emerald-500/30 dark:hover:border-emerald-500/20' },
                     { id: 'On-Trip', label: 'Vendor Pending', value: opsVendorPending.length, icon: <PackageCheck className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-violet-500/20 to-violet-600/5', iconBg: 'bg-violet-500/15 text-violet-500 dark:text-violet-400', border: 'border-violet-500/10 dark:border-violet-500/10', glow: 'hover:border-violet-500/30 dark:hover:border-violet-500/20' },
@@ -1882,7 +1893,7 @@ const Dashboard = () => {
                     <div 
                         key={i} onClick={() => {
                             if (user?.role === ROLES.OPERATION) {
-                                setRegionModal({ open: true, regionName: s.label, tripsList: s.id === 'Today Leads' ? opsTodaysJobs : s.id === 'Pending Quotation' ? opsPendingItineraries : s.id === 'Booking Confirmation' ? fulfillmentAlerts : opsVendorPending });
+                                setRegionModal({ open: true, regionName: s.label, tripsList: s.id === 'Today Leads' ? opsPendingItineraries : s.id === 'Pending Quotation' ? opsPendingItineraries : s.id === 'Booking Confirmation' ? fulfillmentAlerts : opsVendorPending });
                             } else if (user?.role === ROLES.ACCOUNTS) {
                                 setRegionModal({ open: true, regionName: s.label, tripsList: s.id === 'New Customer Payment' ? acctsNewCustomerPayments.map(e => e.rawLead) : s.id === 'Vendor Payment Due' ? acctsVendorPaymentDue.map(v => v.rawLead) : s.id === 'Customer Payment Overdue' ? acctsCustomerPaymentOverdue.map(c => c.rawLead) : acctsReadyForClosure });
                             } else if (user?.role === ROLES.MARKETING) {

@@ -374,6 +374,7 @@ const SalesDashboard = () => {
     // --- PREVIOUS ATTEMPTS LOG CRUD STATES ---
     const [editingLogIndex, setEditingLogIndex] = useState(null);
     const [editingLogData, setEditingLogData] = useState({ interaction: '', action: '', notes: '' });
+    const [isPreviousAttemptsModalOpen, setIsPreviousAttemptsModalOpen] = useState(false);
 
     // --- NEW LEAD MODAL STATES ---
     const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
@@ -2411,63 +2412,85 @@ const SalesDashboard = () => {
                                                     </div>
                                                 </div>
 
-                                                {(
-                                                    <div className="mt-5 p-4 bg-[#091124] border border-slate-700/60 rounded-xl">
-                                                        <div className="flex justify-between items-center mb-4">
-                                                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                                                                Previous Attempts ({editFormData.noResponseLogs?.length || 0})
-                                                            </p>
-                                                        </div>
-                                                        <div className="space-y-3 max-h-64 overflow-y-auto custom-scrollbar pr-1">
-                                                            {editFormData.noResponseLogs && editFormData.noResponseLogs.length > 0 ? (
-                                                                editFormData.noResponseLogs.map((log, origIdx) => ({ log, origIdx })).reverse().map(({ log, origIdx }) => (
-                                                                    <div key={origIdx} className="flex flex-col text-xs bg-[#0f172a] p-3 rounded-lg border border-slate-700/60 shadow-sm transition-all hover:bg-slate-800/80 group">
-                                                                        {editingLogIndex === origIdx ? (
-                                                                            <div className="space-y-2">
-                                                                                <div className="flex justify-between items-center mb-1">
-                                                                                    <span className="text-cyan-400 font-bold tracking-wide">{log.timestamp}</span>
-                                                                                    <div className="flex gap-2">
-                                                                                        <button type="button" onClick={() => handleEditLogSave(origIdx)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded border-none cursor-pointer text-[10px] font-bold transition-colors">Save</button>
-                                                                                        <button type="button" onClick={handleEditLogCancel} className="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded border-none cursor-pointer text-[10px] font-bold transition-colors">Cancel</button>
-                                                                                    </div>
-                                                                                </div>
-                                                                                <div className="grid grid-cols-2 gap-2">
-                                                                                    <input type="text" value={editingLogData.interaction} onChange={e => setEditingLogData({...editingLogData, interaction: e.target.value})} className={inlineInputCls} placeholder="Interaction Type" />
-                                                                                    <input type="text" value={editingLogData.action} onChange={e => setEditingLogData({...editingLogData, action: e.target.value})} className={inlineInputCls} placeholder="Action Taken" />
-                                                                                </div>
-                                                                                <textarea value={editingLogData.notes} onChange={e => setEditingLogData({...editingLogData, notes: e.target.value})} className={`${inlineInputCls} resize-none min-h-[40px]`} placeholder="Notes" />
-                                                                            </div>
-                                                                        ) : (
-                                                                            <>
-                                                                                <div className="flex justify-between items-start mb-2">
-                                                                                    <span className="text-cyan-400 font-bold tracking-wide">{log.timestamp}</span>
-                                                                                    <div className="flex items-center gap-2">
-                                                                                        <span className="text-slate-300 px-2 py-0.5 bg-slate-900 rounded border border-slate-600 text-[10px] font-medium uppercase">
-                                                                                            {log.interaction || 'N/A'}
-                                                                                        </span>
-                                                                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 ml-1">
-                                                                                            <button type="button" onClick={() => handleEditLogStart(origIdx, log)} className="text-blue-400 hover:text-blue-300 bg-transparent border-none cursor-pointer p-0 flex items-center" title="Edit Log">
-                                                                                                <Pencil size={13} />
-                                                                                            </button>
-                                                                                            <button type="button" onClick={() => handleDeleteLog(origIdx)} className="text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer p-0 flex items-center" title="Delete Log">
-                                                                                                <Trash2 size={13} />
-                                                                                            </button>
+                                                <div className="mt-5 flex justify-end">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setIsPreviousAttemptsModalOpen(true)}
+                                                        className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                                                    >
+                                                        <History size={13} className="text-cyan-400" />
+                                                        Previous Attempts
+                                                        <span className="font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-900/50 px-1.5 py-0.5 rounded-full min-w-[18px] text-[10px] text-center">
+                                                            {editFormData.noResponseLogs?.length || 0}
+                                                        </span>
+                                                    </button>
+                                                </div>
+
+                                                {isPreviousAttemptsModalOpen && (
+                                                    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[70] p-4 backdrop-blur-sm" onClick={() => setIsPreviousAttemptsModalOpen(false)}>
+                                                        <div className="bg-[#0b1220] border border-slate-800 rounded-2xl shadow-2xl w-full max-w-lg flex flex-col relative text-slate-100 overflow-hidden max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
+                                                            <div className="px-5 py-4 border-b border-slate-800 flex justify-between items-center flex-shrink-0">
+                                                                <h2 className="text-sm sm:text-base font-bold text-white tracking-tight flex items-center gap-2">
+                                                                    <History size={17} className="text-cyan-400" />
+                                                                    Previous Attempts ({editFormData.noResponseLogs?.length || 0})
+                                                                </h2>
+                                                                <button type="button" onClick={() => setIsPreviousAttemptsModalOpen(false)} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-800">
+                                                                    <X size={18} />
+                                                                </button>
+                                                            </div>
+                                                            <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar">
+                                                                <div className="space-y-3">
+                                                                    {editFormData.noResponseLogs && editFormData.noResponseLogs.length > 0 ? (
+                                                                        editFormData.noResponseLogs.map((log, origIdx) => ({ log, origIdx })).reverse().map(({ log, origIdx }) => (
+                                                                            <div key={origIdx} className="flex flex-col text-xs bg-[#0f172a] p-3 rounded-lg border border-slate-700/60 shadow-sm transition-all hover:bg-slate-800/80 group">
+                                                                                {editingLogIndex === origIdx ? (
+                                                                                    <div className="space-y-2">
+                                                                                        <div className="flex justify-between items-center mb-1">
+                                                                                            <span className="text-cyan-400 font-bold tracking-wide">{log.timestamp}</span>
+                                                                                            <div className="flex gap-2">
+                                                                                                <button type="button" onClick={() => handleEditLogSave(origIdx)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-2 py-1 rounded border-none cursor-pointer text-[10px] font-bold transition-colors">Save</button>
+                                                                                                <button type="button" onClick={handleEditLogCancel} className="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded border-none cursor-pointer text-[10px] font-bold transition-colors">Cancel</button>
+                                                                                            </div>
                                                                                         </div>
+                                                                                        <div className="grid grid-cols-2 gap-2">
+                                                                                            <input type="text" value={editingLogData.interaction} onChange={e => setEditingLogData({...editingLogData, interaction: e.target.value})} className={inlineInputCls} placeholder="Interaction Type" />
+                                                                                            <input type="text" value={editingLogData.action} onChange={e => setEditingLogData({...editingLogData, action: e.target.value})} className={inlineInputCls} placeholder="Action Taken" />
+                                                                                        </div>
+                                                                                        <textarea value={editingLogData.notes} onChange={e => setEditingLogData({...editingLogData, notes: e.target.value})} className={`${inlineInputCls} resize-none min-h-[40px]`} placeholder="Notes" />
                                                                                     </div>
-                                                                                </div>
-                                                                                <div className="text-slate-300 mt-0.5 space-y-1.5">
-                                                                                    <div><span className="text-slate-500 font-medium">Action Taken:</span> <span className="text-slate-200">{log.action || 'None'}</span></div>
-                                                                                    {log.notes && <div><span className="text-slate-500 font-medium">Notes:</span> <span className="text-slate-200">{log.notes}</span></div>}
-                                                                                </div>
-                                                                            </>
-                                                                        )}
-                                                                    </div>
-                                                                ))
-                                                            ) : (
-                                                                <div className="text-center py-4 text-xs text-slate-500 italic border border-dashed border-slate-700/50 rounded-lg">
-                                                                    No detailed logs recorded yet. Add notes and save to see history here.
+                                                                                ) : (
+                                                                                    <>
+                                                                                        <div className="flex justify-between items-start mb-2">
+                                                                                            <span className="text-cyan-400 font-bold tracking-wide">{log.timestamp}</span>
+                                                                                            <div className="flex items-center gap-2">
+                                                                                                <span className="text-slate-300 px-2 py-0.5 bg-slate-900 rounded border border-slate-600 text-[10px] font-medium uppercase">
+                                                                                                    {log.interaction || 'N/A'}
+                                                                                                </span>
+                                                                                                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 ml-1">
+                                                                                                    <button type="button" onClick={() => handleEditLogStart(origIdx, log)} className="text-blue-400 hover:text-blue-300 bg-transparent border-none cursor-pointer p-0 flex items-center" title="Edit Log">
+                                                                                                        <Pencil size={13} />
+                                                                                                    </button>
+                                                                                                    <button type="button" onClick={() => handleDeleteLog(origIdx)} className="text-red-400 hover:text-red-300 bg-transparent border-none cursor-pointer p-0 flex items-center" title="Delete Log">
+                                                                                                        <Trash2 size={13} />
+                                                                                                    </button>
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        <div className="text-slate-300 mt-0.5 space-y-1.5">
+                                                                                            <div><span className="text-slate-500 font-medium">Action Taken:</span> <span className="text-slate-200">{log.action || 'None'}</span></div>
+                                                                                            {log.notes && <div><span className="text-slate-500 font-medium">Notes:</span> <span className="text-slate-200">{log.notes}</span></div>}
+                                                                                        </div>
+                                                                                    </>
+                                                                                )}
+                                                                            </div>
+                                                                        ))
+                                                                    ) : (
+                                                                        <div className="text-center py-4 text-xs text-slate-500 italic border border-dashed border-slate-700/50 rounded-lg">
+                                                                            No detailed logs recorded yet. Add notes and save to see history here.
+                                                                        </div>
+                                                                    )}
                                                                 </div>
-                                                            )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 )}
