@@ -2523,7 +2523,7 @@ export default function OperationsDashboard() {
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Purchase Cost</label><input type="text" value={dmc.serviceCost || ''} onChange={e => handleArrayChange('vendorRequests', index, 'serviceCost', e.target.value)} className={inputCls} /></div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Booking Status</label>
-                                                                    <CustomSelect value={dmc.bookingStatus || ''} onChange={v => handleArrayChange('vendorRequests', index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Confirmed', 'Cancelled']} />
+                                                                    <CustomSelect hideDefaultManual={true}  value={dmc.bookingStatus || ''} onChange={v => handleArrayChange('vendorRequests', index, 'bookingStatus', v)} className={selectCls} options={['Pending', 'Confirmed', 'Cancelled']} />
                                                                 </div>
                                                                 <div><label className="block text-xs font-medium text-slate-400 mb-1">Confirmation Date</label><DatePickerField type="date" value={dmc.confirmationDate || ''} onChange={e => handleArrayChange('vendorRequests', index, 'confirmationDate', e.target.value)} className={inputCls} /></div>
 
@@ -2628,7 +2628,8 @@ export default function OperationsDashboard() {
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Payment Type</label>
-                                                                    <CustomSelect value={req.paymentType} onChange={(v) => handleArrayChange('paymentRequests', index, 'paymentType', v)} className={selectCls} options={['Full Payment', 'Advance', 'Balance']} />
+                                                                     {/* <CustomSelect hideDefaultManual={true} value={selectedLeadForEdit.insRequired} onChange={v => setSelectedLeadForEdit({ ...selectedLeadForEdit, insRequired: v })} className={selectCls} options={['Yes', 'No']} />    */}
+                                                                    <CustomSelect hideDefaultManual={true}  value={req.paymentType} onChange={(v) => handleArrayChange('paymentRequests', index, 'paymentType', v)} className={selectCls} options={['Full Payment', 'Advance', 'Balance']} />
                                                                 </div>
                                                                 <div>
                                                                     <label className="block text-xs font-medium text-slate-400 mb-1">Currency</label>
