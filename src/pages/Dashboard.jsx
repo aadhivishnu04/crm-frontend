@@ -131,8 +131,8 @@ const Modal = ({ open, onClose, title, children, maxWidth = "max-w-md", icon: Ti
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 md:p-6">
             <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onClose} />
-            <div className={`relative z-10 bg-white dark:bg-[#141b2d] border border-slate-200/80 dark:border-slate-700/50 rounded-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] w-full ${maxWidth} p-5 sm:p-6 max-h-[calc(100vh-24px)] sm:max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col`}>
-                <div className="flex justify-between items-center mb-5 sticky top-0 bg-white dark:bg-[#141b2d] z-20 pb-3 border-b border-slate-100 dark:border-slate-700/40">
+            <div className={`relative z-10 bg-white dark:bg-[#141b2d] border border-slate-200/80 dark:border-slate-600/60 rounded-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] w-full ${maxWidth} p-5 sm:p-6 max-h-[calc(100vh-24px)] sm:max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col`}>
+                <div className="flex justify-between items-center mb-5 sticky top-0 bg-white dark:bg-[#141b2d] z-20 pb-3 border-b border-slate-100 dark:border-slate-600/50">
                     <h3 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white truncate pr-4 tracking-tight flex items-center gap-2">
                         {TitleIcon && <TitleIcon size={18} className={`${iconColorCls} flex-shrink-0`} />}
                         {title}
@@ -156,13 +156,13 @@ const Field = ({ label, children, className = '' }) => (
 
 const Input = ({ className = '', ...props }) => (
     <input
-        className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:cursor-pointer ${className}`}
+        className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-600/60 rounded-xl px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:cursor-pointer ${className}`}
         {...props}
     />
 );
 
 const DateInput = ({ value, onChange, className = '' }) => (
-    <div className="relative bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl focus-within:border-blue-500/70 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all overflow-hidden group flex items-center">
+    <div className="relative bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-600/60 rounded-xl focus-within:border-blue-500/70 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all overflow-hidden group flex items-center">
         <input
             type="date"
             value={value || ''}
@@ -176,7 +176,7 @@ const DateInput = ({ value, onChange, className = '' }) => (
 
 const TextArea = ({ className = '', ...props }) => (
     <textarea
-        className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all custom-scrollbar ${className}`}
+        className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-600/60 rounded-xl px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all custom-scrollbar ${className}`}
         {...props}
     />
 );
@@ -196,7 +196,7 @@ const Select = ({ options, value, onChange, placeholder = "", className = '', al
                     type="text"
                     value={value}
                     onChange={e => onChange(e.target.value)}
-                    className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2.5 pr-10 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all ${className}`}
+                    className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-600/60 rounded-xl px-3 py-2.5 pr-10 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all ${className}`}
                     autoFocus
                 />
                 <button 
@@ -223,7 +223,7 @@ const Select = ({ options, value, onChange, placeholder = "", className = '', al
                         onChange(e.target.value);
                     }
                 }}
-                className={`w-full appearance-none bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl px-3 py-2.5 pr-8 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer ${className}`}
+                className={`w-full appearance-none bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-600/60 rounded-xl px-3 py-2.5 pr-8 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer ${className}`}
             >
                 <option value="" disabled hidden>{placeholder}</option>
                 {options.map(o => <option key={o} value={o}>{o}</option>)}
@@ -646,6 +646,23 @@ const Dashboard = () => {
         return [];
     };
 
+    // Every lead was previously scanned for every employee regardless of who owns it, so the Alerts
+    // bell and Calendar showed the exact same company-wide list to every login. isOwnLead scopes that
+    // down to the leads this person actually owns, using the same ownership fields used elsewhere in
+    // this file (assignedTo for Sales, assignedToOps/operationExecutive/per-request assignedTo for
+    // Operations). Admin keeps seeing everything. Accounts/Marketing have no individual-owner field on
+    // a lead yet, so they're left as a team-shared list for now.
+    const isOwnLead = (lead) => {
+        if (isAdmin) return true;
+        if (user?.role === ROLES.SALES) return lead.assignedTo === user?.name;
+        if (user?.role === ROLES.OPERATION) {
+            const ownsAtLeadLevel = lead.assignedToOps === user?.name || lead.operationExecutive === user?.name;
+            const ownsAtRequestLevel = safeParseList(lead.customisationRequests).some(r => r.assignedTo === user?.name);
+            return ownsAtLeadLevel || ownsAtRequestLevel;
+        }
+        return true;
+    };
+
     const crmReminders = useMemo(() => {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -673,7 +690,7 @@ const Dashboard = () => {
         };
 
         (allLeads || []).forEach(lead => {
-            if (!lead) return;
+            if (!lead || !isOwnLead(lead)) return;
 
             // Sales — Next Follow-Up date
             addReminder(lead, lead.followupDate || lead.nextFollowUp, 'Follow-Up', 'Follow-Up');
@@ -1069,12 +1086,12 @@ const Dashboard = () => {
             title = 'Today Leads Breakdown'; 
         } 
         else if (type === 'Pending Quotation') { 
-            list = combinedData.filter(item => item.status === 'Move To Operation' || item.status === 'Shared to Sales'); 
+            list = opsPendingItineraries; 
             title = 'Operations Desk (Pending Quotation) Breakdown'; 
         } 
         else if (type === 'Booking Confirmation') { 
-            list = combinedData.filter(item => item.status === 'Confirmed Bookings' || item.status === 'Booking Confirmation' || item.status === 'Upcoming Departure'); 
-            title = 'Booking Confirmation Breakdown'; 
+            list = bookingConfirmedList; 
+            title = isAdmin ? 'Booking Confirmation Breakdown' : 'My Booking Confirmation Breakdown'; 
         }
         else if (type === 'On-Trip') {
             list = combinedData.filter(item => item.status === 'On-Trip' || item.status === 'On Trip' || item.status === 'Active Trip');
@@ -1100,11 +1117,19 @@ const Dashboard = () => {
 
     const combinedData = [...allLeads, ...closedTrips.filter(j => !allLeads.some(l => l.id === j.id))];
     const todayStr = new Date().toDateString();
-    
-    const computedStats = {
+
+    // "Booking Confirmation" — mirrors SalesDashboard.jsx's own "My Confirmation" tab exactly:
+    // that tab flags a lead via `customerResponse === 'Booking Confirmed'` (set when Sales marks a
+    // booking confirmed), NOT via lead.status — lead.status is never actually set to 'Confirmed
+    // Bookings' by Sales, which is why this card previously always read 0 for a Sales/Admin user.
+    // Same ownership rule as the rest of this file: Admin sees everyone's, Sales sees only their own.
+    const bookingConfirmedList = combinedData.filter(item =>
+        item.customerResponse === 'Booking Confirmed' && (isAdmin || item.assignedTo === user?.name || item.assignedToOps === user?.name)
+    );
+
+    const computedStatsBase = {
         todayLeads: allLeads.filter(l => l.createdAt && new Date(l.createdAt).toDateString() === todayStr).length || stats.todayLeads,
-        pendingQuotation: combinedData.filter(item => item.status === 'Move To Operation' || item.status === 'Shared to Sales').length,
-        bookingConfirmation: combinedData.filter(item => item.status === 'Confirmed Bookings' || item.status === 'Booking Confirmation' || item.status === 'Upcoming Departure').length,
+        bookingConfirmation: bookingConfirmedList.length,
         onTrip: combinedData.filter(item => item.status === 'On-Trip' || item.status === 'On Trip' || item.status === 'Active Trip').length
     };
 
@@ -1175,6 +1200,12 @@ const Dashboard = () => {
     const opsPendingItineraries = useMemo(() => (
         expandedOpsLeads.filter(l => getOpsTabStatus(l.rawRowStatus) === 'New Requests')
     ), [expandedOpsLeads]);
+
+    // "Pending Quotations" (home stat card) = same per-request "New Requests" pool Operations sees on
+    // their own Jobs tab. A lead's real ops status can live inside customisationRequests[] rather than
+    // the flat lead.status, so this reuses opsPendingItineraries instead of re-deriving from combinedData.
+    // (computedStats itself is assembled further below, once salesOwnLeads is available, so the
+    // Booking Confirmation card can also be scoped to a Sales user's own leads.)
 
     // Vendor Pending — this person's (or, if admin, everyone's) confirmed bookings still needing vendor fulfilment.
     const opsVendorPending = useMemo(() => (
@@ -1287,12 +1318,28 @@ const Dashboard = () => {
         allLeads.filter(l => (l.assignedTo === user?.name || l.assignedToOps === user?.name))
     ), [allLeads, user]);
 
+    const computedStats = {
+        ...computedStatsBase,
+        pendingQuotation: opsPendingItineraries.length,
+    };
+
     const salesMyJobsBreakdown = useMemo(() => {
         const todayAssigned = salesOwnLeads.filter(l => l.createdAt && new Date(l.createdAt).toDateString() === todayStr);
         const noResponse = salesOwnLeads.filter(l => (!l.status || l.status === 'Jobs') && !(l.followupDate || l.nextFollowUp));
         const followUp = salesOwnLeads.filter(l => l.followupDate || l.nextFollowUp);
-        const pendingQuotations = salesOwnLeads.filter(l => l.status === 'Move To Operation' || l.status === 'Shared to Sales');
-        const bookingConfirmed = salesOwnLeads.filter(l => l.status === 'Confirmed Bookings' || l.status === 'Booking Confirmation' || l.status === 'Upcoming Departure');
+        const pendingQuotations = salesOwnLeads.filter(l => {
+            let parsedRequests = [];
+            if (l.customisationRequests) {
+                try {
+                    const raw = typeof l.customisationRequests === 'string' ? JSON.parse(l.customisationRequests) : l.customisationRequests;
+                    if (Array.isArray(raw)) parsedRequests = raw;
+                    else if (raw && typeof raw === 'object') parsedRequests = [raw];
+                } catch { parsedRequests = []; }
+            }
+            if (parsedRequests.length > 0) return parsedRequests.some(req => getOpsTabStatus(req.status || 'Pending') === 'New Requests');
+            return getOpsTabStatus(l.status) === 'New Requests';
+        });
+        const bookingConfirmed = salesOwnLeads.filter(l => l.customerResponse === 'Booking Confirmed');
         return [
             { id: 'today', label: 'Today Assigned Lead', count: todayAssigned.length, list: todayAssigned },
             { id: 'noresponse', label: 'No Response', count: noResponse.length, list: noResponse },
@@ -1416,7 +1463,7 @@ const Dashboard = () => {
     }, [allLeads, mktgCampaignFilter]);
 
     return (
-        <div className={`min-h-screen w-full p-3 sm:p-5 lg:p-7 pt-20 sm:pt-24 lg:pt-6 pb-24 space-y-4 sm:space-y-5 poppins-regular text-base relative custom-scrollbar overflow-x-hidden transition-colors duration-300 ${darkMode ? 'bg-[#0b0f1a] text-slate-100 dark' : 'bg-slate-100 text-slate-800'}`}>
+        <div className={`min-h-screen w-full p-3 sm:p-5 lg:p-7 pt-20 sm:pt-24 lg:pt-6 pb-24 space-y-4 sm:space-y-5 poppins-regular text-base relative custom-scrollbar overflow-x-hidden transition-colors duration-300 ${darkMode ? 'bg-[#0E172B] text-slate-100 dark' : 'bg-slate-100 text-slate-800'}`}>
 
             {toast.show && (
                 <div className={`fixed top-4 right-4 left-4 sm:left-auto sm:top-6 sm:right-6 z-[200] flex items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 rounded-2xl shadow-[0_20px_40px_-8px_rgba(0,0,0,0.4)] border transition-all backdrop-blur-xl ${toast.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/30 text-emerald-100' : 'bg-red-950/90 border-red-500/30 text-red-100'}`}>
@@ -1518,7 +1565,7 @@ const Dashboard = () => {
                     )}
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 mt-5">
-                    <button onClick={() => setLeaveModalOpen(false)} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">CANCEL</button>
+                    <button onClick={() => setLeaveModalOpen(false)} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">CANCEL</button>
                     <button onClick={applyLeave} className="w-full sm:flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 order-1 sm:order-2">
                         SUBMIT
                     </button>
@@ -1533,7 +1580,7 @@ const Dashboard = () => {
                         leaves.map(leave => (
                             <div key={leave.id} className={`p-4 rounded-2xl border transition-colors ${
                                 leave.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/10' :
-                                'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40'
+                                'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50'
                             }`}>
                                 <div className="flex justify-between items-start mb-3">
                                     <div>
@@ -1566,11 +1613,11 @@ const Dashboard = () => {
                                     </span>
                                 </div>
                                 
-                                <div className="text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-[#0d1526] p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 space-y-2.5">
+                                <div className="text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-[#0d1526] p-3 rounded-xl border border-slate-100 dark:border-slate-600/60 space-y-2.5">
                                     <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Reason</span> {leave.reason}</p>
                                     
                                     {(leave.handoverTo || leave.handoverNotes) && (
-                                        <div className="pt-2.5 border-t border-slate-100 dark:border-slate-700/50 space-y-2.5">
+                                        <div className="pt-2.5 border-t border-slate-100 dark:border-slate-600/60 space-y-2.5">
                                             {leave.handoverTo && (
                                                 <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Handover To</span> {leave.handoverTo}</p>
                                             )}
@@ -1604,7 +1651,7 @@ const Dashboard = () => {
                 <div className="flex flex-col h-full">
                     <div className="space-y-5 flex-1 px-1 py-1">
                         <div>
-                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700/50 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
+                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-600/60 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
                                 <Users size={14} className="text-violet-400" /> CUSTOMER INFORMATION	
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
@@ -1614,7 +1661,7 @@ const Dashboard = () => {
                             </div>
                         </div>
                         <div>
-                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700/50 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
+                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-600/60 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
                                 <MapPin size={14} className="text-emerald-400" /> TRAVEL REQUIREMENT	
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
@@ -1630,7 +1677,7 @@ const Dashboard = () => {
                         </div>
                           
                         <div>
-                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700/50 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
+                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-600/60 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
                                 <Target size={14} className="text-blue-400" /> LEAD SOURCE	
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
@@ -1640,8 +1687,8 @@ const Dashboard = () => {
                         </div>
                      
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100 dark:border-slate-700/40 mt-5 sticky bottom-0 bg-white dark:bg-[#141b2d] pb-1 z-20">
-                        <button onClick={closeLeadModal} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
+                    <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100 dark:border-slate-600/50 mt-5 sticky bottom-0 bg-white dark:bg-[#141b2d] pb-1 z-20">
+                        <button onClick={closeLeadModal} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
                         <button onClick={saveLead} disabled={!leadForm.customerName.trim()} className="w-full sm:flex-1 py-2.5 rounded-xl bg-[#06BC7D] hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 order-1 sm:order-2">
                             <Save size={16} /> Save New Lead
                         </button>
@@ -1655,7 +1702,7 @@ const Dashboard = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
                             <label className="block text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-widest">Due Date / Time</label>
-                            <div className="relative bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60 rounded-xl focus-within:border-blue-500/70 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all overflow-hidden group flex items-center">
+                            <div className="relative bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-600/60 rounded-xl focus-within:border-blue-500/70 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all overflow-hidden group flex items-center">
                                 <input
                                     type="datetime-local" name="due" value={taskForm.due || ''} onChange={(e) => setTaskForm(f => ({ ...f, due: e.target.value }))}
                                     className="w-full px-3 py-2.5 text-sm bg-transparent text-slate-800 dark:text-slate-200 outline-none cursor-pointer appearance-none relative z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:left-0 [&::-webkit-calendar-picker-indicator]:top-0"
@@ -1667,7 +1714,7 @@ const Dashboard = () => {
                     </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 mt-5">
-                    <button onClick={closeTaskModal} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
+                    <button onClick={closeTaskModal} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
                     <button onClick={saveTask} disabled={!taskForm.title.trim()} className="w-full sm:flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25 order-1 sm:order-2">
                         <Save size={16} /> {taskModal.mode === 'add' ? 'Add Task' : 'Save Changes'}
                     </button>
@@ -1684,7 +1731,7 @@ const Dashboard = () => {
                     <Field label="Category"><Select options={EVENT_CATEGORIES} value={eventForm.category} onChange={v => setEventForm(f => ({ ...f, category: v }))} placeholder="" /></Field>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 mt-5">
-                    <button onClick={() => setEventModalOpen(false)} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
+                    <button onClick={() => setEventModalOpen(false)} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
                     <button onClick={saveEvent} disabled={!eventForm.title.trim() || !eventForm.date} className="w-full sm:flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:bg-slate-400 dark:disabled:bg-slate-600 disabled:shadow-none disabled:cursor-not-allowed text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 order-1 sm:order-2">
                         <Save size={16} className="text-white" /> Add Reminder
                     </button>
@@ -1697,7 +1744,7 @@ const Dashboard = () => {
                         <p className="text-slate-500 text-center py-10 text-sm">No reminders found across any dates.</p>
                     ) : (
                         allReminderItems.map((ev) => (
-                            <div key={ev.id} className={`flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-3.5 rounded-xl border transition-colors ${ev.auto ? 'border-blue-100 dark:border-blue-700/30 bg-blue-50/40 dark:bg-blue-900/10 hover:bg-blue-100/50 dark:hover:bg-blue-900/20' : 'border-slate-100 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}>
+                            <div key={ev.id} className={`flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-3.5 rounded-xl border transition-colors ${ev.auto ? 'border-blue-100 dark:border-blue-700/30 bg-blue-50/40 dark:bg-blue-900/10 hover:bg-blue-100/50 dark:hover:bg-blue-900/20' : 'border-slate-100 dark:border-slate-600/50 bg-slate-50 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}>
                                 <div className="min-w-0">
                                     <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">{ev.title}</h4>
                                     <p className="text-xs text-slate-500 mt-1.5 flex flex-wrap items-center gap-2">
@@ -1734,33 +1781,27 @@ const Dashboard = () => {
                         </Field>
                         <Field label="Color Theme">
                             <div className="relative">
-                                <input type="color" value={targetForm.color} onChange={e => setTargetForm(f => ({ ...f, color: e.target.value }))} className="w-full h-[42px] p-1 rounded-xl cursor-pointer bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-700/60" />
+                                <input type="color" value={targetForm.color} onChange={e => setTargetForm(f => ({ ...f, color: e.target.value }))} className="w-full h-[42px] p-1 rounded-xl cursor-pointer bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-600/60" />
                             </div>
                         </Field>
                     </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 mt-5">
-                    <button onClick={() => { setTargetModal(false); setEditingTarget(null); }} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
+                    <button onClick={() => { setTargetModal(false); setEditingTarget(null); }} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
                     <button onClick={saveTarget} disabled={!targetForm.label.trim() || targetForm.max <= 0} className="w-full sm:flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25 order-1 sm:order-2">
                         <Save size={16} /> {editingTarget ? 'Save Changes' : 'Create Target'}
                     </button>
                 </div>
             </Modal>
 
-            <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-200/80 dark:border-slate-700/30 shadow-sm dark:shadow-none flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-5 relative">
+            <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-200/80 dark:border-slate-600/50 shadow-sm dark:shadow-none flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-5 relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-blue-500/3 dark:to-blue-500/5 pointer-events-none rounded-2xl overflow-hidden" />
                 <div className="min-w-0 relative flex items-center gap-3 sm:gap-4">
                     <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 dark:text-white mb-1 tracking-tight truncate">{greetingLabel}, {displayHeaderName}</h1>
                 </div>
                 <div className="flex items-center w-full lg:w-auto gap-2.5 sm:gap-3 relative">
-                    <button
-                        onClick={() => setDarkMode(!darkMode)}
-                        className="p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700/60 text-slate-500 dark:text-amber-400 transition-all flex-shrink-0"
-                        title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                    >
-                        {darkMode ? <Sun size={17}/> : <Moon size={17}/>}
-                    </button>
-                    <div className="hidden md:flex items-center bg-slate-50 dark:bg-slate-800/40 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/40 font-mono tabular-nums min-w-[300px] justify-between text-slate-500 dark:text-slate-400 text-xs tracking-wide">
+                 
+                    <div className="hidden md:flex items-center bg-slate-50 dark:bg-slate-800/40 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/50 font-mono tabular-nums min-w-[300px] justify-between text-slate-500 dark:text-slate-400 text-xs tracking-wide">
                         <span className="flex items-center gap-2"><Calendar size={14} className="text-blue-400" /> {formattedDate}</span>
                         <span className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
                         <span className="flex items-center gap-2"><Clock size={14} className="text-emerald-400" /> {formattedTime}</span>
@@ -1769,8 +1810,8 @@ const Dashboard = () => {
                         <div className="relative flex-shrink-0">
                             <button
                                 onClick={() => setOpsAlertsOpen(o => !o)}
-                                className="relative p-2.5 rounded-xl border border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700/60 text-slate-500 dark:text-slate-300 transition-all"
-                                title={user?.role === ROLES.OPERATION ? 'Alerts shared by Operations' : user?.role === ROLES.ACCOUNTS ? 'Alerts shared by Accounts' : 'Due & Follow-Up Alerts'}
+                                className="relative p-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700/60 text-slate-500 dark:text-slate-300 transition-all"
+                                title={user?.role === ROLES.ACCOUNTS ? 'Alerts shared by Accounts' : 'Due & Follow-Up Alerts'}
                             >
                                 <BellRing size={17}/>
                                 {dueSoonAlerts.length > 0 && (
@@ -1780,9 +1821,9 @@ const Dashboard = () => {
                                 )}
                             </button>
                             {opsAlertsOpen && (
-                                <div className="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-700/50 rounded-2xl shadow-2xl z-[120] overflow-hidden">
-                                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700/40 flex items-center justify-between">
-                                        <p className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide">{user?.role === ROLES.OPERATION ? 'Alerts shared by Operations' : user?.role === ROLES.ACCOUNTS ? 'Alerts shared by Accounts' : 'Due & Follow-Up Alerts'}</p>
+                                <div className="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-600/60 rounded-2xl shadow-2xl z-[120] overflow-hidden">
+                                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-600/50 flex items-center justify-between">
+                                        <p className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide">{user?.role === ROLES.ACCOUNTS ? 'Alerts shared by Accounts' : 'Due & Follow-Up Alerts'}</p>
                                         <button onClick={() => setOpsAlertsOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={14}/></button>
                                     </div>
                                     <div className="max-h-72 overflow-y-auto custom-scrollbar">
@@ -1807,7 +1848,7 @@ const Dashboard = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
                 {(user?.role === ROLES.OPERATION ? [
                     { id: 'Today Leads', label: "Today's Jobs", value: opsTodaysJobs.length, icon: <Users className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-blue-500/20 to-blue-600/5', iconBg: 'bg-blue-500/15 text-blue-500 dark:text-blue-400', border: 'border-blue-500/10 dark:border-blue-500/10', glow: 'hover:border-blue-500/30 dark:hover:border-blue-500/20' },
                     { id: 'Pending Quotation', label: 'Pending Itineraries', value: opsPendingItineraries.length, icon: <FileText className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-amber-500/20 to-amber-600/5', iconBg: 'bg-amber-500/15 text-amber-500 dark:text-amber-400', border: 'border-amber-500/10 dark:border-amber-500/10', glow: 'hover:border-amber-500/30 dark:hover:border-amber-500/20' },
@@ -1860,15 +1901,15 @@ const Dashboard = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
 
                     {/* Lead Report — leads grouped by source/platform */}
-                    <div className="bg-white dark:bg-[#111827] rounded-2xl border-t-2 border-t-amber-500 border border-slate-200/80 dark:border-slate-700/30 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
-                        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/40 flex items-center gap-2.5">
+                    <div className="bg-white dark:bg-[#111827] rounded-2xl border-t-2 border-t-amber-500 border border-slate-200/80 dark:border-slate-600/50 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
+                        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-600/50 flex items-center gap-2.5">
                             <div className="p-1.5 rounded-lg bg-amber-500/15 text-amber-500 dark:text-amber-400"><ClipboardList size={15}/></div>
                             <h3 className="font-bold text-sm text-slate-800 dark:text-white">Lead Report</h3>
                         </div>
                         <div className="flex-1 overflow-x-auto custom-scrollbar">
                             <table className="w-full text-left text-xs sm:text-sm">
                                 <thead>
-                                    <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                    <tr className="border-b border-slate-100 dark:border-slate-600/50">
                                         <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Lead Source</th>
                                         <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Count</th>
                                     </tr>
@@ -1890,15 +1931,15 @@ const Dashboard = () => {
                     </div>
 
                     {/* Lead Assignment — leads grouped by assigned employee */}
-                    <div className="bg-white dark:bg-[#111827] rounded-2xl border-t-2 border-t-blue-500 border border-slate-200/80 dark:border-slate-700/30 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
-                        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/40 flex items-center gap-2.5">
+                    <div className="bg-white dark:bg-[#111827] rounded-2xl border-t-2 border-t-blue-500 border border-slate-200/80 dark:border-slate-600/50 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
+                        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-600/50 flex items-center gap-2.5">
                             <div className="p-1.5 rounded-lg bg-blue-500/15 text-blue-500 dark:text-blue-400"><Users size={15}/></div>
                             <h3 className="font-bold text-sm text-slate-800 dark:text-white">Lead Assignment</h3>
                         </div>
                         <div className="flex-1 overflow-x-auto custom-scrollbar">
                             <table className="w-full text-left text-xs sm:text-sm">
                                 <thead>
-                                    <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                    <tr className="border-b border-slate-100 dark:border-slate-600/50">
                                         <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Employee</th>
                                         <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Count</th>
                                     </tr>
@@ -1920,8 +1961,8 @@ const Dashboard = () => {
                     </div>
 
                     {/* Campaign Performance — leads generated per campaign, filterable by window */}
-                    <div className="bg-white dark:bg-[#111827] rounded-2xl border-t-2 border-t-violet-500 border border-slate-200/80 dark:border-slate-700/30 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
-                        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/40 flex items-center justify-between gap-2">
+                    <div className="bg-white dark:bg-[#111827] rounded-2xl border-t-2 border-t-violet-500 border border-slate-200/80 dark:border-slate-600/50 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
+                        <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-600/50 flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2.5 min-w-0">
                                 <div className="p-1.5 rounded-lg bg-violet-500/15 text-violet-500 dark:text-violet-400 flex-shrink-0"><Megaphone size={15}/></div>
                                 <h3 className="font-bold text-sm text-slate-800 dark:text-white truncate">Campaign Performance</h3>
@@ -1945,7 +1986,7 @@ const Dashboard = () => {
                         <div className="flex-1 overflow-x-auto custom-scrollbar">
                             <table className="w-full text-left text-xs sm:text-sm">
                                 <thead>
-                                    <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                    <tr className="border-b border-slate-100 dark:border-slate-600/50">
                                         <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Campaign</th>
                                         <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Leads</th>
                                     </tr>
@@ -1974,7 +2015,7 @@ const Dashboard = () => {
                 <div className="space-y-4 sm:space-y-5">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         {/* My Jobs */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">My Jobs</h2>
@@ -2000,7 +2041,7 @@ const Dashboard = () => {
                         </div>
 
                         {/* Pending Itineraries (detail) */}
-                        <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-amber-900/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-amber-700/40 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Pending Itineraries</h2>
@@ -2026,7 +2067,7 @@ const Dashboard = () => {
                         </div>
 
                         {/* Returned by Sales */}
-                        <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-rose-900/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-rose-700/40 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Returned by Sales</h2>
@@ -2055,7 +2096,7 @@ const Dashboard = () => {
                     {/* Fulfilment Due + Vendor Payment Due */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
                         {/* Fulfilment Due */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Fulfilment Due</h2>
@@ -2081,7 +2122,7 @@ const Dashboard = () => {
                         </div>
 
                         {/* Vendor Payment Due */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div className="flex items-center gap-2.5">
                                     <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500 flex-shrink-0">
@@ -2099,7 +2140,7 @@ const Dashboard = () => {
                                     <div className="text-center py-8 text-slate-400 text-xs">No vendor payments due right now.</div>
                                 ) : (
                                     opsVendorPaymentDue.map(v => (
-                                        <div key={v.id} onClick={() => setSelectedLeadDetails(v.rawLead)} className="flex items-start justify-between gap-2 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30 p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer">
+                                        <div key={v.id} onClick={() => setSelectedLeadDetails(v.rawLead)} className="flex items-start justify-between gap-2 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50 p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer">
                                             <div className="min-w-0">
                                                 <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{v.vendorName}</p>
                                                 <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide truncate">{v.customerName} · Due {v.dueDate || 'TBD'}</p>
@@ -2115,7 +2156,7 @@ const Dashboard = () => {
                     {/* Leave Request / Tasks / Calendar */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         {/* Leave Request */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Leave Request</h2>
                                 <button onClick={() => setLeaveModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-lg shadow-blue-500/20">
@@ -2127,7 +2168,7 @@ const Dashboard = () => {
                                     <div className="text-center py-10 text-slate-400 text-xs">No leave history found.</div>
                                 ) : (
                                     leaves.slice(0, 5).map(leave => (
-                                        <div key={leave.id} className="flex justify-between items-center py-2 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30">
+                                        <div key={leave.id} className="flex justify-between items-center py-2 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50">
                                             <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{leave.startDate}{leave.endDate ? ` – ${leave.endDate}` : ''}</span>
                                             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wide flex-shrink-0 ml-2 ${
                                                 leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
@@ -2142,7 +2183,7 @@ const Dashboard = () => {
                         </div>
 
                         {/* Tasks */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
@@ -2169,12 +2210,12 @@ const Dashboard = () => {
                         </div>
 
                         {/* Calendar */}
-                        <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/30 flex flex-col gap-3 shadow-sm">
+                        <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-600/50 flex flex-col gap-3 shadow-sm">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
                             </div>
-                            <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30 rounded-xl p-2.5">
+                            <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50 rounded-xl p-2.5">
                                 <div className="flex justify-between items-center mb-2.5 px-0.5">
                                     <div className="flex gap-1">
                                         <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronLeft size={14}/></button>
@@ -2195,14 +2236,14 @@ const Dashboard = () => {
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
-                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-700/30 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
+                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-600/50 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
                                     <Eye size={12}/> <span>View All</span>
                                 </button>
                                 <button onClick={() => openAddEvent(currentDate)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[11px] font-bold transition-colors shadow-lg shadow-blue-500/20">
                                     <Plus size={12}/> <span>Create</span>
                                 </button>
                             </div>
-                            <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-700/30 rounded-xl p-3 flex-1 flex flex-col">
+                            <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-600/50 rounded-xl p-3 flex-1 flex flex-col">
                                 <div className="flex justify-between items-center mb-2.5">
                                     <h3 className="text-[9px] uppercase tracking-widest font-bold text-slate-400">Reminders · {currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
                                     <span className="text-[9px] font-bold text-slate-500 bg-slate-200 dark:bg-slate-700/60 px-1.5 py-0.5 rounded-full">{filteredEvents.length}</span>
@@ -2242,7 +2283,7 @@ const Dashboard = () => {
                 <div className="space-y-4 sm:space-y-5">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         {/* Customer Payment Overdue */}
-                        <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-rose-900/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-rose-700/40 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Customer Payment Overdue</h2>
@@ -2268,7 +2309,7 @@ const Dashboard = () => {
                         </div>
 
                         {/* Vendor Payments */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Vendor Payments</h2>
@@ -2294,7 +2335,7 @@ const Dashboard = () => {
                         </div>
 
                         {/* Financial Summary */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight mb-3">Financial Summary</h2>
                             <div className="space-y-2.5 flex-1">
                                 {[
@@ -2303,7 +2344,7 @@ const Dashboard = () => {
                                     { label: 'Customer Outstanding', value: acctsFinancialSummary.customerOutstanding, color: 'text-amber-500' },
                                     { label: 'Vendor Outstanding', value: acctsFinancialSummary.vendorOutstanding, color: 'text-rose-500' },
                                 ].map(row => (
-                                    <div key={row.label} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30">
+                                    <div key={row.label} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50">
                                         <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{row.label}</span>
                                         <span className={`text-xs font-bold font-mono ${row.color}`}>₹{row.value.toLocaleString('en-IN')}</span>
                                     </div>
@@ -2315,7 +2356,7 @@ const Dashboard = () => {
                     {/* Leave Request / Tasks / Calendar */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         {/* Leave Request */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Leave Request</h2>
                                 <button onClick={() => setLeaveModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-lg shadow-blue-500/20">
@@ -2327,7 +2368,7 @@ const Dashboard = () => {
                                     <div className="text-center py-10 text-slate-400 text-xs">No leave history found.</div>
                                 ) : (
                                     leaves.slice(0, 5).map(leave => (
-                                        <div key={leave.id} className="flex justify-between items-center py-2 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30">
+                                        <div key={leave.id} className="flex justify-between items-center py-2 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50">
                                             <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{leave.startDate}{leave.endDate ? ` – ${leave.endDate}` : ''}</span>
                                             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wide flex-shrink-0 ml-2 ${
                                                 leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
@@ -2342,7 +2383,7 @@ const Dashboard = () => {
                         </div>
 
                         {/* Tasks */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
@@ -2369,12 +2410,12 @@ const Dashboard = () => {
                         </div>
 
                         {/* Calendar */}
-                        <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/30 flex flex-col gap-3 shadow-sm">
+                        <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-600/50 flex flex-col gap-3 shadow-sm">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
                             </div>
-                            <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30 rounded-xl p-2.5">
+                            <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50 rounded-xl p-2.5">
                                 <div className="flex justify-between items-center mb-2.5 px-0.5">
                                     <div className="flex gap-1">
                                         <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronLeft size={14}/></button>
@@ -2395,14 +2436,14 @@ const Dashboard = () => {
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
-                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-700/30 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
+                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-600/50 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
                                     <Eye size={12}/> <span>View All</span>
                                 </button>
                                 <button onClick={() => openAddEvent(currentDate)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[11px] font-bold transition-colors shadow-lg shadow-blue-500/20">
                                     <Plus size={12}/> <span>Create</span>
                                 </button>
                             </div>
-                            <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-700/30 rounded-xl p-3 flex-1 flex flex-col">
+                            <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-600/50 rounded-xl p-3 flex-1 flex flex-col">
                                 <div className="flex justify-between items-center mb-2.5">
                                     <h3 className="text-[9px] uppercase tracking-widest font-bold text-slate-400">Reminders · {currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
                                     <span className="text-[9px] font-bold text-slate-500 bg-slate-200 dark:bg-slate-700/60 px-1.5 py-0.5 rounded-full">{filteredEvents.length}</span>
@@ -2445,8 +2486,8 @@ const Dashboard = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-5">
 
                         {/* 1. My Jobs */}
-                        <div className="bg-white dark:bg-[#111827] border-t-2 border-t-blue-500 border border-slate-200/80 dark:border-slate-700/30 rounded-2xl shadow-sm flex flex-col lg:col-span-2 overflow-hidden">
-                            <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/40 flex justify-between items-center">
+                        <div className="bg-white dark:bg-[#111827] border-t-2 border-t-blue-500 border border-slate-200/80 dark:border-slate-600/50 rounded-2xl shadow-sm flex flex-col lg:col-span-2 overflow-hidden">
+                            <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-600/50 flex justify-between items-center">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">My Jobs</h2>
                                     {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Today's record</p> */}
@@ -2456,7 +2497,7 @@ const Dashboard = () => {
                             <div className="flex-1 overflow-x-auto custom-scrollbar">
                                 <table className="w-full text-left text-xs sm:text-sm">
                                     <thead>
-                                        <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                        <tr className="border-b border-slate-100 dark:border-slate-600/50">
                                             <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Status</th>
                                             <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Count</th>
                                         </tr>
@@ -2474,15 +2515,15 @@ const Dashboard = () => {
                         </div>
 
                         {/* 2. Followup Alerts */}
-                        <div className="bg-white dark:bg-[#111827] border-t-2 border-t-amber-500 border border-slate-200/80 dark:border-slate-700/30 rounded-2xl shadow-sm flex flex-col lg:col-span-3 overflow-hidden">
-                            <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-700/40">
+                        <div className="bg-white dark:bg-[#111827] border-t-2 border-t-amber-500 border border-slate-200/80 dark:border-slate-600/50 rounded-2xl shadow-sm flex flex-col lg:col-span-3 overflow-hidden">
+                            <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-600/50">
                                 <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Followup Alerts</h2>
                                 {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Leads with a scheduled follow-up</p> */}
                             </div>
                             <div className="flex-1 overflow-x-auto custom-scrollbar max-h-[280px]">
                                 <table className="w-full text-left text-xs sm:text-sm">
                                     <thead>
-                                        <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                        <tr className="border-b border-slate-100 dark:border-slate-600/50">
                                             <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Lead Name</th>
                                             <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Destination</th>
                                             <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Customer Response</th>
@@ -2510,7 +2551,7 @@ const Dashboard = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
 
                         {/* 1. Sales Target */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
                             <div className="flex justify-between items-center mb-4">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Sales Target</h2>
@@ -2544,7 +2585,7 @@ const Dashboard = () => {
                         </div>
 
                         {/* 2. Top Destinations */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Top Destinations</h2>
@@ -2564,7 +2605,7 @@ const Dashboard = () => {
                                         className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-colors border ${
                                             topDestFilter === f.id
                                                 ? 'bg-amber-500/15 border-amber-500/40 text-amber-500'
-                                                : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                                                : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                                         }`}
                                     >
                                         {f.label}
@@ -2574,7 +2615,7 @@ const Dashboard = () => {
                             <div className="flex-1 overflow-y-auto max-h-[280px] custom-scrollbar">
                                 <table className="w-full text-left text-xs">
                                     <thead>
-                                        <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                        <tr className="border-b border-slate-100 dark:border-slate-600/50">
                                             <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Destination</th>
                                             <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Leads</th>
                                             <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Bookings</th>
@@ -2598,10 +2639,10 @@ const Dashboard = () => {
                         </div>
 
                         {/* 3. Client Payment Due */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-3">
                                 <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Client Payment Due</h2>
-                                <select value={clientPaymentFilter} onChange={e => setClientPaymentFilter(e.target.value)} className="text-[10px] font-bold uppercase tracking-wide bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/40 rounded-lg px-2 py-1.5 text-slate-500 dark:text-slate-300 outline-none cursor-pointer">
+                                <select value={clientPaymentFilter} onChange={e => setClientPaymentFilter(e.target.value)} className="text-[10px] font-bold uppercase tracking-wide bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-600/50 rounded-lg px-2 py-1.5 text-slate-500 dark:text-slate-300 outline-none cursor-pointer">
                                     <option value="all">All</option>
                                     <option value="overdue">Overdue</option>
                                     <option value="upcoming">Upcoming</option>
@@ -2610,7 +2651,7 @@ const Dashboard = () => {
                             <div className="flex-1 overflow-y-auto max-h-[280px] custom-scrollbar">
                                 <table className="w-full text-left text-xs">
                                     <thead>
-                                        <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                        <tr className="border-b border-slate-100 dark:border-slate-600/50">
                                             <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Name</th>
                                             <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Amount</th>
                                             <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Due</th>
@@ -2642,12 +2683,12 @@ const Dashboard = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
 
                         {/* 1. Fulfilment Due */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight mb-3">Fulfilment Due</h2>
                             <div className="flex-1 overflow-y-auto max-h-[280px] custom-scrollbar">
                                 <table className="w-full text-left text-xs">
                                     <thead>
-                                        <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                        <tr className="border-b border-slate-100 dark:border-slate-600/50">
                                             <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Lead Name</th>
                                             <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Due Type</th>
                                             <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Due Date</th>
@@ -2671,7 +2712,7 @@ const Dashboard = () => {
                         </div>
 
                         {/* 2. Tasks */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-3">
                                 <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
                                 <button onClick={openAddTask} className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-lg shadow-violet-500/20">
@@ -2681,7 +2722,7 @@ const Dashboard = () => {
                             <div className="flex-1 overflow-y-auto max-h-[280px] custom-scrollbar">
                                 <table className="w-full text-left text-xs">
                                     <thead>
-                                        <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                        <tr className="border-b border-slate-100 dark:border-slate-600/50">
                                             <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Task</th>
                                             <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Due Time</th>
                                         </tr>
@@ -2710,12 +2751,12 @@ const Dashboard = () => {
                         </div>
 
                         {/* 3. Calendar */}
-                        <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/30 flex flex-col gap-3 shadow-sm lg:col-span-1">
+                        <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-600/50 flex flex-col gap-3 shadow-sm lg:col-span-1">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
                             </div>
-                            <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30 rounded-xl p-2.5">
+                            <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50 rounded-xl p-2.5">
                                 <div className="flex justify-between items-center mb-2.5 px-0.5">
                                     <div className="flex gap-1">
                                         <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronLeft size={14}/></button>
@@ -2736,7 +2777,7 @@ const Dashboard = () => {
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-2 mt-auto pt-2">
-                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-700/30 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
+                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-600/50 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
                                     <Eye size={12}/> <span>View All</span>
                                 </button>
                                 <button onClick={() => openAddEvent(currentDate)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[11px] font-bold transition-colors shadow-lg shadow-blue-500/20">
@@ -2748,7 +2789,7 @@ const Dashboard = () => {
 
                     {/* ── ROW: Leave Request ── */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-4">
                                 <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Leave Request</h2>
                                 <button onClick={() => setLeaveModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20">
@@ -2758,7 +2799,7 @@ const Dashboard = () => {
                             <div className="flex-1 overflow-y-auto max-h-[250px] custom-scrollbar">
                                 <table className="w-full text-left text-xs">
                                     <thead>
-                                        <tr className="border-b border-slate-100 dark:border-slate-700/40">
+                                        <tr className="border-b border-slate-100 dark:border-slate-600/50">
                                             <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Date</th>
                                             <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Status</th>
                                         </tr>
@@ -2793,7 +2834,7 @@ const Dashboard = () => {
                 <>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         {!isOpsOrAccounts && !isMarketing && (
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-[480px] lg:col-span-2">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-[480px] lg:col-span-2">
                             <div className="flex justify-between items-center mb-3 flex-shrink-0">
                                 <div>
                                     <h2 className="text-medium font-bold text-slate-800 dark:text-white tracking-tight">Payment</h2>
@@ -2810,7 +2851,7 @@ const Dashboard = () => {
                                 <button
                                     type="button"
                                     onClick={() => setPaymentLedgerTab('in')}
-                                    className={`flex-1 text-left rounded-xl p-2.5 border transition-colors cursor-pointer ${paymentLedgerTab === 'in' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}
+                                    className={`flex-1 text-left rounded-xl p-2.5 border transition-colors cursor-pointer ${paymentLedgerTab === 'in' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}
                                 >
                                     <span className="block text-slate-400 text-[12px] uppercase tracking-widest mb-0.5 font-bold">Money In</span>
                                     <span className="text-emerald-500 font-mono text-[14px] font-bold">₹{payments.totalIn.toLocaleString('en-IN')}</span>
@@ -2818,7 +2859,7 @@ const Dashboard = () => {
                                 <button
                                     type="button"
                                     onClick={() => setPaymentLedgerTab('out')}
-                                    className={`flex-1 text-left rounded-xl p-2.5 border transition-colors cursor-pointer ${paymentLedgerTab === 'out' ? 'bg-rose-500/10 border-rose-500/30' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}
+                                    className={`flex-1 text-left rounded-xl p-2.5 border transition-colors cursor-pointer ${paymentLedgerTab === 'out' ? 'bg-rose-500/10 border-rose-500/30' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}
                                 >
                                     <span className="block text-slate-400 text-[12px] uppercase tracking-widest mb-0.5 font-bold">Money Out</span>
                                     <span className="text-rose-400 font-mono text-[14px] font-bold">₹{payments.totalOut.toLocaleString('en-IN')}</span>
@@ -2831,7 +2872,7 @@ const Dashboard = () => {
                                         <div className="text-center py-12 text-slate-400 text-xs">No booking confirmation payments logged yet.</div>
                                     ) : (
                                         moneyInEntries.slice(0, 5).map(entry => (
-                                            <div key={entry.id} onClick={() => setSelectedPaymentLead(entry.rawLead)} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/30 bg-slate-50/50 dark:bg-slate-800/20 space-y-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700/60 transition-all group">
+                                            <div key={entry.id} onClick={() => setSelectedPaymentLead(entry.rawLead)} className="p-3 rounded-xl border border-slate-100 dark:border-slate-600/50 bg-slate-50/50 dark:bg-slate-800/20 space-y-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700/60 transition-all group">
                                                 <div className="flex justify-between items-start gap-2">
                                                     <div className="min-w-0 flex-1">
                                                         <p className="text-base font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{entry.customerName}</p>
@@ -2839,7 +2880,7 @@ const Dashboard = () => {
                                                     </div>
                                                     <span className="text-[14px] font-bold text-emerald-500 font-mono flex-shrink-0">₹{entry.amount.toLocaleString('en-IN')}</span>
                                                 </div>
-                                                <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-700/30 text-[12px]">
+                                                <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-600/50 text-[12px]">
                                                     <span className="text-slate-400">{entry.service || 'Booking payment'}{entry.mode ? ` · ${entry.mode}` : ''}</span>
                                                     <span className="text-slate-400 font-mono">{entry.date || '—'}</span>
                                                 </div>
@@ -2851,7 +2892,7 @@ const Dashboard = () => {
                                         <div className="text-center py-12 text-slate-400 text-xs">No vendor payments recorded yet.</div>
                                     ) : (
                                         moneyOutEntries.slice(0, 5).map(entry => (
-                                            <div key={entry.id} onClick={() => setSelectedPaymentLead(entry.rawLead)} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/30 bg-slate-50/50 dark:bg-slate-800/20 space-y-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700/60 transition-all group">
+                                            <div key={entry.id} onClick={() => setSelectedPaymentLead(entry.rawLead)} className="p-3 rounded-xl border border-slate-100 dark:border-slate-600/50 bg-slate-50/50 dark:bg-slate-800/20 space-y-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700/60 transition-all group">
                                                 <div className="flex justify-between items-start gap-2">
                                                     <div className="min-w-0 flex-1">
                                                         <p className="text-base font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{entry.customerName}</p>
@@ -2859,7 +2900,7 @@ const Dashboard = () => {
                                                     </div>
                                                     <span className="text-[14px] font-bold text-rose-400 font-mono flex-shrink-0">₹{entry.amount.toLocaleString('en-IN')}</span>
                                                 </div>
-                                                <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-700/30 text-[12px]">
+                                                <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-600/50 text-[12px]">
                                                     <span className="text-slate-400 truncate">{entry.provider}{entry.service ? ` · ${entry.service}` : ''}</span>
                                                     <span className="text-slate-400 font-mono flex-shrink-0">{entry.date || '—'}</span>
                                                 </div>
@@ -2872,13 +2913,13 @@ const Dashboard = () => {
                         )}
 
                         {!isOpsOrAccounts && !isMarketing && (
-                        <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-700/30 flex flex-col gap-3 shadow-sm lg:col-span-1">
+                        <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-600/50 flex flex-col gap-3 shadow-sm lg:col-span-1">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
                                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
                             </div>
 
-                            <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30 rounded-xl p-2.5">
+                            <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50 rounded-xl p-2.5">
                                 <div className="flex justify-between items-center mb-2.5 px-0.5">
                                     <div className="flex gap-1">
                                         <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronLeft size={14}/></button>
@@ -2900,7 +2941,7 @@ const Dashboard = () => {
                             </div>
 
                             <div className="grid grid-cols-2 gap-2">
-                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-700/30 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
+                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-600/50 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
                                     <Eye size={12}/> <span>View All</span>
                                 </button>
                                 <button onClick={() => openAddEvent(currentDate)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[11px] font-bold transition-colors shadow-lg shadow-blue-500/20">
@@ -2908,7 +2949,7 @@ const Dashboard = () => {
                                 </button>   
                             </div>
 
-                            <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-700/30 rounded-xl p-3 flex-1 flex flex-col">
+                            <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-600/50 rounded-xl p-3 flex-1 flex flex-col">
                                 <div className="flex justify-between items-center mb-2.5">
                                     <h3 className="text-[9px] uppercase tracking-widest font-bold text-slate-400">Reminders · {currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
                                     <span className="text-[9px] font-bold text-slate-500 bg-slate-200 dark:bg-slate-700/60 px-1.5 py-0.5 rounded-full">{filteredEvents.length}</span>
@@ -2945,7 +2986,7 @@ const Dashboard = () => {
 
                     {!isOpsOrAccounts && !isMarketing && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-4">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
@@ -2994,7 +3035,7 @@ const Dashboard = () => {
                         </div>
 
                         {!isOpsOrAccounts && !isMarketing && (
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
                             <div className="flex justify-between items-center mb-4">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Sales Targets</h2>
@@ -3043,7 +3084,7 @@ const Dashboard = () => {
                                                         <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 min-w-[58px] text-center font-mono">{formatTargetDisplay(item)}</span>
                                                         <button onClick={() => nudgeTarget(item.id, 1, item.value, item.max, item.unit)} className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-slate-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><Plus size={10}/></button>
                                                     </div>
-                                                    <div className="flex items-center gap-0.5 pl-1.5 border-l border-slate-200 dark:border-slate-700/50">
+                                                    <div className="flex items-center gap-0.5 pl-1.5 border-l border-slate-200 dark:border-slate-600/60">
                                                         <button onClick={() => openEditTarget(item)} className="w-5 h-5 rounded-lg hover:bg-blue-500/10 flex items-center justify-center text-slate-400 hover:text-blue-400 transition-colors"><Pencil size={11}/></button>
                                                         <button onClick={() => deleteTarget(item.id)} className="w-5 h-5 rounded-lg hover:bg-red-500/10 flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors"><Trash2 size={11}/></button>
                                                     </div>
@@ -3060,7 +3101,7 @@ const Dashboard = () => {
                         )}
 
                         {!isOpsOrAccounts && !isMarketing && (
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Top Destinations</h2>
@@ -3081,7 +3122,7 @@ const Dashboard = () => {
                                         className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-colors border ${
                                             topDestFilter === f.id
                                                 ? 'bg-amber-500/15 border-amber-500/40 text-amber-500'
-                                                : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                                                : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                                         }`}
                                     >
                                         {f.label}
@@ -3121,7 +3162,7 @@ const Dashboard = () => {
 
                     {!isOpsOrAccounts && !isMarketing && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                        <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-rose-900/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-2">
+                        <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-2">
                             <div className="flex justify-between items-center mb-4">
                                 <div className="flex items-center gap-2.5">
                                     <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500 flex-shrink-0">
@@ -3139,15 +3180,15 @@ const Dashboard = () => {
                                     <div className="text-center py-8 text-slate-400 text-xs">No upcoming trips in the next 7 days.</div>
                                 ) : (
                                     fulfillmentAlerts.map(alert => (
-                                        <div key={alert.id} className="flex items-center justify-between bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/10 p-3 rounded-xl hover:bg-rose-100/80 dark:hover:bg-rose-500/10 transition-colors">
-                                            <div className="flex items-center gap-3">
+                                        <div key={alert.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/10 p-3 rounded-xl hover:bg-rose-100/80 dark:hover:bg-rose-500/10 transition-colors">
+                                            <div className="flex items-center gap-3 min-w-0">
                                                 <div className="p-2 bg-rose-500/15 text-rose-500 rounded-xl flex-shrink-0"><AlertTriangle size={15}/></div>
-                                                <div>
-                                                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{alert.customerName} — {alert.destination}</p>
-                                                    <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide">Trip starts <span className="font-bold text-slate-700 dark:text-slate-300">{alert.date}</span> · {alert.daysLeft}d left</p>
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{alert.customerName} — {alert.destination}</p>
+                                                    <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide truncate">Trip starts <span className="font-bold text-slate-700 dark:text-slate-300">{alert.date}</span> · {alert.daysLeft}d left</p>
                                                 </div>
                                             </div>
-                                            <button className="px-3 py-1.5 text-[10px] font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-xl transition-colors shadow-sm shadow-rose-500/20 uppercase tracking-wide">Review</button>
+                                            <button className="w-full sm:w-auto flex-shrink-0 px-3 py-1.5 text-[10px] font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-xl transition-colors shadow-sm shadow-rose-500/20 uppercase tracking-wide">Review</button>
                                         </div>
                                     ))
                                 )}
@@ -3155,7 +3196,7 @@ const Dashboard = () => {
                         </div>
 
                         {!isOpsOrAccounts && !isMarketing && (
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-full lg:col-span-1">
+                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-full lg:col-span-1">
                             <div className="flex justify-between items-start mb-4 gap-2">
                                 <div>
                                     <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Active Team</h2>
@@ -3182,7 +3223,7 @@ const Dashboard = () => {
                                                 <p className="text-[9px] text-slate-400 mt-0.5 truncate uppercase tracking-wider font-semibold">{member.role}</p>
                                             </div>
                                             <div className="flex items-center gap-2 flex-shrink-0">
-                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700/30">
+                                                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-600/50">
                                                     <StatusDot status={member.status} />
                                                     <span className="hidden sm:inline text-[9px] font-bold text-slate-500 dark:text-slate-400 capitalize uppercase tracking-wide">{member.status}</span>
                                                 </div>
@@ -3199,7 +3240,7 @@ const Dashboard = () => {
                     {/* ── Due & Follow-Up Alerts (next 5 days) ── */}
                     {!isOpsOrAccounts && !isMarketing && (
                     <div className="grid grid-cols-1 gap-4 sm:gap-5">
-                        <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-amber-900/30 rounded-2xl p-4 sm:p-5 shadow-sm">
+                        <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm">
                             <div className="flex justify-between items-center mb-4">
                                 <div className="flex items-center gap-2.5">
                                     <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 flex-shrink-0">
@@ -3212,15 +3253,15 @@ const Dashboard = () => {
                                 </div>
                                 <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{dueSoonAlerts.length} Alert{dueSoonAlerts.length !== 1 ? 's' : ''}</span>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-[280px] overflow-y-auto custom-scrollbar">
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5 max-h-[280px] overflow-y-auto custom-scrollbar">
                                 {dueSoonAlerts.length === 0 ? (
                                     <div className="col-span-full text-center py-8 text-slate-400 text-xs">Nothing due or following up in the next 5 days.</div>
                                 ) : (
                                     dueSoonAlerts.map(alert => (
-                                        <div key={alert.id} className="flex items-start justify-between gap-2 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/10 p-3 rounded-xl hover:bg-amber-100/80 dark:hover:bg-amber-500/10 transition-colors">
-                                            <div className="min-w-0">
+                                        <div key={alert.id} className="flex flex-wrap items-start justify-between gap-2 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/10 p-3 rounded-xl hover:bg-amber-100/80 dark:hover:bg-amber-500/10 transition-colors">
+                                            <div className="min-w-0 flex-1">
                                                 <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{alert.title}</p>
-                                                <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide">{alert.category} · <span className="font-bold text-slate-700 dark:text-slate-300">{alert.date}</span></p>
+                                                <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide truncate">{alert.category} · <span className="font-bold text-slate-700 dark:text-slate-300">{alert.date}</span></p>
                                             </div>
                                             <span className={`text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide flex-shrink-0 ${alert.daysLeft <= 1 ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'}`}>
                                                 {alert.daysLeft < 0 ? `${Math.abs(alert.daysLeft)}d overdue` : alert.daysLeft === 0 ? 'Today' : `${alert.daysLeft}d left`}
@@ -3237,7 +3278,7 @@ const Dashboard = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         {/* ── LEAVE DASHBOARD (EMPLOYEES ONLY) ── */}
                         {isSalesOrOps && !isOpsOrAccounts && (
-                            <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-700/30 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                            <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                                 <div className="flex justify-between items-center mb-4">
                                     <div>
                                         <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">My Leaves</h2>
@@ -3256,7 +3297,7 @@ const Dashboard = () => {
                                         <div className="text-center py-8 text-slate-400 text-xs">No leave history found.</div>
                                     ) : (
                                         leaves.slice(0, 3).map(leave => (
-                                            <div key={leave.id} className="p-3 rounded-xl border border-slate-100 dark:border-slate-700/40 bg-slate-50 dark:bg-slate-800/30 flex justify-between items-center">
+                                            <div key={leave.id} className="p-3 rounded-xl border border-slate-100 dark:border-slate-600/50 bg-slate-50 dark:bg-slate-800/30 flex justify-between items-center">
                                                 <div>
                                                     <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{leave.startDate} to {leave.endDate || 'N/A'}</p>
                                                 <p className="text-[10px] text-slate-500 mt-1 truncate max-w-[150px]">
@@ -3279,7 +3320,7 @@ const Dashboard = () => {
 
                         {/* ── LEAVE APPROVAL DASHBOARD (ADMIN ONLY) ── */}
                         {isAdmin && (
-                            <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-amber-900/30 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
+                            <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
                                 <div className="flex justify-between items-center mb-4">
                                     <div className="flex items-center gap-2.5">
                                         <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 flex-shrink-0">
@@ -3303,7 +3344,7 @@ const Dashboard = () => {
                                         leaves.slice(0, 3).map(leave => (
                                             <div key={leave.id} className={`p-3 border rounded-xl transition-colors ${
                                                 leave.status === 'Pending' ? 'bg-amber-50 dark:bg-amber-500/5 border-amber-100 dark:border-amber-500/10' :
-                                                'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40'
+                                                'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50'
                                             }`}>
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div>
@@ -3335,11 +3376,11 @@ const Dashboard = () => {
                                                     </span>
                                                 </div>
                                                 
-                                                <div className="text-[10px] text-slate-600 dark:text-slate-300 mb-3 bg-white dark:bg-[#0d1526] p-2.5 rounded-lg border border-slate-100 dark:border-slate-700/50 space-y-2">
+                                                <div className="text-[10px] text-slate-600 dark:text-slate-300 mb-3 bg-white dark:bg-[#0d1526] p-2.5 rounded-lg border border-slate-100 dark:border-slate-600/60 space-y-2">
                                                     <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Reason</span> {leave.reason}</p>
                                                     
                                                     {(leave.handoverTo || leave.handoverNotes) && (
-                                                        <div className="pt-2 border-t border-slate-100 dark:border-slate-700/50 space-y-2">
+                                                        <div className="pt-2 border-t border-slate-100 dark:border-slate-600/60 space-y-2">
                                                             {leave.handoverTo && (
                                                                 <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Handover To</span> {leave.handoverTo}</p>
                                                             )}
@@ -3375,14 +3416,14 @@ const Dashboard = () => {
                     <button
                         type="button"
                         onClick={() => setPaymentLedgerTab('in')}
-                        className={`flex-1 text-center py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-colors cursor-pointer border ${paymentLedgerTab === 'in' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40 text-slate-400'}`}
+                        className={`flex-1 text-center py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-colors cursor-pointer border ${paymentLedgerTab === 'in' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 text-slate-400'}`}
                     >
                         Money In · ₹{payments.totalIn.toLocaleString('en-IN')}
                     </button>
                     <button
                         type="button"
                         onClick={() => setPaymentLedgerTab('out')}
-                        className={`flex-1 text-center py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-colors cursor-pointer border ${paymentLedgerTab === 'out' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40 text-slate-400'}`}
+                        className={`flex-1 text-center py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-colors cursor-pointer border ${paymentLedgerTab === 'out' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 text-slate-400'}`}
                     >
                         Money Out · ₹{payments.totalOut.toLocaleString('en-IN')}
                     </button>
@@ -3393,7 +3434,7 @@ const Dashboard = () => {
                             <p className="text-slate-500 text-center py-10 text-sm">No booking confirmation payments logged yet.</p>
                         ) : (
                             moneyInEntries.map(entry => (
-                                <div key={entry.id} onClick={() => setSelectedPaymentLead(entry.rawLead)} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-700/30 bg-slate-50 dark:bg-[#0d1526] space-y-2 hover:border-emerald-500/30 hover:shadow-sm transition-all cursor-pointer">
+                                <div key={entry.id} onClick={() => setSelectedPaymentLead(entry.rawLead)} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-600/50 bg-slate-50 dark:bg-[#0d1526] space-y-2 hover:border-emerald-500/30 hover:shadow-sm transition-all cursor-pointer">
                                     <div className="flex justify-between items-start gap-3">
                                         <div className="min-w-0 flex-1">
                                             <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{entry.customerName}</p>
@@ -3403,7 +3444,7 @@ const Dashboard = () => {
                                         </div>
                                         <span className="text-sm font-bold text-emerald-500 font-mono flex-shrink-0">₹{entry.amount.toLocaleString('en-IN')}</span>
                                     </div>
-                                    <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-700/30 text-[11px]">
+                                    <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-600/50 text-[11px]">
                                         <span className="text-slate-400">{entry.service || 'Booking payment'}{entry.mode ? ` · ${entry.mode}` : ''}</span>
                                         <span className="text-slate-400 font-mono">{entry.date || '—'}</span>
                                     </div>
@@ -3415,7 +3456,7 @@ const Dashboard = () => {
                             <p className="text-slate-500 text-center py-10 text-sm">No vendor payments recorded yet.</p>
                         ) : (
                             moneyOutEntries.map(entry => (
-                                <div key={entry.id} onClick={() => setSelectedPaymentLead(entry.rawLead)} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-700/30 bg-slate-50 dark:bg-[#0d1526] space-y-2 hover:border-rose-500/30 hover:shadow-sm transition-all cursor-pointer">
+                                <div key={entry.id} onClick={() => setSelectedPaymentLead(entry.rawLead)} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-600/50 bg-slate-50 dark:bg-[#0d1526] space-y-2 hover:border-rose-500/30 hover:shadow-sm transition-all cursor-pointer">
                                     <div className="flex justify-between items-start gap-3">
                                         <div className="min-w-0 flex-1">
                                             <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{entry.customerName}</p>
@@ -3425,7 +3466,7 @@ const Dashboard = () => {
                                         </div>
                                         <span className="text-sm font-bold text-rose-400 font-mono flex-shrink-0">₹{entry.amount.toLocaleString('en-IN')}</span>
                                     </div>
-                                    <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-700/30 text-[11px]">
+                                    <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-600/50 text-[11px]">
                                         <span className="text-slate-400 truncate">{entry.provider}{entry.service ? ` · ${entry.service}` : ''}</span>
                                         <span className="text-slate-400 font-mono flex-shrink-0">{entry.date || '—'}</span>
                                     </div>
@@ -3454,7 +3495,7 @@ const Dashboard = () => {
                             className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-colors border ${
                                 topDestFilter === f.id
                                     ? 'bg-amber-500/15 border-amber-500/40 text-amber-500'
-                                    : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-700/40 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                                    : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
                             }`}
                         >
                             {f.label}
@@ -3472,7 +3513,7 @@ const Dashboard = () => {
                                     setTopDestinationsModalOpen(false);
                                     handleDestinationClick(dest.name);
                                 }}
-                                className="flex items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-700/30 p-3.5 bg-slate-50 dark:bg-[#0d1526] cursor-pointer hover:border-amber-500/30 hover:bg-amber-50/50 dark:hover:bg-slate-800/60 transition-all"
+                                className="flex items-center justify-between rounded-2xl border border-slate-100 dark:border-slate-600/50 p-3.5 bg-slate-50 dark:bg-[#0d1526] cursor-pointer hover:border-amber-500/30 hover:bg-amber-50/50 dark:hover:bg-slate-800/60 transition-all"
                             >
                                 <div className="flex items-center gap-3 min-w-0 pr-3">
                                     <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold flex-shrink-0 text-xs border border-amber-500/15">{idx + 1}</div>
@@ -3494,7 +3535,7 @@ const Dashboard = () => {
                         <p className="text-slate-500 text-center py-10 text-sm">No metrics available for this category right now.</p>
                     ) : (
                         regionModal.tripsList.map((trip, idx) => (
-                            <div key={idx} onClick={() => setSelectedLeadDetails(trip)} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-700/30 bg-slate-50 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer hover:border-violet-500/20">
+                            <div key={idx} onClick={() => setSelectedLeadDetails(trip)} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-600/50 bg-slate-50 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer hover:border-violet-500/20">
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2.5">
                                         <span className="bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold text-violet-400 whitespace-nowrap">{trip.jobId || `LMN${trip.id}`}</span>
@@ -3528,7 +3569,7 @@ const Dashboard = () => {
                     
                     return (
                         <div className="flex flex-col h-full space-y-4">
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-700/30">
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-600/50">
                                 <div>
                                     <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wide mb-1">Total Package</p>
                                     <p className="text-sm font-bold text-slate-800 dark:text-white">₹{(selectedPaymentLead.computedPackageCost || selectedPaymentLead.totalPackageCost || selectedPaymentLead.packageCost || 0).toLocaleString('en-IN')}</p>
@@ -3548,13 +3589,13 @@ const Dashboard = () => {
                             </div>
 
                             <div className="space-y-3">
-                                <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400 border-b border-slate-100 dark:border-slate-700/40 pb-2 uppercase tracking-widest">Transaction Ledger</h4>
+                                <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400 border-b border-slate-100 dark:border-slate-600/50 pb-2 uppercase tracking-widest">Transaction Ledger</h4>
                                 <div className="max-h-[40vh] overflow-y-auto custom-scrollbar pr-2 space-y-2">
                                     {historyList.length === 0 ? (
                                         <p className="text-sm text-slate-500 text-center py-6">No individual payment transactions recorded yet.</p>
                                     ) : (
                                         historyList.map((txn, idx) => (
-                                            <div key={idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 rounded-xl bg-white dark:bg-[#0d1526] border border-slate-100 dark:border-slate-700/30 gap-3">
+                                            <div key={idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 rounded-xl bg-white dark:bg-[#0d1526] border border-slate-100 dark:border-slate-600/50 gap-3">
                                                 <div>
                                                     <div className="flex items-center gap-2">
                                                         <span className="font-bold text-sm text-slate-800 dark:text-white">₹{Number(txn.amount || 0).toLocaleString('en-IN')}</span>
@@ -3571,7 +3612,7 @@ const Dashboard = () => {
                                 </div>
                             </div>
                             <div className="mt-4 flex justify-end">
-                                <button onClick={() => setSelectedPaymentLead(null)} className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors">Close</button>
+                                <button onClick={() => setSelectedPaymentLead(null)} className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors">Close</button>
                             </div>
                         </div>
                     );
@@ -3588,16 +3629,16 @@ const Dashboard = () => {
                             <h3 className="text-lg font-bold text-slate-800 dark:text-white tracking-tight">{selectedMember.name}</h3>
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{selectedMember.role || 'Agent'}</p>
                         </div>
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/40">
+                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-600/50">
                             <StatusDot status={selectedMember.status} />
                             <span className="text-xs font-bold text-slate-600 dark:text-slate-300 capitalize uppercase tracking-wide">{selectedMember.status || 'Offline'}</span>
                         </div>
-                        <div className="w-full text-left space-y-3 mt-3 pt-4 border-t border-slate-100 dark:border-slate-700/40">
-                            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30">
+                        <div className="w-full text-left space-y-3 mt-3 pt-4 border-t border-slate-100 dark:border-slate-600/50">
+                            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50">
                                 <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-widest mb-1">Employee ID</span>
                                 <span className="text-sm font-bold text-slate-700 dark:text-slate-200 font-mono">{selectedMember.id || selectedMember.employeeId || 'N/A'}</span>
                             </div>
-                            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-700/30">
+                            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50">
                                 <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-widest mb-1">Last Active</span>
                                 <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{selectedMember.lastActive ? new Date(selectedMember.lastActive).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'Unknown'}</span>
                             </div>
@@ -3614,8 +3655,8 @@ const Dashboard = () => {
                     <div className="flex flex-col h-full">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-1 overflow-y-auto max-h-[60vh] custom-scrollbar">
                             
-                            <div className="space-y-3 bg-slate-50 dark:bg-[#0d1526] p-4 rounded-2xl border border-slate-100 dark:border-slate-700/30">
-                                <h4 className="font-bold text-violet-500 border-b border-slate-100 dark:border-slate-700/30 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><Users size={13}/> Customer Profile</h4>
+                            <div className="space-y-3 bg-slate-50 dark:bg-[#0d1526] p-4 rounded-2xl border border-slate-100 dark:border-slate-600/50">
+                                <h4 className="font-bold text-violet-500 border-b border-slate-100 dark:border-slate-600/50 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><Users size={13}/> Customer Profile</h4>
                                 {[
                                     { label: 'System ID', value: `LMN${selectedLeadDetails.id}` },
                                     { label: 'Phone', value: selectedLeadDetails.phone || 'N/A' },
@@ -3629,8 +3670,8 @@ const Dashboard = () => {
                                 ))}
                             </div>
 
-                            <div className="space-y-3 bg-slate-50 dark:bg-[#0d1526] p-4 rounded-2xl border border-slate-100 dark:border-slate-700/30">
-                                <h4 className="font-bold text-emerald-500 border-b border-slate-100 dark:border-slate-700/30 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><MapPin size={13}/> Trip Logistics</h4>
+                            <div className="space-y-3 bg-slate-50 dark:bg-[#0d1526] p-4 rounded-2xl border border-slate-100 dark:border-slate-600/50">
+                                <h4 className="font-bold text-emerald-500 border-b border-slate-100 dark:border-slate-600/50 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><MapPin size={13}/> Trip Logistics</h4>
                                 {[
                                     { label: 'Destination', value: selectedLeadDetails.destination },
                                     { label: 'Travel Dates', value: selectedLeadDetails.travelDates || selectedLeadDetails.travelDate || selectedLeadDetails.tourStartDate || 'Flexible / TBD' },
@@ -3644,8 +3685,8 @@ const Dashboard = () => {
                                 ))}
                             </div>
 
-                            <div className="space-y-3 bg-slate-50 dark:bg-[#0d1526] p-4 rounded-2xl border border-slate-100 dark:border-slate-700/30">
-                                <h4 className="font-bold text-blue-500 border-b border-slate-100 dark:border-slate-700/30 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><Target size={13}/> Pipeline Status</h4>
+                            <div className="space-y-3 bg-slate-50 dark:bg-[#0d1526] p-4 rounded-2xl border border-slate-100 dark:border-slate-600/50">
+                                <h4 className="font-bold text-blue-500 border-b border-slate-100 dark:border-slate-600/50 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><Target size={13}/> Pipeline Status</h4>
                                 {[
                                     { label: 'Current Status', value: selectedLeadDetails.status || 'New Inquiry' },
                                     { label: 'Assigned Agent', value: selectedLeadDetails.assignedTo || selectedLeadDetails.assignedToOps || 'Unassigned' },
@@ -3659,8 +3700,8 @@ const Dashboard = () => {
                                 ))}
                             </div>
 
-                            <div className="space-y-3 bg-slate-50 dark:bg-[#0d1526] p-4 rounded-2xl border border-slate-100 dark:border-slate-700/30">
-                                <h4 className="font-bold text-amber-500 border-b border-slate-100 dark:border-slate-700/30 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><Wallet size={13}/> Financial Overview</h4>
+                            <div className="space-y-3 bg-slate-50 dark:bg-[#0d1526] p-4 rounded-2xl border border-slate-100 dark:border-slate-600/50">
+                                <h4 className="font-bold text-amber-500 border-b border-slate-100 dark:border-slate-600/50 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><Wallet size={13}/> Financial Overview</h4>
                                 {[
                                     { label: 'Quoted Budget', value: selectedLeadDetails.budget || selectedLeadDetails.budgetRange || 'N/A' },
                                     { label: 'Total Package Cost', value: `₹${selectedLeadDetails.computedPackageCost || selectedLeadDetails.totalPackageCost || selectedLeadDetails.packageCost || '0'}` },
@@ -3674,12 +3715,12 @@ const Dashboard = () => {
                                 ))}
                             </div>
 
-                            <div className="md:col-span-2 space-y-3 bg-slate-50 dark:bg-[#0d1526] p-4 rounded-2xl border border-slate-100 dark:border-slate-700/30">
-                                <h4 className="font-bold text-pink-500 border-b border-slate-100 dark:border-slate-700/30 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><MessageSquare size={13}/> Lead Message & Internal Notes</h4>
+                            <div className="md:col-span-2 space-y-3 bg-slate-50 dark:bg-[#0d1526] p-4 rounded-2xl border border-slate-100 dark:border-slate-600/50">
+                                <h4 className="font-bold text-pink-500 border-b border-slate-100 dark:border-slate-600/50 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><MessageSquare size={13}/> Lead Message & Internal Notes</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-widest mb-1.5">Customer Message</span>
-                                        <p className="whitespace-pre-wrap text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-700/30 leading-relaxed">
+                                        <p className="whitespace-pre-wrap text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-600/50 leading-relaxed">
                                             {selectedLeadDetails.leadMessage || selectedLeadDetails.messageFromLead || 'No direct message provided.'}
                                         </p>
                                     </div>
@@ -3688,8 +3729,8 @@ const Dashboard = () => {
                             </div>
 
                         </div>
-                        <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-700/40 flex justify-end">
-                            <button onClick={() => setSelectedLeadDetails(null)} className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700/50 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors">
+                        <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-600/50 flex justify-end">
+                            <button onClick={() => setSelectedLeadDetails(null)} className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors">
                                 Close 
                             </button>
                         </div>
@@ -3711,7 +3752,7 @@ const Dashboard = () => {
                         </div>
                         <button onClick={() => setIsChatOpen(false)} className="p-1.5 hover:bg-white/15 rounded-xl transition-colors"><X size={16}/></button>
                     </div>
-                    <div className="flex-1 p-3.5 sm:p-4 overflow-y-auto bg-[#0b0f1a] flex flex-col gap-3 custom-scrollbar">
+                    <div className="flex-1 p-3.5 sm:p-4 overflow-y-auto bg-[#0E172B] flex flex-col gap-3 custom-scrollbar">
                        {chatMessages.map((msg, idx) => (
                         <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                             <div className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-xs whitespace-pre-wrap leading-relaxed ${msg.role === 'user' ? 'bg-teal-600 text-white rounded-br-sm' : 'bg-slate-800/80 text-slate-200 border border-slate-700/40 rounded-bl-sm'}`}>{msg.text}</div>

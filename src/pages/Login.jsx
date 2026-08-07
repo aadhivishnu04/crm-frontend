@@ -117,7 +117,7 @@ const Login = () => {
             style={{ backgroundImage: `url(${bgImage})`, fontFamily: "'Inter', sans-serif" }}
         >
             {/* Light overall tint so the banner stays visible behind the glass */}
-            <div className="absolute inset-0 bg-black/20" />
+            <div className="absolute inset-0 " />
 
             <div
                 className="login-card relative z-10 w-full max-w-[22rem] sm:max-w-md md:max-w-lg p-7 sm:p-9 md:p-11 lg:p-12 rounded-2xl sm:rounded-[1.75rem] bg-white/10 backdrop-blur-2xl"
@@ -132,13 +132,13 @@ const Login = () => {
                     className="text-center text-[2.25rem] sm:text-[2.75rem] md:text-[3.25rem] leading-none mb-3 select-none"
                     style={{ fontFamily: "'Fraunces', serif", letterSpacing: '-0.02em' }}
                 >
-                    <span className="text-black" style={{ fontWeight: 400 }}>Work</span>
-                    <span className="text-black" style={{ fontWeight: 800 }}>Flow</span>
+                    <span className="text-black" style={{ fontWeight: 800 }}>Work</span>
+                    <span className="text-black" style={{ fontWeight: 200 }}>Flow</span>
                 </h2>
 
                 {/* Signature accent rule, draws in on load */}
                 <div className="flex justify-center mb-7 sm:mb-9 md:mb-10">
-                    <span className="gold-rule h-px w-16 bg-gradient-to-r from-transparent via-[#C9A227] to-transparent" />
+                    <span className="gold-rule h-px w-16 bg-gradient-to-r from-transparent via-[#000000] to-transparent" />
                 </div>
 
                 {error && (
@@ -153,7 +153,7 @@ const Login = () => {
                         <label className="block text-[10px] sm:text-xs tracking-[0.2em] uppercase text-[#000000] mb-2">
                             Employee ID
                         </label>
-                        <div className="flex items-center gap-3 border-b-2 border-[#C9A227]/30 focus-within:border-[#C9A227] transition-colors py-2 sm:py-2.5">
+                        <div className="flex items-center gap-3 border-b-2 border-[#000000]/30 focus-within:border-[#C9A227] transition-colors py-2 sm:py-2.5">
                             <User className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-[#C9A227]/70 shrink-0" strokeWidth={1.75} />
                             <input
                                 type="text"
@@ -171,7 +171,7 @@ const Login = () => {
                         <label className="block text-[10px] sm:text-xs tracking-[0.2em] uppercase text-[#000000] mb-2">
                             Password
                         </label>
-                        <div className="flex items-center gap-3 border-b-2 border-[#C9A227]/30 focus-within:border-[#C9A227] transition-colors py-2 sm:py-2.5">
+                        <div className="flex items-center gap-3 border-b-2 border-[#000000]/30 focus-within:border-[#C9A227] transition-colors py-2 sm:py-2.5">
                             <Lock className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-[#C9A227]/70 shrink-0" strokeWidth={1.75} />
                             <input
                                 type="password"
