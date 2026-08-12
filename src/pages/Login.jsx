@@ -81,24 +81,28 @@ const Login = () => {
 
             // 3. ULTRA SPEED TRACKER: Register heartbeat instantly for immediate panel visibility
             if (id.toLowerCase() !== 'admin') {
-                await fetch(`${API_BASE_URL}/members/ping`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        employeeId: String(data.user?.employeeId || id),
-                        name: data.user?.name || id,
-                        designation: databaseRole,
-                        status: 'online'
-                    })
-                }).catch(err => console.error("Immediate tracking allocation bypassed:", err));
+              await fetch(`${API_BASE_URL}/members/ping`, {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${data.token}`,
+    },
+    body: JSON.stringify({
+        employeeId: String(data.user?.employeeId || id),
+        name: data.user?.name || id,
+        designation: databaseRole,
+        status: 'online'
+    })
+}).catch(err => console.error("Immediate tracking allocation bypassed:", err));
             }
 
             // 4. Update local system permissions inside auth helpers
-            loginUser(
-                data.user?.employeeId || id, 
-                appMappedRole, 
-                data.user?.name || (id.toLowerCase() === 'admin' ? 'Super Admin' : 'Agent')
-            );
+         loginUser(
+    data.user?.employeeId || id,
+    appMappedRole,
+    data.user?.name || (id.toLowerCase() === 'admin' ? 'Super Admin' : 'Agent'),
+    data.token
+);
             
             // 5. Fire immediate client redirect down into main workspace shell
             navigate('/dashboard');
