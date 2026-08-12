@@ -36,7 +36,7 @@ const Sidebar = () => {
 
         const sendHeartbeatPing = () => {
             // Removed :8082 as Render routes HTTPS traffic automatically
-            fetch('crm-backend-2-qlza.onrender.com/api/members/ping', {
+            fetch('https://crm-backend-2-qlza.onrender.com/api/members/ping', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -65,7 +65,7 @@ const Sidebar = () => {
         // 2. Fire backend drop request WITHOUT awaiting (Fire and Forget)
         if (empId && empRole !== 'admin' && String(empId).toLowerCase() !== 'admin') {
             // Removed :8089 to prevent fetch connection hangs on Render
-            fetch('crm-backend-2-qlza.onrender.com/api/members/logout-drop', {
+            fetch('https://crm-backend-2-qlza.onrender.com/api/members/logout-drop', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ employeeId: String(empId) })

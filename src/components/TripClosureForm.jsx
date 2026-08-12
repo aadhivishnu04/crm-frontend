@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 
-const TripClosureForm = ({ job, onClose, onRefresh, apiBaseUrl = 'crm-backend-2-qlza.onrender.com/api' }) => {
+const TripClosureForm = ({ job, onClose, onRefresh, apiBaseUrl = 'https://crm-backend-2-qlza.onrender.com/api' }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Initialize form variables

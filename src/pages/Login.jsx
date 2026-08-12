@@ -10,7 +10,7 @@ import bgImage from '../assets/crm_Banner-01.jpg.jpeg';
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
 // Unified API base URL to prevent IP/Port mismatches across devices
-const API_BASE_URL = "crm-backend-2-qlza.onrender.com/api";
+const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
 
 // Helper function to map database designations to frontend app roles.
 // Covers all six roles defined in ../utils/permissions (ADMIN, DIRECTOR,
