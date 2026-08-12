@@ -39,9 +39,7 @@ import {
 } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
 import { ROLES } from '../utils/permissions';
-
-// ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
+import { apiFetch } from '../utils/api';
 
 // ─── INDIA DESTINATION MATCHER ───────────────────────────────────────────────
 const INDIA_KEYWORDS = [
@@ -308,9 +306,8 @@ const Dashboard = () => {
     // ─── LEAVE API HANDLERS ──────────────────────────────────────────────────
     const fetchLeaves = async () => {
         try {
-            const endpoint = isAdmin ? `${API_BASE_URL}/leaves/all` : `${API_BASE_URL}/leaves?employeeId=${currentUserIdentifier}`;
-            const res = await fetch(endpoint);
-            if (res.ok) setLeaves(await res.json());
+            const endpoint = isAdmin ? `/leaves/all` : `/leaves?employeeId=${currentUserIdentifier}`;
+            setLeaves(await apiFetch(endpoint));
         } catch (err) {
             console.error("Failed to fetch leaves", err);
         }
@@ -336,9 +333,8 @@ const Dashboard = () => {
         const calculatedDays = isLeave ? calculateDays(leaveForm.startDate, leaveForm.endDate) : (isHalfDay ? 0.5 : 1);
 
         try {
-            const res = await fetch(`${API_BASE_URL}/leaves`, {
+            const savedLeave = await apiFetch('/leaves', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     ...leaveForm,
                     totalDays: calculatedDays,
@@ -347,13 +343,10 @@ const Dashboard = () => {
                     status: 'Pending'
                 })
             });
-            if (res.ok) {
-                const savedLeave = await res.json();
-                setLeaves(prev => [savedLeave, ...prev]);
-                setLeaveModalOpen(false);
-                setLeaveForm({ leaveType: 'Leave', startDate: '', endDate: '', reason: '', handoverTo: '', handoverNotes: '', workedOnDate: '', session: '' });
-                showToast("Leave application submitted to Admin.", "success");
-            }
+            setLeaves(prev => [savedLeave, ...prev]);
+            setLeaveModalOpen(false);
+            setLeaveForm({ leaveType: 'Leave', startDate: '', endDate: '', reason: '', handoverTo: '', handoverNotes: '', workedOnDate: '', session: '' });
+            showToast("Leave application submitted to Admin.", "success");
         } catch (err) {
             showToast("Failed to submit leave.", "error");
         }
@@ -361,15 +354,12 @@ const Dashboard = () => {
 
     const handleLeaveAction = async (leaveId, action) => {
         try {
-            const res = await fetch(`${API_BASE_URL}/leaves/${leaveId}`, {
+            await apiFetch(`/leaves/${leaveId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ status: action })
             });
-            if (res.ok) {
-                setLeaves(prev => prev.map(l => l.id === leaveId ? { ...l, status: action } : l));
-                showToast(`Leave request ${action.toLowerCase()}.`, "success");
-            }
+            setLeaves(prev => prev.map(l => l.id === leaveId ? { ...l, status: action } : l));
+            showToast(`Leave request ${action.toLowerCase()}.`, "success");
         } catch (err) {
             showToast("Failed to process leave action.", "error");
         }
@@ -403,38 +393,30 @@ const Dashboard = () => {
 
     const saveLead = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/leads`, {
+            const savedLead = await apiFetch('/leads', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(leadForm)
             });
 
-            if (response.ok) {
-                const savedLead = await response.json();
-                showToast(`Success! Lead for ${savedLead.customerName || 'Customer'} has been saved.`, 'success');
-                
-                fetch(`${API_BASE_URL}/notifications/new-lead`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        leadId: savedLead.id,
-                        customerName: savedLead.customerName,
-                        destination: savedLead.destination,
-                        email: savedLead.email,
-                        phone: savedLead.phone
-                    })
-                })
-                .then(res => res.json())
-                .then(data => console.log("Email server response:", data))
-                .catch(err => console.error("Silently failing email trigger:", err));
+            showToast(`Success! Lead for ${savedLead.customerName || 'Customer'} has been saved.`, 'success');
 
-                setLeadForm(emptyLeadForm);
-                setLeadModalOpen(false);
-            } else {
-                showToast("Failed to save lead.", "error");
-            }
+            apiFetch('/notifications/new-lead', {
+                method: 'POST',
+                body: JSON.stringify({
+                    leadId: savedLead.id,
+                    customerName: savedLead.customerName,
+                    destination: savedLead.destination,
+                    email: savedLead.email,
+                    phone: savedLead.phone
+                })
+            })
+            .then(data => console.log("Email server response:", data))
+            .catch(err => console.error("Silently failing email trigger:", err));
+
+            setLeadForm(emptyLeadForm);
+            setLeadModalOpen(false);
         } catch (error) {
-            showToast("Connection configuration error.", "error");
+            showToast("Failed to save lead.", "error");
         }
     };
 
@@ -473,27 +455,21 @@ const Dashboard = () => {
         if (!taskForm.title.trim()) return;
         try {
             if (taskModal.mode === 'add') {
-                const res = await fetch(`${API_BASE_URL}/tasks`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        title: taskForm.title.trim(), time: taskForm.due, priority: taskForm.priority, employeeId: currentUserIdentifier 
+                const saved = await apiFetch('/tasks', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        title: taskForm.title.trim(), time: taskForm.due, priority: taskForm.priority, employeeId: currentUserIdentifier
                     })
                 });
-                if (res.ok) {
-                    const saved = await res.json();
-                    setTasks(prev => [saved, ...prev]);
-                }
+                setTasks(prev => [saved, ...prev]);
             } else {
-                const res = await fetch(`${API_BASE_URL}/tasks/${taskModal.task.id}`, {
-                    method: 'PUT', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        title: taskForm.title.trim(), time: taskForm.due, priority: taskForm.priority, completed: taskModal.task.completed, employeeId: currentUserIdentifier 
+                const updated = await apiFetch(`/tasks/${taskModal.task.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        title: taskForm.title.trim(), time: taskForm.due, priority: taskForm.priority, completed: taskModal.task.completed, employeeId: currentUserIdentifier
                     })
                 });
-                if (res.ok) {
-                    const updated = await res.json();
-                    setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
-                }
+                setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
             }
             closeTaskModal();
         } catch (err) { console.error(err); }
@@ -502,21 +478,18 @@ const Dashboard = () => {
     const toggleTask = async (id, cur) => {
         try {
             const taskToUpdate = tasks.find(t => t.id === id);
-            const res = await fetch(`${API_BASE_URL}/tasks/${id}`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            const updated = await apiFetch(`/tasks/${id}`, {
+                method: 'PUT',
                 body: JSON.stringify({ ...taskToUpdate, completed: !cur, employeeId: currentUserIdentifier })
             });
-            if (res.ok) {
-                const updated = await res.json();
-                setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
-            }
+            setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
         } catch (err) { console.error(err); }
     };
 
     const deleteTask = async (id) => {
         try {
-            const res = await fetch(`${API_BASE_URL}/tasks/${id}`, { method: 'DELETE' });
-            if (res.ok) setTasks(prev => prev.filter(t => t.id !== id));
+            await apiFetch(`/tasks/${id}`, { method: 'DELETE' });
+            setTasks(prev => prev.filter(t => t.id !== id));
         } catch (err) { console.error(err); }
     };
 
@@ -542,8 +515,8 @@ const Dashboard = () => {
         setTargets(prev => prev.map(t => t.id === id ? { ...t, value: newVal } : t));
         try {
             const targetToUpdate = targets.find(t => t.id === id);
-            await fetch(`${API_BASE_URL}/targets/${id}`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            await apiFetch(`/targets/${id}`, {
+                method: 'PUT',
                 body: JSON.stringify({ ...targetToUpdate, value: newVal })
             });
         } catch (err) { console.error(err); }
@@ -559,21 +532,15 @@ const Dashboard = () => {
         const payload = { ...targetForm, value: Number(targetForm.value), max: Number(targetForm.max) };
         try {
             if (editingTarget) {
-                const res = await fetch(`${API_BASE_URL}/targets/${editingTarget.id}`, {
-                    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                const updated = await apiFetch(`/targets/${editingTarget.id}`, {
+                    method: 'PUT', body: JSON.stringify(payload)
                 });
-                if (res.ok) {
-                    const updated = await res.json();
-                    setTargets(prev => prev.map(t => t.id === updated.id ? updated : t));
-                }
+                setTargets(prev => prev.map(t => t.id === updated.id ? updated : t));
             } else {
-                const res = await fetch(`${API_BASE_URL}/targets`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+                const saved = await apiFetch('/targets', {
+                    method: 'POST', body: JSON.stringify(payload)
                 });
-                if (res.ok) {
-                    const saved = await res.json();
-                    setTargets(prev => [...prev, saved]);
-                }
+                setTargets(prev => [...prev, saved]);
             }
             setTargetModal(false);
             setEditingTarget(null);
@@ -582,8 +549,8 @@ const Dashboard = () => {
 
     const deleteTarget = async (id) => {
         try {
-            const res = await fetch(`${API_BASE_URL}/targets/${id}`, { method: 'DELETE' });
-            if (res.ok) setTargets(prev => prev.filter(t => t.id !== id));
+            await apiFetch(`/targets/${id}`, { method: 'DELETE' });
+            setTargets(prev => prev.filter(t => t.id !== id));
         } catch (err) { console.error(err); }
     };
 
@@ -613,23 +580,20 @@ const Dashboard = () => {
     const saveEvent = async () => {
         if (!eventForm.title.trim() || !eventForm.date) return;
         try {
-            const res = await fetch(`${API_BASE_URL}/events`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+            const saved = await apiFetch('/events', {
+                method: 'POST',
                 body: JSON.stringify({ ...eventForm, employeeId: currentUserIdentifier })
             });
-            if (res.ok) {
-                const saved = await res.json();
-                setEvents(prev => [...prev, saved].sort((a, b) => new Date(a.date) - new Date(b.date)));
-                setEventModalOpen(false);
-                showToast(`Reminder "${saved.title}" successfully added!`);
-            }
+            setEvents(prev => [...prev, saved].sort((a, b) => new Date(a.date) - new Date(b.date)));
+            setEventModalOpen(false);
+            showToast(`Reminder "${saved.title}" successfully added!`);
         } catch (err) { console.error(err); }
     };
 
     const deleteEvent = async (id) => {
         try {
-            const res = await fetch(`${API_BASE_URL}/events/${id}`, { method: 'DELETE' });
-            if (res.ok) setEvents(prev => prev.filter(e => e.id !== id));
+            await apiFetch(`/events/${id}`, { method: 'DELETE' });
+            setEvents(prev => prev.filter(e => e.id !== id));
         } catch (err) { console.error(err); }
     };
 
@@ -795,53 +759,52 @@ const Dashboard = () => {
             if (isFetchingDashboardRef.current) return;
             isFetchingDashboardRef.current = true;
             try {
-                const [statsRes, tasksRes, membersRes, targetsRes, eventsRes, topDestRes, jobsRes, leadsRes, campaignsRes, employeesRes] = await Promise.all([
-                    fetch(`${API_BASE_URL}/stats`, { cache: 'no-store' }),
-                    fetch(`${API_BASE_URL}/tasks?employeeId=${currentUserIdentifier}`, { cache: 'no-store' }),
-                    fetch(`${API_BASE_URL}/members`, { cache: 'no-store' }),
-                    fetch(`${API_BASE_URL}/targets`, { cache: 'no-store' }),
-                    fetch(`${API_BASE_URL}/events?employeeId=${currentUserIdentifier}`, { cache: 'no-store' }),
-                    fetch(`${API_BASE_URL}/top-destinations`, { cache: 'no-store' }),
-                    fetch(`${API_BASE_URL}/jobs`, { cache: 'no-store' }),
-                    fetch(`${API_BASE_URL}/leads`, { cache: 'no-store' }),
-                    fetch(`${API_BASE_URL}/campaigns`, { cache: 'no-store' }),
-                    fetch(`${API_BASE_URL}/employees`, { cache: 'no-store' })
+                // Individual .catch(() => null) guards preserve the old per-request
+                // fault tolerance: one endpoint failing no longer aborts the whole
+                // batch (apiFetch throws on non-2xx, unlike raw fetch + res.ok).
+                const [statsData, allTasks, membersData, targetsData, allEvents, topDestData, jobsData, leadsData, campaignsData, employeesData] = await Promise.all([
+                    apiFetch('/stats').catch(() => null),
+                    apiFetch(`/tasks?employeeId=${currentUserIdentifier}`).catch(() => null),
+                    apiFetch('/members').catch(() => null),
+                    apiFetch('/targets').catch(() => null),
+                    apiFetch(`/events?employeeId=${currentUserIdentifier}`).catch(() => null),
+                    apiFetch('/top-destinations').catch(() => null),
+                    apiFetch('/jobs').catch(() => null),
+                    apiFetch('/leads').catch(() => null),
+                    apiFetch('/campaigns').catch(() => null),
+                    apiFetch('/employees').catch(() => null)
                 ]);
 
-                if (statsRes.ok) setStats(await statsRes.json());
-                if (employeesRes.ok) setAllEmployees(await employeesRes.json());
-                
-                if (tasksRes.ok) {
-                    const allTasks = await tasksRes.json();
+                if (statsData) setStats(statsData);
+                if (employeesData) setAllEmployees(employeesData);
+
+                if (allTasks) {
                     const myPersonalTasks = allTasks.filter(t => 
                         String(t.employeeId) === currentUserIdentifier || String(t.userId) === currentUserIdentifier || (!t.employeeId && !t.userId) 
                     );
                     setTasks(myPersonalTasks);
                 }
                 
-                if (membersRes.ok) setMembers(await membersRes.json());
-                if (targetsRes.ok) setTargets(await targetsRes.json());
+                if (membersData) setMembers(membersData);
+                if (targetsData) setTargets(targetsData);
 
-                if (eventsRes.ok) {
-                    const allEvents = await eventsRes.json();
+                if (allEvents) {
                     const myPersonalEvents = allEvents.filter(e => 
                         String(e.employeeId) === currentUserIdentifier || String(e.userId) === currentUserIdentifier || (!e.employeeId && !e.userId) 
                     );
                     setEvents(myPersonalEvents);
                 }
 
-                if (topDestRes.ok) setTopDestinations(await topDestRes.json());
+                if (topDestData) setTopDestinations(topDestData);
 
-                if (campaignsRes.ok) {
-                    const campaignsData = await campaignsRes.json();
+                if (campaignsData) {
                     if (Array.isArray(campaignsData)) {
                         setAllCampaigns(campaignsData);
                         setCampaignOptions(campaignsData.map(c => (typeof c === 'string' ? c : (c.name || c.campaignName || ''))).filter(Boolean));
                     }
                 }
 
-                if (leadsRes.ok) {
-                    const leadsData = await leadsRes.json();
+                if (leadsData) {
                     if (Array.isArray(leadsData)) {
                         
                         let calcTotalIn = 0;
@@ -993,8 +956,7 @@ const Dashboard = () => {
                     }
                 }
 
-                if (jobsRes.ok) {
-                    const jobsData = await jobsRes.json();
+                if (jobsData) {
                     if (Array.isArray(jobsData)) {
                         const closedLeads = allLeadsRef.current
                             .filter(l => l?.status === 'Trip Closed')
@@ -1046,11 +1008,10 @@ const Dashboard = () => {
         setChatInput('');
         setIsChatLoading(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/chat`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: userMessage, employeeId: currentUserIdentifier })
+            const data = await apiFetch('/chat', {
+                method: 'POST', body: JSON.stringify({ message: userMessage, employeeId: currentUserIdentifier })
             });
-            const data = await res.json();
-            setChatMessages(prev => [...prev, { role: 'ai', text: res.ok && data.reply ? data.reply : `⚠️ Failed to context map dynamic vectors.` }]);
+            setChatMessages(prev => [...prev, { role: 'ai', text: data?.reply ? data.reply : `⚠️ Failed to context map dynamic vectors.` }]);
         } catch {
             setChatMessages(prev => [...prev, { role: 'ai', text: '⚠️ Connection timeout.' }]);
         } finally {

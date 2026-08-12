@@ -7,6 +7,7 @@ import {
     Flame, Sun, Snowflake, Save, FileText, Briefcase, ClipboardList, Wallet, PackageCheck
 } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
+import { apiFetch } from '../utils/api';
 
 // ─── DOMESTIC DESTINATION DETECTION (kept in sync with OperationsDashboard.jsx) ──
 const INDIAN_DESTINATION_KEYWORDS = [
@@ -20,9 +21,6 @@ const getDefaultTripType = (lead) => {
     if (!destination) return '';
     return INDIAN_DESTINATION_KEYWORDS.some(place => destination.includes(place)) ? 'Domestic' : 'International';
 };
-
-// ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
 
 // ─── NEW LEAD FORM INITIAL STATE ─────────────────────────────────────────────
 const initialNewLeadState = {
@@ -745,8 +743,8 @@ const SalesDashboard = () => {
         }));
 
         try {
-            await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            await apiFetch(`/leads/${selectedLead.id}`, {
+                method: 'PUT',
                 body: JSON.stringify({ noResponseLogs: JSON.stringify(updatedLogs), followupCount: updatedCount, history: JSON.stringify(updatedHistory), status: newStatus })
             });
             await fetchJobs(true);
@@ -790,9 +788,8 @@ const SalesDashboard = () => {
         if (!selectedLead?.id) return;
 
         try {
-            await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
+            await apiFetch(`/leads/${selectedLead.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     paymentHistoryDetails: JSON.stringify(updatedList),
                     status: newStatus
@@ -814,8 +811,8 @@ const SalesDashboard = () => {
         setEditFormData(prev => ({ ...prev, noResponseLogs: updatedLogs, followUpCount: updatedCount, leadStatus: newStatus }));
 
         try {
-            await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            await apiFetch(`/leads/${selectedLead.id}`, {
+                method: 'PUT',
                 body: JSON.stringify({ noResponseLogs: JSON.stringify(updatedLogs), followupCount: updatedCount, status: newStatus })
             });
             await fetchJobs(true);
@@ -836,8 +833,8 @@ const SalesDashboard = () => {
         setEditingLogIndex(null);
 
         try {
-            await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            await apiFetch(`/leads/${selectedLead.id}`, {
+                method: 'PUT',
                 body: JSON.stringify({ noResponseLogs: JSON.stringify(updatedLogs) })
             });
             await fetchJobs(true);
@@ -847,18 +844,15 @@ const SalesDashboard = () => {
     const fetchJobs = async (isSilent = false) => {
         try {
             if (!isSilent) setIsLoading(true);
-            const response = await fetch(`${API_BASE_URL}/leads`);
-            if (response.ok) {
-                const data = await response.json();
-                const sanitized = data.map(item => {
-                    let parsedHistory = [];
-                    if (typeof item.history === 'string') { try { parsedHistory = JSON.parse(item.history); } catch(e) {} } 
-                    else if (Array.isArray(item.history)) { parsedHistory = item.history; }
-                    return { ...item, status: item.status || 'Jobs', history: parsedHistory };
-                });
-                setJobs(sanitized);
-                sessionStorage.setItem('salesDashboardJobs', JSON.stringify(sanitized));
-            }
+            const data = await apiFetch('/leads');
+            const sanitized = data.map(item => {
+                let parsedHistory = [];
+                if (typeof item.history === 'string') { try { parsedHistory = JSON.parse(item.history); } catch(e) {} } 
+                else if (Array.isArray(item.history)) { parsedHistory = item.history; }
+                return { ...item, status: item.status || 'Jobs', history: parsedHistory };
+            });
+            setJobs(sanitized);
+            sessionStorage.setItem('salesDashboardJobs', JSON.stringify(sanitized));
         } catch (error) { 
             console.error('Failed to fetch leads:', error); 
         } finally { 
@@ -880,23 +874,20 @@ const SalesDashboard = () => {
     useEffect(() => {
         const fetchStaffDirectory = async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}/employees`);
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    const sales = data.filter(emp => {
-                        const searchString = `${emp.designation || ''} ${emp.role || ''} ${emp.department || ''}`.toLowerCase();
-                        return searchString.includes('sales');
-                    }).map(emp => emp.name || emp.username);
+                const data = await apiFetch('/employees');
 
-                    const ops = data.filter(emp => {
-                        const searchString = `${emp.designation || ''} ${emp.role || ''} ${emp.department || ''}`.toLowerCase();
-                        return searchString.includes('operation') || searchString.includes('ops');
-                    }).map(emp => emp.name || emp.username);
-                    
-                    setSalesStaff(sales);
-                    setOperationsStaff(ops);
-                }
+                const sales = data.filter(emp => {
+                    const searchString = `${emp.designation || ''} ${emp.role || ''} ${emp.department || ''}`.toLowerCase();
+                    return searchString.includes('sales');
+                }).map(emp => emp.name || emp.username);
+
+                const ops = data.filter(emp => {
+                    const searchString = `${emp.designation || ''} ${emp.role || ''} ${emp.department || ''}`.toLowerCase();
+                    return searchString.includes('operation') || searchString.includes('ops');
+                }).map(emp => emp.name || emp.username);
+
+                setSalesStaff(sales);
+                setOperationsStaff(ops);
             } catch (error) { 
                 console.error('Failed to fetch dynamic directory components:', error); 
             }
@@ -907,11 +898,8 @@ const SalesDashboard = () => {
     useEffect(() => {
         const fetchCampaigns = async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}/campaigns`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (Array.isArray(data)) setCampaignOptions(data.map(c => c.name || c));
-                }
+                const data = await apiFetch('/campaigns');
+                if (Array.isArray(data)) setCampaignOptions(data.map(c => c.name || c));
             } catch (error) { console.error('Failed to fetch campaigns:', error); }
         };
         fetchCampaigns();
@@ -951,27 +939,21 @@ const SalesDashboard = () => {
                 history: JSON.stringify(initialHistory), dateAdded: new Date().toISOString(),
             };
 
-            const response = await fetch(`${API_BASE_URL}/leads`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
+            const saved = await apiFetch('/leads', {
+                method: 'POST',
                 body: JSON.stringify(payload)
             });
 
-            if (response.ok) {
-                const saved = await response.json();
-                fetch(`${API_BASE_URL}/notifications/new-lead`, {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ leadId: saved.id, customerName: saved.customerName, destination: saved.destination, email: saved.email, phone: saved.phone })
-                }).catch(err => console.error('Silently failing email trigger:', err));
+            apiFetch('/notifications/new-lead', {
+                method: 'POST',
+                body: JSON.stringify({ leadId: saved.id, customerName: saved.customerName, destination: saved.destination, email: saved.email, phone: saved.phone })
+            }).catch(err => console.error('Silently failing email trigger:', err));
 
-                await fetchJobs();
-                setIsNewLeadModalOpen(false);
-            } else {
-                const err = await response.json().catch(() => ({}));
-                alert(`Failed to create lead: ${err.message || err.error || 'Unknown error'}`);
-            }
+            await fetchJobs();
+            setIsNewLeadModalOpen(false);
         } catch (error) {
             console.error('New lead submit error:', error);
-            alert('Network error. Check if the backend server is running.');
+            alert(`Failed to create lead: ${error.message || 'Network error. Check if the backend server is running.'}`);
         } finally { setIsSubmittingNewLead(false); }
     };
 
@@ -1140,15 +1122,13 @@ const SalesDashboard = () => {
 
                 assignPayload.history = JSON.stringify(updatedHistory);
 
-                await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
-                    method: 'PUT', 
-                    headers: { 'Content-Type': 'application/json' }, 
+                await apiFetch(`/leads/${selectedLead.id}/assign`, {
+                    method: 'PUT',
                     body: JSON.stringify(assignPayload)
                 });
 
-                await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
-                    method: 'PUT', 
-                    headers: { 'Content-Type': 'application/json' }, 
+                await apiFetch(`/leads/${selectedLead.id}`, {
+                    method: 'PUT',
                     body: JSON.stringify({
                         followupCount: 0,
                         followUpCount: 0,
@@ -1159,9 +1139,8 @@ const SalesDashboard = () => {
             } else {
                 assignPayload.history = JSON.stringify(updatedHistory);
 
-                await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
-                    method: 'PUT', 
-                    headers: { 'Content-Type': 'application/json' }, 
+                await apiFetch(`/leads/${selectedLead.id}/assign`, {
+                    method: 'PUT',
                     body: JSON.stringify(assignPayload)
                 });
             }
@@ -1435,15 +1414,12 @@ const SalesDashboard = () => {
                 history: JSON.stringify(updatedHistory)
             };
             
-            const response = await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+            await apiFetch(`/leads/${selectedLead.id}`, {
+                method: 'PUT', body: JSON.stringify(payload)
             });
-            if (response.ok) { 
-                await fetchJobs(true);
-                setIsEditModalOpen(false); 
-            }
-            else { const err = await response.json(); alert(`Update failed: ${err.message || 'Unknown error'}`); }
-        } catch (error) { console.error('Edit submit error:', error); alert('Network error while updating lead.'); }
+            await fetchJobs(true);
+            setIsEditModalOpen(false);
+        } catch (error) { console.error('Edit submit error:', error); alert(`Update failed: ${error.message || 'Network error while updating lead.'}`); }
     };
 
     const handleInputChange = (e) => {
@@ -1487,15 +1463,13 @@ const SalesDashboard = () => {
 
                 assignPayload.history = JSON.stringify(updatedHistory);
 
-                await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
-                    method: 'PUT', 
-                    headers: { 'Content-Type': 'application/json' },
+                await apiFetch(`/leads/${selectedLead.id}/assign`, {
+                    method: 'PUT',
                     body: JSON.stringify(assignPayload)
                 });
                 
-                await fetch(`${API_BASE_URL}/leads/${selectedLead.id}`, {
-                    method: 'PUT', 
-                    headers: { 'Content-Type': 'application/json' },
+                await apiFetch(`/leads/${selectedLead.id}`, {
+                    method: 'PUT',
                     body: JSON.stringify({
                         followupCount: 0,
                         followUpCount: 0,
@@ -1508,9 +1482,8 @@ const SalesDashboard = () => {
                 updatedHistory = appendHistory(updatedHistory, `Assigned to ${finalAssignee}`, 'Lead claimed/assigned from pool.');
                 assignPayload.history = JSON.stringify(updatedHistory);
 
-                await fetch(`${API_BASE_URL}/leads/${selectedLead.id}/assign`, {
-                    method: 'PUT', 
-                    headers: { 'Content-Type': 'application/json' },
+                await apiFetch(`/leads/${selectedLead.id}/assign`, {
+                    method: 'PUT',
                     body: JSON.stringify(assignPayload)
                 });
             }
@@ -1561,21 +1534,16 @@ const SalesDashboard = () => {
                 history: JSON.stringify(updatedHistory)
             };
 
-            const response = await fetch(`${API_BASE_URL}/leads/${targetId}/assign`, {
+            await apiFetch(`/leads/${targetId}/assign`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
 
-            if (response.ok) {
-                await fetchJobs(true);
-                setIsHandoverModalOpen(false);
-            } else {
-                alert('Failed to handover to operations.');
-            }
+            await fetchJobs(true);
+            setIsHandoverModalOpen(false);
         } catch (error) {
             console.error('Handover error:', error);
-            alert('Network error while handing over.');
+            alert(`Failed to handover to operations: ${error.message || 'Network error.'}`);
         }
     };
 

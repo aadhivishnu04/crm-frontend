@@ -9,9 +9,7 @@ import {
     ClipboardList, Wallet, PackageCheck
 } from 'lucide-react';
 import { getCurrentUser } from '../utils/auth';
-
-// ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
+import { apiFetch } from '../utils/api';
 
 const INDIAN_DESTINATION_KEYWORDS = [
     'india', 'chennai', 'mumbai', 'delhi', 'new delhi', 'bangalore', 'bengaluru',
@@ -857,15 +855,12 @@ export default function OperationsDashboard() {
     useEffect(() => {
         const fetchStaffDirectory = async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}/employees`);
-                if (response.ok) {
-                    const data = await response.json();
-                    const ops = data.filter(emp => {
-                        const searchString = `${emp.designation || ''} ${emp.role || ''} ${emp.department || ''}`.toLowerCase();
-                        return searchString.includes('operation') || searchString.includes('ops');
-                    }).map(emp => emp.name || emp.username);
-                    setOperationsStaff(ops);
-                }
+                const data = await apiFetch('/employees');
+                const ops = data.filter(emp => {
+                    const searchString = `${emp.designation || ''} ${emp.role || ''} ${emp.department || ''}`.toLowerCase();
+                    return searchString.includes('operation') || searchString.includes('ops');
+                }).map(emp => emp.name || emp.username);
+                setOperationsStaff(ops);
             } catch (error) { 
                 console.error('Failed to fetch dynamic directory components:', error); 
             }
@@ -876,9 +871,7 @@ export default function OperationsDashboard() {
     const fetchLeads = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/leads`);
-            if (!res.ok) throw new Error(`HTTP state exception code: ${res.status}`);
-            const data = await res.json();
+            const data = await apiFetch('/leads');
 
             const mappedData = data.map(lead => {
                 let parsedAudio = [];
@@ -1068,28 +1061,20 @@ export default function OperationsDashboard() {
         setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...updatedData } : l));
 
         try {
-            const response = await fetch(`${API_BASE_URL}/leads/${leadId}`, {
+            await apiFetch(`/leads/${leadId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedData),
             });
-
-            if (!response.ok) {
-                // The server rejected the update — don't report success, and don't call
-                // fetchLeads() here, or the optimistic update above gets silently
-                // overwritten with the old (unchanged) data, making the lead appear to
-                // snap back into My Jobs with no visible error.
-                const err = await response.json().catch(() => ({}));
-                triggerNotification('error', `Failed to move to Confirmed Bookings: ${err.message || 'Server rejected the update.'}`);
-                setLeads(prev => prev.map(l => l.id === leadId ? originalLead : l));
-            } else {
-                triggerNotification('success', `Request assigned to ${finalAssignee}.`);
-                fetchLeads();
-            }
+            triggerNotification('success', `Request assigned to ${finalAssignee}.`);
+            fetchLeads();
         } catch (err) {
-            // Genuine network failure — the optimistic UI update never made it to the
-            // server either, so reflect that instead of claiming success.
-            triggerNotification('error', 'Network error — assignment was not saved. Please try again.');
+            // Covers both a server rejection and a genuine network failure — either way
+            // the optimistic UI update above never made it to the server, so reflect
+            // that instead of claiming success. Note: fetchLeads() is intentionally NOT
+            // called here, or the optimistic update gets silently overwritten with the
+            // old (unchanged) data, making the lead appear to snap back into My Jobs
+            // with no visible error.
+            triggerNotification('error', `Failed to move to Confirmed Bookings: ${err.message || 'Network error — assignment was not saved.'}`);
             setLeads(prev => prev.map(l => l.id === leadId ? originalLead : l));
         }
         setIsAssignModalOpen(false);
@@ -1137,15 +1122,15 @@ export default function OperationsDashboard() {
         setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...updatedData } : l));
 
         try {
-            await fetch(`${API_BASE_URL}/leads/${leadId}`, {
+            await apiFetch(`/leads/${leadId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedData),
             });
             triggerNotification('success', 'Job sent back to New Requests.');
             fetchLeads();
         } catch (err) {
-            triggerNotification('success', 'Job sent back to New Requests (Simulation mode).');
+            triggerNotification('error', `Failed to send job back: ${err.message || 'Network error.'}`);
+            setLeads(prev => prev.map(l => l.id === leadId ? originalLead : l));
         }
     };
 
@@ -1219,16 +1204,15 @@ export default function OperationsDashboard() {
         setLeads(prev => prev.map(l => l.id === leadId ? { ...l, ...updatedData } : l));
 
         try {
-            const res = await fetch(`${API_BASE_URL}/leads/${leadId}`, {
+            await apiFetch(`/leads/${leadId}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedData),
             });
-            if (!res.ok) throw new Error('Update failed');
             triggerNotification('success', allSentToSales ? 'All destinations ready — lead pushed to Sales.' : `Destination sent to Sales — waiting on ${parsedRequests.filter(r => r.status !== targetStatus).length} more.`);
             fetchLeads();
         } catch (err) {
-            triggerNotification('success', `Pushed back to Sales (Simulation mode).`);
+            triggerNotification('error', `Failed to push to Sales: ${err.message || 'Network error.'}`);
+            setLeads(prev => prev.map(l => l.id === leadId ? originalLead : l));
         }
     };
 
@@ -1246,16 +1230,10 @@ export default function OperationsDashboard() {
     const updateLead = async (id, updatedData) => {
         setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updatedData } : l));
         try {
-            const response = await fetch(`${API_BASE_URL}/leads/${id}`, {
-                method: 'PUT', 
-                headers: { 'Content-Type': 'application/json' }, 
+            await apiFetch(`/leads/${id}`, {
+                method: 'PUT',
                 body: JSON.stringify(updatedData),
             });
-            
-            if (!response.ok) {
-                throw new Error(`Server returned status: ${response.status}`);
-            }
-            
             triggerNotification('success', 'Configuration update committed!');
             fetchLeads();
         } catch (err) {
@@ -1266,14 +1244,13 @@ export default function OperationsDashboard() {
 
     const sendToFulfillment = async (lead) => {
         try {
-            await fetch(`${API_BASE_URL}/leads/${lead.id}/assign`, {
-                method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status: 'Upcoming Departure' })
+            await apiFetch(`/leads/${lead.id}/assign`, {
+                method: 'PUT', body: JSON.stringify({ status: 'Upcoming Departure' })
             });
             setLeads(prev => prev.filter(l => l.id !== lead.id));
             triggerNotification('success', 'Job profile transmitted to external fulfillment logs.');
         } catch (err) {
-            setLeads(prev => prev.filter(l => l.id !== lead.id));
-            triggerNotification('success', 'Job sent to fulfillment (simulation mode).');
+            triggerNotification('error', `Failed to send to fulfillment: ${err.message || 'Network error.'}`);
         }
     };
 
