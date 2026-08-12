@@ -22,7 +22,7 @@ const getDefaultTripType = (lead) => {
 };
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend3-1y9k.onrender.com/api";
+const API_BASE_URL = "crm-backend-2-qlza.onrender.com/api";
 
 // ─── NEW LEAD FORM INITIAL STATE ─────────────────────────────────────────────
 const initialNewLeadState = {

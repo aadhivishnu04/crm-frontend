@@ -41,7 +41,7 @@ import { getCurrentUser } from '../utils/auth';
 import { ROLES } from '../utils/permissions';
 
 // ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend3-1y9k.onrender.com/api";
+const API_BASE_URL = "crm-backend-2-qlza.onrender.com/api";
 
 // ─── INDIA DESTINATION MATCHER ───────────────────────────────────────────────
 const INDIA_KEYWORDS = [

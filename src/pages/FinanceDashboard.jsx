@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 
 // ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend3-1y9k.onrender.com/api";
+const API_BASE_URL = "crm-backend-2-qlza.onrender.com/api";
 
 // ─── UTILITIES ────────────────────────────────────────────────────────────────
 const getMonthYear = (dateStr) => {
