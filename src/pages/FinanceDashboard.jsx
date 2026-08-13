@@ -4,9 +4,7 @@ import {
     X, ArrowUp, AlertCircle, Calendar, MapPin, DollarSign,
     Calculator, Send
 } from 'lucide-react';
-
-// ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
+import { apiFetch } from '../utils/api';
 
 // ─── UTILITIES ────────────────────────────────────────────────────────────────
 const getMonthYear = (dateStr) => {
@@ -55,9 +53,7 @@ export default function FinanceDashboard() {
     const fetchLeads = async (isBackground = false) => {
         if (!isBackground && leads.length === 0) setLoading(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/leads`, { cache: 'no-store' });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
+            const data = await apiFetch('/leads');
             setLeads(data);
         } catch (err) {
             console.error("Failed to fetch leads for Finance:", err);
@@ -92,16 +88,16 @@ export default function FinanceDashboard() {
         // Optimistic UI update
         setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updatedData } : l));
         try {
-            await fetch(`${API_BASE_URL}/leads/${id}`, {
+            await apiFetch(`/leads/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedData),
             });
             triggerNotification('success', 'Finance record updated successfully!');
             // Silently sync the latest data
             fetchLeads(true);
         } catch (err) {
-            triggerNotification('success', 'Finance changes saved locally (simulation).');
+            console.error("Failed to update lead:", err);
+            triggerNotification('error', err.message || 'Failed to save finance changes.');
         }
     };
 

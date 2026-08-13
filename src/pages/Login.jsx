@@ -2,15 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Lock, Loader2, ShieldCheck } from 'lucide-react';
 import { loginUser } from '../utils/auth';
+import { API_BASE_URL, apiFetch } from '../utils/api';
 import { ROLES } from '../utils/permissions';
 
 // 1. ADDED: Import the image from your assets folder. 
 // Adjust the relative path ('../assets/office-bg.jpg') based on your folder structure and exact file name.
 import bgImage from '../assets/crm_Banner-01.jpg.jpeg'; 
-
-// ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
-// Unified API base URL to prevent IP/Port mismatches across devices
-const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
 
 // Helper function to map database designations to frontend app roles.
 // Covers all six roles defined in ../utils/permissions (ADMIN, DIRECTOR,
@@ -59,7 +56,10 @@ const Login = () => {
 
         const id = employeeId.trim();
         try {
-            // 1. Authenticate with the unified backend endpoint
+            // 1. Authenticate with the unified backend endpoint.
+            // Uses raw fetch (not apiFetch) deliberately: apiFetch auto-redirects
+            // to /login on a 401, which we don't want while already on the login
+            // screen — we want the inline error message below instead.
             const response = await fetch(`${API_BASE_URL}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -79,31 +79,32 @@ const Login = () => {
             const databaseRole = data.user?.designation || (id.toLowerCase() === 'admin' ? 'Admin' : 'Agent');
             const appMappedRole = getRoleFromDesignation(databaseRole);
 
-            // 3. ULTRA SPEED TRACKER: Register heartbeat instantly for immediate panel visibility
+            // 3. Update local system permissions inside auth helpers.
+            // Stores both the user object and the JWT (under api.js's shared
+            // 'itour_token' key) — do this BEFORE the ping call below so
+            // apiFetch can pick the token up from storage automatically.
+            loginUser(
+                data.user?.employeeId || id,
+                appMappedRole,
+                data.user?.name || (id.toLowerCase() === 'admin' ? 'Super Admin' : 'Agent'),
+                data.token
+            );
+
+            // 4. ULTRA SPEED TRACKER: Register heartbeat instantly for immediate panel visibility.
+            // Routed through apiFetch so it uses the token that was just stored
+            // and the same base URL/error handling as every other request.
             if (id.toLowerCase() !== 'admin') {
-             await fetch(`${API_BASE_URL}/members/ping`, {
-    method: 'POST',
-    headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${data.token}`,
-    },
-    body: JSON.stringify({
-        employeeId: String(data.user?.employeeId || id),
-        name: data.user?.name || id,
-        designation: databaseRole,
-        status: 'online'
-    })
-}).catch(err => console.error("Immediate tracking allocation bypassed:", err));
+                await apiFetch('/members/ping', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        employeeId: String(data.user?.employeeId || id),
+                        name: data.user?.name || id,
+                        designation: databaseRole,
+                        status: 'online'
+                    })
+                }).catch(err => console.error("Immediate tracking allocation bypassed:", err));
             }
 
-            // 4. Update local system permissions inside auth helpers
-         loginUser(
-    data.user?.employeeId || id,
-    appMappedRole,
-    data.user?.name || (id.toLowerCase() === 'admin' ? 'Super Admin' : 'Agent'),
-    data.token
-);
-            
             // 5. Fire immediate client redirect down into main workspace shell
             navigate('/dashboard');
 

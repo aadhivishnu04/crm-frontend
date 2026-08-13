@@ -5,9 +5,7 @@ import React, { useState, useEffect ,useRef} from 'react';
         Plus, Target, MessageSquare, PlaneTakeoff, Phone, Eye,
         History, Briefcase, ClipboardList, Wallet, PackageCheck, ChevronRight
     } from 'lucide-react';
-
-    // ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
-    const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
+    import { apiFetch } from '../utils/api';
 
     // ─── UI HELPERS ──────────────────────────────────────────────────────────────
 
@@ -551,23 +549,24 @@ import React, { useState, useEffect ,useRef} from 'react';
         useEffect(() => {
             const fetchInitialData = async () => {
                 try {
-                    const [leadsRes, campaignsRes] = await Promise.all([
-                        fetch(`${API_BASE_URL}/leads`),
-                        fetch(`${API_BASE_URL}/campaigns`)
-                    ]);
-                    
-                    if (leadsRes.ok) setLeads(await leadsRes.json());
-                    
-                    if (campaignsRes.ok) {
-                        const campaignData = await campaignsRes.json();
-                        if (Array.isArray(campaignData)) {
-                            setCampaignOptions(campaignData.map(c => c.name));
-                        }
-                    }
+                    const leadsData = await apiFetch('/leads');
+                    setLeads(leadsData);
                 } catch (err) {
-                    console.error("Failed to fetch initial data:", err);
+                    console.error("Failed to fetch leads:", err);
                 } finally {
                     setIsLoading(false);
+                }
+
+                // Campaigns is restricted to Admin/Director/Marketing on the backend —
+                // handled separately so a 403 here (expected for Sales/Ops/Accounts
+                // users) never blocks the leads list above from loading.
+                try {
+                    const campaignData = await apiFetch('/campaigns');
+                    if (Array.isArray(campaignData)) {
+                        setCampaignOptions(campaignData.map(c => c.name));
+                    }
+                } catch (err) {
+                    console.warn("Campaign options unavailable for this role:", err.message);
                 }
             };
             fetchInitialData();
@@ -629,7 +628,7 @@ import React, { useState, useEffect ,useRef} from 'react';
         const saveLead = async () => {
             try {
                 const isEditing = Boolean(editingId);
-                const url = isEditing ? `${API_BASE_URL}/leads/${editingId}` : `${API_BASE_URL}/leads`;
+                const path = isEditing ? `/leads/${editingId}` : `/leads`;
                 const method = isEditing ? 'PUT' : 'POST';
 
                 const existingLead = isEditing ? leads.find(l => l.id === editingId) : null;
@@ -643,44 +642,38 @@ import React, { useState, useEffect ,useRef} from 'react';
                     status: isEditing ? (existingLead?.status || 'Jobs') : 'Jobs'
                 };
 
-                const res = await fetch(url, {
+                const saved = await apiFetch(path, {
                     method,
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
                 });
 
-                if (res.ok) {
-                    const saved = await res.json();
-                    setLeads(prev => isEditing ? prev.map(l => l.id === editingId ? saved : l) : [saved, ...prev]);
-                    
-                    // Trigger email alert for NEW leads directly
-                    if (!isEditing) {
-                        console.log("Triggering email alert to backend...");
-                        
-                        fetch(`${API_BASE_URL}/notifications/new-lead`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ 
-                                leadId: saved.id,
-                                customerName: saved.customerName,
-                                destination: saved.destination,
-                                email: saved.email,
-                                phone: saved.phone
-                            })
-                        })
-                        .then(res => res.json())
-                        .then(data => console.log("Email server response:", data))
-                        .catch(err => console.error("Silently failing email trigger:", err));
-                    }
+                setLeads(prev => isEditing ? prev.map(l => l.id === editingId ? saved : l) : [saved, ...prev]);
 
-                    closeModal();
-                } else {
-                    const errorData = await res.json().catch(() => ({}));
-                    alert(`Failed to save lead: ${errorData.error || 'Check backend terminal configurations.'}`);
+                // Trigger email alert for NEW leads directly
+                if (!isEditing) {
+                    console.log("Triggering email alert to backend...");
+
+                    apiFetch('/notifications/new-lead', {
+                        method: 'POST',
+                        body: JSON.stringify({ 
+                            leadId: saved.id,
+                            customerName: saved.customerName,
+                            destination: saved.destination,
+                            email: saved.email,
+                            phone: saved.phone
+                        })
+                    })
+                    .then(data => console.log("Email server response:", data))
+                    .catch(err => console.error("Silently failing email trigger:", err));
                 }
+
+                closeModal();
             } catch (err) {
                 console.error("Network Error Details:", err);
-                alert("Error connecting to the server. Check if your Fastify engine is up and running on port 8082.");
+                const message = err.status === 0
+                    ? 'Error connecting to the server. Check if your backend service is running.'
+                    : (err.message || 'Check backend terminal configurations.');
+                alert(`Failed to save lead: ${message}`);
             }
         };
 
@@ -688,12 +681,14 @@ import React, { useState, useEffect ,useRef} from 'react';
         const deleteLead = async (id) => {
             if (!window.confirm("Are you sure you want to delete this lead?")) return;
             try {
-                const res = await fetch(`${API_BASE_URL}/leads/${id}`, { method: 'DELETE' });
-                if (res.ok) setLeads(prev => prev.filter(l => l.id !== id));
-                else alert("Failed to delete lead.");
+                await apiFetch(`/leads/${id}`, { method: 'DELETE' });
+                setLeads(prev => prev.filter(l => l.id !== id));
             } catch (err) {
                 console.error(err);
-                alert("Error connecting to the server.");
+                const message = err.status === 0
+                    ? 'Error connecting to the server.'
+                    : (err.message || 'Failed to delete lead.');
+                alert(message);
             }
         };
 

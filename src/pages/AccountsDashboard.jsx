@@ -7,9 +7,7 @@ import {
     History, Target, Briefcase, ClipboardList, PackageCheck
 } from 'lucide-react';
 import logoAsset from '../assets/logo (2).png';
-
-// ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
+import { apiFetch } from '../utils/api';
 
 // ─── LEAD JOURNEY / FULL HISTORY ENGINE ───────────────────────────────────────
 // Kept in sync with SalesDashboard.jsx / OperationsDashboard.jsx / Fulfillment.jsx
@@ -791,9 +789,7 @@ function useLeads(triggerNotification) {
     const fetchLeads = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/leads`);
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const data = await res.json();
+            const data = await apiFetch('/leads');
             
             const parseJSON = (val) => {
                 if (!val) return [];
@@ -837,9 +833,8 @@ function useLeads(triggerNotification) {
                     payload[key] = JSON.stringify(payload[key]);
                 }
             });
-            await fetch(`${API_BASE_URL}/leads/${id}`, {
+            await apiFetch(`/leads/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
             });
             triggerNotification('success', 'Accounts ledger updated successfully!');

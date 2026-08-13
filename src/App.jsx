@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ROLES } from './utils/permissions';
 
 import Login from './pages/Login';
+import ResetPassword from './pages/Resetpassword';
 import Dashboard from './pages/Dashboard';
 import Unauthorized from './pages/Unauthorized';
 import Layout from './components/Layout';
@@ -36,6 +37,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
         <Route element={<Layout />}>

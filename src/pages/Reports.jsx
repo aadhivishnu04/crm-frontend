@@ -5,8 +5,7 @@ import {
     Globe, MapPin, Download, FileOutput
 } from 'lucide-react';
 import TripClosureForm from '../components/TripClosureForm';
-
-const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
+import { apiFetch } from '../utils/api';
 // ─── INDIA DESTINATION MATCHER ────────────────────────────────────────────────
 const INDIA_KEYWORDS = [
     'india', 'chennai', 'bangalore', 'bengaluru', 'mumbai', 'delhi', 'new delhi',
@@ -74,19 +73,11 @@ const Reports = () => {
         if (!isBackground) setError(null);
         
         try {
-            const [leadsRes, jobsRes, employeesRes] = await Promise.all([
-                fetch(`${API_BASE_URL}/leads`, { cache: 'no-store' }),
-                fetch(`${API_BASE_URL}/jobs`, { cache: 'no-store' }),
-                fetch(`${API_BASE_URL}/employees`, { cache: 'no-store' })
+            const [leadsData, jobsData, employeesData] = await Promise.all([
+                apiFetch('/leads'),
+                apiFetch('/jobs'),
+                apiFetch('/employees')
             ]);
-
-            if (!leadsRes.ok || !jobsRes.ok || !employeesRes.ok) {
-                throw new Error('Failed to fetch one or more report data sources.');
-            }
-
-            const leadsData = await leadsRes.json();
-            const jobsData = await jobsRes.json();
-            const employeesData = await employeesRes.json();
 
             setLeads(Array.isArray(leadsData) ? leadsData : []);
             setJobs(Array.isArray(jobsData) ? jobsData : []);
@@ -788,7 +779,6 @@ const Reports = () => {
                     job={selectedJobForClosure}
                     onClose={() => setSelectedJobForClosure(null)}
                     onRefresh={() => fetchAllReportData(true)}
-                    apiBaseUrl={API_BASE_URL}
                 />
             )}
         </div>

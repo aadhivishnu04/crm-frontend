@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { MENU_ITEMS } from '../utils/permissions';
 import { getCurrentUser, logoutUser } from '../utils/auth';
+import { apiFetch } from '../utils/api';
  
 
 const Sidebar = () => {
@@ -35,10 +36,8 @@ const Sidebar = () => {
         if (!empId) return;
 
         const sendHeartbeatPing = () => {
-            // Removed :8082 as Render routes HTTPS traffic automatically
-            fetch(`${import.meta.env.VITE_API_URL}/members/ping`, {
+            apiFetch('/members/ping', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     employeeId: String(empId),
                     name: empName,
@@ -64,10 +63,10 @@ const Sidebar = () => {
 
         // 2. Fire backend drop request WITHOUT awaiting (Fire and Forget)
         if (empId && empRole !== 'admin' && String(empId).toLowerCase() !== 'admin') {
-            // Removed :8089 to prevent fetch connection hangs on Render
-            fetch(`${import.meta.env.VITE_API_URL}/members/logout-drop`, {
+            // Fired before logoutUser() clears the stored token, so apiFetch
+            // still has a valid Authorization header to attach here.
+            apiFetch('/members/logout-drop', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ employeeId: String(empId) })
             }).catch((err) => {
                 console.error("Presence engine drop context exception:", err);

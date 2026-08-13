@@ -1,9 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FileSpreadsheet, Eye, Pencil, Trash2, ArrowUpDown, Plus, X, ChevronDown, Settings } from 'lucide-react';
 import { ROLES } from '../utils/permissions';
-
-// ─── NETWORK CONFIGURATION ───────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
+import { apiFetch } from '../utils/api';
 
 // ─── DESIGNATION OPTIONS ──────────────────────────────────────────────────────
 // Derived directly from the shared ROLES object in ../utils/permissions, so
@@ -94,11 +92,8 @@ const EmployeeManagement = () => {
 
     const fetchEmployees = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/employees`);
-            if (response.ok) {
-                const data = await response.json();
-                setEmployees(data);
-            }
+            const data = await apiFetch('/employees');
+            setEmployees(data);
         } catch (error) {
             console.error("Failed to fetch employees:", error);
         } finally {
@@ -108,11 +103,8 @@ const EmployeeManagement = () => {
 
     const fetchLiveStatus = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/members`);
-            if (response.ok) {
-                const data = await response.json();
-                setLiveMembers(data);
-            }
+            const data = await apiFetch('/members');
+            setLiveMembers(data);
         } catch (error) {
             console.error("Telemetry context syncing failure:", error);
         }
@@ -175,29 +167,25 @@ const EmployeeManagement = () => {
     const handleAddSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch(`${API_BASE_URL}/employees`, {
+            await apiFetch('/employees', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newEmployee)
             });
 
-            if (response.ok) {
-                await fetchEmployees();
-                setIsAddModalOpen(false);
-                
-                const freshEmployeeObj = {
-                    employeeId: '', name: '', designation: '', phone: '', email: '', password: '', dateOfJoining: '',
-                    gender: '', dob: '', bloodGroup: '', maritalStatus: '', emergencyContact: '', address: '', aadhaarNumber: '', panNumber: ''
-                };
-                tableHeaders.forEach(h => {
-                    if(!freshEmployeeObj.hasOwnProperty(h.id)) freshEmployeeObj[h.id] = '';
-                });
-                setNewEmployee(freshEmployeeObj);
-            } else {
-                alert("Failed to add employee.");
-            }
+            await fetchEmployees();
+            setIsAddModalOpen(false);
+
+            const freshEmployeeObj = {
+                employeeId: '', name: '', designation: '', phone: '', email: '', password: '', dateOfJoining: '',
+                gender: '', dob: '', bloodGroup: '', maritalStatus: '', emergencyContact: '', address: '', aadhaarNumber: '', panNumber: ''
+            };
+            tableHeaders.forEach(h => {
+                if(!freshEmployeeObj.hasOwnProperty(h.id)) freshEmployeeObj[h.id] = '';
+            });
+            setNewEmployee(freshEmployeeObj);
         } catch (error) {
             console.error("Add Error:", error);
+            alert(error.message || "Failed to add employee.");
         }
     };
 
@@ -214,37 +202,28 @@ const EmployeeManagement = () => {
     const handleEditSubmit = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch(`${API_BASE_URL}/employees/${editingEmployee.id}`, {
+            await apiFetch(`/employees/${editingEmployee.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(editingEmployee)
             });
 
-            if (response.ok) {
-                await fetchEmployees();
-                setIsEditModalOpen(false);
-                setEditingEmployee(null);
-            } else {
-                alert("Failed to update in database.");
-            }
+            await fetchEmployees();
+            setIsEditModalOpen(false);
+            setEditingEmployee(null);
         } catch (error) {
             console.error("Edit Error:", error);
+            alert(error.message || "Failed to update in database.");
         }
     };
 
     const handleDelete = async (id, employeeId) => {
         if (window.confirm(`Are you sure you want to delete employee ${employeeId}?`)) {
             try {
-                const response = await fetch(`${API_BASE_URL}/employees/${id}`, {
-                    method: 'DELETE'
-                });
-                if (response.ok) {
-                    setEmployees(prevEmployees => prevEmployees.filter(emp => emp.id !== id));
-                } else {
-                    alert("Failed to delete.");
-                }
+                await apiFetch(`/employees/${id}`, { method: 'DELETE' });
+                setEmployees(prevEmployees => prevEmployees.filter(emp => emp.id !== id));
             } catch (error) {
                 console.error("Delete Error:", error);
+                alert(error.message || "Failed to delete.");
             }
         }
     };

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
+import { apiFetch } from '../utils/api';
 
-const TripClosureForm = ({ job, onClose, onRefresh, apiBaseUrl = 'https://crm-backend-2-qlza.onrender.com/api' }) => {
+const TripClosureForm = ({ job, onClose, onRefresh }) => {
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Initialize form variables
@@ -62,16 +63,10 @@ const TripClosureForm = ({ job, onClose, onRefresh, apiBaseUrl = 'https://crm-ba
                 balancePending: Number(formData.balancePending) || 0
             };
 
-            const res = await fetch(`${apiBaseUrl}/jobs/${job.id}`, {
+            await apiFetch(`/jobs/${job.id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json; charset=utf-8' },
                 body: JSON.stringify(payload)
             });
-
-            if (!res.ok) {
-                const responseErrorText = await res.text();
-                throw new Error(`Server returned error status: ${responseErrorText}`);
-            }
 
             onRefresh();
             onClose();

@@ -1,3 +1,5 @@
+import { setToken, clearToken, getToken } from './api';
+
 export const loginUser = (employeeId, role, name, token) => {
     const user = {
         employeeId,
@@ -6,14 +8,16 @@ export const loginUser = (employeeId, role, name, token) => {
     };
 
     localStorage.setItem('user', JSON.stringify(user));
-    localStorage.setItem('token', token);
+    // Store under the same key api.js's apiFetch reads from ('itour_token'),
+    // so every dashboard request picks up the token issued at login.
+    setToken(token);
 
     return user;
 };
 
 export const logoutUser = () => {
     localStorage.removeItem('user');
-    localStorage.removeItem('token');
+    clearToken();
 };
 
 export const getCurrentUser = () => {
@@ -22,5 +26,5 @@ export const getCurrentUser = () => {
 };
 
 export const getAuthToken = () => {
-    return localStorage.getItem('token');
+    return getToken();
 };

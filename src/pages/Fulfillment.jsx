@@ -6,9 +6,7 @@ import {
     History, Target, Briefcase, ClipboardList, Wallet, PackageCheck,
     Plus, Trash2
 } from 'lucide-react';
-
-// ─── NETWORK CONFIGURATION ────────────────────────────────────────────────────
-const API_BASE_URL = "https://crm-backend-2-qlza.onrender.com/api";
+import { apiFetch } from '../utils/api';
 
 const INDIAN_DESTINATION_KEYWORDS = [
     'india', 'chennai', 'mumbai', 'delhi', 'new delhi', 'bangalore', 'bengaluru',
@@ -358,10 +356,8 @@ function useLeads(triggerNotification) {
         const fetchLeads = async () => {
             setLoading(true);
             try {
-                const res = await fetch(`${API_BASE_URL}/leads`);
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                
+                const data = await apiFetch('/leads');
+
                 const parseJSON = (val) => {
                     if (!val) return [];
                     try { return typeof val === 'string' ? JSON.parse(val) : val; } 
@@ -405,14 +401,14 @@ function useLeads(triggerNotification) {
     const updateLead = async (id, updatedData) => {
         setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updatedData } : l));
         try {
-            await fetch(`${API_BASE_URL}/leads/${id}`, {
+            await apiFetch(`/leads/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedData),
             });
             triggerNotification('success', 'Fulfillment data updated successfully!');
         } catch (err) {
-            triggerNotification('success', 'Fulfillment changes saved locally.');
+            console.error("Failed to update lead:", err);
+            triggerNotification('error', err.message || 'Failed to save fulfillment changes.');
         }
     };
 
@@ -461,15 +457,15 @@ export default function Fulfillment() {
     useEffect(() => {
         const fetchStaffDirectory = async () => {
             try {
-                const response = await fetch(`${API_BASE_URL}/employees`);
-                if (response.ok) {
-                    const data = await response.json();
-                    const ops = data.filter(emp => {
-                        const searchString = `${emp.designation || ''} ${emp.role || ''} ${emp.department || ''}`.toLowerCase();
-                        return searchString.includes('operation') || searchString.includes('ops');
-                    }).map(emp => emp.name || emp.username);
-                    setOperationsStaff(ops);
-                }
+                // /employees/directory is open to every authenticated role and
+                // returns just { employeeId, name, designation } — unlike the
+                // full /employees record set, which is Admin/Director-only.
+                const data = await apiFetch('/employees/directory');
+                const ops = data.filter(emp => {
+                    const searchString = `${emp.designation || ''} ${emp.role || ''} ${emp.department || ''}`.toLowerCase();
+                    return searchString.includes('operation') || searchString.includes('ops');
+                }).map(emp => emp.name || emp.username);
+                setOperationsStaff(ops);
             } catch (error) { 
                 console.error('Failed to fetch dynamic directory components:', error); 
             }
