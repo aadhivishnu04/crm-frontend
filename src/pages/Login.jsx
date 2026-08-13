@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { User, Lock, Loader2, ShieldCheck } from 'lucide-react';
 import { loginUser } from '../utils/auth';
 import { API_BASE_URL, apiFetch } from '../utils/api';
@@ -74,6 +74,21 @@ const Login = () => {
             }
 
             const data = await response.json();
+
+            // 1b. Backend returns HTTP 200 even when a password reset is
+            // required (it's not an auth failure, just a different next
+            // step) — so `response.ok` alone can't distinguish this from a
+            // real login. No `token`/`user` are present in this case, so
+            // without this check every field below would silently fall
+            // back to its default and produce a broken, invalid session.
+            if (data.mustResetPassword) {
+                // Send them straight to the reset flow with the short-lived
+                // token the backend just issued, rather than stranding them
+                // on the login screen with only a message and no way forward.
+                navigate(`/reset-password?token=${encodeURIComponent(data.resetToken)}`);
+                setIsLoading(false);
+                return;
+            }
 
             // 2. Map runtime database models onto frontend security contexts
             const databaseRole = data.user?.designation || (id.toLowerCase() === 'admin' ? 'Admin' : 'Agent');
@@ -188,6 +203,12 @@ const Login = () => {
                                 disabled={isLoading}
                             />
                         </div>
+                    </div>
+
+                    <div className="flex justify-end -mt-2">
+                        <Link to="/forgot-password" className="text-xs text-[#000000]/70 hover:text-[#000000] underline underline-offset-2">
+                            Forgot password?
+                        </Link>
                     </div>
 
                     <div className="pt-2 sm:pt-3">

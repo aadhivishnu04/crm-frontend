@@ -1,168 +1,146 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
-import { Lock, Loader2, CheckCircle2, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { User, Loader2, ArrowLeft, MailCheck } from 'lucide-react';
 import { API_BASE_URL } from '../utils/api';
-import { loginUser } from '../utils/auth';
 
-const MIN_PASSWORD_LENGTH = 8;
+import bgImage from '../assets/crm_Banner-01.jpg.jpeg';
 
-const ResetPassword = () => {
-    const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
-    const resetToken = searchParams.get('token');
-
-    const [newPassword, setNewPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [error, setError] = useState(null);
-    const [success, setSuccess] = useState(false);
-
-    // No token in the URL at all — nothing to do here.
-    useEffect(() => {
-        if (!resetToken) {
-            setError('This reset link is missing its token. Please use the exact link that was sent to you.');
-        }
-    }, [resetToken]);
-
-    const passwordsMismatch = confirmPassword.length > 0 && newPassword !== confirmPassword;
-    const passwordTooShort = newPassword.length > 0 && newPassword.length < MIN_PASSWORD_LENGTH;
+const  ResetPassword = () => {
+    const [employeeId, setEmployeeId] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const [submitted, setSubmitted] = useState(false);
+    const [error, setError] = useState('');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!resetToken) return;
+        setError('');
+        setIsLoading(true);
 
-        if (newPassword.length < MIN_PASSWORD_LENGTH) {
-            setError(`New password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
-            return;
-        }
-        if (newPassword !== confirmPassword) {
-            setError('Passwords do not match.');
-            return;
-        }
-
-        setIsSubmitting(true);
-        setError(null);
         try {
-            const res = await fetch(`${API_BASE_URL}/reset-password`, {
+            // Raw fetch (not apiFetch): no session exists yet at this point,
+            // and this route intentionally always returns a generic
+            // success shape regardless of whether the ID exists, so there's
+            // no 401/error branch worth apiFetch's auto-redirect handling.
+            const response = await fetch(`${API_BASE_URL}/forgot-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ resetToken, newPassword }),
-                cache: 'no-store',
+                body: JSON.stringify({ employeeId: employeeId.trim() })
             });
-            const data = await res.json().catch(() => null);
 
-            if (!res.ok) {
-                if (res.status === 401) {
-                    setError('This reset link has expired or already been used. Please contact IT for a new one.');
-                } else {
-                    setError((data && (data.error || data.message)) || `Request failed (${res.status})`);
-                }
-                setIsSubmitting(false);
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                setError(data.error || 'Something went wrong. Please try again.');
+                setIsLoading(false);
                 return;
             }
 
-            // Log the employee straight in with the session token the
-            // endpoint returns, so they don't have to re-enter credentials.
-            if (data?.token && data?.user) {
-                loginUser(data.user.employeeId, data.user.role, data.user.name, data.token);
-            }
-
-            setSuccess(true);
-            setTimeout(() => navigate('/dashboard'), 1500);
+            setSubmitted(true);
         } catch (err) {
-            setError('Network error. Please check your connection and try again.');
-            setIsSubmitting(false);
+            setError('Server connection failed. Please check your connection and try again.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
-    if (success) {
-        return (
-            <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4">
-                <div className="bg-[#0d233e] border border-slate-700/50 w-full max-w-sm rounded-xl shadow-2xl p-8 text-center">
-                    <CheckCircle2 size={40} className="text-emerald-400 mx-auto mb-4" />
-                    <h1 className="text-lg font-bold text-white mb-1">Password updated</h1>
-                    <p className="text-sm text-slate-400">Taking you to your dashboard…</p>
-                </div>
-            </div>
-        );
-    }
-
     return (
-        <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4">
-            <div className="bg-[#0d233e] border border-slate-700/50 w-full max-w-sm rounded-xl shadow-2xl overflow-hidden">
-                <div className="p-6 border-b border-slate-700/30 bg-[#0f172a]">
-                    <h1 className="text-base font-bold text-white flex items-center gap-2">
-                        <Lock size={18} className="text-cyan-400" /> Set a new password
-                    </h1>
-                    <p className="text-xs text-slate-400 mt-1">
-                        Your previous password was reset for security reasons. Choose a new one to continue.
-                    </p>
-                </div>
+        <div
+            className="min-h-screen min-h-[100dvh] flex items-center justify-center sm:justify-end bg-cover bg-center relative px-4 sm:px-6 md:px-16 lg:px-24 xl:pr-32 py-8"
+            style={{ backgroundImage: `url(${bgImage})`, backgroundPosition: '25% center', fontFamily: "'Inter', sans-serif" }}
+        >
+            <div className="absolute inset-0" />
 
-                <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
-                    {error && (
-                        <div className="flex items-start gap-2 bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2.5 text-xs text-rose-300">
-                            <AlertCircle size={14} className="mt-0.5 shrink-0" />
-                            <span>{error}</span>
+            <div className="login-card relative z-10 w-full max-w-[22rem] sm:max-w-md md:max-w-lg p-7 sm:p-9 md:p-11 lg:p-12 rounded-2xl sm:rounded-[1.75rem] bg-white/10 backdrop-blur-2xl">
+
+                <h2
+                    className="text-center text-[2rem] sm:text-[2.25rem] leading-tight mb-2 select-none text-black"
+                    style={{ fontFamily: "'Poppins', sans-serif", fontWeight: 700, letterSpacing: '-0.02em' }}
+                >
+                    {submitted ? 'Check with your admin' : 'Forgot password?'}
+                </h2>
+                <p className="text-center text-sm text-black/70 mb-7 sm:mb-9">
+                    {submitted
+                        ? "We've sent your request to the admin for approval."
+                        : "Enter your Employee ID and we'll send a request to your admin."}
+                </p>
+
+                {error && (
+                    <div className="bg-[#3A1418]/80 backdrop-blur-sm text-[#F5D9D5] p-2.5 sm:p-3 rounded-md text-sm mb-5 border border-[#8C3B3B]/60 text-center font-medium">
+                        {error}
+                    </div>
+                )}
+
+                {submitted ? (
+                    <div className="flex flex-col items-center gap-4 text-center">
+                        <MailCheck className="w-10 h-10 text-black/70" strokeWidth={1.5} />
+                        <p className="text-sm text-black/70 leading-relaxed">
+                            If that Employee ID exists in our system, your admin has been notified.
+                            Once approved, you'll receive an email with a link to set a new password.
+                        </p>
+                        <Link
+                            to="/login"
+                            className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-black hover:opacity-70"
+                        >
+                            <ArrowLeft className="w-4 h-4" />
+                            Back to login
+                        </Link>
+                    </div>
+                ) : (
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="field-group relative">
+                            <label className="block text-[10px] sm:text-xs tracking-[0.2em] uppercase text-[#000000] mb-2">
+                                Employee ID
+                            </label>
+                            <div className="flex items-center gap-3 border-b-2 border-[#000000]/30 focus-within:border-[#000000] transition-colors py-2 sm:py-2.5">
+                                <User className="w-4 h-4 sm:w-[18px] sm:h-[18px] text-[#000000]/70 shrink-0" strokeWidth={1.75} />
+                                <input
+                                    type="text"
+                                    value={employeeId}
+                                    onChange={(e) => setEmployeeId(e.target.value)}
+                                    placeholder=" "
+                                    className="w-full bg-transparent border-0 text-[#000000] placeholder-[#5C6478] focus:outline-none focus:ring-0 text-base sm:text-lg tracking-wide"
+                                    required
+                                    disabled={isLoading}
+                                />
+                            </div>
                         </div>
-                    )}
 
-                    <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-semibold text-slate-300">New password</label>
-                        <div className="relative">
-                            <input
-                                type={showPassword ? 'text' : 'password'}
-                                value={newPassword}
-                                onChange={(e) => setNewPassword(e.target.value)}
-                                required
-                                disabled={!resetToken || isSubmitting}
-                                className="w-full bg-[#0f172a] border border-slate-600 rounded-lg px-3 py-2 pr-10 text-sm text-slate-200 outline-none focus:border-cyan-500 disabled:opacity-50"
-                                placeholder={`At least ${MIN_PASSWORD_LENGTH} characters`}
-                            />
+                        <div className="pt-1">
                             <button
-                                type="button"
-                                onClick={() => setShowPassword((s) => !s)}
-                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
-                                tabIndex={-1}
+                                type="submit"
+                                disabled={isLoading}
+                                className="group relative w-full overflow-hidden bg-gradient-to-r from-[#d02525] to-[#d02525] text-[#ffffff] font-semibold py-3 sm:py-3.5 px-4 rounded-xl transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed text-sm sm:text-base uppercase tracking-[0.15em] flex items-center justify-center gap-2"
                             >
-                                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                                {isLoading ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" strokeWidth={2.5} />
+                                        Sending
+                                    </>
+                                ) : (
+                                    'Send Request'
+                                )}
                             </button>
                         </div>
-                        {passwordTooShort && (
-                            <span className="text-[11px] text-amber-400">Needs at least {MIN_PASSWORD_LENGTH} characters.</span>
-                        )}
-                    </div>
 
-                    <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-semibold text-slate-300">Confirm new password</label>
-                        <input
-                            type={showPassword ? 'text' : 'password'}
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            required
-                            disabled={!resetToken || isSubmitting}
-                            className="w-full bg-[#0f172a] border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none focus:border-cyan-500 disabled:opacity-50"
-                            placeholder="Re-enter new password"
-                        />
-                        {passwordsMismatch && (
-                            <span className="text-[11px] text-amber-400">Passwords don't match yet.</span>
-                        )}
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={!resetToken || isSubmitting || passwordsMismatch}
-                        className="mt-2 bg-cyan-500 hover:bg-cyan-400 disabled:bg-cyan-800 disabled:cursor-not-allowed font-medium py-2.5 rounded-lg transition-colors shadow-md text-sm flex items-center justify-center gap-2 text-white"
-                    >
-                        {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : 'Set password & continue'}
-                    </button>
-
-                    <Link to="/login" className="text-xs text-slate-500 hover:text-slate-300 text-center transition-colors">
-                        Back to login
-                    </Link>
-                </form>
+                        <div className="flex justify-center">
+                            <Link to="/login" className="inline-flex items-center gap-2 text-xs text-black/70 hover:text-black">
+                                <ArrowLeft className="w-3.5 h-3.5" />
+                                Back to login
+                            </Link>
+                        </div>
+                    </form>
+                )}
             </div>
+
+            <style>{`
+                @keyframes cardRise {
+                    from { opacity: 0; transform: translateY(14px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+                .login-card { animation: cardRise 0.55s ease-out both; }
+                @media (prefers-reduced-motion: reduce) {
+                    .login-card { animation: none; }
+                }
+            `}</style>
         </div>
     );
 };

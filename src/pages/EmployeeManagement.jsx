@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FileSpreadsheet, Eye, Pencil, Trash2, ArrowUpDown, Plus, X, ChevronDown, Settings } from 'lucide-react';
+import { FileSpreadsheet, Eye, EyeOff, Pencil, Trash2, ArrowUpDown, Plus, X, ChevronDown, Settings } from 'lucide-react';
 import { ROLES } from '../utils/permissions';
 import { apiFetch } from '../utils/api';
 
@@ -26,6 +26,18 @@ const EmployeeManagement = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [entriesPerPage, setEntriesPerPage] = useState(10);
     const [isLoading, setIsLoading] = useState(true);
+    // Which employee rows currently have their password revealed in the
+    // table — passwords stay masked by default and reveal per-row on click,
+    // rather than showing every plaintext password on screen at once.
+    const [revealedPasswords, setRevealedPasswords] = useState(new Set());
+    const togglePasswordReveal = (employeeRowId) => {
+        setRevealedPasswords(prev => {
+            const next = new Set(prev);
+            if (next.has(employeeRowId)) next.delete(employeeRowId);
+            else next.add(employeeRowId);
+            return next;
+        });
+    };
 
     // --- Configuration Panel Toggle State ---
     const [isConfigPanelOpen, setIsConfigPanelOpen] = useState(false);
@@ -76,6 +88,7 @@ const EmployeeManagement = () => {
     // --- State for Edit Employee Form ---
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [editingEmployee, setEditingEmployee] = useState(null);
+    const [editShowPassword, setEditShowPassword] = useState(false);
 
     // --- State for View Employee Modal ---
     const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -196,6 +209,7 @@ const EmployeeManagement = () => {
 
     const handleEditClick = (employee) => {
         setEditingEmployee(employee);
+        setEditShowPassword(false);
         setIsEditModalOpen(true);
     };
 
@@ -484,9 +498,31 @@ const EmployeeManagement = () => {
                                                 );
                                             }
                                             if (h.id === 'password') {
+                                                const isRevealed = revealedPasswords.has(employee.id);
+                                                // employee.password is null for rows still on the old
+                                                // bcrypt format that haven't been migrated yet — that
+                                                // happens automatically next time they log in, or
+                                                // immediately if you set a new password via Edit.
+                                                const hasVisiblePassword = employee.password !== null && employee.password !== undefined;
                                                 return (
-                                                    <td key={h.id} className="py-2.5 md:py-3 px-2 md:px-4 text-slate-400 font-mono text-sm">
-                                                        {employee.password}
+                                                    <td key={h.id} className="py-2.5 md:py-3 px-2 md:px-4 text-slate-300 font-mono text-sm">
+                                                        {hasVisiblePassword ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="tracking-wider">
+                                                                    {isRevealed ? employee.password : '••••••••'}
+                                                                </span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => togglePasswordReveal(employee.id)}
+                                                                    className="text-slate-400 hover:text-slate-200 transition-colors"
+                                                                    title={isRevealed ? 'Hide password' : 'Show password'}
+                                                                >
+                                                                    {isRevealed ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-slate-500 italic text-xs">Set new to view</span>
+                                                        )}
                                                     </td>
                                                 );
                                             }
@@ -753,8 +789,31 @@ const EmployeeManagement = () => {
                             )}
                             {tableHeaders.some(h => h.id === 'password') && (
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Password *</label>
-                                    <input type="text" required value={editingEmployee.password} onChange={(e) => setEditingEmployee({ ...editingEmployee, password: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
+                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Password</label>
+                                    <div className="relative">
+                                        <input
+                                            type={editShowPassword ? 'text' : 'password'}
+                                            value={editingEmployee.password || ''}
+                                            onChange={(e) => setEditingEmployee({ ...editingEmployee, password: e.target.value })}
+                                            placeholder={editingEmployee.password === null ? 'Not yet viewable — type a new one to set it' : 'Leave unchanged, or type a new password'}
+                                            className="w-full px-3 py-2 pr-10 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm placeholder:text-slate-500"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setEditShowPassword(v => !v)}
+                                            className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-200"
+                                            title={editShowPassword ? 'Hide password' : 'Show password'}
+                                        >
+                                            {editShowPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                        </button>
+                                    </div>
+                                    {/*
+                                        editingEmployee.password is the real, decrypted password from
+                                        the API (null only for rows still on the old, one-way bcrypt
+                                        format that haven't logged in since the switch to reversible
+                                        encryption). Editing this field and saving sets a brand new
+                                        password; leaving it exactly as loaded keeps the existing one.
+                                    */}
                                 </div>
                             )}
                             {tableHeaders.some(h => h.id === 'dateOfJoining') && (
