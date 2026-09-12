@@ -4,7 +4,7 @@
 // dashboard. Replaces the old pattern of calling `fetch(`${API_BASE_URL}/x`)`
 // directly from each component (which never sent an Authorization header).
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||'https://crm-backend-f9n8.onrender.com/api';
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://crm-backend-f9n8.onrender.com/api';
 
 const TOKEN_KEY = 'itour_token';
 
