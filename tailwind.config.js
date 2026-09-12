@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+    darkMode: 'class', // <--- This exact line is mandatory
     content: [
         "./index.html",
         "./src/**/*.{js,jsx}",

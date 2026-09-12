@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { FileSpreadsheet, Eye, EyeOff, Pencil, Trash2, ArrowUpDown, Plus, X, ChevronDown, Settings } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ROLES } from '../utils/permissions';
 import { apiFetch } from '../utils/api';
 
@@ -11,13 +12,13 @@ const DESIGNATION_OPTIONS = Object.values(ROLES);
 
 // ─── STYLING CONFIGURATIONS ───────────────────────────────────────────────────
 const STATUS_STYLES = {
-    online: { dot: 'bg-emerald-500', glow: 'shadow-emerald-400/60', label: 'Active' },
-    offline: { dot: 'bg-slate-400', glow: 'shadow-slate-500/20', label: 'Inactive' },
+    online: { dot: 'bg-emerald-500', glow: '', label: 'Active' },
+    offline: { dot: 'bg-slate-400', glow: '', label: 'Inactive' },
 };
 
 const StatusDot = ({ status }) => {
     const s = STATUS_STYLES[status] || STATUS_STYLES.offline;
-    return <span className={`w-2.5 h-2.5 rounded-full shadow-[0_0_6px_1px] ${s.dot} ${s.glow} flex-shrink-0`} />;
+    return <span className={`w-2.5 h-2.5 rounded-full ${s.dot} ${s.glow} flex-shrink-0`} />;
 };
 
 const EmployeeManagement = () => {
@@ -319,25 +320,31 @@ const EmployeeManagement = () => {
         return (
             <th
                 onClick={() => requestSort(sortKey)}
-                className={`py-4 px-4 font-semibold text-sm sm:text-base whitespace-nowrap group cursor-pointer transition-colors select-none ${isActive ? 'bg-slate-800/40 text-blue-400' : 'hover:bg-slate-800/30'}`}
+                className={`py-4 px-4 font-semibold text-sm sm:text-base whitespace-nowrap group cursor-pointer transition-colors select-none ${isActive ? 'bg-slate-200 dark:bg-slate-800/40 text-blue-400' : 'hover:bg-slate-200 dark:hover:bg-slate-800/30'}`}
             >
                 <div className="flex items-center gap-2">
                     {title}
-                    <ArrowUpDown size={14} className={`transition-transform duration-150 ${isActive ? 'text-blue-400 ' + (sortConfig.direction === 'desc' ? 'rotate-180' : '') : 'text-slate-400 group-hover:text-slate-200'}`} />
+                    <ArrowUpDown size={14} className={`transition-transform duration-150 ${isActive ? 'text-blue-400 ' + (sortConfig.direction === 'desc' ? 'rotate-180' : '') : 'text-black dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200'}`} />
                 </div>
             </th>
         );
     };
 
     return (
-        <div className="p-3 sm:p-4 lg:p-6 pt-20 sm:pt-24 lg:pt-24 w-full bg-[#0f172a] min-h-screen font-sans relative text-white">
+        <div className="p-3 sm:p-4 lg:p-6 pt-20 sm:pt-24 lg:pt-24 w-full bg-slate-200 dark:bg-[#0f172a] min-h-screen font-sans relative text-black dark:text-white">
 
             {/* DYNAMIC CONFIGURATION PANEL CONTAINER */}
+            <AnimatePresence>
             {isConfigPanelOpen && (
-                <div className="bg-[#132033] border border-blue-500/20 rounded-xl p-4 mb-6 flex flex-col gap-4 shadow-lg relative transition-all">
+                <motion.div
+                    initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
+                    exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                    className="bg-slate-100 dark:bg-[#132033] border border-blue-500/20 rounded-xl p-4 flex flex-col gap-4 relative overflow-hidden">
                     <button 
                         onClick={() => setIsConfigPanelOpen(false)} 
-                        className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg transition-colors"
+                        className="absolute top-4 right-4 text-black dark:text-slate-400 hover:text-slate-700 dark:hover:text-white p-1 rounded-lg transition-colors"
                     >
                         <X size={18} />
                     </button>
@@ -348,17 +355,17 @@ const EmployeeManagement = () => {
                     </div>
                     
                     <div>
-                        <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Edit Table Label Headings Directly</label>
+                        <label className="text-[11px] font-bold text-black dark:text-slate-400 uppercase tracking-wider block mb-2">Edit Table Label Headings Directly</label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                             {tableHeaders.map((header) => (
-                                <div key={header.id} className="bg-[#0f172a] p-2.5 rounded-lg border border-slate-700/50 flex flex-col gap-1 relative group hover:border-slate-600 transition-all">
+                                <div key={header.id} className="bg-slate-200 dark:bg-[#0f172a] p-2.5 rounded-lg border border-slate-300 dark:border-slate-700/50 flex flex-col gap-1 relative group hover:border-slate-400 dark:hover:border-slate-600 transition-all">
                                     <div className="flex justify-between items-center select-none">
-                                        <span className="text-[10px] text-slate-500 font-mono">{header.id}</span>
+                                        <span className="text-[10px] text-black dark:text-slate-500 font-mono">{header.id}</span>
                                         {/* DELETE BUTTON: Removes the total label header section */}
                                         <button 
                                             type="button"
                                             onClick={() => handleRemoveHeader(header.id)}
-                                            className="text-slate-500 hover:text-rose-400 p-0.5 rounded transition-colors"
+                                            className="text-black dark:text-slate-500 hover:text-rose-400 p-0.5 rounded transition-colors"
                                             title={`Delete total "${header.title}" section`}
                                         >
                                             <X size={12} />
@@ -369,7 +376,7 @@ const EmployeeManagement = () => {
                                             type="text"
                                             value={header.title}
                                             onChange={(e) => handleHeaderTitleChange(header.id, e.target.value)}
-                                            className="bg-transparent text-sm font-bold text-white focus:outline-none focus:text-blue-400 w-full"
+                                            className="bg-transparent text-sm font-bold text-black dark:text-white focus:outline-none focus:text-blue-400 w-full"
                                         />
                                     </div>
                                 </div>
@@ -377,38 +384,39 @@ const EmployeeManagement = () => {
                         </div>
                     </div>
 
-                    <form onSubmit={handleAddNewHeader} className="flex flex-col sm:flex-row gap-2 items-end sm:items-center mt-2 pt-2 border-t border-slate-700/30">
+                    <form onSubmit={handleAddNewHeader} className="flex flex-col sm:flex-row gap-2 items-end sm:items-center mt-2 pt-2 border-t border-slate-200 dark:border-slate-700/30">
                         <div className="w-full sm:w-auto flex flex-col gap-1">
-                            <label className="text-[10px] font-bold text-slate-400 uppercase">Create New Column Title</label>
+                            <label className="text-[10px] font-bold text-black dark:text-slate-400 uppercase">Create New Column Title</label>
                             <input 
                                 type="text" 
                                 placeholder="e.g., Department, Work Location" 
                                 value={newHeaderTitle}
                                 onChange={(e) => setNewHeaderTitle(e.target.value)}
-                                className="bg-[#0f172a] border border-slate-600/50 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-blue-500 text-white w-full sm:w-64"
+                                className="bg-slate-200 dark:bg-[#0f172a] border border-slate-300 dark:border-slate-600/50 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-blue-500 text-black dark:text-white w-full sm:w-64"
                             />
                         </div>
                         <button 
                             type="submit" 
-                            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 mt-1 sm:mt-4 h-[32px]"
+                            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-500 text-black dark:text-white px-4 py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 mt-1 sm:mt-4 h-[32px]"
                         >
                             <Plus size={14} /> Add New Column Label
                         </button>
                     </form>
-                </div>
+                </motion.div>
             )}
+            </AnimatePresence>
 
             {/* PAGE HEADER LAYER */}
             <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-start mb-6">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-white tracking-tight">Employee List</h1>
-                    {/* <p className="text-slate-300 text-sm sm:text-base mt-1">Manage corporate directory listings and metadata</p> */}
+                    <h1 className="text-2xl sm:text-3xl font-bold text-black dark:text-white tracking-tight">Employee List</h1>
+                    {/* <p className="text-black dark:text-slate-300 text-sm sm:text-base mt-1">Manage corporate directory listings and metadata</p> */}
                 </div>
 
                 <div className="flex flex-wrap gap-2 sm:gap-3 w-full md:w-auto">
                     <button
                         onClick={() => setIsConfigPanelOpen(!isConfigPanelOpen)}
-                        className={`flex-1 md:flex-none flex items-center justify-center gap-2 border px-4 py-2.5 rounded-lg shadow-sm transition-all text-sm sm:text-base font-semibold ${isConfigPanelOpen ? 'bg-blue-500/10 border-blue-500 text-blue-400' : 'bg-slate-800/40 border-slate-700/60 hover:bg-slate-800 text-slate-200'}`}
+                        className={`flex-1 md:flex-none flex items-center justify-center gap-2 border px-4 py-2.5 rounded-lg transition-all text-sm sm:text-base font-semibold ${isConfigPanelOpen ? 'bg-blue-500/10 border-blue-500 text-blue-400' : 'bg-slate-200 dark:bg-slate-800/40 border-slate-300 dark:border-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-800 text-black dark:text-slate-200'}`}
                     >
                         <Settings size={18} />
                         Configure Columns
@@ -416,7 +424,7 @@ const EmployeeManagement = () => {
                     
                     <button
                         onClick={() => setIsAddModalOpen(true)}
-                        className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2.5 rounded-lg shadow-sm transition-colors text-sm sm:text-base font-semibold"
+                        className="flex-1 md:flex-none flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-black dark:text-white px-4 py-2.5 rounded-lg transition-colors text-sm sm:text-base font-semibold"
                     >
                         <Plus size={18} strokeWidth={2.5} />
                         Add Employee
@@ -424,7 +432,7 @@ const EmployeeManagement = () => {
                     
                     <button
                         onClick={handleExport}
-                        className="bg-slate-800/50 hover:bg-slate-700 text-slate-100 p-2.5 rounded-lg shadow-sm border border-slate-600/40 transition-colors flex items-center justify-center flex-shrink-0"
+                        className="bg-slate-200 dark:bg-slate-800/50 hover:bg-slate-300 dark:hover:bg-slate-700 text-black dark:text-slate-100 p-2.5 rounded-lg border border-slate-300 dark:border-slate-600/40 transition-colors flex items-center justify-center flex-shrink-0"
                         title="Export to CSV"
                     >
                         <FileSpreadsheet size={20} strokeWidth={1.5} />
@@ -433,57 +441,63 @@ const EmployeeManagement = () => {
             </div>
 
             {/* FILTER AND DATA TABLE OVERVIEW SHEET */}
-            <div className="bg-slate-900/50 border border-slate-700/50 rounded-xl shadow-sm overflow-hidden flex flex-col">
+            <div className="bg-slate-100 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700/50 rounded-xl overflow-hidden flex flex-col">
                 <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center p-4 gap-4">
-                    <div className="flex items-center justify-between md:justify-start gap-2 text-sm sm:text-base text-slate-300 order-2 md:order-1">
+                    <div className="flex items-center justify-between md:justify-start gap-2 text-sm sm:text-base text-black dark:text-slate-300 order-2 md:order-1">
                         <span>Show</span>
                         <input
                             type="number"
                             min="1"
                             value={entriesPerPage}
                             onChange={(e) => setEntriesPerPage(Number(e.target.value) || 1)}
-                            className="w-16 px-2 py-1.5 bg-[#132033] border border-slate-600/50 rounded-lg focus:outline-none focus:border-blue-500 text-center text-slate-100 text-sm sm:text-base transition-all"
+                            className="w-16 px-2 py-1.5 bg-slate-100 dark:bg-[#132033] border border-slate-300 dark:border-slate-600/50 rounded-lg focus:outline-none focus:border-blue-500 text-center text-black dark:text-slate-100 text-sm sm:text-base transition-all"
                         />
                         <span>entries</span>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 text-sm sm:text-base text-slate-300 order-1 md:order-2 w-full md:w-auto">
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 text-sm sm:text-base text-black dark:text-slate-300 order-1 md:order-2 w-full md:w-auto">
                         <span className="hidden sm:block whitespace-nowrap">Search:</span>
                         <input
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search directory..."
-                            className="w-full md:w-64 px-3.5 py-2.5 sm:py-2 bg-[#132033] border border-slate-600/50 rounded-lg focus:outline-none focus:border-blue-500 text-slate-100 placeholder-slate-500 text-sm sm:text-base transition-all"
+                            className="w-full md:w-64 px-3.5 py-2.5 sm:py-2 bg-slate-100 dark:bg-[#132033] border border-slate-300 dark:border-slate-600/50 rounded-lg focus:outline-none focus:border-blue-500 text-black dark:text-slate-100 placeholder-slate-500 text-sm sm:text-base transition-all"
                         />
                     </div>
                 </div>
 
-                <div className="w-full custom-scrollbar border-t border-slate-700/50 overflow-x-auto">
+                <div className="w-full custom-scrollbar border-t border-slate-300 dark:border-slate-700/50 overflow-x-auto">
                     <table className="w-full text-left text-sm sm:text-base border-collapse min-w-[1100px]">
-                        <thead className="bg-slate-800/50 border-b border-slate-700/50 text-xs sm:text-sm">
+                        <thead className="bg-slate-200 dark:bg-slate-800/50 border-b border-slate-300 dark:border-slate-700/50 text-xs sm:text-sm">
                             <tr>
                                 {tableHeaders.map(h => (
                                     <SortableHeader key={h.id} title={h.title} sortKey={h.sortKey} />
                                 ))}
-                                {tableHeaders.length > 0 && <th className="py-4 px-4 font-semibold text-slate-100 whitespace-nowrap">Action</th>}
+                                {tableHeaders.length > 0 && <th className="py-4 px-4 font-semibold text-black dark:text-slate-100 whitespace-nowrap">Action</th>}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-700/30">
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={tableHeaders.length + 1} className="py-12 text-center text-slate-400">Loading index database...</td>
+                                    <td colSpan={tableHeaders.length + 1} className="py-12 text-center text-black dark:text-slate-400">Loading index database...</td>
                                 </tr>
                             ) : filteredAndSortedEmployees.length > 0 ? (
-                                filteredAndSortedEmployees.slice(0, entriesPerPage).map((employee) => (
-                                    <tr key={employee.id} className="hover:bg-slate-800/40 transition-colors">
+                                filteredAndSortedEmployees.slice(0, entriesPerPage).map((employee, idx) => (
+                                    <motion.tr
+                                        key={employee.id}
+                                        layout
+                                        initial={{ opacity: 0, y: 8 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ duration: 0.22, delay: Math.min(idx, 14) * 0.025, ease: [0.16, 1, 0.3, 1] }}
+                                        className="hover:bg-slate-200 dark:hover:bg-slate-800/40 transition-colors">
                                         {tableHeaders.map((h) => {
                                             if (h.id === 'status') {
                                                 return (
                                                     <td key={h.id} className="py-2.5 md:py-3 px-2 md:px-4">
                                                         <div className="flex items-center gap-2">
                                                             <StatusDot status={employee.status} />
-                                                            <span className={`text-sm font-semibold ${employee.status === 'online' ? 'text-emerald-400' : 'text-slate-400'}`}>
+                                                            <span className={`text-sm font-semibold ${employee.status === 'online' ? 'text-emerald-400' : 'text-black dark:text-slate-400'}`}>
                                                                 {employee.status === 'online' ? 'Active' : 'Inactive'}
                                                             </span>
                                                         </div>
@@ -492,7 +506,7 @@ const EmployeeManagement = () => {
                                             }
                                             if (h.id === 'name') {
                                                 return (
-                                                    <td key={h.id} className="py-2.5 md:py-3 px-2 md:px-4 text-white font-bold">
+                                                    <td key={h.id} className="py-2.5 md:py-3 px-2 md:px-4 text-black dark:text-white font-bold">
                                                         {employee.name}
                                                     </td>
                                                 );
@@ -505,7 +519,7 @@ const EmployeeManagement = () => {
                                                 // immediately if you set a new password via Edit.
                                                 const hasVisiblePassword = employee.password !== null && employee.password !== undefined;
                                                 return (
-                                                    <td key={h.id} className="py-2.5 md:py-3 px-2 md:px-4 text-slate-300 font-mono text-sm">
+                                                    <td key={h.id} className="py-2.5 md:py-3 px-2 md:px-4 text-black dark:text-slate-300 font-mono text-sm">
                                                         {hasVisiblePassword ? (
                                                             <div className="flex items-center gap-2">
                                                                 <span className="tracking-wider">
@@ -514,20 +528,20 @@ const EmployeeManagement = () => {
                                                                 <button
                                                                     type="button"
                                                                     onClick={() => togglePasswordReveal(employee.id)}
-                                                                    className="text-slate-400 hover:text-slate-200 transition-colors"
+                                                                    className="text-black dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
                                                                     title={isRevealed ? 'Hide password' : 'Show password'}
                                                                 >
                                                                     {isRevealed ? <EyeOff size={14} /> : <Eye size={14} />}
                                                                 </button>
                                                             </div>
                                                         ) : (
-                                                            <span className="text-slate-500 italic text-xs">Set new to view</span>
+                                                            <span className="text-black dark:text-slate-500 italic text-xs">Set new to view</span>
                                                         )}
                                                     </td>
                                                 );
                                             }
                                             return (
-                                                <td key={h.id} className="py-2.5 md:py-3 px-2 md:px-4 text-slate-200">
+                                                <td key={h.id} className="py-2.5 md:py-3 px-2 md:px-4 text-black dark:text-slate-200">
                                                     {employee[h.id] || '-'}
                                                 </td>
                                             );
@@ -535,17 +549,17 @@ const EmployeeManagement = () => {
                                         {tableHeaders.length > 0 && (
                                             <td className="py-3 px-2 md:px-4">
                                                 <div className="flex items-center gap-1.5 sm:gap-2">
-                                                    <button onClick={() => handleView(employee)} className="text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 transition-colors p-1.5 rounded-lg" title="View"><Eye size={18} /></button>
-                                                    <button onClick={() => handleEditClick(employee)} className="text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors p-1.5 rounded-lg" title="Edit"><Pencil size={18} /></button>
-                                                    <button onClick={() => handleDelete(employee.id, employee.employeeId)} className="text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors p-1.5 rounded-lg" title="Delete"><Trash2 size={18} /></button>
+                                                    <button onClick={() => handleView(employee)} className="text-black dark:text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 transition-colors p-1.5 rounded-lg" title="View"><Eye size={18} /></button>
+                                                    <button onClick={() => handleEditClick(employee)} className="text-black dark:text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors p-1.5 rounded-lg" title="Edit"><Pencil size={18} /></button>
+                                                    <button onClick={() => handleDelete(employee.id, employee.employeeId)} className="text-black dark:text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors p-1.5 rounded-lg" title="Delete"><Trash2 size={18} /></button>
                                                 </div>
                                             </td>
                                         )}
-                                    </tr>
+                                    </motion.tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={tableHeaders.length + 1} className="py-12 text-center text-slate-400">No matching entries isolated.</td>
+                                    <td colSpan={tableHeaders.length + 1} className="py-12 text-center text-black dark:text-slate-400">No matching entries isolated.</td>
                                 </tr>
                             )}
                         </tbody>
@@ -555,20 +569,30 @@ const EmployeeManagement = () => {
 
             {/* ─── VIEW EMPLOYEE MODAL ─── */}
             {isViewModalOpen && viewingEmployee && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 sm:p-4 md:p-6 backdrop-blur-sm">
-                    <div className="bg-[#0f172a] border border-[#1e3a52] rounded-2xl shadow-2xl w-full max-w-2xl relative max-h-[calc(100vh-24px)] sm:max-h-[90vh] flex flex-col overflow-hidden">
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 sm:p-4 md:p-6 backdrop-blur-sm">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 16 }}
+                        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                        className="bg-slate-200 dark:bg-[#0f172a] border border-slate-300 dark:border-[#1e3a52] rounded-2xl w-full max-w-2xl relative max-h-[calc(100vh-24px)] sm:max-h-[90vh] flex flex-col overflow-hidden">
                         
-                        <div className="flex justify-between items-center p-4 sm:p-5 border-b border-[#1e3a52] bg-[#0f172a] z-10 flex-shrink-0">
-                            <h2 className="text-lg sm:text-xl font-bold text-white"> Profile</h2>
-                            <button onClick={() => setIsViewModalOpen(false)} className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-lg hover:bg-[#132033]"><X size={20} /></button>
+                        <div className="flex justify-between items-center p-4 sm:p-5 border-b border-slate-300 dark:border-[#1e3a52] bg-slate-200 dark:bg-[#0f172a] z-10 flex-shrink-0">
+                            <h2 className="text-lg sm:text-xl font-bold text-black dark:text-white"> Profile</h2>
+                            <button onClick={() => setIsViewModalOpen(false)} className="text-black dark:text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-[#132033]"><X size={20} /></button>
                         </div>
 
                         <div className="p-4 sm:p-5 overflow-y-auto custom-scrollbar flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {tableHeaders.some(h => h.id === 'status') && (
-                                <div className="bg-[#132033] p-3.5 rounded-xl border border-[#1e3a52] flex items-center justify-between sm:col-span-2">
-                                    <div className="flex items-center gap-2.5 bg-[#0f172a] px-3 py-1.5 rounded-lg border border-[#1e3a52]">
+                                <div className="bg-slate-100 dark:bg-[#132033] p-3.5 rounded-xl border border-slate-300 dark:border-[#1e3a52] flex items-center justify-between sm:col-span-2">
+                                    <div className="flex items-center gap-2.5 bg-slate-200 dark:bg-[#0f172a] px-3 py-1.5 rounded-lg border border-slate-300 dark:border-[#1e3a52]">
                                         <StatusDot status={viewingEmployee.status} />
-                                        <span className={`text-sm font-bold ${viewingEmployee.status === 'online' ? 'text-emerald-400' : 'text-slate-400'}`}>
+                                        <span className={`text-sm font-bold ${viewingEmployee.status === 'online' ? 'text-emerald-400' : 'text-black dark:text-slate-400'}`}>
                                             {viewingEmployee.status === 'online' ? 'Active' : 'Inactive'}
                                         </span>
                                     </div>
@@ -576,9 +600,9 @@ const EmployeeManagement = () => {
                             )}
 
                             {tableHeaders.filter(h => h.id !== 'status').map((h) => (
-                                <div key={h.id} className="bg-[#132033] p-3.5 rounded-xl border border-[#1e3a52]">
-                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">{h.title}</label>
-                                    <div className={`text-sm text-slate-100 font-medium truncate ${h.id === 'password' ? 'font-mono text-slate-300' : ''}`}>
+                                <div key={h.id} className="bg-slate-100 dark:bg-[#132033] p-3.5 rounded-xl border border-slate-300 dark:border-[#1e3a52]">
+                                    <label className="block text-[11px] font-semibold text-black dark:text-slate-400 mb-1.5 uppercase tracking-wider">{h.title}</label>
+                                    <div className={`text-sm text-black dark:text-slate-100 font-medium truncate ${h.id === 'password' ? 'font-mono text-black dark:text-slate-300' : ''}`}>
                                         {viewingEmployee[h.id] || 'Not Configured'}
                                     </div>
                                 </div>
@@ -592,216 +616,236 @@ const EmployeeManagement = () => {
                                 { label: 'Emergency Contact No', value: viewingEmployee.emergencyContact },
                                 { label: 'PAN Identity Reference', value: viewingEmployee.panNumber },
                             ].map((field, idx) => (
-                                <div key={idx} className="bg-[#132033] p-3.5 rounded-xl border border-[#1e3a52]">
-                                    <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">{field.label}</label>
-                                    <div className="text-sm text-slate-100 font-medium truncate">
+                                <div key={idx} className="bg-slate-100 dark:bg-[#132033] p-3.5 rounded-xl border border-slate-300 dark:border-[#1e3a52]">
+                                    <label className="block text-[11px] font-semibold text-black dark:text-slate-400 mb-1.5 uppercase tracking-wider">{field.label}</label>
+                                    <div className="text-sm text-black dark:text-slate-100 font-medium truncate">
                                         {field.value || 'Not Configured'}
                                     </div>
                                 </div>
                             ))}
 
-                            <div className="bg-[#132033] p-3.5 rounded-xl border border-[#1e3a52] sm:col-span-2">
-                                <label className="block text-[11px] font-semibold text-slate-400 mb-1.5 uppercase tracking-wider">Permanent Residential Address</label>
-                                <div className="text-sm text-slate-100 font-medium whitespace-pre-wrap break-words">
+                            <div className="bg-slate-100 dark:bg-[#132033] p-3.5 rounded-xl border border-slate-300 dark:border-[#1e3a52] sm:col-span-2">
+                                <label className="block text-[11px] font-semibold text-black dark:text-slate-400 mb-1.5 uppercase tracking-wider">Permanent Residential Address</label>
+                                <div className="text-sm text-black dark:text-slate-100 font-medium whitespace-pre-wrap break-words">
                                     {viewingEmployee.address || 'Not Configured'}
                                 </div>
                             </div>
                         </div>
 
-                        <div className="p-4 sm:p-5 border-t border-[#1e3a52] bg-[#0f172a] z-10 flex justify-end flex-shrink-0">
-                            <button onClick={() => setIsViewModalOpen(false)} className="w-full sm:w-auto px-6 py-2.5 text-white bg-slate-700 hover:bg-slate-600 rounded-lg font-bold transition-colors text-sm">
+                        <div className="p-4 sm:p-5 border-t border-slate-300 dark:border-[#1e3a52] bg-slate-200 dark:bg-[#0f172a] z-10 flex justify-end flex-shrink-0">
+                            <button onClick={() => setIsViewModalOpen(false)} className="w-full sm:w-auto px-6 py-2.5 text-black dark:text-white bg-slate-300 dark:bg-slate-700 hover:bg-slate-400 dark:hover:bg-slate-600 rounded-lg font-bold transition-colors text-sm">
                                 Close File
                             </button>
                         </div>
-                    </div>
-                </div>
+                    </motion.div>
+                </motion.div>
             )}
 
             {/* ─── ADD EMPLOYEE MODAL ─── */}
             {isAddModalOpen && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 sm:p-4 md:p-6 backdrop-blur-sm">
-                    <div className="bg-[#0f172a] border border-[#1e3a52] rounded-2xl shadow-2xl w-full max-w-2xl relative max-h-[calc(100vh-24px)] sm:max-h-[90vh] flex flex-col overflow-hidden">
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 sm:p-4 md:p-6 backdrop-blur-sm">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 16 }}
+                        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                        className="bg-slate-200 dark:bg-[#0f172a] border border-slate-300 dark:border-[#1e3a52] rounded-2xl w-full max-w-2xl relative max-h-[calc(100vh-24px)] sm:max-h-[90vh] flex flex-col overflow-hidden">
                         
-                        <div className="flex justify-between items-center p-4 sm:p-5 border-b border-[#1e3a52] bg-[#0f172a] z-10 flex-shrink-0">
-                            <h2 className="text-lg sm:text-xl font-bold text-white">Provision New Employee File</h2>
-                            <button onClick={() => setIsAddModalOpen(false)} className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-[#132033]"><X size={20} /></button>
+                        <div className="flex justify-between items-center p-4 sm:p-5 border-b border-slate-300 dark:border-[#1e3a52] bg-slate-200 dark:bg-[#0f172a] z-10 flex-shrink-0">
+                            <h2 className="text-lg sm:text-xl font-bold text-black dark:text-white">Provision New Employee File</h2>
+                            <button onClick={() => setIsAddModalOpen(false)} className="text-black dark:text-slate-400 hover:text-slate-700 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-[#132033]"><X size={20} /></button>
                         </div>
                         
                         <form id="add-employee-form" onSubmit={handleAddSubmit} className="p-4 sm:p-5 overflow-y-auto custom-scrollbar flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {tableHeaders.some(h => h.id === 'employeeId') && (
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Employee ID *</label>
-                                    <input type="text" required value={newEmployee.employeeId} onChange={(e) => setNewEmployee({ ...newEmployee, employeeId: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
+                                    <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Employee ID *</label>
+                                    <input type="text" required value={newEmployee.employeeId} onChange={(e) => setNewEmployee({ ...newEmployee, employeeId: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
                                 </div>
                             )}
                             {tableHeaders.some(h => h.id === 'name') && (
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Full Name *</label>
-                                    <input type="text" required value={newEmployee.name} onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
+                                    <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Full Name *</label>
+                                    <input type="text" required value={newEmployee.name} onChange={(e) => setNewEmployee({ ...newEmployee, name: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
                                 </div>
                             )}
                             {tableHeaders.some(h => h.id === 'designation') && (
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Designation *</label>
+                                    <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Designation *</label>
                                     <div className="relative">
-                                        <select required value={newEmployee.designation || ""} onChange={(e) => setNewEmployee({ ...newEmployee, designation: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm appearance-none cursor-pointer">
+                                        <select required value={newEmployee.designation || ""} onChange={(e) => setNewEmployee({ ...newEmployee, designation: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm appearance-none cursor-pointer">
                                             <option value="" disabled>Select Designation</option>
                                             {DESIGNATION_OPTIONS.map((role) => <option key={role} value={role}>{role}</option>)}
                                         </select>
-                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400"><ChevronDown size={16} /></div>
+                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-black dark:text-slate-400"><ChevronDown size={16} /></div>
                                     </div>
                                 </div>
                             )}
                             {tableHeaders.some(h => h.id === 'phone') && (
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Primary Contact Line</label>
-                                    <input type="text" value={newEmployee.phone} onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
+                                    <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Primary Contact Line</label>
+                                    <input type="text" value={newEmployee.phone} onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
                                 </div>
                             )}
                             {tableHeaders.some(h => h.id === 'email') && (
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Email Address</label>
-                                    <input type="email" value={newEmployee.email} onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
+                                    <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Email Address</label>
+                                    <input type="email" value={newEmployee.email} onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
                                 </div>
                             )}
                             {tableHeaders.some(h => h.id === 'password') && (
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Portal Access Password *</label>
-                                    <input type="text" required value={newEmployee.password} onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
+                                    <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Portal Access Password *</label>
+                                    <input type="text" required value={newEmployee.password} onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
                                 </div>
                             )}
                             {tableHeaders.some(h => h.id === 'dateOfJoining') && (
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Date of Joining</label>
-                                    <input type="date" value={newEmployee.dateOfJoining} onChange={(e) => setNewEmployee({ ...newEmployee, dateOfJoining: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm [color-scheme:dark]" />
+                                    <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Date of Joining</label>
+                                    <input type="date" value={newEmployee.dateOfJoining} onChange={(e) => setNewEmployee({ ...newEmployee, dateOfJoining: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm dark:[color-scheme:dark]" />
                                 </div>
                             )}
 
                             {/* Custom Column inputs render section */}
                             {tableHeaders.filter(h => !['status', 'employeeId', 'name', 'designation', 'phone', 'email', 'password', 'dateOfJoining'].includes(h.id)).map((h) => (
                                 <div key={h.id}>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">{h.title}</label>
+                                    <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">{h.title}</label>
                                     <input 
                                         type="text" 
                                         value={newEmployee[h.id] || ''} 
                                         onChange={(e) => setNewEmployee({ ...newEmployee, [h.id]: e.target.value })} 
-                                        className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" 
+                                        className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" 
                                     />
                                 </div>
                             ))}
 
                             <div>
-                                <label className="block text-xs font-medium text-slate-300 mb-1.5">Gender Identification</label>
+                                <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Gender Identification</label>
                                 <div className="relative">
-                                    <select value={newEmployee.gender} onChange={(e) => setNewEmployee({ ...newEmployee, gender: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm appearance-none cursor-pointer">
+                                    <select value={newEmployee.gender} onChange={(e) => setNewEmployee({ ...newEmployee, gender: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm appearance-none cursor-pointer">
                                         <option value="">Select Gender</option>
                                         {['Male', 'Female', 'Non-Binary', 'Prefer not to disclose'].map(g => <option key={g} value={g}>{g}</option>)}
                                     </select>
-                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400"><ChevronDown size={16} /></div>
+                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-black dark:text-slate-400"><ChevronDown size={16} /></div>
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-slate-300 mb-1.5">Date of Birth</label>
-                                <input type="date" value={newEmployee.dob} onChange={(e) => setNewEmployee({ ...newEmployee, dob: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm [color-scheme:dark]" />
+                                <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Date of Birth</label>
+                                <input type="date" value={newEmployee.dob} onChange={(e) => setNewEmployee({ ...newEmployee, dob: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm dark:[color-scheme:dark]" />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-slate-300 mb-1.5">Blood Group Matrix</label>
-                                <input type="text" placeholder="e.g., O+, A-" value={newEmployee.bloodGroup} onChange={(e) => setNewEmployee({ ...newEmployee, bloodGroup: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
+                                <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Blood Group Matrix</label>
+                                <input type="text" placeholder="e.g., O+, A-" value={newEmployee.bloodGroup} onChange={(e) => setNewEmployee({ ...newEmployee, bloodGroup: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-slate-300 mb-1.5">Marital Status</label>
+                                <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Marital Status</label>
                                 <div className="relative">
-                                    <select value={newEmployee.maritalStatus} onChange={(e) => setNewEmployee({ ...newEmployee, maritalStatus: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm appearance-none cursor-pointer">
+                                    <select value={newEmployee.maritalStatus} onChange={(e) => setNewEmployee({ ...newEmployee, maritalStatus: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm appearance-none cursor-pointer">
                                         <option value="">Select Status</option>
                                         {['Single', 'Married', 'Separated', 'Widowed'].map(m => <option key={m} value={m}>{m}</option>)}
                                     </select>
-                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400"><ChevronDown size={16} /></div>
+                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-black dark:text-slate-400"><ChevronDown size={16} /></div>
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-slate-300 mb-1.5">Emergency Contact Number</label>
-                                <input type="text" value={newEmployee.emergencyContact} onChange={(e) => setNewEmployee({ ...newEmployee, emergencyContact: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
+                                <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Emergency Contact Number</label>
+                                <input type="text" value={newEmployee.emergencyContact} onChange={(e) => setNewEmployee({ ...newEmployee, emergencyContact: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-slate-300 mb-1.5">PAN Account Reference</label>
-                                <input type="text" value={newEmployee.panNumber} onChange={(e) => setNewEmployee({ ...newEmployee, panNumber: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
+                                <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">PAN Account Reference</label>
+                                <input type="text" value={newEmployee.panNumber} onChange={(e) => setNewEmployee({ ...newEmployee, panNumber: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm" />
                             </div>
                             <div className="sm:col-span-2">
-                                <label className="block text-xs font-medium text-slate-300 mb-1.5">Permanent Residential Address</label>
-                                <textarea rows="2" value={newEmployee.address} onChange={(e) => setNewEmployee({ ...newEmployee, address: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm resize-none custom-scrollbar" />
+                                <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Permanent Residential Address</label>
+                                <textarea rows="2" value={newEmployee.address} onChange={(e) => setNewEmployee({ ...newEmployee, address: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-blue-500 text-sm resize-none custom-scrollbar" />
                             </div>
                         </form>
 
-                        <div className="p-4 sm:p-5 border-t border-[#1e3a52] bg-[#0f172a] z-10 flex flex-col sm:flex-row gap-3 flex-shrink-0">
-                            <button type="button" onClick={() => setIsAddModalOpen(false)} className="w-full sm:flex-1 px-4 py-2 text-sm text-slate-300 bg-transparent border border-[#1e3a52] hover:bg-[#132033] rounded-lg font-semibold order-2 sm:order-1">Cancel</button>
-                            <button type="submit" form="add-employee-form" className="w-full sm:flex-1 px-4 py-2 text-sm text-white bg-blue-600 hover:bg-blue-500 rounded-lg font-bold order-1 sm:order-2 shadow-lg">Commit Records</button>
+                        <div className="p-4 sm:p-5 border-t border-slate-300 dark:border-[#1e3a52] bg-slate-200 dark:bg-[#0f172a] z-10 flex flex-col sm:flex-row gap-3 flex-shrink-0">
+                            <button type="button" onClick={() => setIsAddModalOpen(false)} className="w-full sm:flex-1 px-4 py-2 text-sm text-black dark:text-slate-300 bg-transparent border border-slate-300 dark:border-[#1e3a52] hover:bg-slate-100 dark:hover:bg-[#132033] rounded-lg font-semibold order-2 sm:order-1">Cancel</button>
+                            <button type="submit" form="add-employee-form" className="w-full sm:flex-1 px-4 py-2 text-sm text-black dark:text-white bg-blue-600 hover:bg-blue-500 rounded-lg font-bold order-1 sm:order-2 ">Commit Records</button>
                         </div>
-                    </div>
-                </div>
+                    </motion.div>
+                </motion.div>
             )}
 
             {/* ─── EDIT EMPLOYEE MODAL ─── */}
             {isEditModalOpen && editingEmployee && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 sm:p-4 md:p-6 backdrop-blur-sm">
-                    <div className="bg-[#0f172a] border border-[#1e3a52] rounded-2xl shadow-2xl w-full max-w-2xl relative max-h-[calc(100vh-24px)] sm:max-h-[90vh] flex flex-col overflow-hidden">
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-3 sm:p-4 md:p-6 backdrop-blur-sm">
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 16 }}
+                        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                        className="bg-slate-200 dark:bg-[#0f172a] border border-slate-300 dark:border-[#1e3a52] rounded-2xl w-full max-w-2xl relative max-h-[calc(100vh-24px)] sm:max-h-[90vh] flex flex-col overflow-hidden">
                         
-                        <div className="flex justify-between items-center p-4 sm:p-5 border-b border-[#1e3a52] bg-[#0f172a] z-10 flex-shrink-0">
-                            <h2 className="text-lg sm:text-xl font-bold text-white">Modify Employee Parameters</h2>
-                            <button onClick={() => setIsEditModalOpen(false)} className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-[#132033]"><X size={20} /></button>
+                        <div className="flex justify-between items-center p-4 sm:p-5 border-b border-slate-300 dark:border-[#1e3a52] bg-slate-200 dark:bg-[#0f172a] z-10 flex-shrink-0">
+                            <h2 className="text-lg sm:text-xl font-bold text-black dark:text-white">Modify Employee Parameters</h2>
+                            <button onClick={() => setIsEditModalOpen(false)} className="text-black dark:text-slate-400 hover:text-slate-700 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-[#132033]"><X size={20} /></button>
                         </div>
                         
                         <form id="edit-employee-form" onSubmit={handleEditSubmit} className="p-4 sm:p-5 overflow-y-auto custom-scrollbar flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {tableHeaders.some(h => h.id === 'employeeId') && (
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Employee ID *</label>
-                                    <input type="text" required value={editingEmployee.employeeId} onChange={(e) => setEditingEmployee({ ...editingEmployee, employeeId: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
+                                    <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Employee ID *</label>
+                                    <input type="text" required value={editingEmployee.employeeId} onChange={(e) => setEditingEmployee({ ...editingEmployee, employeeId: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
                                 </div>
                             )}
                             {tableHeaders.some(h => h.id === 'name') && (
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Name *</label>
-                                    <input type="text" required value={editingEmployee.name} onChange={(e) => setEditingEmployee({ ...editingEmployee, name: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
+                                    <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Name *</label>
+                                    <input type="text" required value={editingEmployee.name} onChange={(e) => setEditingEmployee({ ...editingEmployee, name: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
                                 </div>
                             )}
                             {tableHeaders.some(h => h.id === 'designation') && (
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Designation *</label>
+                                    <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Designation *</label>
                                     <div className="relative">
-                                        <select required value={editingEmployee.designation || ""} onChange={(e) => setEditingEmployee({ ...editingEmployee, designation: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm appearance-none cursor-pointer">
+                                        <select required value={editingEmployee.designation || ""} onChange={(e) => setEditingEmployee({ ...editingEmployee, designation: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm appearance-none cursor-pointer">
                                             <option value="" disabled>Select Designation</option>
                                             {DESIGNATION_OPTIONS.map((role) => <option key={role} value={role}>{role}</option>)}
                                         </select>
-                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400"><ChevronDown size={16} /></div>
+                                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-black dark:text-slate-400"><ChevronDown size={16} /></div>
                                     </div>
                                 </div>
                             )}
                             {tableHeaders.some(h => h.id === 'phone') && (
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Phone</label>
-                                    <input type="text" value={editingEmployee.phone || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, phone: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
+                                    <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Phone</label>
+                                    <input type="text" value={editingEmployee.phone || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, phone: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
                                 </div>
                             )}
                             {tableHeaders.some(h => h.id === 'email') && (
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Email Id</label>
-                                    <input type="email" value={editingEmployee.email || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, email: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
+                                    <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Email Id</label>
+                                    <input type="email" value={editingEmployee.email || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, email: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
                                 </div>
                             )}
                             {tableHeaders.some(h => h.id === 'password') && (
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Password</label>
+                                    <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Password</label>
                                     <div className="relative">
                                         <input
                                             type={editShowPassword ? 'text' : 'password'}
                                             value={editingEmployee.password || ''}
                                             onChange={(e) => setEditingEmployee({ ...editingEmployee, password: e.target.value })}
                                             placeholder={editingEmployee.password === null ? 'Not yet viewable — type a new one to set it' : 'Leave unchanged, or type a new password'}
-                                            className="w-full px-3 py-2 pr-10 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm placeholder:text-slate-500"
+                                            className="w-full px-3 py-2 pr-10 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm placeholder:text-black dark:placeholder:text-slate-500"
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setEditShowPassword(v => !v)}
-                                            className="absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 hover:text-slate-200"
+                                            className="absolute inset-y-0 right-0 flex items-center px-3 text-black dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                                             title={editShowPassword ? 'Hide password' : 'Show password'}
                                         >
                                             {editShowPassword ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -818,72 +862,72 @@ const EmployeeManagement = () => {
                             )}
                             {tableHeaders.some(h => h.id === 'dateOfJoining') && (
                                 <div>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">Date of Joining</label>
-                                    <input type="date" value={editingEmployee.dateOfJoining || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, dateOfJoining: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm [color-scheme:dark]" />
+                                    <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Date of Joining</label>
+                                    <input type="date" value={editingEmployee.dateOfJoining || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, dateOfJoining: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm dark:[color-scheme:dark]" />
                                 </div>
                             )}
 
                             {/* Custom Column inputs update section */}
                             {tableHeaders.filter(h => !['status', 'employeeId', 'name', 'designation', 'phone', 'email', 'password', 'dateOfJoining'].includes(h.id)).map((h) => (
                                 <div key={h.id}>
-                                    <label className="block text-xs font-medium text-slate-300 mb-1.5">{h.title}</label>
+                                    <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">{h.title}</label>
                                     <input 
                                         type="text" 
                                         value={editingEmployee[h.id] || ''} 
                                         onChange={(e) => setEditingEmployee({ ...editingEmployee, [h.id]: e.target.value })} 
-                                        className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" 
+                                        className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" 
                                     />
                                 </div>
                             ))}
 
                             <div>
-                                <label className="block text-xs font-medium text-slate-300 mb-1.5">Gender Identification</label>
+                                <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Gender Identification</label>
                                 <div className="relative">
-                                    <select value={editingEmployee.gender || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, gender: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm appearance-none cursor-pointer">
+                                    <select value={editingEmployee.gender || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, gender: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm appearance-none cursor-pointer">
                                         <option value="">Select Gender</option>
                                         {['Male', 'Female', 'Non-Binary', 'Prefer not to disclose'].map(g => <option key={g} value={g}>{g}</option>)}
                                     </select>
-                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400"><ChevronDown size={16} /></div>
+                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-black dark:text-slate-400"><ChevronDown size={16} /></div>
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-slate-300 mb-1.5">Date of Birth</label>
-                                <input type="date" value={editingEmployee.dob || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, dob: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm [color-scheme:dark]" />
+                                <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Date of Birth</label>
+                                <input type="date" value={editingEmployee.dob || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, dob: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm dark:[color-scheme:dark]" />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-slate-300 mb-1.5">Blood Group Matrix</label>
-                                <input type="text" value={editingEmployee.bloodGroup || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, bloodGroup: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
+                                <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Blood Group Matrix</label>
+                                <input type="text" value={editingEmployee.bloodGroup || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, bloodGroup: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-slate-300 mb-1.5">Marital Status</label>
+                                <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Marital Status</label>
                                 <div className="relative">
-                                    <select value={editingEmployee.maritalStatus || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, maritalStatus: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm appearance-none cursor-pointer">
+                                    <select value={editingEmployee.maritalStatus || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, maritalStatus: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm appearance-none cursor-pointer">
                                         <option value="">Select Status</option>
                                         {['Single', 'Married', 'Separated', 'Widowed'].map(m => <option key={m} value={m}>{m}</option>)}
                                     </select>
-                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400"><ChevronDown size={16} /></div>
+                                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-black dark:text-slate-400"><ChevronDown size={16} /></div>
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-slate-300 mb-1.5">Emergency Contact Number</label>
-                                <input type="text" value={editingEmployee.emergencyContact || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, emergencyContact: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
+                                <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Emergency Contact Number</label>
+                                <input type="text" value={editingEmployee.emergencyContact || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, emergencyContact: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
                             </div>
                             <div>
-                                <label className="block text-xs font-medium text-slate-300 mb-1.5">PAN Account Reference</label>
-                                <input type="text" value={editingEmployee.panNumber || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, panNumber: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
+                                <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">PAN Account Reference</label>
+                                <input type="text" value={editingEmployee.panNumber || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, panNumber: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm" />
                             </div>
                             <div className="sm:col-span-2">
-                                <label className="block text-xs font-medium text-slate-300 mb-1.5">Permanent Residential Address</label>
-                                <textarea rows="2" value={editingEmployee.address || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, address: e.target.value })} className="w-full px-3 py-2 bg-[#132033] text-slate-100 border border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm resize-none custom-scrollbar" />
+                                <label className="block text-xs font-medium text-black dark:text-slate-300 mb-1.5">Permanent Residential Address</label>
+                                <textarea rows="2" value={editingEmployee.address || ''} onChange={(e) => setEditingEmployee({ ...editingEmployee, address: e.target.value })} className="w-full px-3 py-2 bg-slate-100 dark:bg-[#132033] text-black dark:text-slate-100 border border-slate-300 dark:border-[#1e3a52] rounded-lg focus:outline-none focus:border-emerald-500 text-sm resize-none custom-scrollbar" />
                             </div>
                         </form>
 
-                        <div className="p-4 sm:p-5 border-t border-[#1e3a52] bg-[#0f172a] z-10 flex flex-col sm:flex-row gap-3 flex-shrink-0">
-                            <button type="button" onClick={() => setIsEditModalOpen(false)} className="w-full sm:flex-1 px-4 py-2 text-sm text-slate-300 bg-transparent border border-[#1e3a52] hover:bg-[#132033] rounded-lg font-semibold order-2 sm:order-1">Cancel</button>
-                            <button type="submit" form="edit-employee-form" className="w-full sm:flex-1 px-4 py-2 text-sm text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold order-1 sm:order-2 shadow-lg">Push Modifications</button>
+                        <div className="p-4 sm:p-5 border-t border-slate-300 dark:border-[#1e3a52] bg-slate-200 dark:bg-[#0f172a] z-10 flex flex-col sm:flex-row gap-3 flex-shrink-0">
+                            <button type="button" onClick={() => setIsEditModalOpen(false)} className="w-full sm:flex-1 px-4 py-2 text-sm text-black dark:text-slate-300 bg-transparent border border-slate-300 dark:border-[#1e3a52] hover:bg-slate-100 dark:hover:bg-[#132033] rounded-lg font-semibold order-2 sm:order-1">Cancel</button>
+                            <button type="submit" form="edit-employee-form" className="w-full sm:flex-1 px-4 py-2 text-sm text-black dark:text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold order-1 sm:order-2 ">Push Modifications</button>
                         </div>
-                    </div>
-                </div>
+                    </motion.div>
+                </motion.div>
             )}
         </div>
     );

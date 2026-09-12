@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode in Tailwind v4 */
+@variant dark (&:is(.dark *));
+
 :root {
     --primary-dark: #0f172a;
     --primary-medium: #0f172a;
@@ -21,11 +24,43 @@ body,
     min-height: 100%;
 }
 
+/* Light Mode Base (Default) */
 body {
     font-family: "Poppins", sans-serif;
     color: var(--text-primary);
+    background: #f8fafc; /* Clean light background */
+    background-attachment: fixed;
+    transition: background 0.3s ease, color 0.3s ease; /* Smooth transition when clicking the button */
+    cursor: url("/cursor/cursor1.png") 0 0, auto; /* Light mode custom cursor */
+}
+
+/* Dark Mode Override */
+.dark body {
     background: linear-gradient(135deg, #03434c, #056e7d, #079aae);
     background-attachment: fixed;
+    color: var(--text-light);
+    cursor: url("/cursor/cursor2.png") 0 0, auto; /* Dark mode custom cursor */
+}
+
+/* Custom cursor on interactive elements */
+button,
+a,
+[role="button"],
+input[type="submit"],
+input[type="button"],
+label[for],
+select {
+    cursor: url("/cursor/cursor1.png") 0 0, pointer;
+}
+
+.dark button,
+.dark a,
+.dark [role="button"],
+.dark input[type="submit"],
+.dark input[type="button"],
+.dark label[for],
+.dark select {
+    cursor: url("/cursor/cursor2.png") 0 0, pointer;
 }
 
 .theme-app-shell {
@@ -152,7 +187,7 @@ body {
     font-style: italic;
 }
 
-/* Add this to your index.css */
+/* Custom Scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
 }

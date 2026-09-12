@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
     Users, 
     ClipboardList, 
@@ -117,44 +118,65 @@ const ProgressBar = ({ value, max, color }) => {
     );
 };
 
-const Modal = ({ open, onClose, title, children, maxWidth = "max-w-md", icon: TitleIcon = null, iconColorCls = "text-slate-400 dark:text-white" }) => {
+const Modal = ({ open, onClose, title, children, maxWidth = "max-w-md", icon: TitleIcon = null, iconColorCls = "text-black dark:text-white" }) => {
     useEffect(() => {
         if (open) document.body.style.overflow = 'hidden';
         else document.body.style.overflow = '';
         return () => { document.body.style.overflow = ''; };
     }, [open]);
     
-    if (!open) return null;
-    
     return (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 md:p-6">
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-md" onClick={onClose} />
-            <div className={`relative z-10 bg-white dark:bg-[#141b2d] border border-slate-200/80 dark:border-slate-600/60 rounded-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] w-full ${maxWidth} p-5 sm:p-6 max-h-[calc(100vh-24px)] sm:max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col`}>
-                <div className="flex justify-between items-center mb-5 sticky top-0 bg-white dark:bg-[#141b2d] z-20 pb-3 border-b border-slate-100 dark:border-slate-600/50">
-                    <h3 className="text-base sm:text-lg font-bold text-slate-800 dark:text-white truncate pr-4 tracking-tight flex items-center gap-2">
-                        {TitleIcon && <TitleIcon size={18} className={`${iconColorCls} flex-shrink-0`} />}
-                        {title}
-                    </h3>
-                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors flex-shrink-0">
-                        <X size={18} />
-                    </button>
-                </div>
-                {children}
-            </div>
-        </div>
+        <AnimatePresence>
+            {open && (
+                <motion.div
+                    className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 md:p-6"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                >
+                    <motion.div
+                        className="absolute inset-0 bg-black/70 backdrop-blur-md"
+                        onClick={onClose}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                    />
+                    <motion.div
+                        className={`relative z-10 bg-slate-100 dark:bg-[#141b2d] border border-slate-200/80 dark:border-slate-600/60 rounded-2xl shadow-[0_32px_64px_-12px_rgba(0,0,0,0.5)] w-full ${maxWidth} p-5 sm:p-6 max-h-[calc(100vh-24px)] sm:max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col`}
+                        initial={{ opacity: 0, scale: 0.95, y: 16 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 16 }}
+                        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                    >
+                        <div className="flex justify-between items-center mb-5 sticky top-0 bg-slate-100 dark:bg-[#141b2d] z-20 pb-3 border-b border-slate-100 dark:border-slate-600/50">
+                            <h3 className="text-base sm:text-lg font-bold text-black dark:text-white truncate pr-4 tracking-tight flex items-center gap-2">
+                                {TitleIcon && <TitleIcon size={18} className={`${iconColorCls} flex-shrink-0`} />}
+                                {title}
+                            </h3>
+                            <button onClick={onClose} className="text-black dark:text-slate-300 hover:text-black dark:hover:text-white p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700/60 transition-colors flex-shrink-0">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        {children}
+                    </motion.div>
+                </motion.div>
+            )}
+        </AnimatePresence>
     );
 };
 
 const Field = ({ label, children, className = '' }) => (
     <div className={`mb-4 px-0.5 py-0.5 ${className}`}>
-        <label className="block text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-widest">{label}</label>
+        <label className="block text-[10px] sm:text-xs font-bold text-black dark:text-slate-500 mb-1.5 uppercase tracking-widest">{label}</label>
         {children}
     </div>
 );
 
 const Input = ({ className = '', ...props }) => (
     <input
-        className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-600/60 rounded-xl px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:cursor-pointer ${className}`}
+        className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-600/60 rounded-xl px-3 py-2.5 text-sm text-black dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all [&::-webkit-calendar-picker-indicator]:dark:invert [&::-webkit-calendar-picker-indicator]:cursor-pointer ${className}`}
         {...props}
     />
 );
@@ -166,15 +188,15 @@ const DateInput = ({ value, onChange, className = '' }) => (
             value={value || ''}
             onChange={onChange}
             onClick={(e) => e.target.showPicker && e.target.showPicker()}
-            className={`w-full px-3 py-2.5 text-sm bg-transparent text-slate-800 dark:text-slate-200 outline-none cursor-pointer appearance-none relative z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:left-0 [&::-webkit-calendar-picker-indicator]:top-0 ${className}`}
+            className={`w-full px-3 py-2.5 text-sm bg-transparent text-black dark:text-slate-200 outline-none cursor-pointer appearance-none relative z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:left-0 [&::-webkit-calendar-picker-indicator]:top-0 ${className}`}
         />
-        <Calendar size={15} className="absolute right-3 text-slate-400 group-hover:text-blue-400 z-0 pointer-events-none transition-colors" />
+        <Calendar size={15} className="absolute right-3 text-black dark:text-slate-300 group-hover:text-blue-400 z-0 pointer-events-none transition-colors" />
     </div>
 );
 
 const TextArea = ({ className = '', ...props }) => (
     <textarea
-        className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-600/60 rounded-xl px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all custom-scrollbar ${className}`}
+        className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-600/60 rounded-xl px-3 py-2.5 text-sm text-black dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all custom-scrollbar ${className}`}
         {...props}
     />
 );
@@ -194,13 +216,13 @@ const Select = ({ options, value, onChange, placeholder = "", className = '', al
                     type="text"
                     value={value}
                     onChange={e => onChange(e.target.value)}
-                    className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-600/60 rounded-xl px-3 py-2.5 pr-10 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all ${className}`}
+                    className={`w-full bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-600/60 rounded-xl px-3 py-2.5 pr-10 text-sm text-black dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all ${className}`}
                     autoFocus
                 />
                 <button 
                     type="button"
                     onClick={() => { setShowInput(false); onChange(''); }}
-                    className="absolute right-2 text-slate-400 hover:text-red-500 p-1 bg-transparent border-none cursor-pointer"
+                    className="absolute right-2 text-black dark:text-slate-300 hover:text-red-500 p-1 bg-transparent border-none cursor-pointer"
                     title="Back to predefined options"
                 >
                     <X size={16} />
@@ -221,13 +243,13 @@ const Select = ({ options, value, onChange, placeholder = "", className = '', al
                         onChange(e.target.value);
                     }
                 }}
-                className={`w-full appearance-none bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-600/60 rounded-xl px-3 py-2.5 pr-8 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer ${className}`}
+                className={`w-full appearance-none bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-600/60 rounded-xl px-3 py-2.5 pr-8 text-sm text-black dark:text-slate-200 focus:outline-none focus:border-blue-500/70 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer ${className}`}
             >
                 <option value="" disabled hidden>{placeholder}</option>
                 {options.map(o => <option key={o} value={o}>{o}</option>)}
                 {allowCustom && <option value="__CUSTOM__" className="font-semibold text-blue-600 dark:text-blue-400">Manual+</option>}
             </select>
-            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-black dark:text-slate-300 pointer-events-none" />
         </div>
     );
 };
@@ -239,7 +261,6 @@ const Dashboard = () => {
     const displayHeaderName = (user?.name || user?.employeeId || 'Team Member').toUpperCase();
 
     // Layout configuration states
-    const [darkMode, setDarkMode] = useState(true);
     const [allMembersExpanded, setAllMembersExpanded] = useState(false);
     const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
     const [stats, setStats] = useState({ todayLeads: 0, pendingLeads: 0, pendingQuotation: 0, tripConfirmation: 0, totalLeads: 0 });
@@ -1435,15 +1456,24 @@ const Dashboard = () => {
     }, [allLeads, mktgCampaignFilter]);
 
     return (
-        <div className={`min-h-screen w-full p-3 sm:p-5 lg:p-7 pt-20 sm:pt-24 lg:pt-6 pb-24 space-y-4 sm:space-y-5 poppins-regular text-base relative custom-scrollbar overflow-x-hidden transition-colors duration-300 ${darkMode ? 'bg-[#0E172B] text-slate-100 dark' : 'bg-slate-100 text-slate-800'}`}>
+        <div className="min-h-screen w-full p-3 sm:p-5 lg:p-7 pt-20 sm:pt-24 lg:pt-6 pb-24 space-y-4 sm:space-y-5 poppins-regular text-base relative custom-scrollbar overflow-x-hidden transition-colors duration-300 bg-slate-200 text-black dark:bg-[#0E172B] dark:text-slate-100">
 
-            {toast.show && (
-                <div className={`fixed top-4 right-4 left-4 sm:left-auto sm:top-6 sm:right-6 z-[200] flex items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 rounded-2xl shadow-[0_20px_40px_-8px_rgba(0,0,0,0.4)] border transition-all backdrop-blur-xl ${toast.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/30 text-emerald-100' : 'bg-red-950/90 border-red-500/30 text-red-100'}`}>
-                    {toast.type === 'success' ? <Check size={18} className="text-emerald-400 flex-shrink-0" /> : <AlertCircle size={18} className="text-red-400 flex-shrink-0" />}
-                    <p className="text-sm font-medium pr-4">{toast.message}</p>
-                    <button onClick={() => setToast({ ...toast, show: false })} className="p-1 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors flex-shrink-0"><X size={16} /></button>
-                </div>
-            )}
+            <AnimatePresence>
+                {toast.show && (
+                    <motion.div
+                        key="toast"
+                        initial={{ opacity: 0, y: -24, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -16, scale: 0.95 }}
+                        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                        className={`fixed top-4 right-4 left-4 sm:left-auto sm:top-6 sm:right-6 z-[200] flex items-center gap-3 px-4 sm:px-5 py-3 sm:py-4 rounded-2xl shadow-[0_20px_40px_-8px_rgba(0,0,0,0.4)] border backdrop-blur-xl ${toast.type === 'success' ? 'bg-emerald-950/90 border-emerald-500/30 text-emerald-100' : 'bg-red-950/90 border-red-500/30 text-red-100'}`}
+                    >
+                        {toast.type === 'success' ? <Check size={18} className="text-emerald-400 flex-shrink-0" /> : <AlertCircle size={18} className="text-red-400 flex-shrink-0" />}
+                        <p className="text-sm font-medium pr-4">{toast.message}</p>
+                        <button onClick={() => setToast({ ...toast, show: false })} className="p-1 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors flex-shrink-0"><X size={16} /></button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             {/* ── LEAVE APPLICATION MODAL (EMPLOYEES ONLY) ── */}
             <Modal open={leaveModalOpen} onClose={() => setLeaveModalOpen(false)} title="Apply for Leave" maxWidth="max-w-md">
@@ -1537,7 +1567,7 @@ const Dashboard = () => {
                     )}
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 mt-5">
-                    <button onClick={() => setLeaveModalOpen(false)} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">CANCEL</button>
+                    <button onClick={() => setLeaveModalOpen(false)} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-black dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">CANCEL</button>
                     <button onClick={applyLeave} className="w-full sm:flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 order-1 sm:order-2">
                         SUBMIT
                     </button>
@@ -1547,7 +1577,7 @@ const Dashboard = () => {
             <Modal open={allLeavesModalOpen} onClose={() => setAllLeavesModalOpen(false)} title={isAdmin ? "All Team Leaves" : "My Leave History"} maxWidth="max-w-3xl">
                 <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-1 custom-scrollbar">
                     {leaves.length === 0 ? (
-                        <p className="text-slate-500 text-center py-10 text-sm">No leave records found.</p>
+                        <p className="text-black dark:text-slate-300 text-center py-10 text-sm">No leave records found.</p>
                     ) : (
                         leaves.map(leave => (
                             <div key={leave.id} className={`p-4 rounded-2xl border transition-colors ${
@@ -1556,13 +1586,13 @@ const Dashboard = () => {
                             }`}>
                                 <div className="flex justify-between items-start mb-3">
                                     <div>
-                                        <p className="text-sm font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                                        <p className="text-sm font-bold text-black dark:text-slate-200 flex items-center gap-2">
                                             {leave.employeeName} 
-                                            {isAdmin && <span className="text-[10px] font-mono text-slate-500 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-lg">ID: {leave.employeeId}</span>}
+                                            {isAdmin && <span className="text-[10px] font-mono text-black dark:text-slate-300 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-lg">ID: {leave.employeeId}</span>}
                                         </p>
-                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 font-mono space-y-1">
+                                        <div className="text-xs text-black dark:text-slate-400 mt-1.5 font-mono space-y-1">
                                             <p>
-                                                <span className="font-bold text-slate-600 dark:text-slate-300">{leave.leaveType || 'Leave'}</span>
+                                                <span className="font-bold text-black dark:text-slate-300">{leave.leaveType || 'Leave'}</span>
                                                 {leave.leaveType === 'Leave' && leave.totalDays && ` • ${leave.totalDays} Days`}
                                             </p>
                                             <p>
@@ -1585,16 +1615,16 @@ const Dashboard = () => {
                                     </span>
                                 </div>
                                 
-                                <div className="text-xs text-slate-600 dark:text-slate-300 bg-white dark:bg-[#0d1526] p-3 rounded-xl border border-slate-100 dark:border-slate-600/60 space-y-2.5">
-                                    <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Reason</span> {leave.reason}</p>
+                                <div className="text-xs text-black dark:text-slate-300 bg-slate-100 dark:bg-[#0d1526] p-3 rounded-xl border border-slate-100 dark:border-slate-600/60 space-y-2.5">
+                                    <p><span className="font-bold text-black dark:text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Reason</span> {leave.reason}</p>
                                     
                                     {(leave.handoverTo || leave.handoverNotes) && (
                                         <div className="pt-2.5 border-t border-slate-100 dark:border-slate-600/60 space-y-2.5">
                                             {leave.handoverTo && (
-                                                <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Handover To</span> {leave.handoverTo}</p>
+                                                <p><span className="font-bold text-black dark:text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Handover To</span> {leave.handoverTo}</p>
                                             )}
                                             {leave.handoverNotes && (
-                                                <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Handover Notes</span> {leave.handoverNotes}</p>
+                                                <p><span className="font-bold text-black dark:text-slate-400 uppercase tracking-wider text-[9px] block mb-1">Handover Notes</span> {leave.handoverNotes}</p>
                                             )}
                                         </div>
                                     )}
@@ -1615,7 +1645,7 @@ const Dashboard = () => {
                     )}
                 </div>
                 <div className="mt-5 flex justify-end">
-                    <button onClick={() => setAllLeavesModalOpen(false)} className="px-6 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 font-semibold text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">Close</button>
+                    <button onClick={() => setAllLeavesModalOpen(false)} className="px-6 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-black dark:text-slate-300 font-semibold text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">Close</button>
                 </div>
             </Modal>
 
@@ -1623,7 +1653,7 @@ const Dashboard = () => {
                 <div className="flex flex-col h-full">
                     <div className="space-y-5 flex-1 px-1 py-1">
                         <div>
-                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-600/60 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
+                            <h4 className="text-xs font-bold text-black dark:text-slate-400 border-b border-slate-100 dark:border-slate-600/60 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
                                 <Users size={14} className="text-violet-400" /> CUSTOMER INFORMATION	
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
@@ -1633,7 +1663,7 @@ const Dashboard = () => {
                             </div>
                         </div>
                         <div>
-                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-600/60 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
+                            <h4 className="text-xs font-bold text-black dark:text-slate-400 border-b border-slate-100 dark:border-slate-600/60 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
                                 <MapPin size={14} className="text-emerald-400" /> TRAVEL REQUIREMENT	
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
@@ -1649,7 +1679,7 @@ const Dashboard = () => {
                         </div>
                           
                         <div>
-                            <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-600/60 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
+                            <h4 className="text-xs font-bold text-black dark:text-slate-400 border-b border-slate-100 dark:border-slate-600/60 pb-2.5 mb-4 flex items-center gap-2 uppercase tracking-widest">
                                 <Target size={14} className="text-blue-400" /> LEAD SOURCE	
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
@@ -1659,8 +1689,8 @@ const Dashboard = () => {
                         </div>
                      
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100 dark:border-slate-600/50 mt-5 sticky bottom-0 bg-white dark:bg-[#141b2d] pb-1 z-20">
-                        <button onClick={closeLeadModal} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
+                    <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100 dark:border-slate-600/50 mt-5 sticky bottom-0 bg-slate-100 dark:bg-[#141b2d] pb-1 z-20">
+                        <button onClick={closeLeadModal} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-black dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
                         <button onClick={saveLead} disabled={!leadForm.customerName.trim()} className="w-full sm:flex-1 py-2.5 rounded-xl bg-[#06BC7D] hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/25 order-1 sm:order-2">
                             <Save size={16} /> Save New Lead
                         </button>
@@ -1673,20 +1703,20 @@ const Dashboard = () => {
                     <Field label="Task Title" className="mb-0"><Input value={taskForm.title} onChange={e => setTaskForm(f => ({ ...f, title: e.target.value }))} onKeyDown={e => e.key === 'Enter' && saveTask()} autoFocus /></Field>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                         <div>
-                            <label className="block text-[10px] sm:text-xs font-bold text-slate-400 dark:text-slate-500 mb-1.5 uppercase tracking-widest">Due Date / Time</label>
+                            <label className="block text-[10px] sm:text-xs font-bold text-black dark:text-slate-500 mb-1.5 uppercase tracking-widest">Due Date / Time</label>
                             <div className="relative bg-slate-50 dark:bg-[#0d1526] border border-slate-200 dark:border-slate-600/60 rounded-xl focus-within:border-blue-500/70 focus-within:ring-2 focus-within:ring-blue-500/20 transition-all overflow-hidden group flex items-center">
                                 <input
                                     type="datetime-local" name="due" value={taskForm.due || ''} onChange={(e) => setTaskForm(f => ({ ...f, due: e.target.value }))}
-                                    className="w-full px-3 py-2.5 text-sm bg-transparent text-slate-800 dark:text-slate-200 outline-none cursor-pointer appearance-none relative z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:left-0 [&::-webkit-calendar-picker-indicator]:top-0"
+                                    className="w-full px-3 py-2.5 text-sm bg-transparent text-black dark:text-slate-200 outline-none cursor-pointer appearance-none relative z-10 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer [&::-webkit-calendar-picker-indicator]:left-0 [&::-webkit-calendar-picker-indicator]:top-0"
                                 />
-                                <Calendar size={15} className="absolute right-3 text-slate-400 group-hover:text-blue-400 z-0 pointer-events-none transition-colors" />
+                                <Calendar size={15} className="absolute right-3 text-black dark:text-slate-300 group-hover:text-blue-400 z-0 pointer-events-none transition-colors" />
                             </div>
                         </div>
                         <Field label="Priority" className="mb-0"><Select options={PRIORITIES} value={taskForm.priority} onChange={v => setTaskForm(f => ({ ...f, priority: v }))} /></Field>
                     </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 mt-5">
-                    <button onClick={closeTaskModal} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
+                    <button onClick={closeTaskModal} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-black dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
                     <button onClick={saveTask} disabled={!taskForm.title.trim()} className="w-full sm:flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25 order-1 sm:order-2">
                         <Save size={16} /> {taskModal.mode === 'add' ? 'Add Task' : 'Save Changes'}
                     </button>
@@ -1703,7 +1733,7 @@ const Dashboard = () => {
                     <Field label="Category"><Select options={EVENT_CATEGORIES} value={eventForm.category} onChange={v => setEventForm(f => ({ ...f, category: v }))} placeholder="" /></Field>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 mt-5">
-                    <button onClick={() => setEventModalOpen(false)} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
+                    <button onClick={() => setEventModalOpen(false)} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-black dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
                     <button onClick={saveEvent} disabled={!eventForm.title.trim() || !eventForm.date} className="w-full sm:flex-1 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:bg-slate-400 dark:disabled:bg-slate-600 disabled:shadow-none disabled:cursor-not-allowed text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/25 order-1 sm:order-2">
                         <Save size={16} className="text-white" /> Add Reminder
                     </button>
@@ -1713,25 +1743,25 @@ const Dashboard = () => {
             <Modal open={allRemindersModalOpen} onClose={() => setAllRemindersModalOpen(false)} title="All Scheduled Reminders" maxWidth="max-w-2xl">
                 <div className="space-y-2.5 overflow-y-auto max-h-[60vh] pr-1 custom-scrollbar">
                     {allReminderItems.length === 0 ? (
-                        <p className="text-slate-500 text-center py-10 text-sm">No reminders found across any dates.</p>
+                        <p className="text-black dark:text-slate-300 text-center py-10 text-sm">No reminders found across any dates.</p>
                     ) : (
                         allReminderItems.map((ev) => (
                             <div key={ev.id} className={`flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-3.5 rounded-xl border transition-colors ${ev.auto ? 'border-blue-100 dark:border-blue-700/30 bg-blue-50/40 dark:bg-blue-900/10 hover:bg-blue-100/50 dark:hover:bg-blue-900/20' : 'border-slate-100 dark:border-slate-600/50 bg-slate-50 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}>
                                 <div className="min-w-0">
-                                    <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">{ev.title}</h4>
-                                    <p className="text-xs text-slate-500 mt-1.5 flex flex-wrap items-center gap-2">
-                                        <span className="bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-lg text-[10px] text-slate-600 dark:text-slate-400 font-mono whitespace-nowrap">{ev.date}</span>
+                                    <h4 className="font-bold text-black dark:text-slate-200 text-sm truncate">{ev.title}</h4>
+                                    <p className="text-xs text-black dark:text-slate-300 mt-1.5 flex flex-wrap items-center gap-2">
+                                        <span className="bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-lg text-[10px] text-black dark:text-slate-400 font-mono whitespace-nowrap">{ev.date}</span>
                                         {!ev.auto && <span className="flex items-center gap-1 whitespace-nowrap"><Clock size={11} /> {ev.time}</span>}
-                                        <span className="text-[9px] uppercase border border-slate-200 dark:border-slate-600 px-1.5 py-0.5 rounded-lg font-bold text-slate-400 whitespace-nowrap">{ev.category}</span>
+                                        <span className="text-[9px] uppercase border border-slate-200 dark:border-slate-600 px-1.5 py-0.5 rounded-lg font-bold text-black dark:text-slate-400 whitespace-nowrap">{ev.category}</span>
                                         {ev.auto && <span className="text-[9px] uppercase bg-blue-500/10 text-blue-500 border border-blue-500/20 px-1.5 py-0.5 rounded-lg font-bold whitespace-nowrap">Auto</span>}
                                     </p>
                                 </div>
-                                {!ev.auto && <button onClick={() => deleteEvent(ev.id)} className="self-end sm:self-center p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"><Trash2 size={15} /></button>}
+                                {!ev.auto && <button onClick={() => deleteEvent(ev.id)} className="self-end sm:self-center p-2 rounded-lg text-black dark:text-slate-300 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"><Trash2 size={15} /></button>}
                             </div>
                         ))
                     )}
                 </div>
-                <button onClick={() => setAllRemindersModalOpen(false)} className="w-full mt-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 font-semibold text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">Close</button>
+                <button onClick={() => setAllRemindersModalOpen(false)} className="w-full mt-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-black dark:text-slate-300 font-semibold text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">Close</button>
             </Modal>
 
             <Modal open={targetModal} onClose={() => { setTargetModal(false); setEditingTarget(null); }} title={editingTarget ? "Edit Target" : "Add Sales Target"} maxWidth="max-w-md">
@@ -1759,21 +1789,21 @@ const Dashboard = () => {
                     </div>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-3 mt-5">
-                    <button onClick={() => { setTargetModal(false); setEditingTarget(null); }} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
+                    <button onClick={() => { setTargetModal(false); setEditingTarget(null); }} className="w-full sm:flex-1 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-black dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors order-2 sm:order-1">Cancel</button>
                     <button onClick={saveTarget} disabled={!targetForm.label.trim() || targetForm.max <= 0} className="w-full sm:flex-1 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-violet-500/25 order-1 sm:order-2">
                         <Save size={16} /> {editingTarget ? 'Save Changes' : 'Create Target'}
                     </button>
                 </div>
             </Modal>
 
-            <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-200/80 dark:border-slate-600/50 shadow-sm dark:shadow-none flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-5 relative">
+            <div className="bg-slate-100 dark:bg-[#111827] rounded-2xl p-4 sm:p-5 lg:p-6 border border-slate-200/80 dark:border-slate-600/50 shadow-sm dark:shadow-none flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 sm:gap-5 relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-blue-500/3 dark:to-blue-500/5 pointer-events-none rounded-2xl overflow-hidden" />
                 <div className="min-w-0 relative flex items-center gap-3 sm:gap-4">
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-800 dark:text-white mb-1 tracking-tight truncate">{greetingLabel}, {displayHeaderName}</h1>
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-black dark:text-white mb-1 tracking-tight truncate">{greetingLabel}, {displayHeaderName}</h1>
                 </div>
                 <div className="flex items-center w-full lg:w-auto gap-2.5 sm:gap-3 relative">
                  
-                    <div className="hidden md:flex items-center bg-slate-50 dark:bg-slate-800/40 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/50 font-mono tabular-nums min-w-[300px] justify-between text-slate-500 dark:text-slate-400 text-xs tracking-wide">
+                    <div className="hidden md:flex items-center bg-slate-50 dark:bg-slate-800/40 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/50 font-mono tabular-nums min-w-[300px] justify-between text-black dark:text-slate-400 text-xs tracking-wide">
                         <span className="flex items-center gap-2"><Calendar size={14} className="text-blue-400" /> {formattedDate}</span>
                         <span className="w-px h-4 bg-slate-200 dark:bg-slate-700" />
                         <span className="flex items-center gap-2"><Clock size={14} className="text-emerald-400" /> {formattedTime}</span>
@@ -1782,7 +1812,7 @@ const Dashboard = () => {
                         <div className="relative flex-shrink-0">
                             <button
                                 onClick={() => setOpsAlertsOpen(o => !o)}
-                                className="relative p-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700/60 text-slate-500 dark:text-slate-300 transition-all"
+                                className="relative p-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 bg-slate-100 dark:bg-slate-800/60 hover:bg-slate-200 dark:hover:bg-slate-700/60 text-black dark:text-slate-300 transition-all"
                                 title={user?.role === ROLES.ACCOUNTS ? 'Alerts shared by Accounts' : 'Due & Follow-Up Alerts'}
                             >
                                 <BellRing size={17}/>
@@ -1800,20 +1830,20 @@ const Dashboard = () => {
                                         onClick={() => setOpsAlertsOpen(false)}
                                     />
                                     <div
-                                        className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-20 sm:top-auto sm:mt-2 w-auto sm:w-80 sm:max-w-[90vw] max-h-[70vh] sm:max-h-none bg-white dark:bg-[#111827] border border-slate-200 dark:border-slate-600/60 rounded-2xl shadow-2xl z-[120] overflow-hidden flex flex-col"
+                                        className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-20 sm:top-auto sm:mt-2 w-auto sm:w-80 sm:max-w-[90vw] max-h-[70vh] sm:max-h-none bg-slate-100 dark:bg-[#111827] border border-slate-200 dark:border-slate-600/60 rounded-2xl shadow-2xl z-[120] overflow-hidden flex flex-col"
                                     >
                                         <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-600/50 flex items-center justify-between flex-shrink-0">
-                                            <p className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wide">{user?.role === ROLES.ACCOUNTS ? 'Alerts shared by Accounts' : 'Due & Follow-Up Alerts'}</p>
-                                            <button onClick={() => setOpsAlertsOpen(false)} className="p-1 -m-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"><X size={14}/></button>
+                                            <p className="text-xs font-bold text-black dark:text-white uppercase tracking-wide">{user?.role === ROLES.ACCOUNTS ? 'Alerts shared by Accounts' : 'Due & Follow-Up Alerts'}</p>
+                                            <button onClick={() => setOpsAlertsOpen(false)} className="p-1 -m-1 text-black dark:text-slate-300 hover:text-black dark:hover:text-slate-200"><X size={14}/></button>
                                         </div>
                                         <div className="overflow-y-auto custom-scrollbar max-h-[calc(70vh-48px)] sm:max-h-72">
                                             {dueSoonAlerts.length === 0 ? (
-                                                <div className="text-center py-8 text-slate-400 text-xs">No alerts right now.</div>
+                                                <div className="text-center py-8 text-black dark:text-slate-300 text-xs">No alerts right now.</div>
                                             ) : (
                                                 dueSoonAlerts.map(alert => (
                                                     <div key={alert.id} className="px-4 py-2.5 border-b border-slate-50 dark:border-slate-800/60 hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
-                                                        <p className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{alert.title}</p>
-                                                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wide">{alert.category} · {alert.date}</p>
+                                                        <p className="text-xs font-semibold text-black dark:text-slate-200 truncate">{alert.title}</p>
+                                                        <p className="text-[10px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wide">{alert.category} · {alert.date}</p>
                                                     </div>
                                                 ))
                                             )}
@@ -1851,7 +1881,7 @@ const Dashboard = () => {
                     { id: 'Booking Confirmation', label: 'Booking Confirmation', value: computedStats.bookingConfirmation, icon: <BookmarkCheck className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-emerald-500/20 to-emerald-600/5', iconBg: 'bg-emerald-500/15 text-emerald-500 dark:text-emerald-400', border: 'border-emerald-500/10 dark:border-emerald-500/10', glow: 'hover:border-emerald-500/30 dark:hover:border-emerald-500/20' },
                     { id: 'On-Trip', label: 'On-Trip', value: computedStats.onTrip, icon: <PlaneTakeoff className="w-5 h-5 sm:w-6 sm:h-6"/>, accent: 'from-violet-500/20 to-violet-600/5', iconBg: 'bg-violet-500/15 text-violet-500 dark:text-violet-400', border: 'border-violet-500/10 dark:border-violet-500/10', glow: 'hover:border-violet-500/30 dark:hover:border-violet-500/20' },
                 ]).map((s, i) => (
-                    <div 
+                    <motion.div 
                         key={i} onClick={() => {
                             if (user?.role === ROLES.OPERATION) {
                                 setRegionModal({ open: true, regionName: s.label, tripsList: s.id === 'Today Leads' ? opsPendingItineraries : s.id === 'Pending Quotation' ? opsPendingItineraries : s.id === 'Booking Confirmation' ? fulfillmentAlerts : opsVendorPending });
@@ -1863,17 +1893,22 @@ const Dashboard = () => {
                                 handleStatCardClick(s.id);
                             }
                         }}
-                        className={`cursor-pointer group relative overflow-hidden bg-white dark:bg-[#111827] p-4 sm:p-5 rounded-2xl border ${s.border} ${s.glow} flex flex-row items-center gap-3 sm:gap-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md dark:hover:shadow-none active:scale-[0.98]`}
+                        initial={{ opacity: 0, y: 14 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.35, delay: i * 0.06, ease: [0.16, 1, 0.3, 1] }}
+                        whileHover={{ y: -3 }}
+                        whileTap={{ scale: 0.97 }}
+                        className={`cursor-pointer group relative overflow-hidden bg-slate-100 dark:bg-[#111827] p-4 sm:p-5 rounded-2xl border ${s.border} ${s.glow} flex flex-row items-center gap-3 sm:gap-4 shadow-sm transition-shadow duration-200 hover:shadow-md dark:hover:shadow-none`}
                     >
                         <div className={`absolute inset-0 bg-gradient-to-br ${s.accent} opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`} />
                         <div className={`p-2.5 sm:p-3 rounded-xl ${s.iconBg} flex-shrink-0 relative z-10`}>
                             {s.icon}
                         </div>
                         <div className="min-w-0 flex-1 relative z-10">
-                            <h3 className="text-2xl sm:text-3xl font-bold text-slate-800 dark:text-white leading-tight tracking-tight">{s.value}</h3>
-                            <p className="text-[10px] sm:text-xs font-semibold text-slate-400 dark:text-slate-500 mt-1 truncate uppercase tracking-wide">{s.label}</p>
+                            <h3 className="text-2xl sm:text-3xl font-bold text-black dark:text-white leading-tight tracking-tight">{s.value}</h3>
+                            <p className="text-[10px] sm:text-xs font-semibold text-black dark:text-slate-500 mt-1 truncate uppercase tracking-wide">{s.label}</p>
                         </div>
-                    </div>
+                    </motion.div>
                 ))}
             </div>
 
@@ -1882,27 +1917,27 @@ const Dashboard = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
 
                     {/* Lead Report — leads grouped by source/platform */}
-                    <div className="bg-white dark:bg-[#111827] rounded-2xl border-t-2 border-t-amber-500 border border-slate-200/80 dark:border-slate-600/50 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
+                    <div className="bg-slate-100 dark:bg-[#111827] rounded-2xl border-t-2 border-t-amber-500 border border-slate-200/80 dark:border-slate-600/50 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
                         <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-600/50 flex items-center gap-2.5">
                             <div className="p-1.5 rounded-lg bg-amber-500/15 text-amber-500 dark:text-amber-400"><ClipboardList size={15}/></div>
-                            <h3 className="font-bold text-sm text-slate-800 dark:text-white">Lead Report</h3>
+                            <h3 className="font-bold text-sm text-black dark:text-white">Lead Report</h3>
                         </div>
                         <div className="flex-1 overflow-x-auto custom-scrollbar">
                             <table className="w-full text-left text-xs sm:text-sm">
                                 <thead>
                                     <tr className="border-b border-slate-100 dark:border-slate-600/50">
-                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Lead Source</th>
-                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Count</th>
+                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px]">Lead Source</th>
+                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px] text-right">Count</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
                                     {mktgLeadSourceBreakdown.length === 0 ? (
-                                        <tr><td colSpan={2} className="px-4 sm:px-5 py-8 text-center text-slate-400 text-xs">No leads yet.</td></tr>
+                                        <tr><td colSpan={2} className="px-4 sm:px-5 py-8 text-center text-black dark:text-slate-300 text-xs">No leads yet.</td></tr>
                                     ) : (
                                         mktgLeadSourceBreakdown.map(row => (
                                             <tr key={row.source} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => setRegionModal({ open: true, regionName: `Leads from ${row.source}`, tripsList: allLeads.filter(l => (l.platform || 'Direct') === row.source) })}>
-                                                <td className="px-4 sm:px-5 py-3 font-semibold text-slate-700 dark:text-slate-200">{row.source}</td>
-                                                <td className="px-4 sm:px-5 py-3 text-right font-bold text-slate-800 dark:text-white">{row.count}</td>
+                                                <td className="px-4 sm:px-5 py-3 font-semibold text-black dark:text-slate-200">{row.source}</td>
+                                                <td className="px-4 sm:px-5 py-3 text-right font-bold text-black dark:text-white">{row.count}</td>
                                             </tr>
                                         ))
                                     )}
@@ -1912,27 +1947,27 @@ const Dashboard = () => {
                     </div>
 
                     {/* Lead Assignment — leads grouped by assigned employee */}
-                    <div className="bg-white dark:bg-[#111827] rounded-2xl border-t-2 border-t-blue-500 border border-slate-200/80 dark:border-slate-600/50 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
+                    <div className="bg-slate-100 dark:bg-[#111827] rounded-2xl border-t-2 border-t-blue-500 border border-slate-200/80 dark:border-slate-600/50 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
                         <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-600/50 flex items-center gap-2.5">
                             <div className="p-1.5 rounded-lg bg-blue-500/15 text-blue-500 dark:text-blue-400"><Users size={15}/></div>
-                            <h3 className="font-bold text-sm text-slate-800 dark:text-white">Lead Assignment</h3>
+                            <h3 className="font-bold text-sm text-black dark:text-white">Lead Assignment</h3>
                         </div>
                         <div className="flex-1 overflow-x-auto custom-scrollbar">
                             <table className="w-full text-left text-xs sm:text-sm">
                                 <thead>
                                     <tr className="border-b border-slate-100 dark:border-slate-600/50">
-                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Employee</th>
-                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Count</th>
+                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px]">Employee</th>
+                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px] text-right">Count</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
                                     {mktgLeadAssignmentBreakdown.length === 0 ? (
-                                        <tr><td colSpan={2} className="px-4 sm:px-5 py-8 text-center text-slate-400 text-xs">No leads yet.</td></tr>
+                                        <tr><td colSpan={2} className="px-4 sm:px-5 py-8 text-center text-black dark:text-slate-300 text-xs">No leads yet.</td></tr>
                                     ) : (
                                         mktgLeadAssignmentBreakdown.map(row => (
                                             <tr key={row.employee} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => setRegionModal({ open: true, regionName: row.employee === 'Unassigned' ? 'Unassigned Leads' : `Leads assigned to ${row.employee}`, tripsList: row.employee === 'Unassigned' ? mktgUnassignedLeads : allLeads.filter(l => (l.assignedTo || l.assignedToOps) === row.employee) })}>
-                                                <td className="px-4 sm:px-5 py-3 font-semibold text-slate-700 dark:text-slate-200">{row.employee}</td>
-                                                <td className="px-4 sm:px-5 py-3 text-right font-bold text-slate-800 dark:text-white">{row.count}</td>
+                                                <td className="px-4 sm:px-5 py-3 font-semibold text-black dark:text-slate-200">{row.employee}</td>
+                                                <td className="px-4 sm:px-5 py-3 text-right font-bold text-black dark:text-white">{row.count}</td>
                                             </tr>
                                         ))
                                     )}
@@ -1942,11 +1977,11 @@ const Dashboard = () => {
                     </div>
 
                     {/* Campaign Performance — leads generated per campaign, filterable by window */}
-                    <div className="bg-white dark:bg-[#111827] rounded-2xl border-t-2 border-t-violet-500 border border-slate-200/80 dark:border-slate-600/50 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
+                    <div className="bg-slate-100 dark:bg-[#111827] rounded-2xl border-t-2 border-t-violet-500 border border-slate-200/80 dark:border-slate-600/50 shadow-sm dark:shadow-none overflow-hidden flex flex-col">
                         <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-600/50 flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2.5 min-w-0">
                                 <div className="p-1.5 rounded-lg bg-violet-500/15 text-violet-500 dark:text-violet-400 flex-shrink-0"><Megaphone size={15}/></div>
-                                <h3 className="font-bold text-sm text-slate-800 dark:text-white truncate">Campaign Performance</h3>
+                                <h3 className="font-bold text-sm text-black dark:text-white truncate">Campaign Performance</h3>
                             </div>
                             <div className="flex items-center bg-slate-100 dark:bg-slate-800/60 rounded-lg p-0.5 flex-shrink-0">
                                 {[
@@ -1957,7 +1992,7 @@ const Dashboard = () => {
                                     <button
                                         key={tab.key}
                                         onClick={() => setMktgCampaignFilter(tab.key)}
-                                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide transition-all ${mktgCampaignFilter === tab.key ? 'bg-white dark:bg-slate-700 text-violet-600 dark:text-violet-300 shadow-sm' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                                        className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wide transition-all ${mktgCampaignFilter === tab.key ? 'bg-slate-100 dark:bg-slate-700 text-violet-600 dark:text-violet-300 shadow-sm' : 'text-black hover:text-black dark:hover:text-slate-300'}`}
                                     >
                                         {tab.label}
                                     </button>
@@ -1968,18 +2003,18 @@ const Dashboard = () => {
                             <table className="w-full text-left text-xs sm:text-sm">
                                 <thead>
                                     <tr className="border-b border-slate-100 dark:border-slate-600/50">
-                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Campaign</th>
-                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Leads</th>
+                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px]">Campaign</th>
+                                        <th className="px-4 sm:px-5 py-2.5 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px] text-right">Leads</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
                                     {mktgCampaignPerformance.length === 0 ? (
-                                        <tr><td colSpan={2} className="px-4 sm:px-5 py-8 text-center text-slate-400 text-xs">No campaign leads in this window.</td></tr>
+                                        <tr><td colSpan={2} className="px-4 sm:px-5 py-8 text-center text-black dark:text-slate-300 text-xs">No campaign leads in this window.</td></tr>
                                     ) : (
                                         mktgCampaignPerformance.map(row => (
                                             <tr key={row.campaign} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => setRegionModal({ open: true, regionName: `Leads for ${row.campaign}`, tripsList: allLeads.filter(l => l.campaign === row.campaign) })}>
-                                                <td className="px-4 sm:px-5 py-3 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[160px]">{row.campaign}</td>
-                                                <td className="px-4 sm:px-5 py-3 text-right font-bold text-slate-800 dark:text-white">{row.count}</td>
+                                                <td className="px-4 sm:px-5 py-3 font-semibold text-black dark:text-slate-200 truncate max-w-[160px]">{row.campaign}</td>
+                                                <td className="px-4 sm:px-5 py-3 text-right font-bold text-black dark:text-white">{row.count}</td>
                                             </tr>
                                         ))
                                     )}
@@ -1996,25 +2031,25 @@ const Dashboard = () => {
                 <div className="space-y-4 sm:space-y-5">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         {/* My Jobs */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">My Jobs</h2>
-                                    {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Today's record</p> */}
+                                    <h2 className="text-base font-bold text-black dark:text-white tracking-tight">My Jobs</h2>
+                                    {/* <p className="text-[10px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Today's record</p> */}
                                 </div>
                                 <button onClick={() => setRegionModal({ open: true, regionName: 'My Jobs — Full List', tripsList: opsMyJobs })} className="px-3 py-1.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors bg-blue-50/50 dark:bg-transparent">View All Jobs</button>
                             </div>
                             <div className="space-y-1 overflow-y-auto max-h-[260px] custom-scrollbar pr-1">
                                 {opsMyJobs.length === 0 ? (
-                                    <div className="text-center py-10 text-slate-400 text-xs">No jobs assigned to you yet.</div>
+                                    <div className="text-center py-10 text-black dark:text-slate-300 text-xs">No jobs assigned to you yet.</div>
                                 ) : (
                                     opsMyJobs.slice(0, 6).map(job => (
                                         <div key={job.uniqueKey || job.id} onClick={() => setSelectedLeadDetails(job)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all cursor-pointer border border-transparent hover:border-slate-100 dark:hover:border-slate-700/30">
                                             <div className="min-w-0 flex-1">
-                                                <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{job.customerName || job.profileName || 'N/A'}</p>
-                                                <p className="text-[10px] text-slate-400 truncate mt-0.5">{job.destination || 'N/A'}</p>
+                                                <p className="text-xs font-bold text-black dark:text-white truncate">{job.customerName || job.profileName || 'N/A'}</p>
+                                                <p className="text-[10px] text-black dark:text-slate-300 truncate mt-0.5">{job.destination || 'N/A'}</p>
                                             </div>
-                                            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 flex-shrink-0 ml-2">{job.travelDates || job.travelDate || 'TBD'}</span>
+                                            <span className="text-[10px] font-semibold text-black dark:text-slate-400 flex-shrink-0 ml-2">{job.travelDates || job.travelDate || 'TBD'}</span>
                                         </div>
                                     ))
                                 )}
@@ -2022,23 +2057,23 @@ const Dashboard = () => {
                         </div>
 
                         {/* Pending Itineraries (detail) */}
-                        <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-amber-700/40 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-amber-200/60 dark:border-amber-700/40 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Pending Itineraries</h2>
-                                    {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Not yet shared with Sales</p> */}
+                                    <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Pending Itineraries</h2>
+                                    {/* <p className="text-[10px] text-black mt-0.5 uppercase tracking-wider font-semibold">Not yet shared with Sales</p> */}
                                 </div>
                                 <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{opsPendingItineraries.length}</span>
                             </div>
                             <div className="space-y-1 overflow-y-auto max-h-[260px] custom-scrollbar pr-1">
                                 {opsPendingItineraries.length === 0 ? (
-                                    <div className="text-center py-10 text-slate-400 text-xs">Nothing pending right now.</div>
+                                    <div className="text-center py-10 text-black dark:text-slate-300 text-xs">Nothing pending right now.</div>
                                 ) : (
                                     opsPendingItineraries.slice(0, 6).map(item => (
                                         <div key={item.uniqueKey || item.id} onClick={() => setSelectedLeadDetails(item)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/5 transition-all cursor-pointer border border-transparent hover:border-amber-100 dark:hover:border-amber-500/10">
                                             <div className="min-w-0 flex-1">
-                                                <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{item.customerName || item.profileName || 'N/A'}</p>
-                                                <p className="text-[10px] text-slate-400 truncate mt-0.5">{item.destination || 'N/A'}</p>
+                                                <p className="text-xs font-bold text-black dark:text-white truncate">{item.customerName || item.profileName || 'N/A'}</p>
+                                                <p className="text-[10px] text-black dark:text-slate-300 truncate mt-0.5">{item.destination || 'N/A'}</p>
                                             </div>
                                             <span className="text-[10px] font-semibold text-amber-500 flex-shrink-0 ml-2">{item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '—'}</span>
                                         </div>
@@ -2048,23 +2083,23 @@ const Dashboard = () => {
                         </div>
 
                         {/* Returned by Sales */}
-                        <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-rose-700/40 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-rose-200/60 dark:border-rose-700/40 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Returned by Sales</h2>
-                                    {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Needs rework</p> */}
+                                    <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Returned by Sales</h2>
+                                    {/* <p className="text-[10px] text-black mt-0.5 uppercase tracking-wider font-semibold">Needs rework</p> */}
                                 </div>
                                 <span className="bg-rose-500/10 text-rose-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-rose-500/20 uppercase tracking-wide">{opsReturnedBySales.length}</span>
                             </div>
                             <div className="space-y-1 overflow-y-auto max-h-[260px] custom-scrollbar pr-1">
                                 {opsReturnedBySales.length === 0 ? (
-                                    <div className="text-center py-10 text-slate-400 text-xs">Nothing returned right now.</div>
+                                    <div className="text-center py-10 text-black dark:text-slate-300 text-xs">Nothing returned right now.</div>
                                 ) : (
                                     opsReturnedBySales.slice(0, 6).map(item => (
                                         <div key={item.uniqueKey || item.id} onClick={() => setSelectedLeadDetails(item)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-500/5 transition-all cursor-pointer border border-transparent hover:border-rose-100 dark:hover:border-rose-500/10">
                                             <div className="min-w-0 flex-1">
-                                                <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{item.customerName || item.profileName || 'N/A'}</p>
-                                                <p className="text-[10px] text-slate-400 truncate mt-0.5">{item.destination || 'N/A'}</p>
+                                                <p className="text-xs font-bold text-black dark:text-white truncate">{item.customerName || item.profileName || 'N/A'}</p>
+                                                <p className="text-[10px] text-black dark:text-slate-300 truncate mt-0.5">{item.destination || 'N/A'}</p>
                                             </div>
                                             <span className="text-[10px] font-semibold text-rose-400 flex-shrink-0 ml-2 truncate max-w-[110px]">{item.returnReason || item.notes || 'No reason given'}</span>
                                         </div>
@@ -2077,23 +2112,23 @@ const Dashboard = () => {
                     {/* Fulfilment Due + Vendor Payment Due */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5">
                         {/* Fulfilment Due */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Fulfilment Due</h2>
-                                    {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold"></p fulfilment itemsp>   */}
+                                    <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Fulfilment Due</h2>
+                                    {/* <p className="text-[10px] text-black mt-0.5 uppercase tracking-wider font-semibold"></p fulfilment itemsp>   */}
                                 </div>
                                 <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{opsFulfillmentDue.length} Due</span>
                             </div>
                             <div className="space-y-1 overflow-y-auto max-h-[240px] custom-scrollbar pr-1">
                                 {opsFulfillmentDue.length === 0 ? (
-                                    <div className="text-center py-10 text-slate-400 text-xs">Nothing pending fulfilment right now.</div>
+                                    <div className="text-center py-10 text-black dark:text-slate-300 text-xs">Nothing pending fulfilment right now.</div>
                                 ) : (
                                     opsFulfillmentDue.map(item => (
                                         <div key={item.id} onClick={() => setSelectedLeadDetails(item.rawLead)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/5 transition-all cursor-pointer border border-transparent hover:border-amber-100 dark:hover:border-amber-500/10">
                                             <div className="min-w-0 flex-1">
-                                                <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{item.leadName}</p>
-                                                <p className="text-[10px] text-slate-400 truncate mt-0.5">{item.pendingItem}</p>
+                                                <p className="text-xs font-bold text-black dark:text-white truncate">{item.leadName}</p>
+                                                <p className="text-[10px] text-black dark:text-slate-300 truncate mt-0.5">{item.pendingItem}</p>
                                             </div>
                                             <span className="text-[10px] font-semibold text-amber-500 flex-shrink-0 ml-2">{item.dueDate}</span>
                                         </div>
@@ -2103,28 +2138,28 @@ const Dashboard = () => {
                         </div>
 
                         {/* Vendor Payment Due */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div className="flex items-center gap-2.5">
                                     <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500 flex-shrink-0">
                                         <Wallet size={16} />
                                     </div>
                                     <div>
-                                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Vendor Payment Due</h2>
-                                        {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Unpaid vendor requests</p> */}
+                                        <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Vendor Payment Due</h2>
+                                        {/* <p className="text-[10px] text-black mt-0.5 uppercase tracking-wider font-semibold">Unpaid vendor requests</p> */}
                                     </div>
                                 </div>
                                 <span className="bg-rose-500/10 text-rose-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-rose-500/20 uppercase tracking-wide">{opsVendorPaymentDue.length} Due</span>
                             </div>
                             <div className="space-y-2.5 overflow-y-auto max-h-[240px] custom-scrollbar pr-1">
                                 {opsVendorPaymentDue.length === 0 ? (
-                                    <div className="text-center py-8 text-slate-400 text-xs">No vendor payments due right now.</div>
+                                    <div className="text-center py-8 text-black dark:text-slate-300 text-xs">No vendor payments due right now.</div>
                                 ) : (
                                     opsVendorPaymentDue.map(v => (
                                         <div key={v.id} onClick={() => setSelectedLeadDetails(v.rawLead)} className="flex items-start justify-between gap-2 bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50 p-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer">
                                             <div className="min-w-0">
-                                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{v.vendorName}</p>
-                                                <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide truncate">{v.customerName} · Due {v.dueDate || 'TBD'}</p>
+                                                <p className="text-xs font-bold text-black dark:text-slate-200 truncate">{v.vendorName}</p>
+                                                <p className="text-[9px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wide truncate">{v.customerName} · Due {v.dueDate || 'TBD'}</p>
                                             </div>
                                             <span className="text-[11px] font-bold text-rose-400 font-mono flex-shrink-0">₹{v.amount.toLocaleString('en-IN')}</span>
                                         </div>
@@ -2137,20 +2172,20 @@ const Dashboard = () => {
                     {/* Leave Request / Tasks / Calendar */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         {/* Leave Request */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
-                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Leave Request</h2>
+                                <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Leave Request</h2>
                                 <button onClick={() => setLeaveModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-lg shadow-blue-500/20">
                                     <Plus size={12} /> Apply Leave
                                 </button>
                             </div>
                             <div className="space-y-1.5 overflow-y-auto max-h-[220px] custom-scrollbar pr-1 flex-1">
                                 {leaves.length === 0 ? (
-                                    <div className="text-center py-10 text-slate-400 text-xs">No leave history found.</div>
+                                    <div className="text-center py-10 text-black dark:text-slate-300 text-xs">No leave history found.</div>
                                 ) : (
                                     leaves.slice(0, 5).map(leave => (
                                         <div key={leave.id} className="flex justify-between items-center py-2 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50">
-                                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{leave.startDate}{leave.endDate ? ` – ${leave.endDate}` : ''}</span>
+                                            <span className="text-xs font-semibold text-black dark:text-slate-200 truncate">{leave.startDate}{leave.endDate ? ` – ${leave.endDate}` : ''}</span>
                                             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wide flex-shrink-0 ml-2 ${
                                                 leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
                                                 leave.status === 'Rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
@@ -2164,43 +2199,43 @@ const Dashboard = () => {
                         </div>
 
                         {/* Tasks */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{taskCounts.pending} pending</p>
+                                    <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Tasks</h2>
+                                    <p className="text-[10px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{taskCounts.pending} pending</p>
                                 </div>
                                 <button onClick={openAddTask} className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-lg shadow-violet-500/20">
                                     <Plus size={12} /> Add
                                 </button>
                             </div>
                             <div className="space-y-1 overflow-y-auto max-h-[220px] custom-scrollbar pr-1 flex-1">
-                                {filteredTasks.length === 0 && <div className="text-center py-10 text-slate-400 text-xs">No tasks here. Add one!</div>}
+                                {filteredTasks.length === 0 && <div className="text-center py-10 text-black dark:text-slate-300 text-xs">No tasks here. Add one!</div>}
                                 {filteredTasks.slice(0, 6).map(task => (
                                     <div key={task.id} className="flex items-center justify-between py-2 px-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all gap-2">
                                         <div className="flex items-center gap-2 min-w-0 flex-1">
                                             <button onClick={() => toggleTask(task.id, task.completed)} className={`w-4 h-4 rounded-md flex items-center justify-center border-2 transition-all cursor-pointer flex-shrink-0 ${task.completed ? 'bg-violet-500 border-violet-500' : 'bg-transparent border-slate-300 dark:border-slate-600 hover:border-violet-400'}`}>
                                                 {task.completed && <Check size={9} className="text-white" strokeWidth={3} />}
                                             </button>
-                                            <p className={`text-xs font-semibold truncate ${task.completed ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>{task.title}</p>
+                                            <p className={`text-xs font-semibold truncate ${task.completed ? 'text-black line-through' : 'text-black dark:text-slate-200'}`}>{task.title}</p>
                                         </div>
-                                        <span className="text-[9px] text-slate-400 flex-shrink-0">{formatTaskDateTime(task.time)}</span>
+                                        <span className="text-[9px] text-black dark:text-slate-300 flex-shrink-0">{formatTaskDateTime(task.time)}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
                         {/* Calendar */}
-                        <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-600/50 flex flex-col gap-3 shadow-sm">
+                        <div className="bg-slate-100 dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-600/50 flex flex-col gap-3 shadow-sm">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
+                                <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Calendar</h2>
+                                <span className="text-[10px] font-bold text-black dark:text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
                             </div>
                             <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50 rounded-xl p-2.5">
                                 <div className="flex justify-between items-center mb-2.5 px-0.5">
                                     <div className="flex gap-1">
-                                        <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronLeft size={14}/></button>
-                                        <button onClick={nextDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronRight size={14}/></button>
+                                        <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-black dark:text-slate-300"><ChevronLeft size={14}/></button>
+                                        <button onClick={nextDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-black dark:text-slate-300"><ChevronRight size={14}/></button>
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center gap-1">
@@ -2208,7 +2243,7 @@ const Dashboard = () => {
                                         const isSelected = date.toDateString() === currentDate.toDateString();
                                         return (
                                             <div key={idx} onClick={() => { setCurrentDate(date); openAddEvent(date); }}
-                                                className={`flex flex-col items-center justify-center py-2 rounded-xl cursor-pointer transition-all w-full min-w-0 ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
+                                                className={`flex flex-col items-center justify-center py-2 rounded-xl cursor-pointer transition-all w-full min-w-0 ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-black dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
                                                 <span className="text-[8px] uppercase font-bold tracking-wider mb-1 block">{date.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 2)}</span>
                                                 <span className={`text-sm font-bold ${isSelected ? 'text-white' : ''}`}>{date.getDate()}</span>
                                             </div>
@@ -2217,7 +2252,7 @@ const Dashboard = () => {
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
-                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-600/50 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
+                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-black dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-600/50 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
                                     <Eye size={12}/> <span>View All</span>
                                 </button>
                                 <button onClick={() => openAddEvent(currentDate)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[11px] font-bold transition-colors shadow-lg shadow-blue-500/20">
@@ -2226,28 +2261,28 @@ const Dashboard = () => {
                             </div>
                             <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-600/50 rounded-xl p-3 flex-1 flex flex-col">
                                 <div className="flex justify-between items-center mb-2.5">
-                                    <h3 className="text-[9px] uppercase tracking-widest font-bold text-slate-400">Reminders · {currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
-                                    <span className="text-[9px] font-bold text-slate-500 bg-slate-200 dark:bg-slate-700/60 px-1.5 py-0.5 rounded-full">{filteredEvents.length}</span>
+                                    <h3 className="text-[9px] uppercase tracking-widest font-bold text-black dark:text-slate-400">Reminders · {currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
+                                    <span className="text-[9px] font-bold text-black dark:text-slate-300 bg-slate-200 dark:bg-slate-700/60 px-1.5 py-0.5 rounded-full">{filteredEvents.length}</span>
                                 </div>
                                 <div className="space-y-2 flex-1 overflow-y-auto max-h-[140px] pr-1 custom-scrollbar">
                                     {filteredEvents.length === 0 ? (
-                                        <p className="text-slate-400 text-center py-4 text-[10px]">No reminders today.</p>
+                                        <p className="text-black dark:text-slate-300 text-center py-4 text-[10px]">No reminders today.</p>
                                     ) : (
                                         filteredEvents.map((event, idx) => {
                                             const evDate = event.date ? new Date(event.date + 'T00:00:00') : new Date();
                                             return (
                                                 <div key={event.id || idx} className="flex gap-2.5 items-start group hover:bg-slate-100 dark:hover:bg-slate-800/40 p-1.5 rounded-lg transition-colors">
                                                     <div className="pl-2 border-l-2 border-blue-400/50 flex flex-col items-center min-w-[28px] flex-shrink-0">
-                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight">{evDate.getDate()}</span>
-                                                        <span className="text-[8px] font-bold text-slate-400 uppercase">{monthNames[evDate.getMonth()].substring(0, 3)}</span>
+                                                        <span className="text-sm font-bold text-black dark:text-slate-200 leading-tight">{evDate.getDate()}</span>
+                                                        <span className="text-[8px] font-bold text-black dark:text-slate-400 uppercase">{monthNames[evDate.getMonth()].substring(0, 3)}</span>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">{event.title}</h4>
-                                                        <p className="text-[9px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                                        <h4 className="text-[11px] font-bold text-black dark:text-slate-300 truncate">{event.title}</h4>
+                                                        <p className="text-[9px] text-black dark:text-slate-300 flex items-center gap-1 mt-0.5">
                                                             {event.auto ? <span className="uppercase tracking-wide text-blue-500 font-bold">{event.category}</span> : <><Clock size={9}/> {event.time}</>}
                                                         </p>
                                                     </div>
-                                                    {!event.auto && <button onClick={() => deleteEvent(event.id)} className="text-slate-400 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><Trash2 size={11}/></button>}
+                                                    {!event.auto && <button onClick={() => deleteEvent(event.id)} className="text-black dark:text-slate-300 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><Trash2 size={11}/></button>}
                                                 </div>
                                             );
                                         })
@@ -2264,23 +2299,23 @@ const Dashboard = () => {
                 <div className="space-y-4 sm:space-y-5">
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         {/* Customer Payment Overdue */}
-                        <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-rose-700/40 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-rose-200/60 dark:border-rose-700/40 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Customer Payment Overdue</h2>
-                                    {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Travelling within 10 days</p> */}
+                                    <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Customer Payment Overdue</h2>
+                                    {/* <p className="text-[10px] text-black mt-0.5 uppercase tracking-wider font-semibold">Travelling within 10 days</p> */}
                                 </div>
                                 <span className="bg-rose-500/10 text-rose-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-rose-500/20 uppercase tracking-wide">{acctsCustomerPaymentOverdue.length}</span>
                             </div>
                             <div className="space-y-1 overflow-y-auto max-h-[260px] custom-scrollbar pr-1">
                                 {acctsCustomerPaymentOverdue.length === 0 ? (
-                                    <div className="text-center py-10 text-slate-400 text-xs">No overdue customer payments right now.</div>
+                                    <div className="text-center py-10 text-black dark:text-slate-300 text-xs">No overdue customer payments right now.</div>
                                 ) : (
                                     acctsCustomerPaymentOverdue.map(item => (
                                         <div key={item.id} onClick={() => setSelectedLeadDetails(item.rawLead)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-500/5 transition-all cursor-pointer border border-transparent hover:border-rose-100 dark:hover:border-rose-500/10">
                                             <div className="min-w-0 flex-1">
-                                                <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{item.customerName}</p>
-                                                <p className="text-[10px] text-slate-400 truncate mt-0.5">{item.destination}</p>
+                                                <p className="text-xs font-bold text-black dark:text-white truncate">{item.customerName}</p>
+                                                <p className="text-[10px] text-black dark:text-slate-300 truncate mt-0.5">{item.destination}</p>
                                             </div>
                                             <span className="text-[10px] font-bold text-rose-400 font-mono flex-shrink-0 ml-2">₹{item.amountDue.toLocaleString('en-IN')}</span>
                                         </div>
@@ -2290,23 +2325,23 @@ const Dashboard = () => {
                         </div>
 
                         {/* Vendor Payments */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Vendor Payments</h2>
-                                    {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Payment requests raised by Ops</p> */}
+                                    <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Vendor Payments</h2>
+                                    {/* <p className="text-[10px] text-black mt-0.5 uppercase tracking-wider font-semibold">Payment requests raised by Ops</p> */}
                                 </div>
                                 <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{acctsVendorPaymentDue.length}</span>
                             </div>
                             <div className="space-y-1 overflow-y-auto max-h-[260px] custom-scrollbar pr-1">
                                 {acctsVendorPaymentDue.length === 0 ? (
-                                    <div className="text-center py-10 text-slate-400 text-xs">No vendor payments due right now.</div>
+                                    <div className="text-center py-10 text-black dark:text-slate-300 text-xs">No vendor payments due right now.</div>
                                 ) : (
                                     acctsVendorPaymentDue.map(v => (
                                         <div key={v.id} onClick={() => setSelectedLeadDetails(v.rawLead)} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl hover:bg-amber-50 dark:hover:bg-amber-500/5 transition-all cursor-pointer border border-transparent hover:border-amber-100 dark:hover:border-amber-500/10">
                                             <div className="min-w-0 flex-1">
-                                                <p className="text-xs font-bold text-slate-800 dark:text-white truncate">{v.vendorName}</p>
-                                                <p className="text-[10px] text-slate-400 truncate mt-0.5">{v.customerName} · Due {v.dueDate || 'TBD'}</p>
+                                                <p className="text-xs font-bold text-black dark:text-white truncate">{v.vendorName}</p>
+                                                <p className="text-[10px] text-black dark:text-slate-300 truncate mt-0.5">{v.customerName} · Due {v.dueDate || 'TBD'}</p>
                                             </div>
                                             <span className="text-[10px] font-bold text-amber-500 font-mono flex-shrink-0 ml-2">₹{v.amount.toLocaleString('en-IN')}</span>
                                         </div>
@@ -2316,8 +2351,8 @@ const Dashboard = () => {
                         </div>
 
                         {/* Financial Summary */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
-                            <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight mb-3">Financial Summary</h2>
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                            <h2 className="text-base font-bold text-black dark:text-white tracking-tight mb-3">Financial Summary</h2>
                             <div className="space-y-2.5 flex-1">
                                 {[
                                     { label: 'Customer Collection', value: acctsFinancialSummary.customerCollection, color: 'text-emerald-500' },
@@ -2326,7 +2361,7 @@ const Dashboard = () => {
                                     { label: 'Vendor Outstanding', value: acctsFinancialSummary.vendorOutstanding, color: 'text-rose-500' },
                                 ].map(row => (
                                     <div key={row.label} className="flex justify-between items-center py-2.5 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50">
-                                        <span className="text-xs font-semibold text-slate-600 dark:text-slate-300">{row.label}</span>
+                                        <span className="text-xs font-semibold text-black dark:text-slate-300">{row.label}</span>
                                         <span className={`text-xs font-bold font-mono ${row.color}`}>₹{row.value.toLocaleString('en-IN')}</span>
                                     </div>
                                 ))}
@@ -2337,20 +2372,20 @@ const Dashboard = () => {
                     {/* Leave Request / Tasks / Calendar */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         {/* Leave Request */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
-                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Leave Request</h2>
+                                <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Leave Request</h2>
                                 <button onClick={() => setLeaveModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-lg shadow-blue-500/20">
                                     <Plus size={12} /> Apply Leave
                                 </button>
                             </div>
                             <div className="space-y-1.5 overflow-y-auto max-h-[220px] custom-scrollbar pr-1 flex-1">
                                 {leaves.length === 0 ? (
-                                    <div className="text-center py-10 text-slate-400 text-xs">No leave history found.</div>
+                                    <div className="text-center py-10 text-black dark:text-slate-300 text-xs">No leave history found.</div>
                                 ) : (
                                     leaves.slice(0, 5).map(leave => (
                                         <div key={leave.id} className="flex justify-between items-center py-2 px-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50">
-                                            <span className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">{leave.startDate}{leave.endDate ? ` – ${leave.endDate}` : ''}</span>
+                                            <span className="text-xs font-semibold text-black dark:text-slate-200 truncate">{leave.startDate}{leave.endDate ? ` – ${leave.endDate}` : ''}</span>
                                             <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg border uppercase tracking-wide flex-shrink-0 ml-2 ${
                                                 leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
                                                 leave.status === 'Rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
@@ -2364,43 +2399,43 @@ const Dashboard = () => {
                         </div>
 
                         {/* Tasks */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{taskCounts.pending} pending</p>
+                                    <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Tasks</h2>
+                                    <p className="text-[10px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{taskCounts.pending} pending</p>
                                 </div>
                                 <button onClick={openAddTask} className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-lg shadow-violet-500/20">
                                     <Plus size={12} /> Add
                                 </button>
                             </div>
                             <div className="space-y-1 overflow-y-auto max-h-[220px] custom-scrollbar pr-1 flex-1">
-                                {filteredTasks.length === 0 && <div className="text-center py-10 text-slate-400 text-xs">No tasks here. Add one!</div>}
+                                {filteredTasks.length === 0 && <div className="text-center py-10 text-black dark:text-slate-300 text-xs">No tasks here. Add one!</div>}
                                 {filteredTasks.slice(0, 6).map(task => (
                                     <div key={task.id} className="flex items-center justify-between py-2 px-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all gap-2">
                                         <div className="flex items-center gap-2 min-w-0 flex-1">
                                             <button onClick={() => toggleTask(task.id, task.completed)} className={`w-4 h-4 rounded-md flex items-center justify-center border-2 transition-all cursor-pointer flex-shrink-0 ${task.completed ? 'bg-violet-500 border-violet-500' : 'bg-transparent border-slate-300 dark:border-slate-600 hover:border-violet-400'}`}>
                                                 {task.completed && <Check size={9} className="text-white" strokeWidth={3} />}
                                             </button>
-                                            <p className={`text-xs font-semibold truncate ${task.completed ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>{task.title}</p>
+                                            <p className={`text-xs font-semibold truncate ${task.completed ? 'text-black line-through' : 'text-black dark:text-slate-200'}`}>{task.title}</p>
                                         </div>
-                                        <span className="text-[9px] text-slate-400 flex-shrink-0">{formatTaskDateTime(task.time)}</span>
+                                        <span className="text-[9px] text-black dark:text-slate-300 flex-shrink-0">{formatTaskDateTime(task.time)}</span>
                                     </div>
                                 ))}
                             </div>
                         </div>
 
                         {/* Calendar */}
-                        <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-600/50 flex flex-col gap-3 shadow-sm">
+                        <div className="bg-slate-100 dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-600/50 flex flex-col gap-3 shadow-sm">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
+                                <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Calendar</h2>
+                                <span className="text-[10px] font-bold text-black dark:text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
                             </div>
                             <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50 rounded-xl p-2.5">
                                 <div className="flex justify-between items-center mb-2.5 px-0.5">
                                     <div className="flex gap-1">
-                                        <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronLeft size={14}/></button>
-                                        <button onClick={nextDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronRight size={14}/></button>
+                                        <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-black dark:text-slate-300"><ChevronLeft size={14}/></button>
+                                        <button onClick={nextDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-black dark:text-slate-300"><ChevronRight size={14}/></button>
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center gap-1">
@@ -2408,7 +2443,7 @@ const Dashboard = () => {
                                         const isSelected = date.toDateString() === currentDate.toDateString();
                                         return (
                                             <div key={idx} onClick={() => { setCurrentDate(date); openAddEvent(date); }}
-                                                className={`flex flex-col items-center justify-center py-2 rounded-xl cursor-pointer transition-all w-full min-w-0 ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
+                                                className={`flex flex-col items-center justify-center py-2 rounded-xl cursor-pointer transition-all w-full min-w-0 ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-black dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
                                                 <span className="text-[8px] uppercase font-bold tracking-wider mb-1 block">{date.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 2)}</span>
                                                 <span className={`text-sm font-bold ${isSelected ? 'text-white' : ''}`}>{date.getDate()}</span>
                                             </div>
@@ -2417,7 +2452,7 @@ const Dashboard = () => {
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
-                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-600/50 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
+                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-black dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-600/50 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
                                     <Eye size={12}/> <span>View All</span>
                                 </button>
                                 <button onClick={() => openAddEvent(currentDate)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[11px] font-bold transition-colors shadow-lg shadow-blue-500/20">
@@ -2426,28 +2461,28 @@ const Dashboard = () => {
                             </div>
                             <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-600/50 rounded-xl p-3 flex-1 flex flex-col">
                                 <div className="flex justify-between items-center mb-2.5">
-                                    <h3 className="text-[9px] uppercase tracking-widest font-bold text-slate-400">Reminders · {currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
-                                    <span className="text-[9px] font-bold text-slate-500 bg-slate-200 dark:bg-slate-700/60 px-1.5 py-0.5 rounded-full">{filteredEvents.length}</span>
+                                    <h3 className="text-[9px] uppercase tracking-widest font-bold text-black dark:text-slate-400">Reminders · {currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
+                                    <span className="text-[9px] font-bold text-black dark:text-slate-300 bg-slate-200 dark:bg-slate-700/60 px-1.5 py-0.5 rounded-full">{filteredEvents.length}</span>
                                 </div>
                                 <div className="space-y-2 flex-1 overflow-y-auto max-h-[140px] pr-1 custom-scrollbar">
                                     {filteredEvents.length === 0 ? (
-                                        <p className="text-slate-400 text-center py-4 text-[10px]">No reminders today.</p>
+                                        <p className="text-black dark:text-slate-300 text-center py-4 text-[10px]">No reminders today.</p>
                                     ) : (
                                         filteredEvents.map((event, idx) => {
                                             const evDate = event.date ? new Date(event.date + 'T00:00:00') : new Date();
                                             return (
                                                 <div key={event.id || idx} className="flex gap-2.5 items-start group hover:bg-slate-100 dark:hover:bg-slate-800/40 p-1.5 rounded-lg transition-colors">
                                                     <div className="pl-2 border-l-2 border-blue-400/50 flex flex-col items-center min-w-[28px] flex-shrink-0">
-                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight">{evDate.getDate()}</span>
-                                                        <span className="text-[8px] font-bold text-slate-400 uppercase">{monthNames[evDate.getMonth()].substring(0, 3)}</span>
+                                                        <span className="text-sm font-bold text-black dark:text-slate-200 leading-tight">{evDate.getDate()}</span>
+                                                        <span className="text-[8px] font-bold text-black dark:text-slate-400 uppercase">{monthNames[evDate.getMonth()].substring(0, 3)}</span>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">{event.title}</h4>
-                                                        <p className="text-[9px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                                        <h4 className="text-[11px] font-bold text-black dark:text-slate-300 truncate">{event.title}</h4>
+                                                        <p className="text-[9px] text-black dark:text-slate-300 flex items-center gap-1 mt-0.5">
                                                             {event.auto ? <span className="uppercase tracking-wide text-blue-500 font-bold">{event.category}</span> : <><Clock size={9}/> {event.time}</>}
                                                         </p>
                                                     </div>
-                                                    {!event.auto && <button onClick={() => deleteEvent(event.id)} className="text-slate-400 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><Trash2 size={11}/></button>}
+                                                    {!event.auto && <button onClick={() => deleteEvent(event.id)} className="text-black dark:text-slate-300 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><Trash2 size={11}/></button>}
                                                 </div>
                                             );
                                         })
@@ -2467,11 +2502,11 @@ const Dashboard = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-5">
 
                         {/* 1. My Jobs */}
-                        <div className="bg-white dark:bg-[#111827] border-t-2 border-t-blue-500 border border-slate-200/80 dark:border-slate-600/50 rounded-2xl shadow-sm flex flex-col lg:col-span-2 overflow-hidden">
+                        <div className="bg-slate-100 dark:bg-[#111827] border-t-2 border-t-blue-500 border border-slate-200/80 dark:border-slate-600/50 rounded-2xl shadow-sm flex flex-col lg:col-span-2 overflow-hidden">
                             <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-600/50 flex justify-between items-center">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">My Jobs</h2>
-                                    {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Today's record</p> */}
+                                    <h2 className="text-base font-bold text-black dark:text-white tracking-tight">My Jobs</h2>
+                                    {/* <p className="text-[10px] text-black mt-0.5 uppercase tracking-wider font-semibold">Today's record</p> */}
                                 </div>
                                 <button onClick={() => setRegionModal({ open: true, regionName: 'My Jobs — Full List', tripsList: salesOwnLeads })} className="px-3 py-1.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors bg-blue-50/50 dark:bg-transparent whitespace-nowrap">View All Jobs</button>
                             </div>
@@ -2479,15 +2514,15 @@ const Dashboard = () => {
                                 <table className="w-full text-left text-xs sm:text-sm">
                                     <thead>
                                         <tr className="border-b border-slate-100 dark:border-slate-600/50">
-                                            <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Status</th>
-                                            <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Count</th>
+                                            <th className="px-4 sm:px-5 py-2.5 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px]">Status</th>
+                                            <th className="px-4 sm:px-5 py-2.5 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px] text-right">Count</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
                                         {salesMyJobsBreakdown.map(row => (
                                             <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => setRegionModal({ open: true, regionName: row.label, tripsList: row.list })}>
-                                                <td className="px-4 sm:px-5 py-3 font-semibold text-slate-700 dark:text-slate-200">{row.label}</td>
-                                                <td className="px-4 sm:px-5 py-3 text-right font-bold text-slate-800 dark:text-white">{row.count}</td>
+                                                <td className="px-4 sm:px-5 py-3 font-semibold text-black dark:text-slate-200">{row.label}</td>
+                                                <td className="px-4 sm:px-5 py-3 text-right font-bold text-black dark:text-white">{row.count}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -2496,29 +2531,29 @@ const Dashboard = () => {
                         </div>
 
                         {/* 2. Followup Alerts */}
-                        <div className="bg-white dark:bg-[#111827] border-t-2 border-t-amber-500 border border-slate-200/80 dark:border-slate-600/50 rounded-2xl shadow-sm flex flex-col lg:col-span-3 overflow-hidden">
+                        <div className="bg-slate-100 dark:bg-[#111827] border-t-2 border-t-amber-500 border border-slate-200/80 dark:border-slate-600/50 rounded-2xl shadow-sm flex flex-col lg:col-span-3 overflow-hidden">
                             <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 dark:border-slate-600/50">
-                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Followup Alerts</h2>
-                                {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Leads with a scheduled follow-up</p> */}
+                                <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Followup Alerts</h2>
+                                {/* <p className="text-[10px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Leads with a scheduled follow-up</p> */}
                             </div>
                             <div className="flex-1 overflow-x-auto custom-scrollbar max-h-[280px]">
                                 <table className="w-full text-left text-xs sm:text-sm">
                                     <thead>
                                         <tr className="border-b border-slate-100 dark:border-slate-600/50">
-                                            <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Lead Name</th>
-                                            <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Destination</th>
-                                            <th className="px-4 sm:px-5 py-2.5 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Customer Response</th>
+                                            <th className="px-4 sm:px-5 py-2.5 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px]">Lead Name</th>
+                                            <th className="px-4 sm:px-5 py-2.5 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px]">Destination</th>
+                                            <th className="px-4 sm:px-5 py-2.5 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px]">Customer Response</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
                                         {salesFollowupAlerts.length === 0 ? (
-                                            <tr><td colSpan={3} className="px-4 sm:px-5 py-8 text-center text-slate-400 text-xs">No follow-ups scheduled.</td></tr>
+                                            <tr><td colSpan={3} className="px-4 sm:px-5 py-8 text-center text-black dark:text-slate-300 text-xs">No follow-ups scheduled.</td></tr>
                                         ) : (
                                             salesFollowupAlerts.map(row => (
                                                 <tr key={row.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer" onClick={() => setSelectedLeadDetails(row.rawLead)}>
-                                                    <td className="px-4 sm:px-5 py-3 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]">{row.leadName}</td>
-                                                    <td className="px-4 sm:px-5 py-3 text-slate-600 dark:text-slate-300 truncate max-w-[120px]">{row.destination}</td>
-                                                    <td className="px-4 sm:px-5 py-3 text-slate-500 dark:text-slate-400 truncate max-w-[220px]">{row.customerResponse}</td>
+                                                    <td className="px-4 sm:px-5 py-3 font-semibold text-black dark:text-slate-200 truncate max-w-[140px]">{row.leadName}</td>
+                                                    <td className="px-4 sm:px-5 py-3 text-black dark:text-slate-300 truncate max-w-[120px]">{row.destination}</td>
+                                                    <td className="px-4 sm:px-5 py-3 text-black dark:text-slate-400 truncate max-w-[220px]">{row.customerResponse}</td>
                                                 </tr>
                                             ))
                                         )}
@@ -2532,11 +2567,11 @@ const Dashboard = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
 
                         {/* 1. Sales Target */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
                             <div className="flex justify-between items-center mb-4">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Sales Target</h2>
-                                    {/* <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Set by Director / Admin</p> */}
+                                    <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Sales Target</h2>
+                                    {/* <p className="text-[10px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Set by Director / Admin</p> */}
                                 </div>
                                     {/* <button onClick={() => { setEditingTarget(null); setTargetForm({ label: '', value: 0, max: 100, unit: '', isPercent: false, color: '#7c3aed' }); setTargetModal(true); }} className="flex items-center gap-1.5 text-xs font-bold text-violet-500 dark:text-violet-400 hover:text-violet-600 bg-violet-500/10 hover:bg-violet-500/20 px-3 py-1.5 rounded-xl transition-colors border border-violet-500/15">
                                         <Plus size={13}/> Add
@@ -2548,12 +2583,12 @@ const Dashboard = () => {
                                     return (
                                         <div key={item.id} className="group">
                                             <div className="flex justify-between items-center mb-2 gap-2">
-                                                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 truncate">{item.label}</span>
+                                                <span className="text-xs font-semibold text-black dark:text-slate-300 truncate">{item.label}</span>
                                                 <div className="flex items-center gap-1.5 flex-shrink-0">
                                                     <div className="flex items-center gap-1">
-                                                        <button onClick={() => nudgeTarget(item.id, -1, item.value, item.max, item.unit)} className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-slate-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><Minus size={10}/></button>
-                                                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 min-w-[58px] text-center font-mono">{formatTargetDisplay(item)}</span>
-                                                        <button onClick={() => nudgeTarget(item.id, 1, item.value, item.max, item.unit)} className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-slate-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><Plus size={10}/></button>
+                                                        <button onClick={() => nudgeTarget(item.id, -1, item.value, item.max, item.unit)} className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-black dark:text-slate-300 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><Minus size={10}/></button>
+                                                        <span className="text-[10px] font-bold text-black dark:text-slate-400 min-w-[58px] text-center font-mono">{formatTargetDisplay(item)}</span>
+                                                        <button onClick={() => nudgeTarget(item.id, 1, item.value, item.max, item.unit)} className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-black dark:text-slate-300 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><Plus size={10}/></button>
                                                     </div>
                                                 </div>
                                             </div>
@@ -2561,15 +2596,15 @@ const Dashboard = () => {
                                         </div>
                                     );
                                 })}
-                                {targets.length === 0 && <div className="text-center py-10 text-slate-400 dark:text-slate-500 text-xs">No targets set. Add one!</div>}
+                                {targets.length === 0 && <div className="text-center py-10 text-black dark:text-slate-500 text-xs">No targets set. Add one!</div>}
                             </div>
                         </div>
 
                         {/* 2. Top Destinations */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Top Destinations</h2>
+                                    <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Top Destinations</h2>
                                 </div>
                                 <button type="button" onClick={() => setTopDestinationsModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">View All</button>
                             </div>
@@ -2586,7 +2621,7 @@ const Dashboard = () => {
                                         className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-colors border ${
                                             topDestFilter === f.id
                                                 ? 'bg-amber-500/15 border-amber-500/40 text-amber-500'
-                                                : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                                                : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 text-black dark:text-slate-400 hover:text-black dark:hover:text-slate-300'
                                         }`}
                                     >
                                         {f.label}
@@ -2597,20 +2632,20 @@ const Dashboard = () => {
                                 <table className="w-full text-left text-xs">
                                     <thead>
                                         <tr className="border-b border-slate-100 dark:border-slate-600/50">
-                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Destination</th>
-                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Leads</th>
-                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Bookings</th>
+                                            <th className="pb-2 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px]">Destination</th>
+                                            <th className="pb-2 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px] text-right">Leads</th>
+                                            <th className="pb-2 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px] text-right">Bookings</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
                                         {filteredTopDestinations.length === 0 ? (
-                                            <tr><td colSpan={3} className="py-8 text-center text-slate-400 text-xs">No destination data {topDestFilter === 'today' ? 'for today yet' : topDestFilter === 'week' ? 'for this week yet' : 'for this month yet'}.</td></tr>
+                                            <tr><td colSpan={3} className="py-8 text-center text-black dark:text-slate-300 text-xs">No destination data {topDestFilter === 'today' ? 'for today yet' : topDestFilter === 'week' ? 'for this week yet' : 'for this month yet'}.</td></tr>
                                         ) : (
                                             filteredTopDestinations.slice(0, 6).map((dest, idx) => (
                                                 <tr key={idx} onClick={() => handleDestinationClick(dest.name)} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer">
-                                                    <td className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[100px]">{dest.name}</td>
-                                                    <td className="py-2.5 text-right font-bold text-slate-800 dark:text-white">{dest.count}</td>
-                                                    <td className="py-2.5 text-right text-slate-400">{dest.bookings ?? '—'}</td>
+                                                    <td className="py-2.5 font-semibold text-black dark:text-slate-200 truncate max-w-[100px]">{dest.name}</td>
+                                                    <td className="py-2.5 text-right font-bold text-black dark:text-white">{dest.count}</td>
+                                                    <td className="py-2.5 text-right text-black dark:text-slate-300">{dest.bookings ?? '—'}</td>
                                                 </tr>
                                             ))
                                         )}
@@ -2620,10 +2655,10 @@ const Dashboard = () => {
                         </div>
 
                         {/* 3. Client Payment Due */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-3">
-                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Client Payment Due</h2>
-                                <select value={clientPaymentFilter} onChange={e => setClientPaymentFilter(e.target.value)} className="text-[10px] font-bold uppercase tracking-wide bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-600/50 rounded-lg px-2 py-1.5 text-slate-500 dark:text-slate-300 outline-none cursor-pointer">
+                                <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Client Payment Due</h2>
+                                <select value={clientPaymentFilter} onChange={e => setClientPaymentFilter(e.target.value)} className="text-[10px] font-bold uppercase tracking-wide bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-600/50 rounded-lg px-2 py-1.5 text-black dark:text-slate-300 outline-none cursor-pointer">
                                     <option value="all">All</option>
                                     <option value="overdue">Overdue</option>
                                     <option value="upcoming">Upcoming</option>
@@ -2633,19 +2668,19 @@ const Dashboard = () => {
                                 <table className="w-full text-left text-xs">
                                     <thead>
                                         <tr className="border-b border-slate-100 dark:border-slate-600/50">
-                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Name</th>
-                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Amount</th>
-                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Due</th>
+                                            <th className="pb-2 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px]">Name</th>
+                                            <th className="pb-2 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px] text-right">Amount</th>
+                                            <th className="pb-2 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px] text-right">Due</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
                                         {salesClientPaymentDueFiltered.length === 0 ? (
-                                            <tr><td colSpan={3} className="py-8 text-center text-slate-400 text-xs">No payments due.</td></tr>
+                                            <tr><td colSpan={3} className="py-8 text-center text-black dark:text-slate-300 text-xs">No payments due.</td></tr>
                                         ) : (
                                             salesClientPaymentDueFiltered.map(item => (
                                                 <tr key={item.id} onClick={() => setSelectedLeadDetails(item.rawLead)} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer">
-                                                    <td className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[90px]">{item.customerName}</td>
-                                                    <td className="py-2.5 text-right font-bold text-slate-800 dark:text-white whitespace-nowrap">₹{item.amountDue.toLocaleString('en-IN')}</td>
+                                                    <td className="py-2.5 font-semibold text-black dark:text-slate-200 truncate max-w-[90px]">{item.customerName}</td>
+                                                    <td className="py-2.5 text-right font-bold text-black dark:text-white whitespace-nowrap">₹{item.amountDue.toLocaleString('en-IN')}</td>
                                                     <td className="py-2.5 text-right">
                                                         <span className={`text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide ${item.daysLeft < 0 ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'}`}>
                                                             {item.daysLeft < 0 ? 'Overdue' : `${item.daysLeft}d`}
@@ -2664,25 +2699,25 @@ const Dashboard = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
 
                         {/* 1. Fulfilment Due */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
-                            <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight mb-3">Fulfilment Due</h2>
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                            <h2 className="text-base font-bold text-black dark:text-white tracking-tight mb-3">Fulfilment Due</h2>
                             <div className="flex-1 overflow-y-auto max-h-[280px] custom-scrollbar">
                                 <table className="w-full text-left text-xs">
                                     <thead>
                                         <tr className="border-b border-slate-100 dark:border-slate-600/50">
-                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Lead Name</th>
-                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Due Type</th>
-                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Due Date</th>
+                                            <th className="pb-2 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px]">Lead Name</th>
+                                            <th className="pb-2 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px]">Due Type</th>
+                                            <th className="pb-2 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px] text-right">Due Date</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
                                         {salesFulfilmentDue.length === 0 ? (
-                                            <tr><td colSpan={3} className="py-8 text-center text-slate-400 text-xs">Nothing pending.</td></tr>
+                                            <tr><td colSpan={3} className="py-8 text-center text-black dark:text-slate-300 text-xs">Nothing pending.</td></tr>
                                         ) : (
                                             salesFulfilmentDue.map(item => (
                                                 <tr key={item.id} onClick={() => setSelectedLeadDetails(item.rawLead)} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer">
-                                                    <td className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[90px]">{item.leadName}</td>
-                                                    <td className="py-2.5 text-slate-500 dark:text-slate-400 truncate max-w-[110px]">{item.dueType}</td>
+                                                    <td className="py-2.5 font-semibold text-black dark:text-slate-200 truncate max-w-[90px]">{item.leadName}</td>
+                                                    <td className="py-2.5 text-black dark:text-slate-400 truncate max-w-[110px]">{item.dueType}</td>
                                                     <td className="py-2.5 text-right font-semibold text-amber-500 whitespace-nowrap">{item.dueDate}</td>
                                                 </tr>
                                             ))
@@ -2693,9 +2728,9 @@ const Dashboard = () => {
                         </div>
 
                         {/* 2. Tasks */}
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-3">
-                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
+                                <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Tasks</h2>
                                 <button onClick={openAddTask} className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 text-white px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all shadow-lg shadow-violet-500/20">
                                     <Plus size={12} /> Add
                                 </button>
@@ -2704,13 +2739,13 @@ const Dashboard = () => {
                                 <table className="w-full text-left text-xs">
                                     <thead>
                                         <tr className="border-b border-slate-100 dark:border-slate-600/50">
-                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Task</th>
-                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Due Time</th>
+                                            <th className="pb-2 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px]">Task</th>
+                                            <th className="pb-2 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px] text-right">Due Time</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
                                         {filteredTasks.length === 0 ? (
-                                            <tr><td colSpan={2} className="py-8 text-center text-slate-400 text-xs">No tasks here. Add one!</td></tr>
+                                            <tr><td colSpan={2} className="py-8 text-center text-black dark:text-slate-300 text-xs">No tasks here. Add one!</td></tr>
                                         ) : (
                                             filteredTasks.map(task => (
                                                 <tr key={task.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
@@ -2719,10 +2754,10 @@ const Dashboard = () => {
                                                             <button onClick={() => toggleTask(task.id, task.completed)} className={`w-4 h-4 rounded-md flex items-center justify-center border-2 transition-all cursor-pointer flex-shrink-0 ${task.completed ? 'bg-violet-500 border-violet-500' : 'bg-transparent border-slate-300 dark:border-slate-600 hover:border-violet-400'}`}>
                                                                 {task.completed && <Check size={9} className="text-white" strokeWidth={3} />}
                                                             </button>
-                                                            <span className={`font-semibold truncate ${task.completed ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>{task.title}</span>
+                                                            <span className={`font-semibold truncate ${task.completed ? 'text-black line-through' : 'text-black dark:text-slate-200'}`}>{task.title}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="py-2.5 text-right text-slate-500 dark:text-slate-400 whitespace-nowrap">{task.time || '—'}</td>
+                                                    <td className="py-2.5 text-right text-black dark:text-slate-400 whitespace-nowrap">{task.time || '—'}</td>
                                                 </tr>
                                             ))
                                         )}
@@ -2732,16 +2767,16 @@ const Dashboard = () => {
                         </div>
 
                         {/* 3. Calendar */}
-                        <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-600/50 flex flex-col gap-3 shadow-sm lg:col-span-1">
+                        <div className="bg-slate-100 dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-600/50 flex flex-col gap-3 shadow-sm lg:col-span-1">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
+                                <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Calendar</h2>
+                                <span className="text-[10px] font-bold text-black dark:text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
                             </div>
                             <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50 rounded-xl p-2.5">
                                 <div className="flex justify-between items-center mb-2.5 px-0.5">
                                     <div className="flex gap-1">
-                                        <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronLeft size={14}/></button>
-                                        <button onClick={nextDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronRight size={14}/></button>
+                                        <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-black dark:text-slate-300"><ChevronLeft size={14}/></button>
+                                        <button onClick={nextDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-black dark:text-slate-300"><ChevronRight size={14}/></button>
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center gap-1">
@@ -2749,7 +2784,7 @@ const Dashboard = () => {
                                         const isSelected = date.toDateString() === currentDate.toDateString();
                                         return (
                                             <div key={idx} onClick={() => { setCurrentDate(date); openAddEvent(date); }}
-                                                className={`flex flex-col items-center justify-center py-2 rounded-xl cursor-pointer transition-all w-full min-w-0 ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
+                                                className={`flex flex-col items-center justify-center py-2 rounded-xl cursor-pointer transition-all w-full min-w-0 ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-black dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
                                                 <span className="text-[8px] uppercase font-bold tracking-wider mb-1 block">{date.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 2)}</span>
                                                 <span className={`text-sm font-bold ${isSelected ? 'text-white' : ''}`}>{date.getDate()}</span>
                                             </div>
@@ -2758,7 +2793,7 @@ const Dashboard = () => {
                                 </div>
                             </div>
                             <div className="grid grid-cols-2 gap-2 mt-auto pt-2">
-                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-600/50 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
+                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-black dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-600/50 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
                                     <Eye size={12}/> <span>View All</span>
                                 </button>
                                 <button onClick={() => openAddEvent(currentDate)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[11px] font-bold transition-colors shadow-lg shadow-blue-500/20">
@@ -2770,9 +2805,9 @@ const Dashboard = () => {
 
                     {/* ── ROW: Leave Request ── */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-4">
-                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Leave Request</h2>
+                                <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Leave Request</h2>
                                 <button onClick={() => setLeaveModalOpen(true)} className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-blue-500/20">
                                     <Plus size={13} /> Apply Leave
                                 </button>
@@ -2781,17 +2816,17 @@ const Dashboard = () => {
                                 <table className="w-full text-left text-xs">
                                     <thead>
                                         <tr className="border-b border-slate-100 dark:border-slate-600/50">
-                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px]">Date</th>
-                                            <th className="pb-2 font-semibold text-slate-400 uppercase tracking-wide text-[10px] text-right">Status</th>
+                                            <th className="pb-2 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px]">Date</th>
+                                            <th className="pb-2 font-semibold text-black dark:text-slate-400 uppercase tracking-wide text-[10px] text-right">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-50 dark:divide-slate-800/60">
                                         {leaves.length === 0 ? (
-                                            <tr><td colSpan={2} className="py-8 text-center text-slate-400 text-xs">No leave history found.</td></tr>
+                                            <tr><td colSpan={2} className="py-8 text-center text-black dark:text-slate-300 text-xs">No leave history found.</td></tr>
                                         ) : (
                                             leaves.slice(0, 5).map(leave => (
                                                 <tr key={leave.id} onClick={() => setAllLeavesModalOpen(true)} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors cursor-pointer">
-                                                    <td className="py-2.5 font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap">{leave.startDate} {leave.endDate ? `– ${leave.endDate}` : ''}</td>
+                                                    <td className="py-2.5 font-semibold text-black dark:text-slate-200 whitespace-nowrap">{leave.startDate} {leave.endDate ? `– ${leave.endDate}` : ''}</td>
                                                     <td className="py-2.5 text-right">
                                                         <span className={`text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide ${
                                                             leave.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
@@ -2815,11 +2850,11 @@ const Dashboard = () => {
                 <>
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         {!isOpsOrAccounts && !isMarketing && (
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-[480px] lg:col-span-2">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-[480px] lg:col-span-2">
                             <div className="flex justify-between items-center mb-3 flex-shrink-0">
                                 <div>
-                                    <h2 className="text-medium font-bold text-slate-800 dark:text-white tracking-tight">Payment</h2>
-                                    <p className="text-[12px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Live ledger</p>
+                                    <h2 className="text-medium font-bold text-black dark:text-white tracking-tight">Payment</h2>
+                                    <p className="text-[12px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Live ledger</p>
                                 </div>
                                 <div className="flex items-center gap-2.5">
                                     <button type="button" onClick={() => setPaymentModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 dark:border-emerald-500/20 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-colors bg-emerald-50/50 dark:bg-transparent">View All</button>
@@ -2834,7 +2869,7 @@ const Dashboard = () => {
                                     onClick={() => setPaymentLedgerTab('in')}
                                     className={`flex-1 text-left rounded-xl p-2.5 border transition-colors cursor-pointer ${paymentLedgerTab === 'in' ? 'bg-emerald-500/10 border-emerald-500/30' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}
                                 >
-                                    <span className="block text-slate-400 text-[12px] uppercase tracking-widest mb-0.5 font-bold">Money In</span>
+                                    <span className="block text-black dark:text-slate-400 text-[12px] uppercase tracking-widest mb-0.5 font-bold">Money In</span>
                                     <span className="text-emerald-500 font-mono text-[14px] font-bold">₹{payments.totalIn.toLocaleString('en-IN')}</span>
                                 </button>
                                 <button
@@ -2842,7 +2877,7 @@ const Dashboard = () => {
                                     onClick={() => setPaymentLedgerTab('out')}
                                     className={`flex-1 text-left rounded-xl p-2.5 border transition-colors cursor-pointer ${paymentLedgerTab === 'out' ? 'bg-rose-500/10 border-rose-500/30' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}
                                 >
-                                    <span className="block text-slate-400 text-[12px] uppercase tracking-widest mb-0.5 font-bold">Money Out</span>
+                                    <span className="block text-black dark:text-slate-400 text-[12px] uppercase tracking-widest mb-0.5 font-bold">Money Out</span>
                                     <span className="text-rose-400 font-mono text-[14px] font-bold">₹{payments.totalOut.toLocaleString('en-IN')}</span>
                                 </button>
                             </div>
@@ -2850,40 +2885,40 @@ const Dashboard = () => {
                             <div className="space-y-2.5 overflow-y-auto flex-1 pr-0.5 custom-scrollbar">
                                 {paymentLedgerTab === 'in' ? (
                                     moneyInEntries.length === 0 ? (
-                                        <div className="text-center py-12 text-slate-400 text-xs">No booking confirmation payments logged yet.</div>
+                                        <div className="text-center py-12 text-black dark:text-slate-300 text-xs">No booking confirmation payments logged yet.</div>
                                     ) : (
                                         moneyInEntries.slice(0, 5).map(entry => (
                                             <div key={entry.id} onClick={() => setSelectedPaymentLead(entry.rawLead)} className="p-3 rounded-xl border border-slate-100 dark:border-slate-600/50 bg-slate-50/50 dark:bg-slate-800/20 space-y-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700/60 transition-all group">
                                                 <div className="flex justify-between items-start gap-2">
                                                     <div className="min-w-0 flex-1">
-                                                        <p className="text-base font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{entry.customerName}</p>
-                                                        <p className="text-[14px] text-slate-400 flex items-center gap-1 truncate mt-0.5"><MapPin size={9}/> {entry.destination} · LMN{entry.leadId}</p>
+                                                        <p className="text-base font-bold text-black dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{entry.customerName}</p>
+                                                        <p className="text-[14px] text-black dark:text-slate-300 flex items-center gap-1 truncate mt-0.5"><MapPin size={9}/> {entry.destination} · LMN{entry.leadId}</p>
                                                     </div>
                                                     <span className="text-[14px] font-bold text-emerald-500 font-mono flex-shrink-0">₹{entry.amount.toLocaleString('en-IN')}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-600/50 text-[12px]">
-                                                    <span className="text-slate-400">{entry.service || 'Booking payment'}{entry.mode ? ` · ${entry.mode}` : ''}</span>
-                                                    <span className="text-slate-400 font-mono">{entry.date || '—'}</span>
+                                                    <span className="text-black dark:text-slate-300">{entry.service || 'Booking payment'}{entry.mode ? ` · ${entry.mode}` : ''}</span>
+                                                    <span className="text-black dark:text-slate-300 font-mono">{entry.date || '—'}</span>
                                                 </div>
                                             </div>
                                         ))
                                     )
                                 ) : (
                                     moneyOutEntries.length === 0 ? (
-                                        <div className="text-center py-12 text-slate-400 text-xs">No vendor payments recorded yet.</div>
+                                        <div className="text-center py-12 text-black dark:text-slate-300 text-xs">No vendor payments recorded yet.</div>
                                     ) : (
                                         moneyOutEntries.slice(0, 5).map(entry => (
                                             <div key={entry.id} onClick={() => setSelectedPaymentLead(entry.rawLead)} className="p-3 rounded-xl border border-slate-100 dark:border-slate-600/50 bg-slate-50/50 dark:bg-slate-800/20 space-y-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:border-slate-200 dark:hover:border-slate-700/60 transition-all group">
                                                 <div className="flex justify-between items-start gap-2">
                                                     <div className="min-w-0 flex-1">
-                                                        <p className="text-base font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{entry.customerName}</p>
-                                                        <p className="text-[14px] text-slate-400 flex items-center gap-1 truncate mt-0.5"><MapPin size={9}/> {entry.destination} · LMN{entry.leadId}</p>
+                                                        <p className="text-base font-bold text-black dark:text-slate-200 truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{entry.customerName}</p>
+                                                        <p className="text-[14px] text-black dark:text-slate-300 flex items-center gap-1 truncate mt-0.5"><MapPin size={9}/> {entry.destination} · LMN{entry.leadId}</p>
                                                     </div>
                                                     <span className="text-[14px] font-bold text-rose-400 font-mono flex-shrink-0">₹{entry.amount.toLocaleString('en-IN')}</span>
                                                 </div>
                                                 <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-600/50 text-[12px]">
-                                                    <span className="text-slate-400 truncate">{entry.provider}{entry.service ? ` · ${entry.service}` : ''}</span>
-                                                    <span className="text-slate-400 font-mono flex-shrink-0">{entry.date || '—'}</span>
+                                                    <span className="text-black dark:text-slate-300 truncate">{entry.provider}{entry.service ? ` · ${entry.service}` : ''}</span>
+                                                    <span className="text-black dark:text-slate-300 font-mono flex-shrink-0">{entry.date || '—'}</span>
                                                 </div>
                                             </div>
                                         ))
@@ -2894,17 +2929,17 @@ const Dashboard = () => {
                         )}
 
                         {!isOpsOrAccounts && !isMarketing && (
-                        <div className="bg-white dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-600/50 flex flex-col gap-3 shadow-sm lg:col-span-1">
+                        <div className="bg-slate-100 dark:bg-[#111827] rounded-2xl p-4 sm:p-5 border border-slate-200/80 dark:border-slate-600/50 flex flex-col gap-3 shadow-sm lg:col-span-1">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Calendar</h2>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
+                                <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Calendar</h2>
+                                <span className="text-[10px] font-bold text-black dark:text-slate-400 uppercase tracking-widest">{monthNames[currentDate.getMonth()].substring(0,3)} {currentDate.getFullYear()}</span>
                             </div>
 
                             <div className="bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50 rounded-xl p-2.5">
                                 <div className="flex justify-between items-center mb-2.5 px-0.5">
                                     <div className="flex gap-1">
-                                        <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronLeft size={14}/></button>
-                                        <button onClick={nextDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-slate-400"><ChevronRight size={14}/></button>
+                                        <button onClick={prevDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-black dark:text-slate-300"><ChevronLeft size={14}/></button>
+                                        <button onClick={nextDay} className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700/60 rounded-lg transition-colors text-black dark:text-slate-300"><ChevronRight size={14}/></button>
                                     </div>
                                 </div>
                                 <div className="flex justify-between items-center gap-1">
@@ -2912,7 +2947,7 @@ const Dashboard = () => {
                                         const isSelected = date.toDateString() === currentDate.toDateString();
                                         return (
                                             <div key={idx} onClick={() => { setCurrentDate(date); openAddEvent(date); }}
-                                                className={`flex flex-col items-center justify-center py-2 rounded-xl cursor-pointer transition-all w-full min-w-0 ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-slate-400 dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
+                                                className={`flex flex-col items-center justify-center py-2 rounded-xl cursor-pointer transition-all w-full min-w-0 ${isSelected ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-black dark:text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700/40'}`}>
                                                 <span className="text-[8px] uppercase font-bold tracking-wider mb-1 block">{date.toLocaleDateString('en-US', { weekday: 'short' }).substring(0, 2)}</span>
                                                 <span className={`text-sm font-bold ${isSelected ? 'text-white' : ''}`}>{date.getDate()}</span>
                                             </div>
@@ -2922,7 +2957,7 @@ const Dashboard = () => {
                             </div>
 
                             <div className="grid grid-cols-2 gap-2">
-                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-600/50 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
+                                <button onClick={() => setAllRemindersModalOpen(true)} className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-800/40 text-black dark:text-slate-300 py-2 rounded-xl text-[11px] font-bold border border-slate-200 dark:border-slate-600/50 transition-colors hover:bg-slate-200 dark:hover:bg-slate-700/50">
                                     <Eye size={12}/> <span>View All</span>
                                 </button>
                                 <button onClick={() => openAddEvent(currentDate)} className="flex items-center justify-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-xl text-[11px] font-bold transition-colors shadow-lg shadow-blue-500/20">
@@ -2932,28 +2967,28 @@ const Dashboard = () => {
 
                             <div className="bg-slate-50 dark:bg-slate-800/20 border border-slate-100 dark:border-slate-600/50 rounded-xl p-3 flex-1 flex flex-col">
                                 <div className="flex justify-between items-center mb-2.5">
-                                    <h3 className="text-[9px] uppercase tracking-widest font-bold text-slate-400">Reminders · {currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
-                                    <span className="text-[9px] font-bold text-slate-500 bg-slate-200 dark:bg-slate-700/60 px-1.5 py-0.5 rounded-full">{filteredEvents.length}</span>
+                                    <h3 className="text-[9px] uppercase tracking-widest font-bold text-black dark:text-slate-400">Reminders · {currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</h3>
+                                    <span className="text-[9px] font-bold text-black dark:text-slate-300 bg-slate-200 dark:bg-slate-700/60 px-1.5 py-0.5 rounded-full">{filteredEvents.length}</span>
                                 </div>
                                 <div className="space-y-2 flex-1 overflow-y-auto max-h-[140px] pr-1 custom-scrollbar">
                                     {filteredEvents.length === 0 ? (
-                                        <p className="text-slate-400 text-center py-4 text-[10px]">No reminders today.</p>
+                                        <p className="text-black dark:text-slate-300 text-center py-4 text-[10px]">No reminders today.</p>
                                     ) : (
                                         filteredEvents.map((event, idx) => {
                                             const evDate = event.date ? new Date(event.date + 'T00:00:00') : new Date();
                                             return (
                                                 <div key={event.id || idx} className="flex gap-2.5 items-start group hover:bg-slate-100 dark:hover:bg-slate-800/40 p-1.5 rounded-lg transition-colors">
                                                     <div className="pl-2 border-l-2 border-blue-400/50 flex flex-col items-center min-w-[28px] flex-shrink-0">
-                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-tight">{evDate.getDate()}</span>
-                                                        <span className="text-[8px] font-bold text-slate-400 uppercase">{monthNames[evDate.getMonth()].substring(0, 3)}</span>
+                                                        <span className="text-sm font-bold text-black dark:text-slate-200 leading-tight">{evDate.getDate()}</span>
+                                                        <span className="text-[8px] font-bold text-black dark:text-slate-400 uppercase">{monthNames[evDate.getMonth()].substring(0, 3)}</span>
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <h4 className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate">{event.title}</h4>
-                                                        <p className="text-[9px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                                        <h4 className="text-[11px] font-bold text-black dark:text-slate-300 truncate">{event.title}</h4>
+                                                        <p className="text-[9px] text-black dark:text-slate-300 flex items-center gap-1 mt-0.5">
                                                             {event.auto ? <span className="uppercase tracking-wide text-blue-500 font-bold">{event.category}</span> : <><Clock size={9}/> {event.time}</>}
                                                         </p>
                                                     </div>
-                                                    {!event.auto && <button onClick={() => deleteEvent(event.id)} className="text-slate-400 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><Trash2 size={11}/></button>}
+                                                    {!event.auto && <button onClick={() => deleteEvent(event.id)} className="text-black dark:text-slate-300 hover:text-red-400 p-1 flex-shrink-0 transition-colors"><Trash2 size={11}/></button>}
                                                 </div>
                                             );
                                         })
@@ -2967,11 +3002,11 @@ const Dashboard = () => {
 
                     {!isOpsOrAccounts && !isMarketing && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-4">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Tasks</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{taskCounts.pending} pending</p>
+                                    <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Tasks</h2>
+                                    <p className="text-[10px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{taskCounts.pending} pending</p>
                                 </div>
                                 <button onClick={openAddTask} className="flex items-center gap-1.5 bg-violet-600 hover:bg-violet-500 active:bg-violet-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-violet-500/20">
                                     <Plus size={13} /> Add Task
@@ -2984,14 +3019,14 @@ const Dashboard = () => {
                                     { key: 'pending', label: `Pending (${taskCounts.pending})` },
                                     { key: 'completed', label: `Done (${taskCounts.completed})` },
                                 ].map(tab => (
-                                    <button key={tab.key} onClick={() => setTaskFilter(tab.key)} className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all whitespace-nowrap px-2 cursor-pointer border-none uppercase tracking-wide ${taskFilter === tab.key ? 'bg-white dark:bg-slate-700/80 text-slate-800 dark:text-white shadow-sm' : 'bg-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+                                    <button key={tab.key} onClick={() => setTaskFilter(tab.key)} className={`flex-1 py-1.5 text-[10px] font-bold rounded-lg transition-all whitespace-nowrap px-2 cursor-pointer border-none uppercase tracking-wide ${taskFilter === tab.key ? 'bg-slate-100 dark:bg-slate-700/80 text-black dark:text-white shadow-sm' : 'bg-transparent text-black hover:text-black dark:hover:text-slate-300'}`}>
                                         {tab.label}
                                     </button>
                                 ))}
                             </div>
 
                             <div className="space-y-1 flex-1 overflow-y-auto max-h-[320px] sm:max-h-[380px] custom-scrollbar pr-1">
-                                {filteredTasks.length === 0 && <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No tasks here. Add one!</div>}
+                                {filteredTasks.length === 0 && <div className="text-center py-12 text-black dark:text-slate-500 text-xs">No tasks here. Add one!</div>}
                                 {filteredTasks.map(task => (
                                     <div key={task.id} className="flex items-center justify-between py-3 px-3 rounded-xl border border-transparent hover:border-slate-100 dark:hover:border-slate-700/40 hover:bg-slate-50 dark:hover:bg-slate-800/30 group transition-all gap-3">
                                         <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -2999,15 +3034,15 @@ const Dashboard = () => {
                                                 {task.completed && <Check size={11} className="text-white" strokeWidth={3} />}
                                             </button>
                                             <div className="min-w-0">
-                                                <p className={`text-xs font-semibold truncate ${task.completed ? 'text-slate-400 line-through' : 'text-slate-700 dark:text-slate-200'}`}>{task.title}</p>
-                                                <p className="text-[9px] text-slate-400 mt-0.5 flex items-center gap-1 uppercase tracking-wide"><Calendar size={9}/> {formatTaskDateTime(task.time)}</p>
+                                                <p className={`text-xs font-semibold truncate ${task.completed ? 'text-black line-through' : 'text-black dark:text-slate-200'}`}>{task.title}</p>
+                                                <p className="text-[9px] text-black dark:text-slate-400 mt-0.5 flex items-center gap-1 uppercase tracking-wide"><Calendar size={9}/> {formatTaskDateTime(task.time)}</p>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2 flex-shrink-0">
                                             <PriorityBadge priority={task.priority} />
                                             <div className="flex gap-0.5 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => openEditTask(task)} className="p-1.5 rounded-lg text-slate-400 bg-transparent border-none cursor-pointer hover:text-blue-400 hover:bg-blue-500/10 transition-colors"><Pencil size={12} /></button>
-                                                <button onClick={() => deleteTask(task.id)} className="p-1.5 rounded-lg text-slate-400 bg-transparent border-none cursor-pointer hover:text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={12} /></button>
+                                                <button onClick={() => openEditTask(task)} className="p-1.5 rounded-lg text-black dark:text-slate-300 bg-transparent border-none cursor-pointer hover:text-blue-400 hover:bg-blue-500/10 transition-colors"><Pencil size={12} /></button>
+                                                <button onClick={() => deleteTask(task.id)} className="p-1.5 rounded-lg text-black dark:text-slate-300 bg-transparent border-none cursor-pointer hover:text-red-400 hover:bg-red-500/10 transition-colors"><Trash2 size={12} /></button>
                                             </div>
                                         </div>
                                     </div>
@@ -3016,11 +3051,11 @@ const Dashboard = () => {
                         </div>
 
                         {!isOpsOrAccounts && !isMarketing && (
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
                             <div className="flex justify-between items-center mb-4">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Sales Targets</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Click ± to adjust</p>
+                                    <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Sales Targets</h2>
+                                    <p className="text-[10px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Click ± to adjust</p>
                                 </div>
                                 <button onClick={() => { setEditingTarget(null); setTargetForm({ label: '', value: 0, max: 100, unit: '', isPercent: false, color: '#7c3aed' }); setTargetModal(true); }} className="flex items-center gap-1.5 text-xs font-bold text-violet-500 dark:text-violet-400 hover:text-violet-600 bg-violet-500/10 hover:bg-violet-500/20 px-3 py-1.5 rounded-xl transition-colors border border-violet-500/15">
                                     <Plus size={13}/> Add
@@ -3034,8 +3069,8 @@ const Dashboard = () => {
                                 >
                                     <div className="p-1.5 rounded-lg bg-orange-500/15 text-orange-500 flex-shrink-0"><MapPin size={13}/></div>
                                     <div className="min-w-0">
-                                        <p className="text-lg font-bold text-slate-800 dark:text-white leading-none">{tripRegionCounts.india}</p>
-                                        <p className="text-[9px] text-slate-400 mt-1 font-semibold uppercase tracking-wide truncate group-hover:text-orange-400 transition-colors">🇮🇳 National</p>
+                                        <p className="text-lg font-bold text-black dark:text-white leading-none">{tripRegionCounts.india}</p>
+                                        <p className="text-[9px] text-black dark:text-slate-400 mt-1 font-semibold uppercase tracking-wide truncate group-hover:text-orange-400 transition-colors">🇮🇳 National</p>
                                     </div>
                                     <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
                                 </div>
@@ -3045,8 +3080,8 @@ const Dashboard = () => {
                                 >
                                     <div className="p-1.5 rounded-lg bg-cyan-500/15 text-cyan-500 flex-shrink-0"><Globe size={13}/></div>
                                     <div className="min-w-0">
-                                        <p className="text-lg font-bold text-slate-800 dark:text-white leading-none">{tripRegionCounts.international}</p>
-                                        <p className="text-[9px] text-slate-400 mt-1 font-semibold uppercase tracking-wide truncate group-hover:text-cyan-400 transition-colors">🌐 Intl.</p>
+                                        <p className="text-lg font-bold text-black dark:text-white leading-none">{tripRegionCounts.international}</p>
+                                        <p className="text-[9px] text-black dark:text-slate-400 mt-1 font-semibold uppercase tracking-wide truncate group-hover:text-cyan-400 transition-colors">🌐 Intl.</p>
                                     </div>
                                     <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-cyan-500 animate-pulse" />
                                 </div>
@@ -3058,34 +3093,34 @@ const Dashboard = () => {
                                     return (
                                         <div key={item.id} className="group">
                                             <div className="flex justify-between items-center mb-2 gap-2">
-                                                <span className="text-xs font-semibold text-slate-600 dark:text-slate-300 truncate">{item.label}</span>
+                                                <span className="text-xs font-semibold text-black dark:text-slate-300 truncate">{item.label}</span>
                                                 <div className="flex items-center gap-1.5 flex-shrink-0">
                                                     <div className="flex items-center gap-1">
-                                                        <button onClick={() => nudgeTarget(item.id, -1, item.value, item.max, item.unit)} className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-slate-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><Minus size={10}/></button>
-                                                        <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 min-w-[58px] text-center font-mono">{formatTargetDisplay(item)}</span>
-                                                        <button onClick={() => nudgeTarget(item.id, 1, item.value, item.max, item.unit)} className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-slate-500 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><Plus size={10}/></button>
+                                                        <button onClick={() => nudgeTarget(item.id, -1, item.value, item.max, item.unit)} className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-black dark:text-slate-300 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><Minus size={10}/></button>
+                                                        <span className="text-[10px] font-bold text-black dark:text-slate-400 min-w-[58px] text-center font-mono">{formatTargetDisplay(item)}</span>
+                                                        <button onClick={() => nudgeTarget(item.id, 1, item.value, item.max, item.unit)} className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700/60 hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-black dark:text-slate-300 transition-colors opacity-100 lg:opacity-0 lg:group-hover:opacity-100"><Plus size={10}/></button>
                                                     </div>
                                                     <div className="flex items-center gap-0.5 pl-1.5 border-l border-slate-200 dark:border-slate-600/60">
-                                                        <button onClick={() => openEditTarget(item)} className="w-5 h-5 rounded-lg hover:bg-blue-500/10 flex items-center justify-center text-slate-400 hover:text-blue-400 transition-colors"><Pencil size={11}/></button>
-                                                        <button onClick={() => deleteTarget(item.id)} className="w-5 h-5 rounded-lg hover:bg-red-500/10 flex items-center justify-center text-slate-400 hover:text-red-400 transition-colors"><Trash2 size={11}/></button>
+                                                        <button onClick={() => openEditTarget(item)} className="w-5 h-5 rounded-lg hover:bg-blue-500/10 flex items-center justify-center text-black dark:text-slate-300 hover:text-blue-400 transition-colors"><Pencil size={11}/></button>
+                                                        <button onClick={() => deleteTarget(item.id)} className="w-5 h-5 rounded-lg hover:bg-red-500/10 flex items-center justify-center text-black dark:text-slate-300 hover:text-red-400 transition-colors"><Trash2 size={11}/></button>
                                                     </div>
                                                 </div>
                                             </div>
                                             <ProgressBar value={item.value} max={item.max} color={item.color} />
-                                            <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 mt-1.5 text-right uppercase tracking-wide">{pct}% achieved</p>
+                                            <p className="text-[9px] font-bold text-black dark:text-slate-500 mt-1.5 text-right uppercase tracking-wide">{pct}% achieved</p>
                                         </div>
                                     );
                                 })}
-                                {targets.length === 0 && <div className="text-center py-10 text-slate-400 dark:text-slate-500 text-xs">No targets set. Add one!</div>}
+                                {targets.length === 0 && <div className="text-center py-10 text-black dark:text-slate-500 text-xs">No targets set. Add one!</div>}
                             </div>
                         </div>
                         )}
 
                         {!isOpsOrAccounts && !isMarketing && (
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                             <div className="flex justify-between items-center mb-3">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Top Destinations</h2>
+                                    <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Top Destinations</h2>
                                 </div>
                                 <button type="button" onClick={() => setTopDestinationsModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-lg hover:bg-amber-50 dark:hover:bg-amber-500/10 transition-colors">View All</button>
                             </div>
@@ -3103,7 +3138,7 @@ const Dashboard = () => {
                                         className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wide transition-colors border ${
                                             topDestFilter === f.id
                                                 ? 'bg-amber-500/15 border-amber-500/40 text-amber-500'
-                                                : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                                                : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 text-black dark:text-slate-400 hover:text-black dark:hover:text-slate-300'
                                         }`}
                                     >
                                         {f.label}
@@ -3112,7 +3147,7 @@ const Dashboard = () => {
                             </div>
                             <div className="space-y-1 flex-1 mt-1">
                                 {filteredTopDestinations.length === 0 ? (
-                                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No destination data {topDestFilter === 'today' ? 'for today yet' : topDestFilter === 'week' ? 'for this week yet' : topDestFilter === 'month' ? 'for this month yet' : 'yet'}.<br />Add some leads!</div>
+                                    <div className="text-center py-12 text-black dark:text-slate-500 text-xs">No destination data {topDestFilter === 'today' ? 'for today yet' : topDestFilter === 'week' ? 'for this week yet' : topDestFilter === 'month' ? 'for this month yet' : 'yet'}.<br />Add some leads!</div>
                                 ) : (
                                     filteredTopDestinations.slice(0, 5).map((dest, idx) => (
                                         <div 
@@ -3123,13 +3158,13 @@ const Dashboard = () => {
                                             <div className="flex items-center gap-3 min-w-0 flex-1 pr-2">
                                                 <div className="w-7 h-7 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center text-xs font-bold border border-amber-500/15 flex-shrink-0">{idx + 1}</div>
                                                 <div className="min-w-0">
-                                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200 group-hover:text-amber-500 transition-colors truncate">{dest.name}</p>
-                                                    <p className="text-[9px] text-slate-400 mt-0.5 uppercase tracking-wide">Destination</p>
+                                                    <p className="text-xs font-bold text-black dark:text-slate-200 group-hover:text-amber-500 transition-colors truncate">{dest.name}</p>
+                                                    <p className="text-[9px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wide">Destination</p>
                                                 </div>
                                             </div>
                                             <div className="text-right flex-shrink-0">
-                                                <p className="text-sm font-bold text-slate-800 dark:text-white">{dest.count}</p>
-                                                <p className="text-[9px] text-slate-400 mt-0.5 uppercase tracking-wide">leads</p>
+                                                <p className="text-sm font-bold text-black dark:text-white">{dest.count}</p>
+                                                <p className="text-[9px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wide">leads</p>
                                             </div>
                                         </div>
                                     ))
@@ -3143,30 +3178,30 @@ const Dashboard = () => {
 
                     {!isOpsOrAccounts && !isMarketing && (
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-                        <div className="bg-white dark:bg-[#111827] border border-rose-200/60 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-2">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-rose-200/60 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-2">
                             <div className="flex justify-between items-center mb-4">
                                 <div className="flex items-center gap-2.5">
                                     <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500 flex-shrink-0">
                                         <BellRing size={16} />
                                     </div>
                                     <div>
-                                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Fulfillment Alerts</h2>
-                                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Trips within 7 days</p>
+                                        <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Fulfillment Alerts</h2>
+                                        <p className="text-[10px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Trips within 7 days</p>
                                     </div>
                                 </div>
                                 <span className="bg-rose-500/10 text-rose-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-rose-500/20 uppercase tracking-wide">{fulfillmentAlerts.length} Action{fulfillmentAlerts.length !== 1 ? 's' : ''}</span>
                             </div>
                             <div className="space-y-2.5 overflow-y-auto max-h-[240px] custom-scrollbar">
                                 {fulfillmentAlerts.length === 0 ? (
-                                    <div className="text-center py-8 text-slate-400 text-xs">No upcoming trips in the next 7 days.</div>
+                                    <div className="text-center py-8 text-black dark:text-slate-300 text-xs">No upcoming trips in the next 7 days.</div>
                                 ) : (
                                     fulfillmentAlerts.map(alert => (
                                         <div key={alert.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 bg-rose-50 dark:bg-rose-500/5 border border-rose-100 dark:border-rose-500/10 p-3 rounded-xl hover:bg-rose-100/80 dark:hover:bg-rose-500/10 transition-colors">
                                             <div className="flex items-center gap-3 min-w-0">
                                                 <div className="p-2 bg-rose-500/15 text-rose-500 rounded-xl flex-shrink-0"><AlertTriangle size={15}/></div>
                                                 <div className="min-w-0">
-                                                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{alert.customerName} — {alert.destination}</p>
-                                                    <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide truncate">Trip starts <span className="font-bold text-slate-700 dark:text-slate-300">{alert.date}</span> · {alert.daysLeft}d left</p>
+                                                    <p className="text-xs font-bold text-black dark:text-slate-200 truncate">{alert.customerName} — {alert.destination}</p>
+                                                    <p className="text-[9px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wide truncate">Trip starts <span className="font-bold text-black dark:text-slate-300">{alert.date}</span> · {alert.daysLeft}d left</p>
                                                 </div>
                                             </div>
                                             <button className="w-full sm:w-auto flex-shrink-0 px-3 py-1.5 text-[10px] font-bold text-white bg-rose-500 hover:bg-rose-600 rounded-xl transition-colors shadow-sm shadow-rose-500/20 uppercase tracking-wide">Review</button>
@@ -3177,11 +3212,11 @@ const Dashboard = () => {
                         </div>
 
                         {!isOpsOrAccounts && !isMarketing && (
-                        <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-full lg:col-span-1">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col h-full lg:col-span-1">
                             <div className="flex justify-between items-start mb-4 gap-2">
                                 <div>
-                                    <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Active Team</h2>
-                                    <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{members.filter(m => m.status === 'online').length} online now</p>
+                                    <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Active Team</h2>
+                                    <p className="text-[10px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">{members.filter(m => m.status === 'online').length} online now</p>
                                 </div>
                                 {members.length > 5 && (
                                     <button
@@ -3194,19 +3229,19 @@ const Dashboard = () => {
                             </div>
                             <div className="space-y-1 flex-1 overflow-y-auto custom-scrollbar pr-0.5 min-h-[200px]">
                                 {members.length === 0 ? (
-                                    <div className="text-center py-12 text-slate-400 dark:text-slate-500 text-xs">No active employees operating right now.</div>
+                                    <div className="text-center py-12 text-black dark:text-slate-500 text-xs">No active employees operating right now.</div>
                                 ) : (
                                     (allMembersExpanded ? members : members.slice(0, 5)).map(member => (
                                         <div key={member.id} onClick={() => setSelectedMember(member)} className="flex items-center gap-3 py-2.5 px-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all group border border-transparent hover:border-slate-100 dark:hover:border-slate-700/30 cursor-pointer">
                                             <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center text-xs font-bold text-white flex-shrink-0 shadow-md uppercase" style={{ backgroundColor: member.color || '#7c3aed' }}>{member.initials}</div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-xs font-bold text-slate-800 dark:text-white leading-tight truncate">{member.name}</p>
-                                                <p className="text-[9px] text-slate-400 mt-0.5 truncate uppercase tracking-wider font-semibold">{member.role}</p>
+                                                <p className="text-xs font-bold text-black dark:text-white leading-tight truncate">{member.name}</p>
+                                                <p className="text-[9px] text-black dark:text-slate-400 mt-0.5 truncate uppercase tracking-wider font-semibold">{member.role}</p>
                                             </div>
                                             <div className="flex items-center gap-2 flex-shrink-0">
                                                 <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-600/50">
                                                     <StatusDot status={member.status} />
-                                                    <span className="hidden sm:inline text-[9px] font-bold text-slate-500 dark:text-slate-400 capitalize uppercase tracking-wide">{member.status}</span>
+                                                    <span className="hidden sm:inline text-[9px] font-bold text-black dark:text-slate-400 capitalize uppercase tracking-wide">{member.status}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -3221,28 +3256,28 @@ const Dashboard = () => {
                     {/* ── Due & Follow-Up Alerts (next 5 days) ── */}
                     {!isOpsOrAccounts && !isMarketing && (
                     <div className="grid grid-cols-1 gap-4 sm:gap-5">
-                        <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm">
+                        <div className="bg-slate-100 dark:bg-[#111827] border border-amber-200/60 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm">
                             <div className="flex justify-between items-center mb-4">
                                 <div className="flex items-center gap-2.5">
                                     <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 flex-shrink-0">
                                         <AlarmClock size={16} />
                                     </div>
                                     <div>
-                                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Due & Follow-Up Alerts</h2>
-                                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Sales, Ops, Fulfillment &amp; Accounts · next 5 days</p>
+                                        <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Due & Follow-Up Alerts</h2>
+                                        <p className="text-[10px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Sales, Ops, Fulfillment &amp; Accounts · next 5 days</p>
                                     </div>
                                 </div>
                                 <span className="bg-amber-500/10 text-amber-500 px-3 py-1 rounded-xl text-[10px] font-bold border border-amber-500/20 uppercase tracking-wide">{dueSoonAlerts.length} Alert{dueSoonAlerts.length !== 1 ? 's' : ''}</span>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2.5 max-h-[280px] overflow-y-auto custom-scrollbar">
                                 {dueSoonAlerts.length === 0 ? (
-                                    <div className="col-span-full text-center py-8 text-slate-400 text-xs">Nothing due or following up in the next 5 days.</div>
+                                    <div className="col-span-full text-center py-8 text-black dark:text-slate-300 text-xs">Nothing due or following up in the next 5 days.</div>
                                 ) : (
                                     dueSoonAlerts.map(alert => (
                                         <div key={alert.id} className="flex flex-wrap items-start justify-between gap-2 bg-amber-50 dark:bg-amber-500/5 border border-amber-100 dark:border-amber-500/10 p-3 rounded-xl hover:bg-amber-100/80 dark:hover:bg-amber-500/10 transition-colors">
                                             <div className="min-w-0 flex-1">
-                                                <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{alert.title}</p>
-                                                <p className="text-[9px] text-slate-500 dark:text-slate-400 mt-0.5 uppercase tracking-wide truncate">{alert.category} · <span className="font-bold text-slate-700 dark:text-slate-300">{alert.date}</span></p>
+                                                <p className="text-xs font-bold text-black dark:text-slate-200 truncate">{alert.title}</p>
+                                                <p className="text-[9px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wide truncate">{alert.category} · <span className="font-bold text-black dark:text-slate-300">{alert.date}</span></p>
                                             </div>
                                             <span className={`text-[9px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide flex-shrink-0 ${alert.daysLeft <= 1 ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'}`}>
                                                 {alert.daysLeft < 0 ? `${Math.abs(alert.daysLeft)}d overdue` : alert.daysLeft === 0 ? 'Today' : `${alert.daysLeft}d left`}
@@ -3259,11 +3294,11 @@ const Dashboard = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
                         {/* ── LEAVE DASHBOARD (EMPLOYEES ONLY) ── */}
                         {isSalesOrOps && !isOpsOrAccounts && (
-                            <div className="bg-white dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
+                            <div className="bg-slate-100 dark:bg-[#111827] border border-slate-200/80 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col lg:col-span-1">
                                 <div className="flex justify-between items-center mb-4">
                                     <div>
-                                        <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">My Leaves</h2>
-                                        <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Track your applications</p>
+                                        <h2 className="text-base font-bold text-black dark:text-white tracking-tight">My Leaves</h2>
+                                        <p className="text-[10px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Track your applications</p>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button type="button" onClick={() => setAllLeavesModalOpen(true)} className="px-3 py-1.5 text-[11px] font-bold text-blue-600 dark:text-blue-400 border border-blue-500/20 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-500/10 transition-colors bg-blue-50/50 dark:bg-transparent">View All</button>
@@ -3275,14 +3310,14 @@ const Dashboard = () => {
 
                                 <div className="space-y-2 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
                                     {leaves.length === 0 ? (
-                                        <div className="text-center py-8 text-slate-400 text-xs">No leave history found.</div>
+                                        <div className="text-center py-8 text-black dark:text-slate-300 text-xs">No leave history found.</div>
                                     ) : (
                                         leaves.slice(0, 3).map(leave => (
                                             <div key={leave.id} className="p-3 rounded-xl border border-slate-100 dark:border-slate-600/50 bg-slate-50 dark:bg-slate-800/30 flex justify-between items-center">
                                                 <div>
-                                                    <p className="text-xs font-bold text-slate-700 dark:text-slate-200">{leave.startDate} to {leave.endDate || 'N/A'}</p>
-                                                <p className="text-[10px] text-slate-500 mt-1 truncate max-w-[150px]">
-            <span className="font-semibold text-slate-600 dark:text-slate-300">{leave.leaveType || 'Leave'}</span> • {leave.reason}
+                                                    <p className="text-xs font-bold text-black dark:text-slate-200">{leave.startDate} to {leave.endDate || 'N/A'}</p>
+                                                <p className="text-[10px] text-black dark:text-slate-300 mt-1 truncate max-w-[150px]">
+            <span className="font-semibold text-black dark:text-slate-300">{leave.leaveType || 'Leave'}</span> • {leave.reason}
         </p>
                                                 </div>
                                                 <span className={`text-[10px] font-bold px-2 py-1 rounded-lg border uppercase tracking-wide flex-shrink-0 ${
@@ -3301,15 +3336,15 @@ const Dashboard = () => {
 
                         {/* ── LEAVE APPROVAL DASHBOARD (ADMIN ONLY) ── */}
                         {isAdmin && (
-                            <div className="bg-white dark:bg-[#111827] border border-amber-200/60 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
+                            <div className="bg-slate-100 dark:bg-[#111827] border border-amber-200/60 dark:border-slate-600/50 rounded-2xl p-4 sm:p-5 shadow-sm lg:col-span-1">
                                 <div className="flex justify-between items-center mb-4">
                                     <div className="flex items-center gap-2.5">
                                         <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 flex-shrink-0">
                                             <AlertCircle size={16} />
                                         </div>
                                         <div>
-                                            <h2 className="text-base font-bold text-slate-800 dark:text-white tracking-tight">Team Leaves</h2>
-                                            <p className="text-[10px] text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Admin Overview</p>
+                                            <h2 className="text-base font-bold text-black dark:text-white tracking-tight">Team Leaves</h2>
+                                            <p className="text-[10px] text-black dark:text-slate-400 mt-0.5 uppercase tracking-wider font-semibold">Admin Overview</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -3320,7 +3355,7 @@ const Dashboard = () => {
                                 
                                 <div className="space-y-2.5 overflow-y-auto max-h-[250px] custom-scrollbar pr-1">
                                     {leaves.length === 0 ? (
-                                        <div className="text-center py-8 text-slate-400 text-xs">No leave requests found.</div>
+                                        <div className="text-center py-8 text-black dark:text-slate-300 text-xs">No leave requests found.</div>
                                     ) : (
                                         leaves.slice(0, 3).map(leave => (
                                             <div key={leave.id} className={`p-3 border rounded-xl transition-colors ${
@@ -3329,12 +3364,12 @@ const Dashboard = () => {
                                             }`}>
                                                 <div className="flex justify-between items-start mb-2">
                                                     <div>
-                                                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                                                            {leave.employeeName} <span className="font-normal text-slate-500 text-[10px]">({leave.employeeId})</span>
+                                                        <p className="text-xs font-bold text-black dark:text-slate-200">
+                                                            {leave.employeeName} <span className="font-normal text-black dark:text-slate-300 text-[10px]">({leave.employeeId})</span>
                                                         </p>
-                                                        <div className="text-[9px] text-slate-500 dark:text-slate-400 mt-1 font-mono space-y-0.5">
+                                                        <div className="text-[9px] text-black dark:text-slate-400 mt-1 font-mono space-y-0.5">
                                                             <p>
-                                                                <span className="font-bold text-slate-600 dark:text-slate-300">{leave.leaveType || 'Leave'}</span>
+                                                                <span className="font-bold text-black dark:text-slate-300">{leave.leaveType || 'Leave'}</span>
                                                                 {leave.leaveType === 'Leave' && leave.totalDays && ` • ${leave.totalDays} Days`}
                                                             </p>
                                                             <p>
@@ -3357,16 +3392,16 @@ const Dashboard = () => {
                                                     </span>
                                                 </div>
                                                 
-                                                <div className="text-[10px] text-slate-600 dark:text-slate-300 mb-3 bg-white dark:bg-[#0d1526] p-2.5 rounded-lg border border-slate-100 dark:border-slate-600/60 space-y-2">
-                                                    <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Reason</span> {leave.reason}</p>
+                                                <div className="text-[10px] text-black dark:text-slate-300 mb-3 bg-slate-100 dark:bg-[#0d1526] p-2.5 rounded-lg border border-slate-100 dark:border-slate-600/60 space-y-2">
+                                                    <p><span className="font-bold text-black dark:text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Reason</span> {leave.reason}</p>
                                                     
                                                     {(leave.handoverTo || leave.handoverNotes) && (
                                                         <div className="pt-2 border-t border-slate-100 dark:border-slate-600/60 space-y-2">
                                                             {leave.handoverTo && (
-                                                                <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Handover To</span> {leave.handoverTo}</p>
+                                                                <p><span className="font-bold text-black dark:text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Handover To</span> {leave.handoverTo}</p>
                                                             )}
                                                             {leave.handoverNotes && (
-                                                                <p><span className="font-bold text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Handover Notes</span> {leave.handoverNotes}</p>
+                                                                <p><span className="font-bold text-black dark:text-slate-400 uppercase tracking-wider text-[8px] block mb-0.5">Handover Notes</span> {leave.handoverNotes}</p>
                                                             )}
                                                         </div>
                                                     )}
@@ -3397,14 +3432,14 @@ const Dashboard = () => {
                     <button
                         type="button"
                         onClick={() => setPaymentLedgerTab('in')}
-                        className={`flex-1 text-center py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-colors cursor-pointer border ${paymentLedgerTab === 'in' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 text-slate-400'}`}
+                        className={`flex-1 text-center py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-colors cursor-pointer border ${paymentLedgerTab === 'in' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 text-black dark:text-slate-400'}`}
                     >
                         Money In · ₹{payments.totalIn.toLocaleString('en-IN')}
                     </button>
                     <button
                         type="button"
                         onClick={() => setPaymentLedgerTab('out')}
-                        className={`flex-1 text-center py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-colors cursor-pointer border ${paymentLedgerTab === 'out' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 text-slate-400'}`}
+                        className={`flex-1 text-center py-2 rounded-xl text-xs font-bold uppercase tracking-wide transition-colors cursor-pointer border ${paymentLedgerTab === 'out' ? 'bg-rose-500/10 border-rose-500/30 text-rose-400' : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 text-black dark:text-slate-400'}`}
                     >
                         Money Out · ₹{payments.totalOut.toLocaleString('en-IN')}
                     </button>
@@ -3412,44 +3447,44 @@ const Dashboard = () => {
                 <div className="max-h-[60vh] overflow-y-auto space-y-2.5 pr-1 custom-scrollbar">
                     {paymentLedgerTab === 'in' ? (
                         moneyInEntries.length === 0 ? (
-                            <p className="text-slate-500 text-center py-10 text-sm">No booking confirmation payments logged yet.</p>
+                            <p className="text-black dark:text-slate-300 text-center py-10 text-sm">No booking confirmation payments logged yet.</p>
                         ) : (
                             moneyInEntries.map(entry => (
                                 <div key={entry.id} onClick={() => setSelectedPaymentLead(entry.rawLead)} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-600/50 bg-slate-50 dark:bg-[#0d1526] space-y-2 hover:border-emerald-500/30 hover:shadow-sm transition-all cursor-pointer">
                                     <div className="flex justify-between items-start gap-3">
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{entry.customerName}</p>
-                                            <p className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-1 truncate">
-                                                <MapPin size={11} className="text-violet-400" /> {entry.destination} <span className="text-slate-300 dark:text-slate-600">·</span> <span className="font-mono bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded-lg text-[9px]">LMN{entry.leadId}</span>
+                                            <p className="text-sm font-bold text-black dark:text-slate-200 truncate">{entry.customerName}</p>
+                                            <p className="text-[10px] text-black dark:text-slate-300 flex items-center gap-1.5 mt-1 truncate">
+                                                <MapPin size={11} className="text-violet-400" /> {entry.destination} <span className="text-black dark:text-slate-600">·</span> <span className="font-mono bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded-lg text-[9px]">LMN{entry.leadId}</span>
                                             </p>
                                         </div>
                                         <span className="text-sm font-bold text-emerald-500 font-mono flex-shrink-0">₹{entry.amount.toLocaleString('en-IN')}</span>
                                     </div>
                                     <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-600/50 text-[11px]">
-                                        <span className="text-slate-400">{entry.service || 'Booking payment'}{entry.mode ? ` · ${entry.mode}` : ''}</span>
-                                        <span className="text-slate-400 font-mono">{entry.date || '—'}</span>
+                                        <span className="text-black dark:text-slate-300">{entry.service || 'Booking payment'}{entry.mode ? ` · ${entry.mode}` : ''}</span>
+                                        <span className="text-black dark:text-slate-300 font-mono">{entry.date || '—'}</span>
                                     </div>
                                 </div>
                             ))
                         )
                     ) : (
                         moneyOutEntries.length === 0 ? (
-                            <p className="text-slate-500 text-center py-10 text-sm">No vendor payments recorded yet.</p>
+                            <p className="text-black dark:text-slate-300 text-center py-10 text-sm">No vendor payments recorded yet.</p>
                         ) : (
                             moneyOutEntries.map(entry => (
                                 <div key={entry.id} onClick={() => setSelectedPaymentLead(entry.rawLead)} className="p-4 rounded-2xl border border-slate-100 dark:border-slate-600/50 bg-slate-50 dark:bg-[#0d1526] space-y-2 hover:border-rose-500/30 hover:shadow-sm transition-all cursor-pointer">
                                     <div className="flex justify-between items-start gap-3">
                                         <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-bold text-slate-800 dark:text-slate-200 truncate">{entry.customerName}</p>
-                                            <p className="text-[10px] text-slate-500 flex items-center gap-1.5 mt-1 truncate">
-                                                <MapPin size={11} className="text-violet-400" /> {entry.destination} <span className="text-slate-300 dark:text-slate-600">·</span> <span className="font-mono bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded-lg text-[9px]">LMN{entry.leadId}</span>
+                                            <p className="text-sm font-bold text-black dark:text-slate-200 truncate">{entry.customerName}</p>
+                                            <p className="text-[10px] text-black dark:text-slate-300 flex items-center gap-1.5 mt-1 truncate">
+                                                <MapPin size={11} className="text-violet-400" /> {entry.destination} <span className="text-black dark:text-slate-600">·</span> <span className="font-mono bg-slate-200 dark:bg-slate-800 px-1.5 py-0.5 rounded-lg text-[9px]">LMN{entry.leadId}</span>
                                             </p>
                                         </div>
                                         <span className="text-sm font-bold text-rose-400 font-mono flex-shrink-0">₹{entry.amount.toLocaleString('en-IN')}</span>
                                     </div>
                                     <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-600/50 text-[11px]">
-                                        <span className="text-slate-400 truncate">{entry.provider}{entry.service ? ` · ${entry.service}` : ''}</span>
-                                        <span className="text-slate-400 font-mono flex-shrink-0">{entry.date || '—'}</span>
+                                        <span className="text-black dark:text-slate-300 truncate">{entry.provider}{entry.service ? ` · ${entry.service}` : ''}</span>
+                                        <span className="text-black dark:text-slate-300 font-mono flex-shrink-0">{entry.date || '—'}</span>
                                     </div>
                                 </div>
                             ))
@@ -3457,7 +3492,7 @@ const Dashboard = () => {
                     )}
                 </div>
                 <div className="mt-5 flex justify-end">
-                    <button onClick={() => setPaymentModalOpen(false)} className="px-6 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 font-semibold text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">Close</button>
+                    <button onClick={() => setPaymentModalOpen(false)} className="px-6 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-black dark:text-slate-300 font-semibold text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700">Close</button>
                 </div>
             </Modal>
 
@@ -3476,7 +3511,7 @@ const Dashboard = () => {
                             className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wide transition-colors border ${
                                 topDestFilter === f.id
                                     ? 'bg-amber-500/15 border-amber-500/40 text-amber-500'
-                                    : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+                                    : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-600/50 text-black dark:text-slate-400 hover:text-black dark:hover:text-slate-300'
                             }`}
                         >
                             {f.label}
@@ -3485,7 +3520,7 @@ const Dashboard = () => {
                 </div>
                 <div className="max-h-[60vh] overflow-y-auto space-y-2 pr-1 custom-scrollbar">
                     {filteredTopDestinations.length === 0 ? (
-                        <p className="text-slate-500 text-center py-10 text-sm">No destination data {topDestFilter === 'today' ? 'for today' : topDestFilter === 'week' ? 'for this week' : topDestFilter === 'month' ? 'for this month' : ''} yet.</p>
+                        <p className="text-black dark:text-slate-300 text-center py-10 text-sm">No destination data {topDestFilter === 'today' ? 'for today' : topDestFilter === 'week' ? 'for this week' : topDestFilter === 'month' ? 'for this month' : ''} yet.</p>
                     ) : (
                         filteredTopDestinations.map((dest, idx) => (
                             <div 
@@ -3498,9 +3533,9 @@ const Dashboard = () => {
                             >
                                 <div className="flex items-center gap-3 min-w-0 pr-3">
                                     <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold flex-shrink-0 text-xs border border-amber-500/15">{idx + 1}</div>
-                                    <span className="font-bold text-slate-700 dark:text-slate-200 text-sm truncate">{dest.name}</span>
+                                    <span className="font-bold text-black dark:text-slate-200 text-sm truncate">{dest.name}</span>
                                 </div>
-                                <span className="font-bold font-mono text-slate-800 dark:text-white flex-shrink-0 text-sm">{dest.count} <span className="text-slate-400 text-xs font-normal">leads</span></span>
+                                <span className="font-bold font-mono text-black dark:text-white flex-shrink-0 text-sm">{dest.count} <span className="text-black dark:text-slate-300 text-xs font-normal">leads</span></span>
                             </div>
                         ))
                     )}
@@ -3513,18 +3548,18 @@ const Dashboard = () => {
             >
                 <div className="space-y-2.5 overflow-y-auto max-h-[55vh] pr-1 custom-scrollbar">
                     {regionModal.tripsList.length === 0 ? (
-                        <p className="text-slate-500 text-center py-10 text-sm">No metrics available for this category right now.</p>
+                        <p className="text-black dark:text-slate-300 text-center py-10 text-sm">No metrics available for this category right now.</p>
                     ) : (
                         regionModal.tripsList.map((trip, idx) => (
                             <div key={idx} onClick={() => setSelectedLeadDetails(trip)} className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 p-3.5 rounded-2xl border border-slate-100 dark:border-slate-600/50 bg-slate-50 dark:bg-slate-800/30 hover:bg-slate-100 dark:hover:bg-slate-800/60 transition-colors cursor-pointer hover:border-violet-500/20">
                                 <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2.5">
                                         <span className="bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold text-violet-400 whitespace-nowrap">{trip.jobId || `LMN${trip.id}`}</span>
-                                        <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm truncate">{trip.customerName || trip.profileName || 'Unknown'}</h4>
+                                        <h4 className="font-bold text-black dark:text-slate-200 text-sm truncate">{trip.customerName || trip.profileName || 'Unknown'}</h4>
                                     </div>
-                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-2 flex items-center gap-1.5">
+                                    <p className="text-[10px] text-black dark:text-slate-400 mt-2 flex items-center gap-1.5">
                                         {isIndiaDestination(trip.destination) ? <MapPin size={11} className="text-orange-400" /> : <Globe size={11} className="text-cyan-400" />}
-                                        <span className="font-semibold text-slate-600 dark:text-slate-300">{trip.destination || 'N/A'}</span>
+                                        <span className="font-semibold text-black dark:text-slate-300">{trip.destination || 'N/A'}</span>
                                     </p>
                                 </div>
                             </div>
@@ -3533,7 +3568,7 @@ const Dashboard = () => {
                 </div>
                 <button 
                     onClick={() => setRegionModal(prev => ({ ...prev, open: false }))} 
-                    className="w-full mt-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 font-semibold text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
+                    className="w-full mt-5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-black dark:text-slate-300 font-semibold text-sm transition-colors hover:bg-slate-200 dark:hover:bg-slate-700"
                 >
                     Dismiss Window
                 </button>
@@ -3552,40 +3587,40 @@ const Dashboard = () => {
                         <div className="flex flex-col h-full space-y-4">
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-600/50">
                                 <div>
-                                    <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wide mb-1">Total Package</p>
-                                    <p className="text-sm font-bold text-slate-800 dark:text-white">₹{(selectedPaymentLead.computedPackageCost || selectedPaymentLead.totalPackageCost || selectedPaymentLead.packageCost || 0).toLocaleString('en-IN')}</p>
+                                    <p className="text-[9px] text-black dark:text-slate-400 uppercase font-bold tracking-wide mb-1">Total Package</p>
+                                    <p className="text-sm font-bold text-black dark:text-white">₹{(selectedPaymentLead.computedPackageCost || selectedPaymentLead.totalPackageCost || selectedPaymentLead.packageCost || 0).toLocaleString('en-IN')}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wide mb-1">Total Received</p>
+                                    <p className="text-[9px] text-black dark:text-slate-400 uppercase font-bold tracking-wide mb-1">Total Received</p>
                                     <p className="text-sm font-bold text-emerald-500">₹{(selectedPaymentLead.computedTotalReceived || selectedPaymentLead.amountReceived || 0).toLocaleString('en-IN')}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wide mb-1">Pending Balance</p>
+                                    <p className="text-[9px] text-black dark:text-slate-400 uppercase font-bold tracking-wide mb-1">Pending Balance</p>
                                     <p className="text-sm font-bold text-amber-500">₹{(selectedPaymentLead.computedBalancePending || Math.max(0, (selectedPaymentLead.totalPackageCost || selectedPaymentLead.packageCost || 0) - (selectedPaymentLead.amountReceived || 0))).toLocaleString('en-IN')}</p>
                                 </div>
                                 <div>
-                                    <p className="text-[9px] text-slate-400 uppercase font-bold tracking-wide mb-1">Status</p>
+                                    <p className="text-[9px] text-black dark:text-slate-400 uppercase font-bold tracking-wide mb-1">Status</p>
                                     <p className="text-sm font-bold text-cyan-500">{selectedPaymentLead.paymentStatus || 'Pending'}</p>
                                 </div>
                             </div>
 
                             <div className="space-y-3">
-                                <h4 className="text-xs font-bold text-slate-600 dark:text-slate-400 border-b border-slate-100 dark:border-slate-600/50 pb-2 uppercase tracking-widest">Transaction Ledger</h4>
+                                <h4 className="text-xs font-bold text-black dark:text-slate-400 border-b border-slate-100 dark:border-slate-600/50 pb-2 uppercase tracking-widest">Transaction Ledger</h4>
                                 <div className="max-h-[40vh] overflow-y-auto custom-scrollbar pr-2 space-y-2">
                                     {historyList.length === 0 ? (
-                                        <p className="text-sm text-slate-500 text-center py-6">No individual payment transactions recorded yet.</p>
+                                        <p className="text-sm text-black dark:text-slate-300 text-center py-6">No individual payment transactions recorded yet.</p>
                                     ) : (
                                         historyList.map((txn, idx) => (
-                                            <div key={idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 rounded-xl bg-white dark:bg-[#0d1526] border border-slate-100 dark:border-slate-600/50 gap-3">
+                                            <div key={idx} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 rounded-xl bg-slate-100 dark:bg-[#0d1526] border border-slate-100 dark:border-slate-600/50 gap-3">
                                                 <div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-sm text-slate-800 dark:text-white">₹{Number(txn.amount || 0).toLocaleString('en-IN')}</span>
-                                                        <span className="text-[9px] px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-700/60 text-slate-500 dark:text-slate-400 font-mono font-bold">{txn.mode || 'N/A'}</span>
+                                                        <span className="font-bold text-sm text-black dark:text-white">₹{Number(txn.amount || 0).toLocaleString('en-IN')}</span>
+                                                        <span className="text-[9px] px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-slate-700/60 text-black dark:text-slate-400 font-mono font-bold">{txn.mode || 'N/A'}</span>
                                                     </div>
-                                                    <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-wide">For: {txn.service || 'Package'} · Txn: {txn.txnId || 'N/A'}</p>
+                                                    <p className="text-[10px] text-black dark:text-slate-400 mt-1 uppercase tracking-wide">For: {txn.service || 'Package'} · Txn: {txn.txnId || 'N/A'}</p>
                                                 </div>
                                                 <div className="text-right">
-                                                    <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{txn.date}</p>
+                                                    <p className="text-[10px] font-bold text-black dark:text-slate-400 uppercase tracking-wide">{txn.date}</p>
                                                 </div>
                                             </div>
                                         ))
@@ -3593,7 +3628,7 @@ const Dashboard = () => {
                                 </div>
                             </div>
                             <div className="mt-4 flex justify-end">
-                                <button onClick={() => setSelectedPaymentLead(null)} className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors">Close</button>
+                                <button onClick={() => setSelectedPaymentLead(null)} className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-black dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors">Close</button>
                             </div>
                         </div>
                     );
@@ -3607,25 +3642,25 @@ const Dashboard = () => {
                             {selectedMember.initials}
                         </div>
                         <div>
-                            <h3 className="text-lg font-bold text-slate-800 dark:text-white tracking-tight">{selectedMember.name}</h3>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{selectedMember.role || 'Agent'}</p>
+                            <h3 className="text-lg font-bold text-black dark:text-white tracking-tight">{selectedMember.name}</h3>
+                            <p className="text-[10px] font-bold text-black dark:text-slate-400 uppercase tracking-widest mt-1">{selectedMember.role || 'Agent'}</p>
                         </div>
                         <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-600/50">
                             <StatusDot status={selectedMember.status} />
-                            <span className="text-xs font-bold text-slate-600 dark:text-slate-300 capitalize uppercase tracking-wide">{selectedMember.status || 'Offline'}</span>
+                            <span className="text-xs font-bold text-black dark:text-slate-300 capitalize uppercase tracking-wide">{selectedMember.status || 'Offline'}</span>
                         </div>
                         <div className="w-full text-left space-y-3 mt-3 pt-4 border-t border-slate-100 dark:border-slate-600/50">
                             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50">
-                                <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-widest mb-1">Employee ID</span>
-                                <span className="text-sm font-bold text-slate-700 dark:text-slate-200 font-mono">{selectedMember.id || selectedMember.employeeId || 'N/A'}</span>
+                                <span className="block text-[9px] uppercase font-bold text-black dark:text-slate-400 tracking-widest mb-1">Employee ID</span>
+                                <span className="text-sm font-bold text-black dark:text-slate-200 font-mono">{selectedMember.id || selectedMember.employeeId || 'N/A'}</span>
                             </div>
                             <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-600/50">
-                                <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-widest mb-1">Last Active</span>
-                                <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{selectedMember.lastActive ? new Date(selectedMember.lastActive).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'Unknown'}</span>
+                                <span className="block text-[9px] uppercase font-bold text-black dark:text-slate-400 tracking-widest mb-1">Last Active</span>
+                                <span className="text-sm font-semibold text-black dark:text-slate-200">{selectedMember.lastActive ? new Date(selectedMember.lastActive).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : 'Unknown'}</span>
                             </div>
                         </div>
                         <div className="w-full mt-2">
-                            <button onClick={() => setSelectedMember(null)} className="w-full px-6 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-sm font-semibold transition-colors">Dismiss</button>
+                            <button onClick={() => setSelectedMember(null)} className="w-full px-6 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-black dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 text-sm font-semibold transition-colors">Dismiss</button>
                         </div>
                     </div>
                 )}
@@ -3645,8 +3680,8 @@ const Dashboard = () => {
                                     { label: 'Source', value: `${selectedLeadDetails.platform || 'Direct'} / ${selectedLeadDetails.campaign || 'Organic'}` },
                                 ].map(({ label, value }) => (
                                     <div key={label}>
-                                        <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-widest mb-0.5">{label}</span>
-                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{value}</span>
+                                        <span className="block text-[9px] uppercase font-bold text-black dark:text-slate-400 tracking-widest mb-0.5">{label}</span>
+                                        <span className="text-sm font-semibold text-black dark:text-slate-200">{value}</span>
                                     </div>
                                 ))}
                             </div>
@@ -3660,8 +3695,8 @@ const Dashboard = () => {
                                     { label: 'Package Type', value: selectedLeadDetails.packageType || selectedLeadDetails.tourType || 'Custom' },
                                 ].map(({ label, value }) => (
                                     <div key={label}>
-                                        <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-widest mb-0.5">{label}</span>
-                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{value}</span>
+                                        <span className="block text-[9px] uppercase font-bold text-black dark:text-slate-400 tracking-widest mb-0.5">{label}</span>
+                                        <span className="text-sm font-semibold text-black dark:text-slate-200">{value}</span>
                                     </div>
                                 ))}
                             </div>
@@ -3675,8 +3710,8 @@ const Dashboard = () => {
                                     { label: 'Last Modified', value: new Date(selectedLeadDetails.updatedAt).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) },
                                 ].map(({ label, value }) => (
                                     <div key={label}>
-                                        <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-widest mb-0.5">{label}</span>
-                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{value}</span>
+                                        <span className="block text-[9px] uppercase font-bold text-black dark:text-slate-400 tracking-widest mb-0.5">{label}</span>
+                                        <span className="text-sm font-semibold text-black dark:text-slate-200">{value}</span>
                                     </div>
                                 ))}
                             </div>
@@ -3690,8 +3725,8 @@ const Dashboard = () => {
                                     { label: 'Payment Status', value: selectedLeadDetails.paymentStatus || 'Pending' },
                                 ].map(({ label, value }) => (
                                     <div key={label}>
-                                        <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-widest mb-0.5">{label}</span>
-                                        <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">{value}</span>
+                                        <span className="block text-[9px] uppercase font-bold text-black dark:text-slate-400 tracking-widest mb-0.5">{label}</span>
+                                        <span className="text-sm font-semibold text-black dark:text-slate-200">{value}</span>
                                     </div>
                                 ))}
                             </div>
@@ -3700,8 +3735,8 @@ const Dashboard = () => {
                                 <h4 className="font-bold text-pink-500 border-b border-slate-100 dark:border-slate-600/50 pb-2.5 flex items-center gap-2 text-xs uppercase tracking-widest"><MessageSquare size={13}/> Lead Message & Internal Notes</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
-                                        <span className="block text-[9px] uppercase font-bold text-slate-400 tracking-widest mb-1.5">Customer Message</span>
-                                        <p className="whitespace-pre-wrap text-xs text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-600/50 leading-relaxed">
+                                        <span className="block text-[9px] uppercase font-bold text-black dark:text-slate-400 tracking-widest mb-1.5">Customer Message</span>
+                                        <p className="whitespace-pre-wrap text-xs text-black dark:text-slate-300 bg-slate-100 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-600/50 leading-relaxed">
                                             {selectedLeadDetails.leadMessage || selectedLeadDetails.messageFromLead || 'No direct message provided.'}
                                         </p>
                                     </div>
@@ -3711,7 +3746,7 @@ const Dashboard = () => {
 
                         </div>
                         <div className="mt-5 pt-4 border-t border-slate-100 dark:border-slate-600/50 flex justify-end">
-                            <button onClick={() => setSelectedLeadDetails(null)} className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors">
+                            <button onClick={() => setSelectedLeadDetails(null)} className="px-6 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600/60 text-black dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-sm font-semibold transition-colors">
                                 Close 
                             </button>
                         </div>
@@ -3719,41 +3754,70 @@ const Dashboard = () => {
                 )}
             </Modal>
 
-            {isChatOpen && (
-                <div className="fixed inset-0 sm:inset-auto sm:top-10 sm:bottom-auto sm:left-auto sm:right-6 w-full sm:w-[460px] h-full sm:h-[75vh] bg-[#0d1526] sm:border border-slate-700/50 rounded-none sm:rounded-2xl shadow-[0_32px_64px_-8px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col z-[150]">
-                    <div className="bg-gradient-to-r from-teal-600 to-teal-500 px-4 sm:px-5 py-3.5 flex justify-between items-center text-white shadow-lg">
-                        <div className="flex items-center gap-2.5">
-                            <div className="p-1.5 rounded-xl bg-white/15">
-                                <Bot size={16}/>
+            <AnimatePresence>
+                {isChatOpen && (
+                    <motion.div
+                        key="chat-panel"
+                        initial={{ opacity: 0, y: 24, scale: 0.96 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 24, scale: 0.96 }}
+                        transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                        className="fixed inset-0 sm:inset-auto sm:top-10 sm:bottom-auto sm:left-auto sm:right-6 w-full sm:w-[460px] h-full sm:h-[75vh] bg-[#0d1526] sm:border border-slate-700/50 rounded-none sm:rounded-2xl shadow-[0_32px_64px_-8px_rgba(0,0,0,0.6)] overflow-hidden flex flex-col z-[150]"
+                    >
+                        <div className="bg-gradient-to-r from-teal-600 to-teal-500 px-4 sm:px-5 py-3.5 flex justify-between items-center text-white shadow-lg">
+                            <div className="flex items-center gap-2.5">
+                                <div className="p-1.5 rounded-xl bg-white/15">
+                                    <Bot size={16}/>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-sm tracking-tight">Travel </h3>
+                                    <p className="text-[9px] text-teal-100/80 uppercase tracking-widest font-semibold">Intelligence Engine</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="font-bold text-sm tracking-tight">Travel </h3>
-                                <p className="text-[9px] text-teal-100/80 uppercase tracking-widest font-semibold">Intelligence Engine</p>
-                            </div>
+                            <button onClick={() => setIsChatOpen(false)} className="p-1.5 hover:bg-white/15 rounded-xl transition-colors"><X size={16}/></button>
                         </div>
-                        <button onClick={() => setIsChatOpen(false)} className="p-1.5 hover:bg-white/15 rounded-xl transition-colors"><X size={16}/></button>
-                    </div>
-                    <div className="flex-1 p-3.5 sm:p-4 overflow-y-auto bg-[#0E172B] flex flex-col gap-3 custom-scrollbar">
-                       {chatMessages.map((msg, idx) => (
-                        <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-xs whitespace-pre-wrap leading-relaxed ${msg.role === 'user' ? 'bg-teal-600 text-white rounded-br-sm' : 'bg-slate-800/80 text-slate-200 border border-slate-700/40 rounded-bl-sm'}`}>{msg.text}</div>
+                        <div className="flex-1 p-3.5 sm:p-4 overflow-y-auto bg-[#0E172B] flex flex-col gap-3 custom-scrollbar">
+                           <AnimatePresence initial={false}>
+                           {chatMessages.map((msg, idx) => (
+                            <motion.div
+                                key={idx}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ duration: 0.2 }}
+                                className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                            >
+                                <div className={`max-w-[88%] rounded-2xl px-3.5 py-2.5 text-xs whitespace-pre-wrap leading-relaxed ${msg.role === 'user' ? 'bg-teal-600 text-white rounded-br-sm' : 'bg-slate-800/80 text-black dark:text-slate-300 border border-slate-700/40 rounded-bl-sm'}`}>{msg.text}</div>
+                            </motion.div>
+                            ))}
+                           </AnimatePresence>
+                            {isChatLoading && <div className="text-[10px] text-black dark:text-slate-400 flex items-center gap-2 px-2 uppercase tracking-wide"><Loader2 className="animate-spin" size={11} /> Syncing context...</div>}
+                            <div ref={messagesEndRef} />
                         </div>
-                        ))}
-                        {isChatLoading && <div className="text-[10px] text-slate-500 flex items-center gap-2 px-2 uppercase tracking-wide"><Loader2 className="animate-spin" size={11} /> Syncing context...</div>}
-                        <div ref={messagesEndRef} />
-                    </div>
-                    <form onSubmit={handleSendChatMessage} className="p-3 bg-slate-900/80 border-t border-slate-700/40 flex gap-2.5 backdrop-blur-sm">
-                        <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Query sales target status or notes..." className="flex-1 bg-slate-800/80 border border-slate-700/50 focus:border-teal-500/70 focus:ring-1 focus:ring-teal-500/30 rounded-xl px-3.5 py-2.5 text-white text-xs outline-none transition-all placeholder-slate-600" />
-                        <button type="submit" disabled={!chatInput.trim()} className="bg-teal-600 hover:bg-teal-500 disabled:bg-slate-800 disabled:text-slate-600 text-white px-4 rounded-xl transition-colors flex items-center justify-center flex-shrink-0"><Send size={14}/></button>
-                    </form>
-                </div>
-            )}
+                        <form onSubmit={handleSendChatMessage} className="p-3 bg-slate-900/80 border-t border-slate-700/40 flex gap-2.5 backdrop-blur-sm">
+                            <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Query sales target status or notes..." className="flex-1 bg-slate-800/80 border border-slate-700/50 focus:border-teal-500/70 focus:ring-1 focus:ring-teal-500/30 rounded-xl px-3.5 py-2.5 text-white text-xs outline-none transition-all placeholder-slate-600" />
+                            <button type="submit" disabled={!chatInput.trim()} className="bg-teal-600 hover:bg-teal-500 disabled:bg-slate-800 disabled:text-black dark:disabled:text-slate-300 text-white px-4 rounded-xl transition-colors flex items-center justify-center flex-shrink-0"><Send size={14}/></button>
+                        </form>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
-            {!isChatOpen && (
-                <button onClick={() => setIsChatOpen(true)} className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 p-3.5 rounded-2xl text-white bg-teal-600 hover:bg-teal-500 shadow-[0_8px_32px_-4px_rgba(20,184,166,0.4)] hover:shadow-[0_8px_32px_-4px_rgba(20,184,166,0.6)] hover:scale-105 active:scale-95 transition-all z-50">
-                    <MessageSquare size={20} />
-                </button>
-            )}
+            <AnimatePresence>
+                {!isChatOpen && (
+                    <motion.button
+                        key="chat-fab"
+                        onClick={() => setIsChatOpen(true)}
+                        initial={{ opacity: 0, scale: 0.6 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.6 }}
+                        transition={{ type: "spring", stiffness: 400, damping: 22 }}
+                        whileHover={{ scale: 1.08 }}
+                        whileTap={{ scale: 0.92 }}
+                        className="fixed bottom-5 right-5 sm:bottom-6 sm:right-6 p-3.5 rounded-2xl text-white bg-teal-600 hover:bg-teal-500 shadow-[0_8px_32px_-4px_rgba(20,184,166,0.4)] hover:shadow-[0_8px_32px_-4px_rgba(20,184,166,0.6)] transition-colors z-50"
+                    >
+                        <MessageSquare size={20} />
+                    </motion.button>
+                )}
+            </AnimatePresence>
 
         </div>
     );
